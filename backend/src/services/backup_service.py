@@ -23,6 +23,7 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 from bson import ObjectId
 import requests
+import urllib.parse
 
 from fastapi import HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
@@ -128,10 +129,12 @@ class BackupService:
         return f"{bytes_size} B"
 
     @staticmethod
-    def parse_size_to_bytes(size_str: str) -> int:
-        if not size_str:
+    def parse_size_to_bytes(size_str: Any) -> int:
+        if size_str is None:
             return 0
-        s = size_str.strip().upper()
+        if isinstance(size_str, (int, float)):
+            return int(size_str)
+        s = str(size_str).strip().upper()
         try:
             if "GB" in s:
                 return int(float(s.replace("GB", "").strip()) * 1024 * 1024 * 1024)
@@ -154,19 +157,33 @@ class BackupService:
         if not target_url.startswith("http://") and not target_url.startswith("https://"):
             target_url = f"https://{target_url}"
 
-        api_key = website.get("api_key") or ""
-        site_token = website.get("site_token") or ""
+        # Collect all possible candidate keys and site tokens for this tenant
+        candidate_keys = []
+        for k in [
+            website.get("api_key"),
+            website.get("wordpress_connection", {}).get("api_key") if isinstance(website.get("wordpress_connection"), dict) else None,
+            website.get("site_token"),
+            website.get("wordpress_connection", {}).get("site_token") if isinstance(website.get("wordpress_connection"), dict) else None,
+            website.get("wordpress_connection", {}).get("raw_site_token") if isinstance(website.get("wordpress_connection"), dict) else None,
+        ]:
+            if k and isinstance(k, str) and k.strip() and k.strip() not in candidate_keys:
+                candidate_keys.append(k.strip())
+        if not candidate_keys:
+            candidate_keys = [""]
+
+        primary_api_key = candidate_keys[0]
+        primary_site_token = website.get("site_token") or ""
 
         action_name = action_payload.get("action", "")
         url_params = f"waf_cloud_sync=1&action={action_name}"
         if "filename" in action_payload and action_payload["filename"]:
-            url_params += f"&filename={action_payload['filename']}"
+            url_params += f"&filename={urllib.parse.quote(str(action_payload['filename']))}"
         if "type" in action_payload and action_payload["type"]:
             url_params += f"&type={action_payload['type']}"
-        if api_key:
-            url_params += f"&api_key={api_key}"
-        if site_token:
-            url_params += f"&site_token={site_token}"
+        if primary_api_key:
+            url_params += f"&api_key={primary_api_key}"
+        if primary_site_token:
+            url_params += f"&site_token={primary_site_token}"
 
         sep = "&" if "?" in target_url else "?"
 
@@ -180,54 +197,83 @@ class BackupService:
             f"{target_url}/index.php?{url_params}",
         ]
 
-        raw_body = json.dumps(action_payload) if action_payload else ""
-        ts = str(int(time.time()))
-        nonce = secrets.token_hex(16)
-        secret = api_key or site_token or ""
-        sig = hmac.new(secret.encode("utf-8"), f"{ts}.{nonce}.{raw_body}".encode("utf-8"), hashlib.sha256).hexdigest() if secret else ""
-
-        headers = {
-            "Content-Type": "application/json",
-            "User-Agent": "MDefender-Pro-CloudAction/1.0",
-            "X-MDefender-Timestamp": ts,
-            "X-MDefender-Nonce": nonce,
-        }
-        if sig:
-            headers["X-MDefender-Signature"] = sig
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
-            headers["X-API-Key"] = api_key
-        if site_token:
-            headers["X-Site-Token"] = site_token
+        raw_body = json.dumps(action_payload, separators=(',', ':')) if action_payload else ""
+        last_error_msg = None
 
         for ep in candidates:
-            try:
-                resp = requests.post(ep, json=action_payload, headers=headers, timeout=timeout, verify=False)
-                if resp.status_code == 200:
-                    try:
-                        return resp.json()
-                    except Exception:
-                        return {"status": "success"}
-            except Exception as e:
-                logger.debug(f"Backup dispatch to {ep} failed: {e}")
-                continue
+            for active_key in candidate_keys:
+                ts = str(int(time.time()))
+                nonce = secrets.token_hex(16)
+                secret = active_key or primary_site_token or ""
+                sig = hmac.new(secret.encode("utf-8"), f"{ts}.{nonce}.{raw_body}".encode("utf-8"), hashlib.sha256).hexdigest() if secret else ""
 
-        return {"status": "error", "message": "Failed to communicate with WordPress origin server."}
+                headers = {
+                    "Content-Type": "application/json",
+                    "User-Agent": "MDefender-Pro-CloudAction/1.0",
+                    "X-MDefender-Timestamp": ts,
+                    "X-MDefender-Nonce": nonce,
+                }
+                if sig:
+                    headers["X-MDefender-Signature"] = sig
+                if active_key:
+                    headers["Authorization"] = f"Bearer {active_key}"
+                    headers["X-API-Key"] = active_key
+                if primary_site_token:
+                    headers["X-Site-Token"] = primary_site_token
 
-    def dispatch_remote_backup_query(self, website: Dict[str, Any], timeout: float = 8.0) -> Dict[str, Any]:
+                try:
+                    resp = requests.post(ep, data=raw_body, headers=headers, timeout=timeout, verify=False)
+                    if resp.status_code == 200:
+                        try:
+                            data = resp.json()
+                            if isinstance(data, dict):
+                                if data.get("action_result") or data.get("status") in ("success", "ok") or data.get("success"):
+                                    return data
+                                if data.get("status") == "error":
+                                    last_error_msg = data.get("message")
+                        except Exception:
+                            return {"status": "success", "action_result": {"success": True}}
+                    elif resp.status_code in (400, 401, 403, 500, 502, 503):
+                        try:
+                            edata = resp.json()
+                            if isinstance(edata, dict) and (edata.get("message") or edata.get("detail")):
+                                last_error_msg = edata.get("message") or edata.get("detail")
+                        except Exception:
+                            pass
+                except Exception as e:
+                    logger.debug(f"Backup dispatch to {ep} failed: {e}")
+                    last_error_msg = str(e)
+                    continue
+
+        return {"status": "error", "message": last_error_msg or "Failed to communicate with WordPress origin server."}
+
+    def dispatch_remote_backup_query(self, website: Dict[str, Any], timeout: float = 15.0) -> Dict[str, Any]:
         """Query remote WordPress site for physical backup files directly."""
         url = website.get("url") or f"https://{website.get('domain')}"
         target_url = url.rstrip("/")
         if not target_url.startswith("http://") and not target_url.startswith("https://"):
             target_url = f"https://{target_url}"
-        api_key = website.get("api_key") or ""
-        site_token = website.get("site_token") or ""
+
+        candidate_keys = []
+        for k in [
+            website.get("api_key"),
+            website.get("wordpress_connection", {}).get("api_key") if isinstance(website.get("wordpress_connection"), dict) else None,
+            website.get("site_token"),
+            website.get("wordpress_connection", {}).get("site_token") if isinstance(website.get("wordpress_connection"), dict) else None,
+        ]:
+            if k and isinstance(k, str) and k.strip() and k.strip() not in candidate_keys:
+                candidate_keys.append(k.strip())
+        if not candidate_keys:
+            candidate_keys = [""]
+
+        primary_api_key = candidate_keys[0]
+        primary_site_token = website.get("site_token") or ""
 
         url_params = "waf_cloud_sync=1&action=get_backups"
-        if api_key:
-            url_params += f"&api_key={api_key}"
-        if site_token:
-            url_params += f"&site_token={site_token}"
+        if primary_api_key:
+            url_params += f"&api_key={primary_api_key}"
+        if primary_site_token:
+            url_params += f"&site_token={primary_site_token}"
         sep = "&" if "?" in target_url else "?"
 
         endpoints = [
@@ -238,37 +284,40 @@ class BackupService:
             f"{target_url}{sep}{url_params}",
         ]
 
-        ts = str(int(time.time()))
-        nonce = secrets.token_hex(16)
-        secret = api_key or site_token or ""
-        sig = hmac.new(secret.encode("utf-8"), f"{ts}.{nonce}.".encode("utf-8"), hashlib.sha256).hexdigest() if secret else ""
-
-        headers = {
-            "Content-Type": "application/json",
-            "User-Agent": "MDefender-Pro-CloudAction/1.0",
-            "X-MDefender-Timestamp": ts,
-            "X-MDefender-Nonce": nonce,
-        }
-        if sig:
-            headers["X-MDefender-Signature"] = sig
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
-            headers["X-API-Key"] = api_key
-        if site_token:
-            headers["X-Site-Token"] = site_token
-
         for ep in endpoints:
-            try:
-                resp = requests.get(ep, headers=headers, timeout=timeout, verify=False)
-                if resp.status_code == 200:
-                    try:
-                        data = resp.json()
-                        if isinstance(data, dict) and (data.get("backups") or data.get("status") == "success"):
-                            return data
-                    except Exception:
-                        pass
-            except Exception:
-                continue
+            for active_key in candidate_keys:
+                ts = str(int(time.time()))
+                nonce = secrets.token_hex(16)
+                secret = active_key or primary_site_token or ""
+                sig = hmac.new(secret.encode("utf-8"), f"{ts}.{nonce}.".encode("utf-8"), hashlib.sha256).hexdigest() if secret else ""
+
+                headers = {
+                    "Content-Type": "application/json",
+                    "User-Agent": "MDefender-Pro-CloudAction/1.0",
+                    "X-MDefender-Timestamp": ts,
+                    "X-MDefender-Nonce": nonce,
+                }
+                if sig:
+                    headers["X-MDefender-Signature"] = sig
+                if active_key:
+                    headers["Authorization"] = f"Bearer {active_key}"
+                    headers["X-API-Key"] = active_key
+                if primary_site_token:
+                    headers["X-Site-Token"] = primary_site_token
+
+                try:
+                    resp = requests.get(ep, headers=headers, timeout=timeout, verify=False)
+                    if resp.status_code == 200:
+                        try:
+                            data = resp.json()
+                            if isinstance(data, dict):
+                                bks = data.get("backups") or (data.get("action_result") or {}).get("backups")
+                                if bks or data.get("status") == "success":
+                                    return {"status": "success", "backups": bks or []}
+                        except Exception:
+                            pass
+                except Exception:
+                    continue
         return {}
 
     # -------------------------------------------------------------------------
@@ -338,14 +387,14 @@ class BackupService:
         if not self.is_local_site(website) and (website.get("url") or website.get("api_key")):
             try:
                 # Primary: Query dedicated remote-backups REST endpoint
-                remote_res = self.dispatch_remote_backup_query(website, timeout=8.0)
-                remote_bks = remote_res.get("backups") or []
+                remote_res = self.dispatch_remote_backup_query(website, timeout=12.0)
+                remote_bks = remote_res.get("backups") or (remote_res.get("action_result") or {}).get("backups") or []
 
                 if not remote_bks:
                     # Secondary: Query sync inventory endpoint
                     sync_res = self.dispatch_remote_wp_action(website, {"action": "sync"}, timeout=8.0)
                     inv = sync_res.get("inventory") or sync_res.get("data") or {}
-                    remote_bks = inv.get("backups") or sync_res.get("action_result", {}).get("backups") or []
+                    remote_bks = inv.get("backups") or (sync_res.get("action_result") or {}).get("backups") or []
 
                 for rb in remote_bks:
                     rfn = rb.get("filename")
@@ -353,7 +402,8 @@ class BackupService:
                         continue
 
                     seen_filenames.add(rfn)
-                    rsize_str = rb.get("size") or rb.get("size_formatted") or "0 MB"
+                    raw_size = rb.get("size")
+                    rsize_str = rb.get("size_formatted") or (self.format_size(raw_size) if isinstance(raw_size, (int, float)) else str(raw_size or "0 MB"))
                     rb_type = rb.get("type") or ("database" if "db_" in rfn else "full")
                     comps = ["Database (SQL)"] if rb_type == "database" else (["Plugins", "Themes", "Uploads"] if rb_type == "files" else ["Database", "Plugins", "Themes", "Uploads", "Core"])
                     
@@ -520,8 +570,11 @@ class BackupService:
                     "backup": record
                 }
             else:
-                err_msg = act_res.get("message") or remote_res.get("message") or "Origin WordPress backup engine reported an error or failed to respond."
-                raise HTTPException(status_code=500, detail=err_msg)
+                wp_root = self.get_wordpress_root(website)
+                if not (wp_root and os.path.isdir(wp_root)):
+                    err_msg = act_res.get("message") or remote_res.get("message") or "Origin WordPress backup engine reported an error or failed to respond."
+                    raise HTTPException(status_code=500, detail=err_msg)
+                logger.info(f"Origin dispatch failed, seamlessly executing local host filesystem backup for {domain}...")
 
         # Case B: Local Site on this machine
         backup_dir = self.get_backup_dir(website)
@@ -770,8 +823,11 @@ class BackupService:
                     "message": msg
                 }
             else:
-                err_msg = act_res.get("message") or remote_res.get("message") or "Restoration failed on origin server."
-                raise HTTPException(status_code=500, detail=err_msg)
+                wp_root = self.get_wordpress_root(website)
+                if not (wp_root and os.path.isdir(wp_root)):
+                    err_msg = act_res.get("message") or remote_res.get("message") or "Restoration failed on origin server."
+                    raise HTTPException(status_code=500, detail=err_msg)
+                logger.info(f"Origin restore dispatch failed, seamlessly executing local host recovery for {domain}...")
 
         # Case B: Local Site
         backup_dir = self.get_backup_dir(website)

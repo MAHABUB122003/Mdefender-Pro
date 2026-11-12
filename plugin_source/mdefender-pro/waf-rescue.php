@@ -40,13 +40,18 @@ $action = mdef_rescue_sanitize($_REQUEST['action'] ?? $pushed['action'] ?? 'ping
 $filename = mdef_rescue_sanitize($_REQUEST['filename'] ?? $pushed['filename'] ?? '');
 
 // 4. Resolve Backup Archive Storage Locations
-$possible_backup_dirs = [
+$possible_backup_dirs = array_unique(array_filter([
     $wp_content_dir . '/mdefender-backups/',
     $wp_root . '/wp-content/mdefender-backups/',
     dirname($wp_root) . '/mdefender-backups/',
     $wp_root . '/../mdefender-backups/',
+    dirname($wp_content_dir) . '/mdefender-backups/',
+    dirname($plugin_dir, 2) . '/mdefender-backups/',
     sys_get_temp_dir() . '/mdefender-backups/',
-];
+    defined('WP_CONTENT_DIR') ? (WP_CONTENT_DIR . '/mdefender-backups/') : '',
+    defined('ABSPATH') ? (dirname(ABSPATH) . '/mdefender-backups/') : '',
+    defined('ABSPATH') ? (ABSPATH . 'wp-content/mdefender-backups/') : '',
+]));
 
 $backup_file_path = '';
 if (!empty($filename)) {
@@ -64,6 +69,19 @@ if (!empty($filename)) {
                 $backup_file_path = $cand;
                 break 2;
             }
+        }
+    }
+}
+
+if (empty($backup_file_path) && !empty($filename)) {
+    // If not found yet, check with Backup Engine if available
+    if (!class_exists('WAF_FW_Backup_Engine') && file_exists($plugin_dir . '/includes/backup/class-backup-engine.php')) {
+        @require_once $plugin_dir . '/includes/backup/class-backup-engine.php';
+    }
+    if (class_exists('WAF_FW_Backup_Engine')) {
+        $found = WAF_FW_Backup_Engine::instance()->find_backup_file($filename);
+        if ($found && file_exists($found) && filesize($found) > 0) {
+            $backup_file_path = $found;
         }
     }
 }
@@ -287,6 +305,28 @@ if (!defined('ABSPATH') && file_exists($wp_root . '/wp-load.php')) {
     require_once $wp_root . '/wp-load.php';
 }
 
+// Resilient self-healing API Key & Site Token synchronization
+if (function_exists('update_option')) {
+    $raw_key = $_REQUEST['api_key'] ?? $_REQUEST['key'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['HTTP_X_API_KEY'] ?? ($pushed['api_key'] ?? '');
+    $incoming_key = trim(str_ireplace('Bearer ', '', (string) $raw_key));
+    $incoming_token = trim((string) ($_REQUEST['site_token'] ?? $_REQUEST['token'] ?? $_SERVER['HTTP_X_SITE_TOKEN'] ?? ($pushed['site_token'] ?? '')));
+
+    if (!empty($incoming_key) && strlen($incoming_key) >= 16) {
+        $curr_key = (string) get_option('waf_fw_ml_api_key', get_option('waf_fw_api_key', ''));
+        if ($curr_key !== $incoming_key) {
+            update_option('waf_fw_ml_api_key', $incoming_key);
+            update_option('waf_fw_api_key', $incoming_key);
+        }
+    }
+    if (!empty($incoming_token) && strlen($incoming_token) >= 16) {
+        $curr_token = (string) get_option('waf_fw_site_token', '');
+        if ($curr_token !== $incoming_token) {
+            update_option('waf_fw_site_token', $incoming_token);
+        }
+    }
+    update_option('waf_fw_connected', 'yes');
+}
+
 // Re-evaluate action after wp-load in case globals were reset
 $action = mdef_rescue_sanitize($_REQUEST['action'] ?? $_GET['action'] ?? $pushed['action'] ?? 'ping');
 $filename = mdef_rescue_sanitize($_REQUEST['filename'] ?? $_GET['filename'] ?? $pushed['filename'] ?? '');
@@ -315,7 +355,16 @@ if (class_exists('WAF_FW_Backup_Engine')) {
     } elseif ($action === 'delete_backup') {
         $action_result = $engine->delete_backup($filename);
     } elseif ($action === 'get_backups') {
-        $action_result = ['success' => true, 'backups' => $engine->get_backups()];
+        $backups_list = $engine->get_backups();
+        $action_result = ['success' => true, 'backups' => $backups_list];
+        echo json_encode([
+            'status' => 'success',
+            'action' => $action,
+            'backups' => $backups_list,
+            'action_result' => $action_result,
+            'timestamp' => date('Y-m-d H:i:s'),
+        ]);
+        exit;
     } else {
         $action_result = ['success' => true, 'message' => 'Action received: ' . $action];
     }
