@@ -94,12 +94,15 @@ if (!$mdefender_cache_data) {
     }
 }
 
-// Cloud-gated license verification: If disabled OR not connected to cloud, exit immediately
-if (!$mdefender_cache_data || empty($mdefender_cache_data['enabled']) || empty($mdefender_cache_data['connected'])) {
+// Enterprise Gatekeeping: If explicitly disabled by admin, return early
+if ($mdefender_cache_data && isset($mdefender_cache_data['enabled']) && $mdefender_cache_data['enabled'] === false) {
+    return;
+}
+if ($mdefender_cache_data && isset($mdefender_cache_data['connected']) && $mdefender_cache_data['connected'] === false) {
     return;
 }
 
-// 1. Ingress Payload Aggregation & Early Normalization (< 0.01ms)
+// 1. Stage 1: Ultimate Ingress Normalizer & Multi-Input Buffer (< 0.015ms)
 // Cache raw body once to avoid PHP stream consumption
 if (!isset($GLOBALS['mdefender_raw_body'])) {
     $raw_input = @file_get_contents('php://input');
@@ -121,7 +124,7 @@ if (!empty($_POST) && is_array($_POST)) {
     $mdefender_post_flat = $flatten_arr($_POST);
 }
 
-// Extract JSON request body if present
+// Extract JSON & structured request body if present
 $mdefender_json_flat = '';
 if (!empty($mdefender_raw_body) && (isset($mdefender_raw_body[0]) && ($mdefender_raw_body[0] === '{' || $mdefender_raw_body[0] === '['))) {
     $decoded_json = @json_decode($mdefender_raw_body, true);
@@ -138,23 +141,27 @@ if (!empty($mdefender_raw_body) && (isset($mdefender_raw_body[0]) && ($mdefender
     }
 }
 
-// Flatten Cookies
+// Flatten Cookies: Inspect BOTH key and value across all cookies
 $mdefender_cookie_flat = '';
 if (!empty($_COOKIE) && is_array($_COOKIE)) {
     $c_vals = [];
     foreach ($_COOKIE as $k => $v) {
-        if (is_string($v) && strlen($v) < 64 && ctype_alnum($v)) continue;
-        $c_vals[] = is_array($v) ? json_encode($v) : (string)$v;
+        $val_str = is_array($v) ? json_encode($v) : (string)$v;
+        $c_vals[] = "{$k}={$val_str}";
     }
     if (!empty($c_vals)) {
         $mdefender_cookie_flat = implode(' ', $c_vals);
     }
 }
 
-// Key request headers for inspection
+// Key request headers for thorough inspection
 $mdefender_headers_flat = '';
 $mdefender_cur_host = $_SERVER['HTTP_HOST'] ?? '';
-$inspect_hdr_keys = ['HTTP_USER_AGENT', 'HTTP_REFERER', 'HTTP_HOST', 'HTTP_COOKIE', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_FORWARDED_HOST', 'HTTP_AUTHORIZATION'];
+$inspect_hdr_keys = [
+    'HTTP_USER_AGENT', 'HTTP_REFERER', 'HTTP_HOST', 'HTTP_COOKIE', 'HTTP_ORIGIN',
+    'HTTP_X_FORWARDED_FOR', 'HTTP_X_FORWARDED_HOST', 'HTTP_X_REAL_IP', 'HTTP_CLIENT_IP',
+    'HTTP_AUTHORIZATION', 'HTTP_X_ORIGINAL_URL', 'HTTP_X_REWRITE_URL', 'HTTP_FORWARDED'
+];
 foreach ($inspect_hdr_keys as $h_key) {
     if (!empty($_SERVER[$h_key])) {
         $h_val = (string) $_SERVER[$h_key];
@@ -171,7 +178,7 @@ foreach ($_SERVER as $k => $v) {
     }
 }
 
-// Combined untrusted input stream
+// Combined raw ingress stream
 $raw_combined = urldecode($_SERVER['REQUEST_URI'] ?? '') . ' ' . 
                 urldecode($_SERVER['QUERY_STRING'] ?? '') . ' ' . 
                 $mdefender_post_flat . ' ' . 
@@ -190,13 +197,24 @@ $raw_combined = str_ireplace($slash_patterns, '/', $raw_combined);
 $raw_combined = str_ireplace($backslash_patterns, '\\', $raw_combined);
 $raw_combined = str_ireplace($dot_patterns, '.', $raw_combined);
 
-$deobfuscated = urldecode(urldecode($raw_combined)); // Double URL decode (%2527 -> ')
+// Recursive Multi-Pass URL Decoding (defeats single, double, and triple URL evasion: %252527 -> %2527 -> %27 -> ')
+$deobfuscated = $raw_combined;
+for ($pass = 0; $pass < 3; $pass++) {
+    $prev = $deobfuscated;
+    $deobfuscated = urldecode($deobfuscated);
+    if ($prev === $deobfuscated) {
+        break;
+    }
+}
+
 $deobfuscated = str_ireplace($slash_patterns, '/', $deobfuscated);
 $deobfuscated = str_ireplace($backslash_patterns, '\\', $deobfuscated);
 $deobfuscated = str_ireplace($dot_patterns, '.', $deobfuscated);
 $deobfuscated = (string) preg_replace('/(?:\xc0[\xaf\x2f]|\xc1[\x8f\xaf]|\xe0\x80[\xaf\x2f])/i', '/', $deobfuscated);
 $deobfuscated = (string) preg_replace('/(?:\xc0[\x5c\x9c]|\xc1[\x9c\xbc]|\xe0\x80\x5c)/i', '\\', $deobfuscated);
 $deobfuscated = (string) preg_replace('/(?:\xc0[\xae\x2e]|\xc1[\x8e\xae]|\xe0\x80[\xae\x2e])/i', '.', $deobfuscated);
+
+// Hexadecimal & Unicode Escape Sequence Decoder
 if (strpos($deobfuscated, '\\u') !== false) {
     $deobfuscated = (string) preg_replace_callback('#\\\\u([0-9a-fA-F]{4})#', function($m) {
         return mb_chr(hexdec($m[1]), 'UTF-8');
@@ -207,7 +225,24 @@ if (strpos($deobfuscated, '\\x') !== false) {
         return chr(hexdec($m[1]));
     }, $deobfuscated);
 }
-$deobfuscated = html_entity_decode($deobfuscated, ENT_QUOTES | ENT_HTML5, 'UTF-8'); // HTML entities (&#x27; -> ')
+// HTML entity decode (&#x27; -> ', &quot; -> ", etc.)
+$deobfuscated = html_entity_decode($deobfuscated, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+// Safe Base64 payload detection & transparent deobfuscation
+if (preg_match_all('#\b[A-Za-z0-9+/]{20,}={0,2}\b#', $raw_combined, $b64_matches)) {
+    $b64_decoded_tokens = [];
+    foreach ($b64_matches[0] as $b64_cand) {
+        $dec = @base64_decode($b64_cand, true);
+        if ($dec && is_string($dec) && preg_match('#[a-zA-Z0-9<>\'\"\\$\\{]#', $dec)) {
+            $b64_decoded_tokens[] = $dec;
+        }
+    }
+    if (!empty($b64_decoded_tokens)) {
+        $deobfuscated .= ' ' . implode(' ', $b64_decoded_tokens);
+    }
+}
+
+// Generate normalized attack evaluation streams
 $deobfuscated_stripped = preg_replace('/\/\*.*?\*\//s', '', $deobfuscated); // Strip SQL inline comments completely (UN/**/ION -> UNION)
 $deobfuscated_spaced = preg_replace('/\/\*.*?\*\//s', ' ', $deobfuscated); // Strip SQL inline comments with space
 $eval_uri = $_SERVER['REQUEST_URI'] ?? '';
