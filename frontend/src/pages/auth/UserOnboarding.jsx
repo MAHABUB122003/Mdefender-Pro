@@ -165,9 +165,13 @@ export default function UserOnboarding() {
           if (res.websites_count > 0 && res.first_site) {
             setPollingActive(false);
             setConnectedSite(res.first_site);
+            try {
+              await api.completeOnboarding();
+            } catch (e) {
+              console.error('Failed to complete onboarding on server:', e);
+            }
             
-            // Mark onboarded and cache website count in user store and localStorage
-            localStorage.setItem('mdefender_onboard_passed', 'true');
+            // Mark onboarded and cache website count in user store
             const cached = userStore.get('profile') || {};
             const updated = {
               ...cached,
@@ -204,7 +208,6 @@ export default function UserOnboarding() {
   useEffect(() => {
     if (redirectCountdown === null) return;
     if (redirectCountdown <= 0) {
-      localStorage.setItem('mdefender_onboard_passed', 'true');
       const cached = userStore.get('profile') || {};
       userStore.set('profile', {
         ...cached,
@@ -293,20 +296,6 @@ export default function UserOnboarding() {
     }
   };
 
-  const handleSkipToDashboard = () => {
-    localStorage.setItem('mdefender_onboard_passed', 'true');
-    const cached = userStore.get('profile') || {};
-    userStore.set('profile', {
-      ...cached,
-      onboarded: true,
-      onboarded_skip: true,
-      websites_count: cached.websites_count || 1
-    });
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('mdefender_user_update'));
-    }
-    navigate('/user/dashboard', { replace: true });
-  };
 
   const handleLogout = async () => {
     try {
@@ -1235,11 +1224,10 @@ export default function UserOnboarding() {
               )}
             </div>
 
-            {/* Zero-Trust Notice & Optional Escape Hatch */}
+            {/* Zero-Trust Notice: Mandatory Origin Pairing */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
               gap: '12px',
               padding: '12px 18px',
               background: '#FFFFFF',
@@ -1249,31 +1237,8 @@ export default function UserOnboarding() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: brandTokens.textMuted, fontSize: '11.5px' }}>
                 <Lock size={13} style={{ color: '#28745D', flexShrink: 0 }} />
-                <span>Zero-Trust Origin Isolation: Telemetry engine activates upon origin pairing.</span>
+                <span>Zero-Trust Origin Isolation: Telemetry engine activates strictly upon mandatory origin pairing.</span>
               </div>
-              <button
-                type="button"
-                onClick={handleSkipToDashboard}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#E8792F',
-                  fontSize: '12px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  whiteSpace: 'nowrap',
-                  padding: 0,
-                  transition: 'color 0.15s ease'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#BD642B'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#E8792F'}
-              >
-                <span>Explore Dashboard</span>
-                <ArrowRight size={13} strokeWidth={2.4} />
-              </button>
             </div>
 
             {/* Bottom Footer Note (Natural Flow) */}

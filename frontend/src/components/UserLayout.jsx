@@ -33,17 +33,13 @@ export default function UserLayout({ children, onLogout }) {
   const location = useLocation()
   const navigate = useNavigate()
 
-  // Strict Onboarding Defense Guard: Prevent un-onboarded accounts from accessing internal dashboard
+  // Strict Zero-Trust Onboarding Guard: Prevent un-onboarded accounts from accessing internal dashboard
   useEffect(() => {
-    const passedOnboard = typeof localStorage !== 'undefined' && localStorage.getItem('mdefender_onboard_passed') === 'true';
-    if (passedOnboard) return;
-
     const cachedProfile = userStore.get('profile')
     if (cachedProfile && cachedProfile.role !== 'super_admin' && !cachedProfile.is_admin) {
-      if (cachedProfile.onboarded || cachedProfile.onboarded_skip) return;
-
-      const hasSites = (cachedProfile.websites_count > 0) || (Array.isArray(cachedProfile.websites) && cachedProfile.websites.length > 0)
-      if (!hasSites) {
+      const hasSites = (typeof cachedProfile.websites_count === 'number' && cachedProfile.websites_count > 0) ||
+                       (Array.isArray(cachedProfile.websites) && cachedProfile.websites.length > 0);
+      if (!cachedProfile.onboarded || !hasSites) {
         navigate('/onboarding', { replace: true })
       }
     }
@@ -78,7 +74,6 @@ export default function UserLayout({ children, onLogout }) {
         import('../pages/UserTeam')
         import('../pages/UserAlerts')
         import('../pages/UserTools')
-        import('../pages/UserConnect')
         import('../pages/UserPricing')
         import('../pages/UserBlacklist')
         import('../pages/UserSettings')

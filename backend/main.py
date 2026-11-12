@@ -900,6 +900,10 @@ def verify_user_token_compat(request: Request):
         'total_blocked': user.get('total_blocked', 0),
         'api_key': user.get('api_key', ''),
         'is_active': user.get('is_active', True),
+        'onboarded': user.get('onboarded', False),
+        'onboarding_step': user.get('onboarding_step', ''),
+        'workspace_name': user.get('workspace_name', ''),
+        'organization_type': user.get('organization_type', ''),
         'created_at': user.get('created_at'),
         'last_login': user.get('last_login'),
     }
@@ -1389,7 +1393,8 @@ async def user_onboarding_status(user: dict = Depends(verify_user_token_compat))
         s['id'] = str(s['_id'])
         s['_id'] = str(s['_id'])
     
-    is_onboarded = bool(user.get('onboarded') or len(sites) > 0)
+    # Strict Zero-Trust Isolation: A user is only onboarded if their account is marked onboarded AND they own at least 1 verified website
+    is_onboarded = bool(user.get('onboarded') and len(sites) > 0)
     return {
         'status': 'success',
         'onboarded': is_onboarded,
@@ -1507,7 +1512,7 @@ async def user_ddos_toggle(request: Request, user: dict = Depends(verify_user_to
         enabled = bool(data.get("enabled", True))
         db = MongoDB()
         user_id = str(user.get("id") or user.get("_id") or "")
-        AttackBlocker(db).update_user_settings(user_id, {"ddos_mitigation_enabled": enabled})
+        AttackBlocker(db).save_user_settings(user_id, {"ddos_mitigation_enabled": enabled})
         try:
             from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
             push_instant_sync_to_wordpress(user_id=user_id)
@@ -1520,23 +1525,13 @@ async def user_ddos_toggle(request: Request, user: dict = Depends(verify_user_to
 @app.get("/api/user/dashboard")
 async def user_dashboard(request: Request, user: dict = Depends(verify_user_token_compat)):
     try:
-        # Zero-Trust Mandatory Origin Guard: Reject un-onboarded user without websites
-        if user.get('role') != 'super_admin' and not user.get('is_admin'):
-            user_id_str = str(user.get('id') or user.get('_id'))
-            cond = [{'user_id': user_id_str}]
-            try:
-                cond.append({'user_id': ObjectId(user_id_str)})
-            except Exception:
-                pass
-            if db.websites.count_documents({'$or': cond}) == 0:
-                return JSONResponse(
-                    status_code=403,
-                    content={
-                        'status': 'onboarding_required',
-                        'message': 'Access Denied: You must connect at least one active WordPress website in onboarding to unlock the dashboard.'
-                    }
-                )
-
+        user_id_str = str(user.get('id') or user.get('_id'))
+        cond = [{'user_id': user_id_str}]
+        try:
+            cond.append({'user_id': ObjectId(user_id_str)})
+        except Exception:
+            pass
+        # Strict Multi-Tenant Isolation: Each tenant only sees their own verified websites
         website_id = request.query_params.get('website_id')
         refresh = request.query_params.get('refresh') in ('1', 'true')
         res = await asyncio.to_thread(user_api.get_dashboard_stats, user, website_id=website_id, force_refresh=refresh)
@@ -1765,12 +1760,20 @@ def push_to_fleet_async(target_sites, payload, full_sync=True):
         active_countries = []
         active_ips = []
         active_whitelists = []
+        action_name = payload.get('action', '')
+        del_c_code = (payload.get('country_code') or '').strip().upper()
+
         if full_sync:
             try:
                 for item in db.country_blocks.find():
                     cc = (item.get('country_code') or '').strip().upper()
                     if cc and len(cc) == 2 and cc not in active_countries:
+                        if action_name == 'delete_country_block' and cc == del_c_code:
+                            continue
                         active_countries.append(cc)
+
+                if action_name == 'delete_country_block' and del_c_code in active_countries:
+                    active_countries = [c for c in active_countries if c != del_c_code]
 
                 now_dt = datetime.now()
                 for item in db.blacklist.find():
@@ -2567,6 +2570,12 @@ async def user_add_country_block(request: Request, user: dict = Depends(verify_u
     except Exception:
         pass
 
+    try:
+        if hasattr(waf_api, 'ip_filter') and hasattr(waf_api.ip_filter, 'invalidate_country_cache'):
+            waf_api.ip_filter.invalidate_country_cache(user_id=user_id_str, country_code=code)
+    except Exception:
+        pass
+
     scope_txt = f" on {website_domain}" if website_id != 'all' else " across security fleet"
     return {'status': 'success', 'message': f'Country {name} ({code}) blocked successfully{scope_txt}'}
 
@@ -2592,16 +2601,48 @@ async def user_delete_country_block(request: Request, user: dict = Depends(verif
         return {'status': 'error', 'message': 'Country code is required'}
 
     user_id_str = str(user.get('_id') or '')
+    from bson import ObjectId
+    user_id_obj = ObjectId(user_id_str) if ObjectId.is_valid(user_id_str) else user_id_str
+    is_admin = user.get('role') in ('admin', 'super_admin') or user.get('is_admin')
+
     all_sites = get_user_connected_wordpress_sites(user)
     target_sites = all_sites
 
+    code_match = {'$in': [code, code.upper(), code.lower()]}
+    user_match = [
+        {'user_id': user_id_str},
+        {'added_by_user_id': user_id_str},
+    ]
+    if ObjectId.is_valid(user_id_str):
+        user_match.extend([
+            {'user_id': user_id_obj},
+            {'added_by_user_id': user_id_obj}
+        ])
+
     if website_id and website_id != 'all':
-        db.country_blocks.delete_many({'country_code': code, 'website_id': website_id, '$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]})
         matched = [s for s in all_sites if str(s.get('_id')) == website_id or str(s.get('id')) == website_id or s.get('domain') == website_id or s.get('name') == website_id]
         if matched:
             target_sites = matched
+        del_filter = {
+            'country_code': code_match,
+            '$and': [
+                {'$or': user_match} if not is_admin else {'country_code': code_match},
+                {'$or': [{'website_id': website_id}, {'website_id': 'all'}, {'website_id': {'$exists': False}}, {'website_id': None}]}
+            ]
+        }
+        db.country_blocks.delete_many(del_filter)
     else:
-        db.country_blocks.delete_many({'country_code': code, '$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]})
+        del_filter = {'country_code': code_match}
+        if not is_admin:
+            del_filter['$or'] = user_match
+        db.country_blocks.delete_many(del_filter)
+
+    # Invalidate Python in-memory cache immediately
+    try:
+        if hasattr(waf_api, 'ip_filter') and hasattr(waf_api.ip_filter, 'invalidate_country_cache'):
+            waf_api.ip_filter.invalidate_country_cache(user_id=user_id_str, country_code=code)
+    except Exception:
+        pass
 
     # Instant Asynchronous Push to connected WordPress fleet nodes (< 15ms UI response)
     push_to_fleet_async(target_sites, {'action': 'delete_country_block', 'country_code': code})

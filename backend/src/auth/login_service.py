@@ -258,7 +258,8 @@ class LoginService:
             })
         except Exception:
             pass
-        is_onboarded = bool(user.get('onboarded') or websites_count > 0)
+        # Strict Zero-Trust Onboarding Check: Must have completed onboarding AND have at least 1 verified website
+        is_onboarded = bool(user.get('onboarded') and websites_count > 0)
 
         return {
             'success': True,

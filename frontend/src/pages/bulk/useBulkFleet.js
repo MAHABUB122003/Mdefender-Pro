@@ -25,12 +25,10 @@ export default function useBulkFleet() {
     if (manual) setRefreshing(true)
     try {
       const res = await api.getUserDashboard(manual ? { refresh: '1' } : {})
-      const webList = res?.websites || res?.data?.websites
-      if (Array.isArray(webList) && webList.length > 0) {
-        setData(res.websites ? res : res.data)
-        userStore.set('dashboard', res.websites ? res : res.data)
-        userStore.set('websites', res.websites ? res : res.data)
-      }
+      const resolved = res?.websites ? res : (res?.data || res || {})
+      setData(resolved)
+      userStore.set('dashboard', resolved)
+      userStore.set('websites', resolved)
     } catch (err) {
       console.error('Fleet sync error:', err)
     } finally {

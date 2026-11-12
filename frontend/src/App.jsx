@@ -35,7 +35,6 @@ const UserWebsites = lazy(() => import('./pages/UserWebsites'))
 const UserLogs = lazy(() => import('./pages/UserLogs'))
 const UserSettings = lazy(() => import('./pages/UserSettings'))
 const UserPricing = lazy(() => import('./pages/UserPricing'))
-const UserConnect = lazy(() => import('./pages/UserConnect'))
 const UserBlacklist = lazy(() => import('./pages/UserBlacklist'))
 const UserBulkManagement = lazy(() => import('./pages/UserBulkManagement'))
 const BulkMonitoring = lazy(() => import('./pages/bulk/BulkMonitoring'))
@@ -122,20 +121,11 @@ function PageFallback() {
 function isUserOnboarded(u) {
   if (!u) return false;
   if (u.role === 'super_admin' || u.is_admin) return true;
-  // Origin check, explicit onboard flag, or user opted to explore dashboard
-  if (u.onboarded || u.onboarded_skip) return true;
-  if (typeof u.websites_count === 'number' && u.websites_count > 0) return true;
-  if (Array.isArray(u.websites) && u.websites.length > 0) return true;
-  if (typeof localStorage !== 'undefined') {
-    if (localStorage.getItem('mdefender_onboard_passed') === 'true') return true;
-    try {
-      const stored = JSON.parse(localStorage.getItem('mdefender_user_profile') || '{}');
-      if (stored.onboarded || stored.onboarded_skip || (stored.websites_count > 0) || (stored.websites && stored.websites.length > 0)) {
-        return true;
-      }
-    } catch {}
-  }
-  return false;
+  // Strict Zero-Trust Onboarding Guard:
+  // User must have completed onboarding and have at least one active connected website
+  const hasSites = (typeof u.websites_count === 'number' && u.websites_count > 0) ||
+                   (Array.isArray(u.websites) && u.websites.length > 0);
+  return Boolean(u.onboarded && hasSites);
 }
 
 function getPostLoginTarget(u) {
@@ -255,12 +245,17 @@ function App() {
     setUserState(null)
     userStore.clear()
     if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem('mdefender_api_key')
-      localStorage.removeItem('mdefender_user_name')
-      localStorage.removeItem('mdefender_user_email')
-      localStorage.removeItem('mdefender_user_plan')
-      localStorage.removeItem('mdefender_trial_days')
-      localStorage.removeItem('mdefender_user_created_at')
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith('mdefender_') || k.startsWith('mdef_'))) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.clear();
     }
     window.location.href = '/user/login'
   }, [])
@@ -379,7 +374,7 @@ function App() {
           <Route path="alerts" element={<UserAlerts />} />
           <Route path="reports" element={<UserReports />} />
           <Route path="tools" element={<LegacyToolsRedirect />} />
-          <Route path="connect" element={<UserConnect />} />
+          <Route path="connect" element={<Navigate to="/user/websites" replace />} />
           <Route path="pricing" element={<UserPricing />} />
           <Route path="plans" element={<Navigate to="/user/pricing" replace />} />
           <Route path="blacklist" element={<UserBlacklist activeMode="ip" />} />

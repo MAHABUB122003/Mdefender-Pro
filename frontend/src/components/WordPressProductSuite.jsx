@@ -251,7 +251,7 @@ export default function WordPressProductSuite() {
             </a>
 
             <Link
-              to="/user/connect"
+              to="/user/websites"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -1043,7 +1043,7 @@ export default function WordPressProductSuite() {
                 Enter your MDefender Pro API Key in Settings to instantly sync live zero-day rules and telemetry.
               </p>
               <Link
-                to="/user/connect"
+                to="/user/websites"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',

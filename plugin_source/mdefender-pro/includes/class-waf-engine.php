@@ -507,6 +507,9 @@ class WAF_FW_Engine {
         ];
 
         @file_put_contents($data_dir . '/waf_fast_cache.json', json_encode($cache_payload, JSON_PRETTY_PRINT));
+        if (function_exists('apcu_delete')) {
+            apcu_delete('mdefender_waf_fast_cache');
+        }
         if (function_exists('apcu_store')) {
             apcu_store('mdefender_waf_fast_cache', $cache_payload, 60);
         }

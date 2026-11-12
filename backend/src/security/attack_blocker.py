@@ -220,6 +220,9 @@ class AttackBlocker:
 
     def save_user_settings(self, user_id, data):
         u_str = str(user_id)
+
+    def update_user_settings(self, user_id, data):
+        return self.save_user_settings(user_id, data)
         now_dt = datetime.now()
         existing = self.get_user_settings(user_id)
 

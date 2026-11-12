@@ -48,7 +48,6 @@ const pageConfig = {
   '/user/security/breach-intelligence': { name: 'Breach Intelligence & HIBP', icon: ShieldCheck },
   '/user/security/hibp': { name: 'Breach Intelligence & HIBP', icon: ShieldCheck },
   '/user/tools': { name: 'Security Tools', icon: Wrench },
-  '/user/connect': { name: 'Connect Website', icon: LinkIcon },
   '/user/blacklist': { name: 'IP Blacklist', icon: Ban },
   '/user/access/ip-blocklist': { name: 'IP Blacklist', icon: Ban },
   '/user/access/ip-allowlist': { name: 'IP Whitelist', icon: ShieldCheck },

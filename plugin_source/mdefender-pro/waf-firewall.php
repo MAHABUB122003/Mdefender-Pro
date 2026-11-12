@@ -619,6 +619,11 @@ function waf_fw_handle_cloud_sync_webhook() {
                 }
                 if (isset($pushed_data['blocked_countries']) && is_array($pushed_data['blocked_countries'])) {
                     $countries = array_values(array_filter(array_map('sanitize_text_field', $pushed_data['blocked_countries'])));
+                    $incoming_act = sanitize_text_field($pushed_data['action'] ?? $_REQUEST['action'] ?? '');
+                    $del_c = strtoupper(trim(sanitize_text_field($pushed_data['country_code'] ?? $pushed_data['code'] ?? $_REQUEST['country_code'] ?? $_REQUEST['code'] ?? '')));
+                    if (($incoming_act === 'delete_country_block' || $incoming_act === 'remove_country_block') && !empty($del_c)) {
+                        $countries = array_values(array_diff($countries, [$del_c]));
+                    }
                     update_option('waf_fw_blocked_countries', implode(',', $countries));
                 }
                 if (isset($pushed_data['user_rules']) && is_array($pushed_data['user_rules'])) {
@@ -3270,6 +3275,9 @@ function waf_fw_handle_cloud_sync_webhook() {
                     $c_codes = array_values(array_filter(array_map('trim', explode(',', strtoupper($raw_c)))));
                     $c_codes = array_values(array_diff($c_codes, [$c_code]));
                     update_option('waf_fw_blocked_countries', implode(',', $c_codes));
+                    if (function_exists('apcu_delete')) {
+                        apcu_delete('mdefender_waf_fast_cache');
+                    }
                     if (class_exists('WAF_FW_Engine')) {
                         WAF_FW_Engine::instance()->export_fast_cache();
                     }
@@ -3575,6 +3583,11 @@ add_action('rest_api_init', function() {
                 }
                 if (isset($pushed_data['blocked_countries']) && is_array($pushed_data['blocked_countries'])) {
                     $countries = array_values(array_filter(array_map('sanitize_text_field', $pushed_data['blocked_countries'])));
+                    $incoming_act = sanitize_text_field($pushed_data['action'] ?? $_REQUEST['action'] ?? '');
+                    $del_c = strtoupper(trim(sanitize_text_field($pushed_data['country_code'] ?? $pushed_data['code'] ?? $_REQUEST['country_code'] ?? $_REQUEST['code'] ?? '')));
+                    if (($incoming_act === 'delete_country_block' || $incoming_act === 'remove_country_block') && !empty($del_c)) {
+                        $countries = array_values(array_diff($countries, [$del_c]));
+                    }
                     update_option('waf_fw_blocked_countries', implode(',', $countries));
                 }
                 if (isset($pushed_data['user_rules']) && is_array($pushed_data['user_rules'])) {

@@ -98,7 +98,7 @@ function postureFor(sites) {
     if (plugin) points += 1;
     if (!active) tasks.push({ id: `resume-${site.id}`, text: `Resume protection for ${site.domain}`, to: '/user/websites' });
     if (active && !protecting) tasks.push({ id: `waf-${site.id}`, text: `Turn on WAF protection for ${site.domain}`, to: '/user/websites' });
-    if (active && !plugin) tasks.push({ id: `plugin-${site.id}`, text: `Install the plugin on ${site.domain}`, to: '/user/connect' });
+    if (active && !plugin) tasks.push({ id: `plugin-${site.id}`, text: `Install the plugin on ${site.domain}`, to: '/user/websites' });
   });
   const score = Math.round((points / (sites.length * 3)) * 100);
   const tone = score >= 85 ? 'ok' : score >= 60 ? 'warn' : 'bad';
@@ -587,7 +587,7 @@ export default function UserDashboard() {
             icon={Globe2}
             title="No sites connected yet"
             description="Add your first WordPress site, install the plugin and paste the site key to start blocking attacks."
-            action={<Button variant="primary" icon={ArrowRight} onClick={() => navigate('/user/connect')}>Connect a site</Button>}
+            action={<Button variant="primary" icon={ArrowRight} onClick={() => navigate('/user/websites')}>Connect a site</Button>}
           />
         )}
       </Card>

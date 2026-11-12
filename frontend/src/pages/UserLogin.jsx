@@ -32,9 +32,9 @@ export default function UserLogin({ onLoginSuccess }) {
   const getPostLoginUrl = (user) => {
     if (planParam) return `/user/pricing?plan=${planParam}&cycle=${cycleParam}`;
     if (user?.role === 'super_admin' || user?.is_admin) return '/admin';
-    const passedOnboard = typeof localStorage !== 'undefined' && localStorage.getItem('mdefender_onboard_passed') === 'true';
-    const hasSites = passedOnboard || user?.onboarded || user?.onboarded_skip || (user?.websites_count > 0) || (Array.isArray(user?.websites) && user.websites.length > 0);
-    if (!hasSites) {
+    const hasSites = (typeof user?.websites_count === 'number' && user?.websites_count > 0) ||
+                     (Array.isArray(user?.websites) && user.websites.length > 0);
+    if (!user?.onboarded || !hasSites) {
       return '/onboarding';
     }
     return '/user/dashboard';
@@ -53,6 +53,16 @@ export default function UserLogin({ onLoginSuccess }) {
 
   const handleLoginSuccess = (user) => {
     if (user) {
+      if (typeof localStorage !== 'undefined') {
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && (k.startsWith('mdefender_') || k.startsWith('mdef_')) && k !== 'mdefender_access' && k !== 'mdefender_refresh') {
+            keysToRemove.push(k);
+          }
+        }
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+      }
       userStore.set('profile', user);
       if (user.api_key) {
         localStorage.setItem('mdefender_api_key', user.api_key);

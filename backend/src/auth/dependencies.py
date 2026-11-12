@@ -36,6 +36,19 @@ async def get_current_user(request: Request) -> dict:
         payload = jwt_service.decode_access_token(query_token)
 
     if not payload:
+        # Support API Key authentication fallback
+        raw_key = header_token or request.headers.get('X-API-Key', '').strip() or query_token
+        if raw_key and len(raw_key) >= 16:
+            user_by_key = db.users.find_one({'api_key': raw_key})
+            if user_by_key:
+                payload = {
+                    'sub': str(user_by_key['_id']),
+                    'email': user_by_key.get('email', ''),
+                    'role': user_by_key.get('role', 'user'),
+                    'is_admin': user_by_key.get('role') in ('admin', 'super_admin') or user_by_key.get('is_admin')
+                }
+
+    if not payload:
         if not header_token and not cookie_token and not query_token:
             raise HTTPException(status_code=401, detail='Not authenticated')
         raise HTTPException(status_code=401, detail='Invalid or expired token')
@@ -120,6 +133,19 @@ async def get_current_admin(request: Request) -> str:
         payload = jwt_service.decode_access_token(cookie_token)
     if not payload and query_token:
         payload = jwt_service.decode_access_token(query_token)
+
+    if not payload:
+        # Support API Key authentication fallback
+        raw_key = header_token or request.headers.get('X-API-Key', '').strip() or query_token
+        if raw_key and len(raw_key) >= 16:
+            user_by_key = db.users.find_one({'api_key': raw_key})
+            if user_by_key:
+                payload = {
+                    'sub': str(user_by_key['_id']),
+                    'email': user_by_key.get('email', ''),
+                    'role': user_by_key.get('role', 'user'),
+                    'is_admin': user_by_key.get('role') in ('admin', 'super_admin') or user_by_key.get('is_admin')
+                }
 
     if not payload:
         if not header_token and not cookie_token and not query_token:
