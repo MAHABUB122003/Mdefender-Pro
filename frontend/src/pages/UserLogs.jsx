@@ -302,8 +302,17 @@ export default function UserLogs() {
       try {
         const cached = userStore.get(cacheKey);
         if (cached && Array.isArray(cached?.logs) && cached.logs.length > 0) {
-          setLogs(cached);
-          setLoading(false);
+          const hasFakeMock = cached.logs.some(l => l?.ip === '185.220.101.5' || String(l?.id || '').startsWith('mdf_log_') || String(l?.id || '').startsWith('mdf_evt_'));
+          if (!hasFakeMock) {
+            setLogs(cached);
+            setLoading(false);
+          } else {
+            try {
+              userStore.remove(cacheKey);
+              userStore.remove('logs_p1');
+            } catch {}
+            setLoading(true);
+          }
         } else {
           setLoading(true);
         }

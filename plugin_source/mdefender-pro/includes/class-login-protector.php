@@ -433,6 +433,20 @@ class WAF_FW_Login_Protector {
             return;
         }
 
+        // Avoid accidental lockout if whitelist only contains local loopback IPs on a public live site
+        $server_host = strtolower($_SERVER['HTTP_HOST'] ?? '');
+        $is_public_site = ($server_host !== 'localhost' && strpos($server_host, '127.0.0.1') === false && strpos($server_host, '::1') === false);
+        $has_public_whitelist = false;
+        foreach ($allowed_ips as $entry) {
+            if (!in_array($entry, ['127.0.0.1', '::1', 'localhost'], true)) {
+                $has_public_whitelist = true;
+                break;
+            }
+        }
+        if ($is_public_site && !$has_public_whitelist) {
+            return;
+        }
+
         $client_ip = $this->get_client_ip();
 
         // Check if client IP is authorized
@@ -445,6 +459,10 @@ class WAF_FW_Login_Protector {
         }
 
         if (!$is_allowed) {
+            // Allow unauthenticated visitors to reach login page rather than harsh 403 lockout
+            if (function_exists('is_user_logged_in') && !is_user_logged_in() && $is_admin_path) {
+                return;
+            }
             status_header(403);
             nocache_headers();
             $this->render_admin_ip_blocked_screen($client_ip);

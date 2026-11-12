@@ -309,7 +309,27 @@ $has_attack_marker = (
     preg_match('@(sqlmap|nikto|acunetix|dirbuster|gobuster|wpscan|hydra|masscan|zgrab|nmaplowercheck|nuclei|ffuf|feroxbuster|headlesschrome|phantomjs|puppeteer|scrapy|selenium)@i', ($_SERVER['HTTP_USER_AGENT'] ?? ''))
 );
 
-// 3. IP Blacklist Check
+// 3. Pre-Flight Allowlist (IP Whitelist) Check (< 0.001ms Fast Path)
+$ip_whitelist = $mdefender_cache_data['whitelist_ips'] ?? [];
+if (!empty($ip_whitelist)) {
+    $raw_wl_candidates = [$mdefender_ip];
+    if (!empty($_SERVER['REMOTE_ADDR'])) { $raw_wl_candidates[] = $_SERVER['REMOTE_ADDR']; }
+    foreach (['HTTP_CF_CONNECTING_IP', 'HTTP_TRUE_CLIENT_IP', 'HTTP_X_REAL_IP', 'HTTP_X_FORWARDED_FOR'] as $wl_hdr) {
+        if (!empty($_SERVER[$wl_hdr])) {
+            foreach (explode(',', (string)$_SERVER[$wl_hdr]) as $p) {
+                $raw_wl_candidates[] = trim($p);
+            }
+        }
+    }
+    foreach ($raw_wl_candidates as $w_cand) {
+        if (!empty($w_cand) && (isset($ip_whitelist[$w_cand]) || (is_array($ip_whitelist) && in_array($w_cand, $ip_whitelist, true)))) {
+            // Whitelisted IP: Pre-Flight WAAP passes instantly without inspection
+            return;
+        }
+    }
+}
+
+// 4. IP Blacklist Check
 $ip_blacklist = $mdefender_cache_data['blacklist_ips'] ?? [];
 $is_blocked = false;
 $block_reason = '';
@@ -427,7 +447,7 @@ if ($is_country_block_enabled && !$is_blocked && !empty($mdefender_cache_data['b
     $is_local_ip = in_array($mdefender_ip, ['127.0.0.1', '::1', '0.0.0.0', 'localhost'], true) ||
                    (strpos($mdefender_ip, '192.168.') === 0 || strpos($mdefender_ip, '10.') === 0 || strpos($mdefender_ip, '172.16.') === 0);
     if ($is_local_ip && empty($_GET['country_test']) && empty($_GET['test_country']) && empty($_SERVER['HTTP_CF_IPCOUNTRY'])) {
-        $geo_country = !empty($mdefender_cache_data['local_server_country']) ? strtoupper($mdefender_cache_data['local_server_country']) : '';
+        $geo_country = '';
     }
     $raw_blocked = (array) ($mdefender_cache_data['blocked_countries'] ?? []);
     $blocked_list = [];

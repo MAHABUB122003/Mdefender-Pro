@@ -534,8 +534,10 @@ async def waf_self_protection_middleware(request: Request, call_next):
 
     # Edge Admin & Login Gateway IP Restriction
     if registered_site and registered_site.get("admin_ip_whitelist_enabled"):
-        allowed_admin_ips = registered_site.get("admin_ip_whitelist") or []
-        if allowed_admin_ips:
+        allowed_admin_ips = [str(x).strip() for x in (registered_site.get("admin_ip_whitelist") or []) if str(x).strip()]
+        is_public_domain = clean_host not in ("localhost", "127.0.0.1", "::1")
+        has_real_whitelist = any(ip not in ("127.0.0.1", "::1", "localhost") for ip in allowed_admin_ips)
+        if allowed_admin_ips and (not is_public_domain or has_real_whitelist):
             custom_slug = (registered_site.get("custom_login_slug") or "").strip().lower()
             normalized_path = path.strip("/").lower()
             is_admin_req = (
@@ -1762,6 +1764,7 @@ def push_to_fleet_async(target_sites, payload, full_sync=True):
         active_whitelists = []
         action_name = payload.get('action', '')
         del_c_code = (payload.get('country_code') or '').strip().upper()
+        del_ip = (payload.get('ip') or '').strip()
 
         for s in target_sites:
             raw_url = str(s.get('url') or s.get('domain') or '').strip().rstrip('/')
@@ -1792,16 +1795,26 @@ def push_to_fleet_async(target_sites, payload, full_sync=True):
                         ip_v = (item.get('ip') or '').strip()
                         if not ip_v:
                             continue
+                        if action_name in ('delete_blacklist', 'remove_blacklist', 'unblock_blacklist') and ip_v == del_ip:
+                            continue
                         exp = item.get('expires_at')
                         if exp and isinstance(exp, datetime) and exp <= now_dt:
                             continue
                         if ip_v not in site_ips:
                             site_ips.append(ip_v)
+                    if action_name in ('delete_blacklist', 'remove_blacklist', 'unblock_blacklist') and del_ip in site_ips:
+                        site_ips = [x for x in site_ips if x != del_ip]
 
                     for item in db.whitelist.find(ip_query):
                         w_ip = (item.get('ip') or '').strip()
+                        if not w_ip:
+                            continue
+                        if action_name in ('delete_whitelist', 'remove_whitelist') and w_ip == del_ip:
+                            continue
                         if w_ip and w_ip not in site_whitelists:
                             site_whitelists.append(w_ip)
+                    if action_name in ('delete_whitelist', 'remove_whitelist') and del_ip in site_whitelists:
+                        site_whitelists = [x for x in site_whitelists if x != del_ip]
                 except Exception:
                     site_countries = []
                     site_ips = []
@@ -2060,16 +2073,32 @@ async def user_delete_blacklist(request: Request, user: dict = Depends(verify_us
         return {'status': 'error', 'message': 'IP is required'}
 
     user_id_str = str(user.get('_id') or '')
+    from bson import ObjectId
+    user_id_obj = ObjectId(user_id_str) if ObjectId.is_valid(user_id_str) else user_id_str
     all_sites = get_user_connected_wordpress_sites(user)
     target_sites = all_sites
+
+    user_site_ids = [str(s.get('_id') or s.get('id') or '') for s in all_sites]
+    user_site_ids.extend([s.get('website_id') for s in all_sites if s.get('website_id')])
+    user_site_ids = list(set([x for x in user_site_ids if x]))
+
+    del_conds = [
+        {'user_id': user_id_str},
+        {'added_by_user_id': user_id_str},
+        {'user_id': user_id_obj},
+        {'added_by_user_id': user_id_obj},
+    ]
+    if user_site_ids:
+        del_conds.append({'website_id': {'$in': user_site_ids}})
     
     if website_id and website_id != 'all':
-        db.blacklist.delete_many({'ip': ip, 'website_id': website_id, '$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]})
+        db.blacklist.delete_many({'ip': ip, 'website_id': website_id})
+        db.blacklist.delete_many({'ip': ip, '$or': del_conds})
         matched = [s for s in all_sites if str(s.get('_id')) == website_id or str(s.get('id')) == website_id or s.get('domain') == website_id or s.get('name') == website_id]
         if matched:
             target_sites = matched
     else:
-        db.blacklist.delete_many({'ip': ip, '$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]})
+        db.blacklist.delete_many({'ip': ip, '$or': del_conds})
 
     push_to_fleet_async(target_sites, {'action': 'delete_blacklist', 'ip': ip})
     try:
@@ -2243,9 +2272,24 @@ async def user_delete_whitelist(request: Request, user: dict = Depends(verify_us
         return {'status': 'error', 'message': 'IP is required'}
 
     user_id_str = str(user['_id'])
-    db.whitelist.delete_many({'ip': ip, '$or': [{'added_by_user_id': user_id_str}, {'user_id': user_id_str}]})
-
+    from bson import ObjectId
+    user_id_obj = ObjectId(user_id_str) if ObjectId.is_valid(user_id_str) else user_id_str
     sites = get_user_connected_wordpress_sites(user)
+
+    user_site_ids = [str(s.get('_id') or s.get('id') or '') for s in sites]
+    user_site_ids.extend([s.get('website_id') for s in sites if s.get('website_id')])
+    user_site_ids = list(set([x for x in user_site_ids if x]))
+
+    del_conds = [
+        {'user_id': user_id_str},
+        {'added_by_user_id': user_id_str},
+        {'user_id': user_id_obj},
+        {'added_by_user_id': user_id_obj},
+    ]
+    if user_site_ids:
+        del_conds.append({'website_id': {'$in': user_site_ids}})
+
+    db.whitelist.delete_many({'ip': ip, '$or': del_conds})
     push_to_fleet_async(sites, {'action': 'delete_whitelist', 'ip': ip}, full_sync=True)
     try:
         from src.api.v1.wordpress_api import push_instant_sync_to_wordpress

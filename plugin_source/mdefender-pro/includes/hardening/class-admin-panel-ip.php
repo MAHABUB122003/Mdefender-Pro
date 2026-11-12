@@ -112,6 +112,20 @@ class WAF_FW_Admin_Panel_IP {
             return;
         }
 
+        // Avoid accidental lockout if whitelist only contains local loopback IPs on a public live site
+        $server_host = strtolower($_SERVER['HTTP_HOST'] ?? '');
+        $is_public_site = ($server_host !== 'localhost' && strpos($server_host, '127.0.0.1') === false && strpos($server_host, '::1') === false);
+        $has_public_whitelist = false;
+        foreach ($whitelist as $entry) {
+            if (!in_array($entry, ['127.0.0.1', '::1', 'localhost'], true)) {
+                $has_public_whitelist = true;
+                break;
+            }
+        }
+        if ($is_public_site && !$has_public_whitelist) {
+            return;
+        }
+
         $user_ip = $this->get_user_ip();
 
         // Check if user's IP matches any allowed whitelist entry
@@ -124,6 +138,10 @@ class WAF_FW_Admin_Panel_IP {
         }
 
         if (!$is_allowed) {
+            // If visitor is not yet authenticated and navigating to /wp-admin, allow WordPress canonical redirect to wp-login.php
+            if (function_exists('is_user_logged_in') && !is_user_logged_in() && (is_admin() || (defined('WP_ADMIN') && WP_ADMIN))) {
+                return;
+            }
             $this->deny_access('Unauthorized administrative IP address');
         }
 

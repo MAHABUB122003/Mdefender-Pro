@@ -607,18 +607,39 @@ function waf_fw_handle_cloud_sync_webhook() {
             delete_transient('waf_fw_cloud_threat_ips');
 
             if (is_array($pushed_data) && (isset($pushed_data['blacklist']) || isset($pushed_data['blocked_countries']) || isset($pushed_data['config']))) {
+                $incoming_act = sanitize_text_field($pushed_data['action'] ?? $_REQUEST['action'] ?? '');
+                $del_ip = trim(sanitize_text_field($pushed_data['ip'] ?? $_REQUEST['ip'] ?? ''));
                 if (isset($pushed_data['blacklist']) && is_array($pushed_data['blacklist'])) {
                     $ips = array_values(array_filter(array_map('sanitize_text_field', $pushed_data['blacklist'])));
+                    if (($incoming_act === 'delete_blacklist' || $incoming_act === 'remove_blacklist' || $incoming_act === 'unblock_blacklist') && !empty($del_ip)) {
+                        $ips = array_values(array_diff($ips, [$del_ip]));
+                    }
                     if (class_exists('WAF_FW_IP_Filter')) {
+                        if (($incoming_act === 'delete_blacklist' || $incoming_act === 'remove_blacklist' || $incoming_act === 'unblock_blacklist') && !empty($del_ip)) {
+                            WAF_FW_IP_Filter::instance()->remove_from_blacklist($del_ip, false);
+                        }
                         WAF_FW_IP_Filter::instance()->sync_with_cloud_blacklist($ips);
                     } else {
                         update_option('waf_fw_local_blacklist_cache', $ips);
                     }
+                } elseif (($incoming_act === 'delete_blacklist' || $incoming_act === 'remove_blacklist' || $incoming_act === 'unblock_blacklist') && !empty($del_ip)) {
+                    if (class_exists('WAF_FW_IP_Filter')) {
+                        WAF_FW_IP_Filter::instance()->remove_from_blacklist($del_ip, false);
+                    }
                 }
+
+                $del_wl = trim(sanitize_text_field($pushed_data['ip'] ?? $_REQUEST['ip'] ?? ''));
                 if (isset($pushed_data['whitelist']) && is_array($pushed_data['whitelist'])) {
                     $w_ips = array_values(array_filter(array_map('sanitize_text_field', $pushed_data['whitelist'])));
+                    if (($incoming_act === 'delete_whitelist' || $incoming_act === 'remove_whitelist') && !empty($del_wl)) {
+                        $w_ips = array_values(array_diff($w_ips, [$del_wl]));
+                    }
                     update_option('waf_fw_ip_whitelist', implode(',', $w_ips));
                     update_option('waf_fw_local_whitelist_cache', $w_ips);
+                } elseif (($incoming_act === 'delete_whitelist' || $incoming_act === 'remove_whitelist') && !empty($del_wl)) {
+                    if (class_exists('WAF_FW_IP_Filter')) {
+                        WAF_FW_IP_Filter::instance()->remove_from_whitelist($del_wl);
+                    }
                 }
                 if (isset($pushed_data['blocked_countries']) && is_array($pushed_data['blocked_countries'])) {
                     $countries = array_values(array_filter(array_map('sanitize_text_field', $pushed_data['blocked_countries'])));
@@ -3211,6 +3232,9 @@ function waf_fw_handle_cloud_sync_webhook() {
                     if (class_exists('WAF_FW_Engine')) {
                         WAF_FW_Engine::instance()->export_fast_cache();
                     }
+                    if (function_exists('apcu_delete')) {
+                        apcu_delete('mdefender_waf_fast_cache');
+                    }
                     if (!headers_sent()) {
                         header('Content-Type: application/json; charset=UTF-8');
                     }
@@ -3250,6 +3274,9 @@ function waf_fw_handle_cloud_sync_webhook() {
                     if (class_exists('WAF_FW_Engine')) {
                         WAF_FW_Engine::instance()->export_fast_cache();
                     }
+                    if (function_exists('apcu_delete')) {
+                        apcu_delete('mdefender_waf_fast_cache');
+                    }
                     if (!headers_sent()) {
                         header('Content-Type: application/json; charset=UTF-8');
                     }
@@ -3269,6 +3296,9 @@ function waf_fw_handle_cloud_sync_webhook() {
                     }
                     if (class_exists('WAF_FW_Engine')) {
                         WAF_FW_Engine::instance()->export_fast_cache();
+                    }
+                    if (function_exists('apcu_delete')) {
+                        apcu_delete('mdefender_waf_fast_cache');
                     }
                     if (!headers_sent()) {
                         header('Content-Type: application/json; charset=UTF-8');

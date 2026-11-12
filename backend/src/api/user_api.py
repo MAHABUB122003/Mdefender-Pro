@@ -1111,36 +1111,10 @@ class UserAPI:
                             max(1, int(tot_blk * 0.17)),
                             max(1, int(tot_blk * 0.10))
                         ]
-                    if not top_attackers and tot_blk > 0:
-                        top_attackers = [
-                            {'ip': '185.220.101.5', 'count': max(1, int(tot_blk * 0.35))},
-                            {'ip': '45.148.10.12', 'count': max(1, int(tot_blk * 0.25))},
-                            {'ip': '194.26.29.112', 'count': max(1, int(tot_blk * 0.20))},
-                            {'ip': '91.240.118.82', 'count': max(1, int(tot_blk * 0.12))},
-                            {'ip': '198.54.130.2', 'count': max(1, int(tot_blk * 0.08))}
-                        ]
-                    if not logs and tot_blk > 0:
-                        sample_events = [
-                            ('185.220.101.5', '/wp-login.php', 'POST', 'Identity & Brute-Force Shield', 'blocked'),
-                            ('45.148.10.12', '/xmlrpc.php', 'POST', 'XML-RPC Gateway Guard', 'blocked'),
-                            ('194.26.29.112', '/wp-content/plugins/wp-file-manager/', 'GET', 'Zero-Day Virtual Patching', 'blocked'),
-                            ('91.240.118.82', '/wp-includes/wlwmanifest.xml', 'GET', 'Attack Surface Cloak', 'blocked'),
-                            ('198.54.130.2', '/wp-content/uploads/shell.php', 'POST', 'Filesystem Execution Lockdown', 'blocked'),
-                            ('104.28.19.4', '/', 'GET', 'Clean Ingress', 'allowed'),
-                            ('172.67.142.8', '/shop/', 'GET', 'Clean Ingress', 'allowed'),
-                        ]
-                        for idx, (s_ip, s_url, s_mth, s_type, s_st) in enumerate(sample_events):
-                            logs.append({
-                                'id': f"mdf_evt_{idx}_{int(now_time.timestamp())}",
-                                'ip': s_ip,
-                                'url': s_url,
-                                'method': s_mth,
-                                'attack_type': s_type,
-                                'confidence': 0.98 if s_st == 'blocked' else 0.02,
-                                'status': s_st,
-                                'domain': site_dom,
-                                'timestamp': (now_time - timedelta(minutes=idx * 14)).strftime('%Y-%m-%d %H:%M:%S')
-                            })
+                    # Genuine analytics only - zero fake mock data
+                    pass
+            except Exception:
+                pass
             except Exception:
                 pass
 
@@ -1737,12 +1711,15 @@ class UserAPI:
                         'User-Agent': 'MDefender-Cloud/2.0'
                     }
                     resp = None
-                    try:
-                        resp = requests.get(remote_url, params=req_params, headers=headers, timeout=(2.5, 3.5), verify=False)
-                    except Exception:
-                        if site_url.startswith('https://'):
-                            clean_host = raw_url.replace('https://', '').replace('http://', '')
-                            resp = requests.get(f"http://{clean_host}/?waf_cloud_sync=1&action=get_logs&api_key={site_key}&site_token={site_token}", params=req_params, headers=headers, timeout=(2.5, 3.5), verify=False)
+                    for attempt_proto in (['https://', 'http://'] if not raw_url.startswith(('http://', 'https://')) else ([site_url.split('://')[0] + '://', 'http://' if site_url.startswith('https://') else 'https://'])):
+                        try:
+                            clean_base = raw_url.replace('https://', '').replace('http://', '').strip('/')
+                            test_url = f"{attempt_proto}{clean_base}/?waf_cloud_sync=1&action=get_logs&api_key={site_key}&site_token={site_token}"
+                            resp = requests.get(test_url, params=req_params, headers=headers, timeout=(4.0, 7.0), verify=False)
+                            if resp and resp.status_code == 200:
+                                break
+                        except Exception:
+                            continue
                     if resp and resp.status_code == 200:
                         r_data = resp.json()
                         if isinstance(r_data, dict) and 'logs' in r_data and isinstance(r_data['logs'], list):
@@ -1825,8 +1802,8 @@ class UserAPI:
                         remote_url = f"{site_url}/?waf_cloud_sync=1&action=get_logs&api_key={site_key}&site_token={site_key}"
                         req_params = {
                             'page': 1,
-                            'limit': 50,
-                            'per_page': 50,
+                            'limit': 500,
+                            'per_page': 500,
                             'search': search,
                             'ip': ip_filter,
                             'attack_type': attack_type,
@@ -1840,12 +1817,15 @@ class UserAPI:
                             'User-Agent': 'MDefender-Cloud/2.0'
                         }
                         resp = None
-                        try:
-                            resp = requests.get(remote_url, params=req_params, headers=headers, timeout=(1.5, 2.0), verify=False)
-                        except Exception:
-                            if site_url.startswith('https://'):
-                                clean_host = raw_url.replace('https://', '').replace('http://', '')
-                                resp = requests.get(f"http://{clean_host}/?waf_cloud_sync=1&action=get_logs&api_key={site_key}&site_token={site_key}", params=req_params, headers=headers, timeout=(1.5, 2.0), verify=False)
+                        for attempt_proto in (['https://', 'http://'] if not raw_url.startswith(('http://', 'https://')) else ([site_url.split('://')[0] + '://', 'http://' if site_url.startswith('https://') else 'https://'])):
+                            try:
+                                clean_base = raw_url.replace('https://', '').replace('http://', '').strip('/')
+                                test_url = f"{attempt_proto}{clean_base}/?waf_cloud_sync=1&action=get_logs&api_key={site_key}&site_token={site_key}"
+                                resp = requests.get(test_url, params=req_params, headers=headers, timeout=(4.0, 7.0), verify=False)
+                                if resp and resp.status_code == 200:
+                                    break
+                            except Exception:
+                                continue
                         if resp and resp.status_code == 200:
                             data = resp.json()
                             logs_list = data.get('logs', []) if isinstance(data, dict) else []
@@ -2046,45 +2026,6 @@ class UserAPI:
                 'country_code': log.get('country_code') or log.get('countryCode') or '',
                 'country': log.get('country') or log.get('country_name') or '',
             })
-        if not result_logs and user_sites:
-            target_docs = [s for s in user_sites if (not website_id or website_id == 'all' or str(s.get('_id')) == website_id or s.get('domain') == website_id)]
-            if not target_docs:
-                target_docs = user_sites
-            tot_blk = sum(s.get('total_blocked', 0) for s in target_docs)
-            tot_rq = sum(s.get('total_requests', 0) for s in target_docs)
-            if tot_blk > 0 or tot_rq > 0:
-                s_dom = target_docs[0].get('domain') or 'WordPress Origin'
-                s_id = str(target_docs[0].get('_id', ''))
-                now_t = datetime.now()
-                sample_templates = [
-                    ('185.220.101.5', '/wp-login.php', 'POST', 'Identity & Brute-Force Shield', 'blocked', 'NL', 'Netherlands', 'WAF-AUTH-001'),
-                    ('45.148.10.12', '/xmlrpc.php', 'POST', 'Attack Surface & XML-RPC Guard', 'blocked', 'RU', 'Russian Federation', 'WAF-XMLRPC-002'),
-                    ('194.26.29.112', '/wp-content/plugins/wp-file-manager/lib/php/connector.minimal.php', 'POST', 'Zero-Day Virtual Patching', 'blocked', 'DE', 'Germany', 'WAF-CVE-2020-25213'),
-                    ('91.240.118.82', '/wp-includes/wlwmanifest.xml', 'GET', 'Attack Surface Cloak', 'blocked', 'US', 'United States', 'WAF-FINGERPRINT-003'),
-                    ('198.54.130.2', '/wp-content/uploads/shell.php', 'POST', 'Filesystem Execution Lockdown', 'blocked', 'US', 'United States', 'WAF-UPLOAD-004'),
-                    ('104.28.19.4', '/', 'GET', 'Clean Ingress', 'allowed', 'US', 'United States', ''),
-                    ('172.67.142.8', '/shop/', 'GET', 'Clean Ingress', 'allowed', 'GB', 'United Kingdom', ''),
-                    ('89.248.163.55', '/wp-admin/setup-config.php', 'GET', 'Configuration Isolation Shield', 'blocked', 'NL', 'Netherlands', 'WAF-SETUP-005'),
-                ]
-                for idx, (s_ip, s_url, s_mth, s_type, s_st, s_cc, s_cn, s_rule) in enumerate(sample_templates):
-                    result_logs.append({
-                        'id': f"mdf_log_{idx}_{int(now_t.timestamp())}",
-                        'ip': s_ip,
-                        'url': s_url,
-                        'domain': s_dom,
-                        'website_id': s_id,
-                        'attack_type': s_type,
-                        'status': s_st,
-                        'timestamp': (now_t - timedelta(minutes=idx * 17)).strftime('%Y-%m-%d %H:%M:%S'),
-                        'confidence': 0.98 if s_st == 'blocked' else 0.02,
-                        'method': s_mth,
-                        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-                        'rule_matched': s_rule,
-                        'country_code': s_cc,
-                        'country': s_cn,
-                    })
-                total = len(result_logs)
-
         return _return_cached({
             'total': total,
             'page': page,

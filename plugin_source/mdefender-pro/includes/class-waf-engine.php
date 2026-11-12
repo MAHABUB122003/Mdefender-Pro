@@ -463,6 +463,27 @@ class WAF_FW_Engine {
             }
         }
 
+        // Export IP Whitelist (Allowlist)
+        $raw_whitelist = get_option('waf_fw_ip_whitelist', '');
+        $wl_map = [];
+        if (is_array($raw_whitelist)) {
+            foreach ($raw_whitelist as $w_ip) {
+                $cand = trim((string)$w_ip);
+                if (!empty($cand)) { $wl_map[$cand] = true; }
+            }
+        } elseif (is_string($raw_whitelist) && !empty($raw_whitelist)) {
+            foreach (preg_split('/[,\r\n]+/', $raw_whitelist) as $w_ip) {
+                $cand = trim((string)$w_ip);
+                if (!empty($cand)) { $wl_map[$cand] = true; }
+            }
+        }
+
+        // Whitelisted IPs must never remain in blacklist
+        foreach (array_keys($wl_map) as $w_cand) {
+            unset($bl_map[$w_cand]);
+            $active_ips = array_values(array_diff($active_ips, [$w_cand]));
+        }
+
         // Keep local option cache synchronized strictly to active IPs
         $active_ips = array_values(array_unique($active_ips));
         update_option('waf_fw_local_blacklist_cache', $active_ips);
@@ -487,6 +508,7 @@ class WAF_FW_Engine {
                 'connected' => false,
                 'updated_at' => time(),
                 'blacklist_ips' => (object)[],
+                'whitelist_ips' => $wl_map,
                 'blocked_countries' => [],
                 'local_server_country' => $local_geo ?: 'US',
             ];
@@ -502,6 +524,7 @@ class WAF_FW_Engine {
             'connected' => true,
             'updated_at' => time(),
             'blacklist_ips' => $bl_map,
+            'whitelist_ips' => $wl_map,
             'blocked_countries' => $blocked_countries,
             'local_server_country' => $local_geo ?: 'BD',
         ];
@@ -631,9 +654,13 @@ class WAF_FW_Engine {
         }
 
         if ($country_code === 'LOCAL' || $country_code === 'XX') {
-            $local_srv = get_option('waf_fw_local_server_country', 'BD');
-            if (!empty($local_srv)) {
-                $country_code = strtoupper(trim($local_srv));
+            if (!empty($_GET['country_test']) || !empty($_GET['test_country']) || !empty($_SERVER['HTTP_CF_IPCOUNTRY'])) {
+                $local_srv = get_option('waf_fw_local_server_country', 'BD');
+                if (!empty($local_srv)) {
+                    $country_code = strtoupper(trim($local_srv));
+                }
+            } else {
+                return false;
             }
         }
         if (empty($country_code) || $country_code === 'XX') return false;
