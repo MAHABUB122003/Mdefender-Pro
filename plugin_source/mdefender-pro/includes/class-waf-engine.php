@@ -286,12 +286,14 @@ class WAF_FW_Engine {
                 }
             }
 
-            if ($this->rate_limiter && method_exists($this->rate_limiter, 'is_ddos_flooding') && $this->rate_limiter->is_ddos_flooding($ip)) {
-                return $this->do_block($ip, $url, $method, 'DDoS Flood Protection', 1.0, $user_agent, $referer, '', 'Volumetric DDoS burst flood neutralized by Anti-DDoS Shield', 'Anti-DDoS Engine');
-            }
-
-            if ($this->rate_limiter && $this->rate_limiter->is_rate_limited($ip)) {
-                return $this->do_block($ip, $url, $method, 'Rate Limiting', 1.0, $user_agent, $referer, '', 'Rate limit exceeded (' . $this->rate_limiter->get_max_requests() . ' req/min)', 'Rate Limit Rule');
+            if ($this->rate_limiter) {
+                $this->rate_limiter->increment($ip);
+                if (method_exists($this->rate_limiter, 'is_ddos_flooding') && $this->rate_limiter->is_ddos_flooding($ip)) {
+                    return $this->do_block($ip, $url, $method, 'DDoS Flood Protection', 1.0, $user_agent, $referer, '', 'Volumetric DDoS burst flood neutralized by Anti-DDoS Shield', 'Anti-DDoS Engine');
+                }
+                if ($this->rate_limiter->is_rate_limited($ip)) {
+                    return $this->do_block($ip, $url, $method, 'Rate Limiting', 1.0, $user_agent, $referer, '', 'Rate limit exceeded (' . $this->rate_limiter->get_max_requests() . ' req/min)', 'Rate Limit Rule');
+                }
             }
 
             $body = file_get_contents('php://input');

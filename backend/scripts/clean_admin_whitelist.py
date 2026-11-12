@@ -26,3 +26,4 @@ for wp in db.wordpress_sites.find():
         db.wordpress_sites.update_one({'_id': wp['_id']}, {'$set': {'admin_ip_whitelist_enabled': False, 'admin_ip_whitelist': [], 'hardening': harden}})
 
 print('Completed cleanup successfully.')
+

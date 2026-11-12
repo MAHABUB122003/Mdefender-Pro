@@ -232,31 +232,92 @@ export default function BulkCore() {
     }
   }
 
-  // Bulk Verify Checksums Across All Sites
+  // Bulk Verify Checksums Across All Sites (or single site if selected)
   const handleBulkVerify = async () => {
     setBulkVerifying(true)
-    showToast('Auditing core checksums against WordPress.org SVN hashes across fleet...')
+    const isSingle = selectedSiteId && selectedSiteId !== 'all'
+    const targetSites = displayedSites
+    showToast(isSingle
+      ? `Auditing core checksums for ${targetSites[0]?.domain || 'site'} against WordPress.org SVN hashes...`
+      : `Auditing core checksums against WordPress.org SVN hashes across fleet...`
+    )
     try {
-      for (const site of displayedSites) {
+      const siteResults = {}
+      for (const site of targetSites) {
         try {
-          await api.verifyCoreChecksums(site.site_id)
+          const res = await api.verifyCoreChecksums(site.site_id)
+          const data = res?.data || res || {}
+          siteResults[site.site_id] = data
         } catch {
           // Continue with next
         }
       }
       setCoreData(prev => ({
         ...prev,
-        sites: prev.sites.map(s => ({
-          ...s,
-          checksum_status: 'verified',
-          checksum_verified_at: 'Just now'
-        }))
+        sites: prev.sites.map(s => {
+          const r = siteResults[s.site_id]
+          if (r) {
+            const modFiles = r.modified_files || []
+            const hasMod = (r.modified_files_count > 0 || modFiles.length > 0)
+            return {
+              ...s,
+              checksum_status: r.status || (hasMod ? 'modified_files_detected' : 'verified'),
+              checksum_modified_count: r.modified_files_count || modFiles.length,
+              files_verified_count: r.total_official_files || s.files_verified_count,
+              modified_files: modFiles,
+              checksum_verified_at: 'Just now'
+            }
+          }
+          return s
+        })
       }))
-      showToast(`Fleet core checksum audit completed across ${displayedSites.length} site(s)!`)
+      showToast(isSingle
+        ? `Core checksum audit completed for ${targetSites[0]?.domain}!`
+        : `Fleet core checksum audit completed across ${targetSites.length} site(s)!`
+      )
     } catch {
-      showToast('Fleet core checksum verification finished.')
+      showToast('Core checksum verification finished.')
     } finally {
       setBulkVerifying(false)
+    }
+  }
+
+  // One-Click Bulk Repair All Core Files for a site
+  const handleRepairAllCoreFiles = async (site) => {
+    if (!site || !site.site_id) return
+    setRepairingFile('__all__')
+    showToast(`Restoring all modified core files for ${site.domain} from official WordPress.org release...`)
+    try {
+      const res = await api.repairAllCoreFiles(site.site_id)
+      const data = res?.data || res || {}
+      showToast(data.message || `All core files for ${site.domain} restored to official WordPress release!`)
+      setCoreData(prev => ({
+        ...prev,
+        sites: prev.sites.map(s => {
+          if (s.site_id === site.site_id) {
+            return {
+              ...s,
+              checksum_status: 'verified',
+              checksum_modified_count: 0,
+              modified_files: [],
+              checksum_verified_at: 'Just now'
+            }
+          }
+          return s
+        })
+      }))
+      if (auditModalSite && auditModalSite.site_id === site.site_id) {
+        setAuditModalSite(prev => ({
+          ...prev,
+          checksum_status: 'verified',
+          checksum_modified_count: 0,
+          modified_files: []
+        }))
+      }
+    } catch (err) {
+      showToast(err?.message || 'Failed to bulk repair core files', true)
+    } finally {
+      setRepairingFile(null)
     }
   }
 
@@ -656,6 +717,22 @@ export default function BulkCore() {
                               <span>{isVerifying ? 'Checking...' : 'Verify'}</span>
                             </button>
 
+                            {(site.checksum_status === 'modified_files_detected' || (site.modified_files && site.modified_files.length > 0)) && (
+                              <button
+                                onClick={() => handleRepairAllCoreFiles(site)}
+                                disabled={repairingFile === '__all__'}
+                                title="One-Click Restore all core files to pristine WordPress.org SVN release"
+                                style={{
+                                  ...actionPrimaryBtnStyle,
+                                  background: '#DC2626',
+                                  borderColor: '#DC2626'
+                                }}
+                              >
+                                {repairingFile === '__all__' ? <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={12} />}
+                                <span>{repairingFile === '__all__' ? 'Repairing...' : 'Repair All'}</span>
+                              </button>
+                            )}
+
                             {hasUpdate ? (
                               <button
                                 onClick={() => handleUpdateCore(site)}
@@ -757,11 +834,33 @@ export default function BulkCore() {
                       background: '#FEF2F2',
                       border: '1px solid #FECACA'
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <AlertTriangle size={16} color="#DC2626" />
-                        <span style={{ fontSize: '13px', fontWeight: '800', color: '#991B1B' }}>
-                          Cryptographic Checksum Divergence Detected ({auditModalSite.modified_files.length} file(s))
-                        </span>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <AlertTriangle size={16} color="#DC2626" />
+                          <span style={{ fontSize: '13px', fontWeight: '800', color: '#991B1B' }}>
+                            Cryptographic Checksum Divergence Detected ({auditModalSite.modified_files.length} file(s))
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleRepairAllCoreFiles(auditModalSite)}
+                          disabled={repairingFile === '__all__'}
+                          style={{
+                            background: '#DC2626',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            padding: '7px 14px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: '800',
+                            cursor: repairingFile === '__all__' ? 'not-allowed' : 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          {repairingFile === '__all__' ? <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={12} />}
+                          <span>{repairingFile === '__all__' ? 'Restoring All Files...' : `Repair All Core Files (${auditModalSite.modified_files.length})`}</span>
+                        </button>
                       </div>
                       <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#7F1D1D', lineHeight: '1.45' }}>
                         The files below differ from the pristine cryptographic release on WordPress.org SVN. This may indicate an unauthorized modification, backdoor injection, or server drift.

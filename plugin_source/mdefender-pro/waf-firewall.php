@@ -1030,8 +1030,8 @@ function waf_fw_handle_cloud_sync_webhook() {
                             foreach ($it as $file) {
                                 if ($file->isFile()) {
                                     $ext = strtolower($file->getExtension());
-                                    $core_exts = ($scan_type === 'quick') ? ['php', 'phtml', 'inc'] : ['php', 'phtml', 'inc', 'js', 'html', 'htm', 'txt', 'jpg', 'jpeg', 'png', 'webp', 'svg'];
-                                    if (in_array($ext, $core_exts)) {
+                                    $core_exts = ['php', 'phtml', 'inc'];
+                                    if (in_array($ext, $core_exts, true)) {
                                         if ($scan_type === 'quick' && ++$dir_count > 2500) {
                                             break;
                                         }
@@ -4130,73 +4130,162 @@ add_action('rest_api_init', function() {
             $scanned_count = 0;
             $id_counter = 1;
 
-            // 1. WordPress Core Files
-            $core_files = [
-                ABSPATH . 'index.php',
-                ABSPATH . 'wp-blog-header.php',
-                ABSPATH . 'wp-load.php',
-                ABSPATH . 'wp-config.php',
-                ABSPATH . 'wp-settings.php',
-                ABSPATH . 'wp-login.php',
-                ABSPATH . 'wp-cron.php',
-                ABSPATH . 'wp-activate.php',
-                ABSPATH . 'wp-comments-post.php',
-                ABSPATH . 'xmlrpc.php'
-            ];
-
-            foreach ($core_files as $core_file) {
-                if (!file_exists($core_file)) continue;
-                $scanned_count++;
-                $res = $scanner->scan_file_multi_signal($core_file);
-                if ($res && !empty($res['findings'])) {
-                    $findings[] = mdf_format_threat_finding($core_file, $res, $id_counter++);
+            // 1. WordPress Root Directory (Scan all PHP, SQL, executable scripts in root)
+            $root_entries = @scandir(ABSPATH) ?: [];
+            foreach ($root_entries as $re) {
+                if ($re === '.' || $re === '..') continue;
+                $re_path = ABSPATH . $re;
+                if (is_file($re_path)) {
+                    $ext = strtolower(pathinfo($re_path, PATHINFO_EXTENSION));
+                    if (in_array($ext, ['php', 'phtml', 'inc', 'htaccess', 'js', 'html', 'htm', 'txt', 'sql', 'bak', 'sh', 'bash', 'py', 'pl', 'cgi']) || $re === '.htaccess') {
+                        $scanned_count++;
+                        $res = $scanner->scan_file_multi_signal($re_path, 'core');
+                        if ($res && !empty($res['findings'])) {
+                            $findings[] = mdf_format_threat_finding($re_path, $res, $id_counter++);
+                        }
+                    }
                 }
             }
 
-            // 2. Plugins Directory
-            $plugins_dir = ABSPATH . 'wp-content/plugins/';
-            if (is_dir($plugins_dir)) {
-                $files = @scandir($plugins_dir) ?: [];
-                foreach ($files as $f) {
-                    if ($f === '.' || $f === '..') continue;
-                    $full = $plugins_dir . $f;
-                    if (is_file($full)) {
-                        $scanned_count++;
-                        $res = $scanner->scan_file_multi_signal($full);
-                        if ($res && !empty($res['findings'])) {
-                            $findings[] = mdf_format_threat_finding($full, $res, $id_counter++);
+            // 1b. Files & custom folders directly in wp-content/
+            $content_dir = ABSPATH . 'wp-content/';
+            if (is_dir($content_dir)) {
+                $content_entries = @scandir($content_dir) ?: [];
+                foreach ($content_entries as $ce) {
+                    if ($ce === '.' || $ce === '..') continue;
+                    $ce_path = $content_dir . $ce;
+                    if (is_file($ce_path)) {
+                        $ext = strtolower(pathinfo($ce_path, PATHINFO_EXTENSION));
+                        if (in_array($ext, ['php', 'phtml', 'inc', 'htaccess', 'txt', 'js', 'html', 'htm', 'sql', 'bak'])) {
+                            $scanned_count++;
+                            $res = $scanner->scan_file_multi_signal($ce_path, 'content');
+                            if ($res && !empty($res['findings'])) {
+                                $findings[] = mdf_format_threat_finding($ce_path, $res, $id_counter++);
+                            }
                         }
-                    } elseif (is_dir($full) && !in_array($f, ['mdefender-pro', 'mdefender', 'wordfence', 'woocommerce'])) {
-                        $sub_files = @scandir($full) ?: [];
-                        foreach ($sub_files as $sf) {
-                            $sfull = $full . '/' . $sf;
-                            if (is_file($sfull) && pathinfo($sfull, PATHINFO_EXTENSION) === 'php') {
+                    }
+                }
+            }
+
+            // 1c. WordPress Core wp-admin/ & wp-includes/ (Scan executable PHP files)
+            foreach ([ABSPATH . 'wp-admin/', ABSPATH . 'wp-includes/'] as $core_dir) {
+                if (!is_dir($core_dir)) continue;
+                try {
+                    $it = new RecursiveIteratorIterator(
+                        new RecursiveDirectoryIterator($core_dir, RecursiveDirectoryIterator::SKIP_DOTS),
+                        RecursiveIteratorIterator::SELF_FIRST
+                    );
+                    foreach ($it as $file) {
+                        if ($file->isFile()) {
+                            $ext = strtolower($file->getExtension());
+                            if (in_array($ext, ['php', 'phtml', 'inc'], true)) {
                                 $scanned_count++;
-                                $res = $scanner->scan_file_multi_signal($sfull);
+                                $res = $scanner->scan_file_multi_signal($file->getPathname(), 'core');
                                 if ($res && !empty($res['findings'])) {
-                                    $findings[] = mdf_format_threat_finding($sfull, $res, $id_counter++);
+                                    $findings[] = mdf_format_threat_finding($file->getPathname(), $res, $id_counter++);
                                 }
                             }
                         }
                     }
-                }
+                } catch (\Exception $e) {}
             }
 
-            // 3. Uploads Directory
-            $uploads_dir = ABSPATH . 'wp-content/uploads/';
-            if (is_dir($uploads_dir)) {
-                $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($uploads_dir, RecursiveDirectoryIterator::SKIP_DOTS));
-                foreach ($it as $file) {
-                    if ($file->isFile()) {
-                        $scanned_count++;
-                        $ext = strtolower($file->getExtension());
-                        if (in_array($ext, ['php', 'phtml', 'php5', 'php7', 'phar', 'inc'])) {
-                            $res = $scanner->scan_file_multi_signal($file->getPathname());
-                            if ($res && !empty($res['findings'])) {
-                                $findings[] = mdf_format_threat_finding($file->getPathname(), $res, $id_counter++);
+            // 2. Plugins Directory (Recursive scan of all plugin PHP files)
+            $plugins_dir = ABSPATH . 'wp-content/plugins/';
+            if (is_dir($plugins_dir)) {
+                try {
+                    $it = new RecursiveIteratorIterator(
+                        new RecursiveDirectoryIterator($plugins_dir, RecursiveDirectoryIterator::SKIP_DOTS),
+                        RecursiveIteratorIterator::SELF_FIRST
+                    );
+                    foreach ($it as $file) {
+                        if ($file->isFile()) {
+                            $ext = strtolower($file->getExtension());
+                            if (in_array($ext, ['php', 'phtml', 'inc', 'sql'], true)) {
+                                $pathname = str_replace('\\', '/', $file->getPathname());
+                                if (strpos($pathname, '/plugins/mdefender-pro/') !== false || strpos($pathname, '/plugins/mdefender/') !== false) {
+                                    continue;
+                                }
+                                $scanned_count++;
+                                $res = $scanner->scan_file_multi_signal($file->getPathname(), 'plugins');
+                                if ($res && !empty($res['findings'])) {
+                                    $findings[] = mdf_format_threat_finding($file->getPathname(), $res, $id_counter++);
+                                }
                             }
                         }
                     }
+                } catch (\Exception $e) {}
+            }
+
+            // 3. Themes Directory (Recursive scan of all theme PHP files)
+            $themes_dir = ABSPATH . 'wp-content/themes/';
+            if (is_dir($themes_dir)) {
+                try {
+                    $it = new RecursiveIteratorIterator(
+                        new RecursiveDirectoryIterator($themes_dir, RecursiveDirectoryIterator::SKIP_DOTS),
+                        RecursiveIteratorIterator::SELF_FIRST
+                    );
+                    foreach ($it as $file) {
+                        if ($file->isFile()) {
+                            $ext = strtolower($file->getExtension());
+                            if (in_array($ext, ['php', 'phtml', 'inc', 'sql'], true)) {
+                                $scanned_count++;
+                                $res = $scanner->scan_file_multi_signal($file->getPathname(), 'themes');
+                                if ($res && !empty($res['findings'])) {
+                                    $findings[] = mdf_format_threat_finding($file->getPathname(), $res, $id_counter++);
+                                }
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {}
+            }
+
+            // 4. Uploads Directory (Scan all rogue executable scripts)
+            $uploads_dir = ABSPATH . 'wp-content/uploads/';
+            if (is_dir($uploads_dir)) {
+                try {
+                    $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($uploads_dir, RecursiveDirectoryIterator::SKIP_DOTS));
+                    foreach ($it as $file) {
+                        if ($file->isFile()) {
+                            $ext = strtolower($file->getExtension());
+                            if (in_array($ext, ['php', 'phtml', 'php5', 'php7', 'phar', 'inc', 'sql', 'cgi', 'asp', 'aspx', 'jsp', 'pl', 'py', 'sh', 'bash'], true)) {
+                                $scanned_count++;
+                                $res = $scanner->scan_file_multi_signal($file->getPathname(), 'uploads');
+                                if ($res && !empty($res['findings'])) {
+                                    $findings[] = mdf_format_threat_finding($file->getPathname(), $res, $id_counter++);
+                                }
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {}
+            }
+
+            // 5. Database Malware, SEO Spam & Rogue Admins Audit
+            $db_results = method_exists($scanner, 'scan_database_for_malware') ? $scanner->scan_database_for_malware() : [];
+            if (!empty($db_results)) {
+                foreach ($db_results['suspicious_content'] ?? [] as $db_item) {
+                    $findings[] = [
+                        'id'          => $id_counter++,
+                        'type'        => 'database_injection',
+                        'severity'    => 'critical',
+                        'category'    => 'Database',
+                        'file'        => 'Table: ' . ($db_item['table'] ?? 'wp_posts'),
+                        'threat_name' => 'Database Code Injection: ' . ($db_item['threat'] ?? 'Suspicious script payload'),
+                        'details'     => 'Malicious script tag or backdoor snippet identified in database column: ' . ($db_item['column'] ?? 'post_content'),
+                        'signals'     => ['Database AST Sink', 'Suspicious Payload']
+                    ];
+                }
+                foreach ($db_results['suspicious_users'] ?? [] as $u_item) {
+                    $findings[] = [
+                        'id'          => $id_counter++,
+                        'type'        => 'privilege_escalation',
+                        'severity'    => 'critical',
+                        'category'    => 'Users & Admins',
+                        'file'        => 'User: ' . ($u_item['user_login'] ?? 'Unknown'),
+                        'threat_name' => 'Suspicious Administrator Account: ' . ($u_item['user_login'] ?? ''),
+                        'details'     => 'Rogue administrator account created without standard verification.',
+                        'signals'     => ['Privilege Escalation', 'Rogue Admin']
+                    ];
                 }
             }
 

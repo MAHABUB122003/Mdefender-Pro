@@ -523,3 +523,97 @@ class WordPressCoreService:
             "updated_at": now.isoformat(),
             "message": f"Updated {res.modified_count} fleet website(s) to WordPress {latest_ver}."
         }
+
+    # -------------------------------------------------------------------------
+    # 7. One-Click Bulk Repair All Corrupted Core Files
+    # -------------------------------------------------------------------------
+    def repair_all_core_files(self, website_id: str, user_id: str) -> Dict[str, Any]:
+        """One-click repair all modified/corrupted core files by restoring pristine official SVN releases."""
+        site = self._find_site(website_id)
+        if not site:
+            raise ValueError("Website not found")
+
+        report = self.verify_website_core_checksums(website_id, user_id)
+        modified = report.get("modified_files", [])
+        repaired_files = []
+        errors = []
+
+        target_url = site.get("url") or site.get("domain") or ""
+        if target_url and not target_url.startswith("http"):
+            target_url = f"https://{target_url}" if site.get("domain") not in ("localhost", "127.0.0.1") else "http://localhost"
+        api_key = site.get("api_key") or ""
+        site_token = site.get("site_token") or ""
+
+        import requests
+        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}", "X-API-Key": api_key}
+
+        for m in modified:
+            file_name = m.get("file") if isinstance(m, dict) else str(m)
+            if not file_name:
+                continue
+            success_repair = False
+            candidates = [
+                f"{target_url}/wp-json/waf-fw/v1/remote-scan-repair-core?waf_cloud_sync=1&api_key={api_key}&site_token={site_token}",
+                f"{target_url}/index.php?rest_route=/waf-fw/v1/remote-scan-repair-core&waf_cloud_sync=1&api_key={api_key}&site_token={site_token}",
+                f"{target_url}/index.php?waf_cloud_sync=1&action=repair_core_file&api_key={api_key}&site_token={site_token}",
+            ]
+            for ep in candidates:
+                try:
+                    r = requests.post(ep, json={"file": file_name, "action": "repair_core_file"}, headers=headers, timeout=10.0, verify=False)
+                    if r.status_code == 200:
+                        success_repair = True
+                        repaired_files.append(file_name)
+                        break
+                except Exception:
+                    pass
+
+            if not success_repair:
+                # Also attempt local file restore if local development host
+                local_wp_root = r"C:\xampp\htdocs\mahabub"
+                if os.path.isdir(local_wp_root):
+                    lpath = os.path.join(local_wp_root, file_name.replace("/", os.sep))
+                    if os.path.isfile(lpath):
+                        raw_ver = site.get("wp_version") or "6.7.1"
+                        ver = str(raw_ver).replace("WordPress ", "").replace("v", "").strip()
+                        svn_url = f"https://core.svn.wordpress.org/tags/{ver}/{file_name}"
+                        try:
+                            r_svn = requests.get(svn_url, timeout=6.0)
+                            if r_svn.status_code == 200 and "<?php" in r_svn.text:
+                                with open(lpath, "w", encoding="utf-8") as lf:
+                                    lf.write(r_svn.text)
+                                repaired_files.append(file_name)
+                                success_repair = True
+                        except Exception:
+                            pass
+
+            if not success_repair:
+                errors.append(file_name)
+
+        final_report = self.verify_website_core_checksums(website_id, user_id)
+        now = datetime.now()
+
+        try:
+            AuditService().log(
+                user_id=user_id,
+                action="core_files_bulk_repaired",
+                ip_address="system",
+                details={
+                    "website_id": str(site["_id"]),
+                    "domain": site.get("domain") or site.get("url"),
+                    "repaired_count": len(repaired_files),
+                    "repaired_files": repaired_files
+                }
+            )
+        except Exception:
+            pass
+
+        return {
+            "website_id": str(site["_id"]),
+            "domain": site.get("domain") or site.get("url"),
+            "repaired_count": len(repaired_files),
+            "repaired_files": repaired_files,
+            "errors": errors,
+            "final_status": final_report.get("status"),
+            "integrity_percentage": final_report.get("integrity_percentage"),
+            "message": f"Successfully repaired {len(repaired_files)} core file(s) from official WordPress.org release."
+        }

@@ -69,12 +69,12 @@ export default function BulkLoginGateway() {
     setCustomLoginSlug(effectiveSlug)
     setLoginRedirectType(activeTargetSite.login_redirect_type || h.login_redirect_type || '404')
 
-    const rawWl = activeTargetSite.admin_ip_whitelist || h.admin_ip_whitelist
+    const rawWl = activeTargetSite.admin_ip_whitelist ?? h.admin_ip_whitelist
     const parsedWl = Array.isArray(rawWl)
       ? rawWl
       : (rawWl ? String(rawWl).split(/[,\r\n]+/).map(s => s.trim()).filter(Boolean) : [])
     setAdminIpWhitelist(parsedWl)
-  }, [activeTargetSite?.id, activeTargetSite?._id, activeTargetSite?.custom_login_slug, activeTargetSite?.admin_ip_whitelist, selectedSiteId])
+  }, [activeTargetSite?.id, activeTargetSite?._id, activeTargetSite?.custom_login_slug, JSON.stringify(activeTargetSite?.admin_ip_whitelist ?? activeTargetSite?.hardening?.admin_ip_whitelist ?? []), selectedSiteId])
 
   const showToast = (text, isError = false) => {
     setToastMsg({ text, isError })
@@ -570,7 +570,7 @@ export default function BulkLoginGateway() {
                   }}
                 >
                   <Save size={13} />
-                  <span>{savingSecret ? 'Saving...' : 'Save Changes'}</span>
+                  <span>{savingSecret ? 'Saving...' : 'Save'}</span>
                 </button>
               </div>
             </div>
@@ -752,7 +752,7 @@ export default function BulkLoginGateway() {
                   }}
                 >
                   <Save size={13} />
-                  <span>{savingIp ? 'Saving...' : 'Save Authorized IPs'}</span>
+                  <span>{savingIp ? 'Saving...' : 'Save'}</span>
                 </button>
               </div>
             </div>

@@ -2420,3 +2420,16 @@ async def update_all_sites_core(user=Depends(get_current_user)):
 
     return success(res)
 
+
+@router.post("/core/{website_id}/repair-all")
+async def repair_all_site_core_files(website_id: str, user=Depends(get_current_user)):
+    """One-click repair all corrupted/modified core files on the WordPress website."""
+    get_owned_website(user, website_id)
+    user_id = str(user.get("id") or user.get("_id") or "")
+    svc = WordPressCoreService()
+    try:
+        res = svc.repair_all_core_files(website_id=website_id, user_id=user_id)
+        return success(res)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+

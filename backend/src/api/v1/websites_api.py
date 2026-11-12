@@ -2945,20 +2945,20 @@ async def delete_website(website_id: str, user=Depends(get_current_user)):
 
 
     if res.get('status') == 'error':
-
-
-
-
-
-
-
         raise HTTPException(status_code=404, detail=res.get('message', 'Website not found'))
 
-
-
-
-
-
+    try:
+        from src.services.notification_service import NotificationService
+        NotificationService(db).notify(
+            user_id=str(user["id"]),
+            title=f"Website Disconnected: {res.get('domain') or 'Website'}",
+            message=f"Website {res.get('domain') or website_id} has been disconnected and removed from MDefender Pro.",
+            category="website_disconnected",
+            website_id=website_id,
+            data={"website_id": website_id}
+        )
+    except Exception:
+        pass
 
     return success(res)
 
@@ -5003,6 +5003,20 @@ async def trigger_website_scan(website_id: str, body: WebsiteScanTriggerRequest 
                                 "threat_level": threat_level
                             }}
                         )
+
+                        if threats_count > 0:
+                            try:
+                                from src.services.notification_service import NotificationService
+                                NotificationService(db).notify(
+                                    user_id=str(user["id"]),
+                                    title=f"Critical Threat Detected on {domain}",
+                                    message=f"Malware scan identified {threats_count} malicious threat(s) / backdoor(s) on {domain}. Immediate remediation recommended.",
+                                    category="malware_detected",
+                                    website_id=str(website["_id"]),
+                                    data={"scan_id": scan_id, "threats_count": threats_count, "threat_level": threat_level}
+                                )
+                            except Exception as e:
+                                logger.error(f"Failed to dispatch malware notification: {e}")
 
 
 
@@ -10561,6 +10575,19 @@ async def execute_posthack_action(website_id: str, body: PostHackActionRequest, 
     except Exception:
         pass
 
+    try:
+        from src.services.notification_service import NotificationService
+        NotificationService(db).notify(
+            user_id=str(user["id"]),
+            title=f"Website Connected: {clean_domain}",
+            message=f"Website {clean_domain} has been successfully connected to MDefender Pro Enterprise protection.",
+            category="website_connected",
+            website_id=website_id,
+            data={"domain": clean_domain, "plan": selected_plan}
+        )
+    except Exception:
+        pass
+
     return success({
         "action": body.action,
         "results": results
@@ -12999,6 +13026,19 @@ async def disable_2fa(body: Disable2FARequest, user=Depends(get_current_user)):
     try:
         from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
         push_instant_sync_to_wordpress(user_id=u_id, website_id=None if w_id == "all" else w_id)
+    except Exception:
+        pass
+
+    try:
+        from src.services.notification_service import NotificationService
+        NotificationService(db).notify(
+            user_id=str(user["id"]),
+            title=f"Website Connected: {clean_domain}",
+            message=f"Website {clean_domain} has been successfully connected to MDefender Pro Enterprise protection.",
+            category="website_connected",
+            website_id=website_id,
+            data={"domain": clean_domain, "plan": selected_plan}
+        )
     except Exception:
         pass
 

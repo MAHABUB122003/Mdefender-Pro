@@ -1474,8 +1474,10 @@ class WAF_FW_Scanner {
                 'patterns' => [
                     '#\beval\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE|SERVER)\s*\[#i',
                     '#\beval\s*\(\s*(?:base64_decode|gzinflate|gzuncompress|str_rot13|hex2bin)\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE|SERVER)\s*\[#i',
+                    '#\beval\s*\(\s*(?:base64_decode|gzinflate|gzuncompress|str_rot13|hex2bin)\s*\([^\)]+\)\s*\)#i',
+                    '#\beval\s*\(\s*(?:pack|strrev|chr)\s*\(#i',
                     '#(?:gzinflate|gzuncompress)\s*\(\s*(?:base64_decode|str_rot13)\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE|SERVER)\s*\[#i',
-                    '#\bassert\s*\(\s*(?:\$_(?:GET|POST|REQUEST|COOKIE)\s*\[|(?:base64_decode|gzinflate|gzuncompress|str_rot13)\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)\s*\[)#i',
+                    '#\bassert\s*\(\s*(?:\$_(?:GET|POST|REQUEST|COOKIE)\s*\[|(?:base64_decode|gzinflate|gzuncompress|str_rot13|hex2bin)\s*\(|hex2bin\s*\()#i',
                     '#\b(?:system|exec|shell_exec|passthru|proc_open|popen)\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE|SERVER)\s*\[#i',
                     '#call_user_func(?:_array)?\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)\s*\[#i',
                     '#array_map\s*\(\s*[\x27\x22](?:exec|system|shell_exec|passthru|eval|assert)[\x27\x22]\s*,\s*\$_(?:GET|POST|REQUEST|COOKIE)\s*\[#i',
@@ -1510,6 +1512,18 @@ class WAF_FW_Scanner {
                     '#\$_(?:POST|GET|REQUEST|COOKIE)[\s\S]{0,150}set_transient\s*\(#i',
                 ],
             ],
+            'sql_injection_payload' => [
+                'weight' => 95,
+                'patterns' => [
+                    '#\$wpdb\s*->\s*(?:query|get_results|get_row|get_var|get_col)\s*\([^;]*\.\s*(?:\$_|\$[a-zA-Z0-9_]+)#i',
+                    '#\$wpdb\s*->\s*(?:query|get_results|get_row|get_var|get_col)\s*\([^;]*\$_(?:GET|POST|REQUEST|COOKIE)#i',
+                    '#(?:mysqli_query|mysql_query|pg_query)\s*\([^;]*\.\s*(?:\$_|\$[a-zA-Z0-9_]+)#i',
+                    '#SELECT\s+[\s\S]{1,100}\s+FROM\s+[\s\S]{1,100}\s+WHERE\s+[\s\S]{0,100}(?:UNION\s+(?:ALL\s+)?SELECT|OR\s+[\'"]?1[\'"]?\s*=\s*[\'"]?1|AND\s+1=1|\bSLEEP\s*\(|\bBENCHMARK\s*\(|INFORMATION_SCHEMA)#i',
+                    '#UNION\s+(?:ALL\s+)?SELECT[\s\S]{1,100}(?:FROM|WHERE|NULL|CHAR\(|0x[0-9a-fA-F]+)#i',
+                    '#(?:INTO\s+OUTFILE|INTO\s+DUMPFILE|LOAD_FILE\s*\()#i',
+                    '#SELECT\s+.*(?:wp_users|user_pass|user_login).*WHERE.*\$_(?:GET|POST|REQUEST)#i',
+                ],
+            ],
             'crypto' => [
                 'weight' => 85,
                 'patterns' => [
@@ -1539,9 +1553,11 @@ class WAF_FW_Scanner {
             'unauthorized_admin' => [
                 'weight' => 95,
                 'patterns' => [
-                    '#wp_create_user\s*\([^)]+\)[\s\S]{0,300}set_role\s*\(\s*[\x27\x22]administrator[\x27\x22]#i',
-                    '#wp_insert_user\s*\([^)]+\)[\s\S]{0,300}(?:administrator|manage_options)#i',
-                    '#new\s+WP_User\s*\([^)]+\)[\s\S]{0,300}set_role\s*\(\s*[\x27\x22]administrator[\x27\x22]#i',
+                    '#wp_create_user\s*\([^)]+\)[\s\S]{0,1000}(?:set_role|add_role)\s*\(\s*[\x27\x22]administrator[\x27\x22]#i',
+                    '#wp_insert_user\s*\([^)]+\)[\s\S]{0,1000}(?:administrator|manage_options)#i',
+                    '#new\s+WP_User\s*\([^)]+\)[\s\S]{0,1000}(?:set_role|add_role)\s*\(\s*[\x27\x22]administrator[\x27\x22]#i',
+                    '#->\s*(?:set_role|add_role)\s*\(\s*[\x27\x22]administrator[\x27\x22]#i',
+                    '#[\x27\x22]role[\x27\x22]\s*=>\s*[\x27\x22]administrator[\x27\x22][\s\S]{0,500}(?:wp_insert_user|wp_create_user)#i',
                 ],
             ],
             'mail_spammer' => [
@@ -1993,7 +2009,7 @@ class WAF_FW_Scanner {
             $file_class = 'THEME';
         } elseif (strpos($rel_path, 'wp-content/uploads/') === 0 || $category === 'uploads') {
             $file_class = 'UPLOAD';
-        } elseif (strpos($rel_path, 'wp-admin/') === 0 || strpos($rel_path, 'wp-includes/') === 0 || strpos($rel_path, '/') === false || in_array($rel_path, ['index.php', 'wp-login.php', 'wp-config.php', 'wp-cron.php', 'wp-settings.php', 'wp-load.php', 'wp-blog-header.php', 'wp-mail.php', 'wp-signup.php', 'wp-trackback.php', 'wp-activate.php', 'wp-comments-post.php', 'wp-config-sample.php', 'wp-links-opml.php', 'xmlrpc.php'])) {
+        } elseif (strpos($rel_path, 'wp-admin/') === 0 || strpos($rel_path, 'wp-includes/') === 0 || in_array($rel_path, ['index.php', 'wp-login.php', 'wp-config.php', 'wp-cron.php', 'wp-settings.php', 'wp-load.php', 'wp-blog-header.php', 'wp-mail.php', 'wp-signup.php', 'wp-trackback.php', 'wp-activate.php', 'wp-comments-post.php', 'wp-config-sample.php', 'wp-links-opml.php', 'xmlrpc.php'], true)) {
             $file_class = 'WORDPRESS_CORE';
         }
 
@@ -2318,7 +2334,7 @@ class WAF_FW_Scanner {
         foreach ($patterns as $cat_key => $data) {
             // PHP backdoors apply to executable PHP scripts OR any file containing embedded PHP tags
             $has_php_code = $is_php || preg_match('/<\?(?:php|=|\s)|<script\s+language\s*=\s*["\']?php/i', $content);
-            if (($cat_key === 'backdoor' || $cat_key === 'webshell' || $cat_key === 'reverse_shell' || $cat_key === 'credential_stealer' || $cat_key === 'unauthorized_admin' || $cat_key === 'mail_spammer') && !$has_php_code) {
+            if (($cat_key === 'backdoor' || $cat_key === 'webshell' || $cat_key === 'reverse_shell' || $cat_key === 'credential_stealer' || $cat_key === 'unauthorized_admin' || $cat_key === 'mail_spammer' || $cat_key === 'sql_injection_payload') && !$has_php_code && $ext !== 'sql') {
                 continue;
             }
             if ($cat_key === 'javascript_malware' && !in_array($ext, ['js', 'html', 'htm', 'php', 'phtml'])) {
@@ -2423,8 +2439,24 @@ class WAF_FW_Scanner {
             }
         }
 
-        // Module 14: SQL Database Dump & Credentials / Rogue Admin Exposure Check
+        // Module 14: SQL Database Dump & Credentials / Rogue Admin / SQL Injection Exposure Check
         if ($ext === 'sql' || strpos($name, '.sql') !== false) {
+            if (preg_match('/(?:UNION\s+(?:ALL\s+)?SELECT|OR\s+[\'"]?1[\'"]?\s*=\s*[\'"]?1|INTO\s+(?:OUTFILE|DUMPFILE)|LOAD_FILE\s*\(|INFORMATION_SCHEMA|xp_cmdshell|BENCHMARK\s*\(|SLEEP\s*\()/i', $content, $sql_inj_m, PREG_OFFSET_CAPTURE)) {
+                $line_num = substr_count(substr($content, 0, $sql_inj_m[0][1]), "\n") + 1;
+                $snippet = trim(substr($sql_inj_m[0][0], 0, 100));
+                return [
+                    'file' => $rel_path,
+                    'score' => 95,
+                    'severity' => 'critical',
+                    'confidence' => 'HIGH',
+                    'line_number' => $line_num,
+                    'snippet' => $snippet,
+                    'classification' => 'CONFIRMED_MALWARE',
+                    'findings' => ['Malicious SQL Payload: Injection vector or dangerous database query detected (' . $name . ')'],
+                    'size' => $size,
+                    'hash' => md5($content),
+                ];
+            }
             if (preg_match('/(?:CREATE\s+TABLE\s+[`\w]*users[`\w]*|INSERT\s+INTO\s+[`\w]*users[`\w]*|UPDATE\s+[`\w]*(?:users|usermeta)[`\w]*\s+SET\s+(?:user_pass|meta_value))/i', $content, $sql_m, PREG_OFFSET_CAPTURE)) {
                 if (preg_match('#\$P\$[A-Za-z0-9\.\/]{31}|user_pass|MD5\([\x27\x22][^\x27\x22]+[\x27\x22]\)|administrator|mailinator|yopmail#i', $content)) {
                     $line_num = substr_count(substr($content, 0, $sql_m[0][1]), "\n") + 1;
