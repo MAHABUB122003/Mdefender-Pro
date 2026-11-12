@@ -1,0 +1,810 @@
+[
+  {
+    "_id": {
+      "$oid": "6a7ebf4ffcfc6f4494c5be29"
+    },
+    "website_id": "b08ffd31-5c26-4e9e-bf94-afa898f81245",
+    "connected": true,
+    "connected_at": {
+      "$date": "2026-08-14T13:10:07.201Z"
+    },
+    "domain": "wp-demo-64f77508.example.com",
+    "last_heartbeat": {
+      "$date": "2026-08-14T13:10:07.217Z"
+    },
+    "php_version": null,
+    "plugin_version": "4.0.0",
+    "status": "online",
+    "user_id": "6a7ebf4e7a0ac36510cd5108",
+    "wp_version": null,
+    "last_stats": {
+      "requests_blocked": 3,
+      "requests_allowed": 210
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebf5ffcfc6f4494c5be2a"
+    },
+    "website_id": "bca9072e-07a2-4e6e-b551-8106665d60ea",
+    "connected": true,
+    "connected_at": {
+      "$date": "2026-08-14T13:10:23.387Z"
+    },
+    "domain": "wp-demo-b1fd4842.example.com",
+    "last_heartbeat": {
+      "$date": "2026-08-14T13:10:23.395Z"
+    },
+    "php_version": null,
+    "plugin_version": "4.0.0",
+    "status": "online",
+    "user_id": "6a7ebf5f7a0ac36510cd510f",
+    "wp_version": null,
+    "last_stats": {
+      "requests_blocked": 3,
+      "requests_allowed": 210
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ee23efcfc6f4494c5be2e"
+    },
+    "website_id": "site_d9caceb5",
+    "connected": true,
+    "connected_at": {
+      "$date": "2026-08-14T15:39:10.622Z"
+    },
+    "domain": "my-wordpress-site.local",
+    "last_heartbeat": {
+      "$date": "2026-08-14T15:39:10.634Z"
+    },
+    "php_version": "8.2.0",
+    "plugin_version": "4.0.0",
+    "status": "online",
+    "user_id": "user_6acdcad0",
+    "wp_version": "6.4.2",
+    "last_stats": {
+      "requests_blocked": 12,
+      "requests_allowed": 340
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ee282fcfc6f4494c5be2f"
+    },
+    "website_id": "site_0addf739",
+    "connected": true,
+    "connected_at": {
+      "$date": "2026-08-14T15:40:18.046Z"
+    },
+    "domain": "my-site-15fe86.local",
+    "last_heartbeat": {
+      "$date": "2026-08-14T15:40:18.057Z"
+    },
+    "php_version": "8.2.0",
+    "plugin_version": "4.0.0",
+    "status": "online",
+    "user_id": "user_ee5dbc86",
+    "wp_version": "6.4.2",
+    "last_stats": {
+      "requests_blocked": 12,
+      "requests_allowed": 340
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ee7e1fcfc6f4494c5be31"
+    },
+    "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+    "connected": true,
+    "connected_at": {
+      "$date": "2026-11-05T02:26:00.321Z"
+    },
+    "domain": "localhost",
+    "last_heartbeat": {
+      "$date": "2026-11-05T18:23:02.964Z"
+    },
+    "php_version": "8.0.30",
+    "plugin_version": "4.3.0",
+    "status": "online",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "wp_version": "7.1.4",
+    "api_key": "zq8V5f4Swk9GCqxMFJU6nVV9E3HfcQS47mi8piDdXMn32WUToSJ29mo-lzULOSl1",
+    "site_token": "00cd4599e027427ebfb0c017a0694296e9a2bf1c72074c5a860ec160de5e5143",
+    "last_stats": {
+      "requests_blocked": 930,
+      "requests_allowed": 0
+    },
+    "backups": [
+      {
+        "id": "mdf_database_localhost_20261103_042257",
+        "filename": "mdf_database_localhost_20261103_042257.zip",
+        "name": "Automated Verification Snapshot",
+        "size": "2.56 MB",
+        "type": "database",
+        "date": "2026-11-03 04:23:00",
+        "status": "verified"
+      },
+      {
+        "id": "mdf_full_localhost_20261101_142653",
+        "filename": "mdf_full_localhost_20261101_142653.zip",
+        "name": "Automated Scheduled Backup",
+        "size": "82.38 MB",
+        "type": "full",
+        "date": "2026-11-01 14:32:28",
+        "status": "verified"
+      },
+      {
+        "id": "mdf_sql_6ae4e56644518",
+        "filename": "mdf_sql_6ae4e56644518.sql",
+        "name": "Discovered Archive",
+        "size": "5.44 MB",
+        "type": "database",
+        "date": "2026-10-30 18:43:50",
+        "status": "verified"
+      },
+      {
+        "id": "mdf_database_localhost_20261030_184014",
+        "filename": "mdf_database_localhost_20261030_184014.zip",
+        "name": "Automated Test DB Snapshot",
+        "size": "2.19 MB",
+        "type": "database",
+        "date": "2026-10-30 18:40:16",
+        "status": "verified"
+      },
+      {
+        "id": "mdf_full_localhost_20261030_141043",
+        "filename": "mdf_full_localhost_20261030_141043.zip",
+        "name": "Automated Scheduled Backup",
+        "size": "87.44 MB",
+        "type": "full",
+        "date": "2026-10-30 14:16:39",
+        "status": "verified"
+      }
+    ],
+    "hardening": {
+      "disable_file_editing": true,
+      "disable_xmlrpc": true,
+      "hide_wp_version": true,
+      "prevent_user_enumeration": true,
+      "block_uploads_php": true,
+      "security_headers": true,
+      "file_permissions_check": true,
+      "login_two_factor": false,
+      "disable_directory_listing": true
+    },
+    "plugins": [
+      {
+        "id": "mdefender-pro",
+        "file": "mdefender-pro/mdefender-pro.php",
+        "slug": "mdefender-pro",
+        "name": "MDefender-Pro",
+        "version": "4.3.0",
+        "author": "MDefender-Pro Team",
+        "status": "active",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      },
+      {
+        "id": "system-cache-optimizer",
+        "file": "mdefender_malware_lab/cat2_02_mu_plugin_persistence.php",
+        "slug": "mdefender_malware_lab",
+        "name": "System Cache Optimizer",
+        "version": "",
+        "author": "",
+        "status": "inactive",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      },
+      {
+        "id": "system-helper-tool",
+        "file": "rce_backdoor.php",
+        "slug": "system-helper-tool",
+        "name": "System Helper Tool",
+        "version": "",
+        "author": "",
+        "status": "inactive",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      },
+      {
+        "id": "woocommerce",
+        "file": "woocommerce/woocommerce.php",
+        "slug": "woocommerce",
+        "name": "WooCommerce",
+        "version": "11.1.2",
+        "author": "Automattic",
+        "status": "active",
+        "update_available": true,
+        "new_version": "11.2.1",
+        "auto_update": false
+      },
+      {
+        "id": "wordfence-security",
+        "file": "wordfence/wordfence.php",
+        "slug": "wordfence",
+        "name": "Wordfence Security",
+        "version": "8.2.2",
+        "author": "Wordfence",
+        "status": "active",
+        "update_available": true,
+        "new_version": "9.0.2",
+        "auto_update": false
+      },
+      {
+        "id": "wordpress-core-security-patch",
+        "file": "mdefender_malware_lab/cat14_02_fake_core_patch_plugin.php",
+        "slug": "mdefender_malware_lab",
+        "name": "WordPress Core Security Patch",
+        "version": "6.7.1",
+        "author": "",
+        "status": "inactive",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      }
+    ],
+    "theme": "Twenty Twenty-Five",
+    "themes": [
+      {
+        "id": "shopora",
+        "slug": "shopora",
+        "name": "Shopora",
+        "version": "1.0.0",
+        "author": "Shopora Team",
+        "active": false,
+        "is_active": false,
+        "status": "standby",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      },
+      {
+        "id": "twentytwentyfive",
+        "slug": "twentytwentyfive",
+        "name": "Twenty Twenty-Five",
+        "version": "1.4",
+        "author": "the WordPress team",
+        "active": true,
+        "is_active": true,
+        "status": "active",
+        "update_available": true,
+        "new_version": "1.5",
+        "auto_update": false
+      },
+      {
+        "id": "twentytwentyfour",
+        "slug": "twentytwentyfour",
+        "name": "Twenty Twenty-Four",
+        "version": "1.4",
+        "author": "the WordPress team",
+        "active": false,
+        "is_active": false,
+        "status": "standby",
+        "update_available": true,
+        "new_version": "1.6",
+        "auto_update": false
+      },
+      {
+        "id": "twentytwentythree",
+        "slug": "twentytwentythree",
+        "name": "Twenty Twenty-Three",
+        "version": "1.6",
+        "author": "the WordPress team",
+        "active": false,
+        "is_active": false,
+        "status": "standby",
+        "update_available": true,
+        "new_version": "1.7",
+        "auto_update": false
+      }
+    ],
+    "url": "http://localhost/mahabub"
+  },
+  {
+    "_id": {
+      "$oid": "6aee2a7a03ccb96f69e7ee8e"
+    },
+    "website_id": "site_ebca6d5e5d31",
+    "api_key": "mdf_live_sec_yRy3a2a7ldbyI6syS5v2bVTxmylFNwTuZ501IhfI",
+    "connected": true,
+    "connected_at": {
+      "$date": "2026-11-07T01:28:58.703Z"
+    },
+    "domain": "client-site-a.com",
+    "last_heartbeat": {
+      "$date": "2026-11-07T01:28:58.703Z"
+    },
+    "php_version": null,
+    "plugin_version": null,
+    "site_token": "c30df7175a2748b5bc234a10f6031450758f6f132de0488d9b92f7f380647ec4",
+    "status": "online",
+    "url": "https://client-site-a.com",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "wp_version": null
+  },
+  {
+    "_id": {
+      "$oid": "6aee2a7a03ccb96f69e7ee8f"
+    },
+    "website_id": "site_e65e6290f041",
+    "api_key": "mdf_live_sec_yRy3a2a7ldbyI6syS5v2bVTxmylFNwTuZ501IhfI",
+    "connected": true,
+    "connected_at": {
+      "$date": "2026-11-07T01:28:58.754Z"
+    },
+    "domain": "client-site-b.com",
+    "last_heartbeat": {
+      "$date": "2026-11-07T01:28:58.754Z"
+    },
+    "php_version": null,
+    "plugin_version": null,
+    "site_token": "e3499e1b6ad24fde91545f4688528ec231a5a83625e74b39b7fce444f1c5f7bd",
+    "status": "online",
+    "url": "https://client-site-b.com",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "wp_version": null
+  },
+  {
+    "_id": {
+      "$oid": "6af013670eb7ab96d961f1fe"
+    },
+    "website_id": "site_54a1944fb65c",
+    "connected": true,
+    "connected_at": {
+      "$date": "2026-11-08T22:14:41.411Z"
+    },
+    "domain": "localhost/mahabub",
+    "last_heartbeat": {
+      "$date": "2026-11-08T23:14:06.778Z"
+    },
+    "plugin_version": "4.3.0",
+    "status": "online",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "backups": [
+      {
+        "id": "mdf_database_localhost_20261108_063345",
+        "filename": "mdf_database_localhost_20261108_063345.zip",
+        "name": "Discovered Archive",
+        "size": "537.04 KB",
+        "type": "full",
+        "date": "2026-11-08 06:33:45",
+        "status": "verified"
+      },
+      {
+        "id": "mdf_database_localhost_20261108_063224",
+        "filename": "mdf_database_localhost_20261108_063224.zip",
+        "name": "Discovered Archive",
+        "size": "534.88 KB",
+        "type": "full",
+        "date": "2026-11-08 06:32:24",
+        "status": "verified"
+      },
+      {
+        "id": "mdf_database_localhost_20261108_061552",
+        "filename": "mdf_database_localhost_20261108_061552.zip",
+        "name": "Phase 5 Live Verification Snapshot",
+        "size": "532.57 KB",
+        "type": "database",
+        "date": "2026-11-08 06:15:52",
+        "status": "verified"
+      }
+    ],
+    "hardening": {
+      "disable_file_editing": true,
+      "disable_xmlrpc": true,
+      "hide_wp_version": true,
+      "prevent_user_enumeration": true,
+      "block_uploads_php": true,
+      "security_headers": true,
+      "file_permissions_check": true,
+      "login_two_factor": false,
+      "disable_directory_listing": true,
+      "custom_login_slug": "",
+      "hide_login_url": false,
+      "login_redirect_type": "404",
+      "admin_ip_whitelist": [],
+      "admin_ip_whitelist_enabled": false
+    },
+    "plugins": [
+      {
+        "id": "akismet-anti-spam-spam-protection",
+        "file": "akismet/akismet.php",
+        "slug": "akismet",
+        "name": "Akismet Anti-spam: Spam Protection",
+        "version": "5.7.2",
+        "author": "Automattic - Anti-spam Team",
+        "status": "inactive",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      },
+      {
+        "id": "hello-dolly",
+        "file": "hello.php",
+        "slug": "hello-dolly",
+        "name": "Hello Dolly",
+        "version": "1.7.2",
+        "author": "Matt Mullenweg",
+        "status": "inactive",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      },
+      {
+        "id": "mdefender-pro",
+        "file": "mdefender-pro/mdefender-pro.php",
+        "slug": "mdefender-pro",
+        "name": "MDefender-Pro",
+        "version": "4.3.0",
+        "author": "MDefender-Pro Team",
+        "status": "active",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      }
+    ],
+    "theme": "Twenty Twenty-Five",
+    "themes": [
+      {
+        "id": "twentytwentyfive",
+        "slug": "twentytwentyfive",
+        "name": "Twenty Twenty-Five",
+        "version": "1.5",
+        "author": "the WordPress team",
+        "active": true,
+        "is_active": true,
+        "status": "active",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      },
+      {
+        "id": "twentytwentyfour",
+        "slug": "twentytwentyfour",
+        "name": "Twenty Twenty-Four",
+        "version": "1.6",
+        "author": "the WordPress team",
+        "active": false,
+        "is_active": false,
+        "status": "standby",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      },
+      {
+        "id": "twentytwentythree",
+        "slug": "twentytwentythree",
+        "name": "Twenty Twenty-Three",
+        "version": "1.7",
+        "author": "the WordPress team",
+        "active": false,
+        "is_active": false,
+        "status": "standby",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      }
+    ],
+    "api_key": "zq8V5f4Swk9GCqxMFJU6nVV9E3HfcQS47mi8piDdXMn32WUToSJ29mo-lzULOSl1",
+    "php_version": "8.0.30",
+    "site_token": "ca2f02242ea1400fba7dc19eab2c12b33d4ad7e8cce249bd982263207a06aeee",
+    "url": "http://localhost/mahabub",
+    "wp_version": "7.1.4",
+    "last_stats": {
+      "requests_blocked": 684,
+      "requests_allowed": 0
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0bda60eb7ab96d961f220"
+    },
+    "website_id": "site_db57e0323bf6",
+    "connected": true,
+    "connected_at": {
+      "$date": "2026-11-09T00:21:26.956Z"
+    },
+    "domain": "localhost",
+    "last_heartbeat": {
+      "$date": "2026-11-09T00:21:26.974Z"
+    },
+    "plugin_version": "4.3.0",
+    "status": "online",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "backups": [
+      {
+        "id": "mdf_database_localhost_20261108_063345",
+        "filename": "mdf_database_localhost_20261108_063345.zip",
+        "name": "Discovered Archive",
+        "size": "537.04 KB",
+        "type": "full",
+        "date": "2026-11-08 06:33:45",
+        "status": "verified"
+      },
+      {
+        "id": "mdf_database_localhost_20261108_063224",
+        "filename": "mdf_database_localhost_20261108_063224.zip",
+        "name": "Discovered Archive",
+        "size": "534.88 KB",
+        "type": "full",
+        "date": "2026-11-08 06:32:24",
+        "status": "verified"
+      },
+      {
+        "id": "mdf_database_localhost_20261108_061552",
+        "filename": "mdf_database_localhost_20261108_061552.zip",
+        "name": "Phase 5 Live Verification Snapshot",
+        "size": "532.57 KB",
+        "type": "database",
+        "date": "2026-11-08 06:15:52",
+        "status": "verified"
+      }
+    ],
+    "hardening": {
+      "disable_file_editing": true,
+      "disable_xmlrpc": true,
+      "hide_wp_version": true,
+      "prevent_user_enumeration": true,
+      "block_uploads_php": true,
+      "security_headers": true,
+      "file_permissions_check": true,
+      "login_two_factor": false,
+      "disable_directory_listing": true,
+      "custom_login_slug": "",
+      "hide_login_url": false,
+      "login_redirect_type": "404",
+      "admin_ip_whitelist": [],
+      "admin_ip_whitelist_enabled": false
+    },
+    "plugins": [
+      {
+        "id": "akismet-anti-spam-spam-protection",
+        "file": "akismet/akismet.php",
+        "slug": "akismet",
+        "name": "Akismet Anti-spam: Spam Protection",
+        "version": "5.7.2",
+        "author": "Automattic - Anti-spam Team",
+        "status": "inactive",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      },
+      {
+        "id": "hello-dolly",
+        "file": "hello.php",
+        "slug": "hello-dolly",
+        "name": "Hello Dolly",
+        "version": "1.7.2",
+        "author": "Matt Mullenweg",
+        "status": "inactive",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      },
+      {
+        "id": "mdefender-pro",
+        "file": "mdefender-pro/mdefender-pro.php",
+        "slug": "mdefender-pro",
+        "name": "MDefender-Pro",
+        "version": "4.3.0",
+        "author": "MDefender-Pro Team",
+        "status": "active",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      }
+    ],
+    "theme": "Twenty Twenty-Five",
+    "themes": [
+      {
+        "id": "twentytwentyfive",
+        "slug": "twentytwentyfive",
+        "name": "Twenty Twenty-Five",
+        "version": "1.5",
+        "author": "the WordPress team",
+        "active": true,
+        "is_active": true,
+        "status": "active",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      },
+      {
+        "id": "twentytwentyfour",
+        "slug": "twentytwentyfour",
+        "name": "Twenty Twenty-Four",
+        "version": "1.6",
+        "author": "the WordPress team",
+        "active": false,
+        "is_active": false,
+        "status": "standby",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      },
+      {
+        "id": "twentytwentythree",
+        "slug": "twentytwentythree",
+        "name": "Twenty Twenty-Three",
+        "version": "1.7",
+        "author": "the WordPress team",
+        "active": false,
+        "is_active": false,
+        "status": "standby",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      }
+    ],
+    "last_stats": {
+      "requests_blocked": 687,
+      "requests_allowed": 0
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af15394239351874781cd68"
+    },
+    "website_id": "site_e6972fbd7efa",
+    "connected": true,
+    "connected_at": {
+      "$date": "2026-11-10T19:52:35.553Z"
+    },
+    "domain": "localhost/mahabub",
+    "last_heartbeat": {
+      "$date": "2026-11-10T23:56:25.003Z"
+    },
+    "plugin_version": "4.3.0",
+    "status": "online",
+    "user_id": "admin-user-001",
+    "backups": [
+      {
+        "id": "localhost-mahabub",
+        "filename": "localhost-mahabub.zip",
+        "name": "Manual FULL Snapshot",
+        "size": "38.10 MB",
+        "type": "full",
+        "date": "2026-11-09 18:09:31",
+        "status": "verified"
+      },
+      {
+        "id": "mdf_database_localhost_20261108_063345",
+        "filename": "mdf_database_localhost_20261108_063345.zip",
+        "name": "Discovered Archive",
+        "size": "537.04 KB",
+        "type": "full",
+        "date": "2026-11-08 06:33:45",
+        "status": "verified"
+      },
+      {
+        "id": "mdf_database_localhost_20261108_063224",
+        "filename": "mdf_database_localhost_20261108_063224.zip",
+        "name": "Discovered Archive",
+        "size": "534.88 KB",
+        "type": "full",
+        "date": "2026-11-08 06:32:24",
+        "status": "verified"
+      },
+      {
+        "id": "mdf_database_localhost_20261108_061552",
+        "filename": "mdf_database_localhost_20261108_061552.zip",
+        "name": "Phase 5 Live Verification Snapshot",
+        "size": "532.57 KB",
+        "type": "database",
+        "date": "2026-11-08 06:15:52",
+        "status": "verified"
+      }
+    ],
+    "hardening": {
+      "disable_file_editing": true,
+      "disable_xmlrpc": true,
+      "hide_wp_version": true,
+      "prevent_user_enumeration": true,
+      "block_uploads_php": true,
+      "security_headers": true,
+      "file_permissions_check": true,
+      "login_two_factor": false,
+      "disable_directory_listing": true,
+      "custom_login_slug": "mysecret",
+      "hide_login_url": true,
+      "login_redirect_type": "404",
+      "admin_ip_whitelist": [
+        "127.0.0.1"
+      ],
+      "admin_ip_whitelist_enabled": true
+    },
+    "last_stats": {
+      "requests_blocked": 752,
+      "requests_allowed": 310
+    },
+    "plugins": [
+      {
+        "id": "akismet-anti-spam-spam-protection",
+        "file": "akismet/akismet.php",
+        "slug": "akismet",
+        "name": "Akismet Anti-spam: Spam Protection",
+        "version": "5.7.2",
+        "author": "Automattic - Anti-spam Team",
+        "status": "inactive",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      },
+      {
+        "id": "hello-dolly",
+        "file": "hello.php",
+        "slug": "hello-dolly",
+        "name": "Hello Dolly",
+        "version": "1.7.2",
+        "author": "Matt Mullenweg",
+        "status": "inactive",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      },
+      {
+        "id": "mdefender-pro",
+        "file": "mdefender-pro/mdefender-pro.php",
+        "slug": "mdefender-pro",
+        "name": "MDefender-Pro",
+        "version": "4.3.0",
+        "author": "MDefender-Pro Team",
+        "status": "active",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      }
+    ],
+    "theme": "Twenty Twenty-Five",
+    "themes": [
+      {
+        "id": "twentytwentyfive",
+        "slug": "twentytwentyfive",
+        "name": "Twenty Twenty-Five",
+        "version": "1.5",
+        "author": "the WordPress team",
+        "active": true,
+        "is_active": true,
+        "status": "active",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      },
+      {
+        "id": "twentytwentyfour",
+        "slug": "twentytwentyfour",
+        "name": "Twenty Twenty-Four",
+        "version": "1.6",
+        "author": "the WordPress team",
+        "active": false,
+        "is_active": false,
+        "status": "standby",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      },
+      {
+        "id": "twentytwentythree",
+        "slug": "twentytwentythree",
+        "name": "Twenty Twenty-Three",
+        "version": "1.7",
+        "author": "the WordPress team",
+        "active": false,
+        "is_active": false,
+        "status": "standby",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      }
+    ],
+    "api_key": "zq8V5f4Swk9GCqxMFJU6nVV9E3HfcQS47mi8piDdXMn32WUToSJ29mo-lzULOSl1",
+    "php_version": "8.2.0",
+    "site_token": "b012a040b6ff4167bcd22f0d5b465b5b3087cd0b4f934af1afbd31a2228451a7",
+    "url": "https://localhost/mahabub",
+    "wp_version": "6.5"
+  }
+]

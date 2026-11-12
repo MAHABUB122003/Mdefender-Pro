@@ -1,1661 +1,705 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend,
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
-  Filler
+  ArcElement,
+  Filler,
+  Tooltip,
+  Legend,
 } from 'chart.js';
-import { Doughnut, Line } from 'react-chartjs-2';
+import { Line, Doughnut } from 'react-chartjs-2';
+import {
+  Activity,
+  ArrowRight,
+  ArrowUpRight,
+  Ban,
+  CheckCircle2,
+  Clock3,
+  Copy,
+  Download,
+  Gauge,
+  Globe2,
+  Layers,
+  RefreshCw,
+  ScanLine,
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
+  Zap,
+} from 'lucide-react';
 import api from '../api/api';
 import userStore from '../utils/userStore';
-import copyToClipboard from '../utils/clipboard';
-import { formatMetricNumber, formatExactNumber } from '../utils/formatters';
+import { formatMetricNumber } from '../utils/formatters';
 import {
-  Shield,
-  ShieldCheck,
-  ShieldAlert,
-  Globe,
-  Activity,
-  RefreshCw,
-  Clock,
-  ArrowRight,
-  CheckCircle2,
-  Crosshair,
-  Ban,
-  Layers,
-  Radio,
-  Check,
-  Copy,
-  BarChart3,
-  Terminal,
-  Zap,
-  Lock,
-  Crown,
-  Flame,
-  Power,
-  X
-} from 'lucide-react';
+  Badge,
+  Button,
+  Card,
+  Dotline,
+  EmptyState,
+  PageHeader,
+  Segmented,
+  StatCard,
+} from '../components/ui';
 
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Filler, Tooltip, Legend);
 
-// =========================================================================
-// DESIGN TOKENS — HARMONIZED WITH UserPricing & UserBulkManagement
-// =========================================================================
-const brandTokens = {
-  cardBg: '#ffffff',
-  cardBorder: '1px solid #D9E1DC',
-  cardRadius: '16px',
-  cardShadow: '0 4px 20px rgba(11, 37, 34, 0.04)',
-  
-  subCardBg: '#FBFCFA',
-  pillBg: '#E8EEE8',
-  
-  headingColor: '#10201E',
-  bodyColor: '#60716B',
-  brandForest: '#0B2522',
-  brandEmerald: '#2A8B68',
-  brandAmber: '#E8792F',
-  dangerRed: '#DC2626'
+const COLORS = {
+  forest: '#0B2B26',
+  forestSoft: 'rgba(11, 43, 38, 0.08)',
+  amber: '#E8792F',
+  amberSoft: 'rgba(232, 121, 47, 0.10)',
+  emerald: '#12805C',
+  emeraldSoft: 'rgba(18, 128, 92, 0.10)',
+  danger: '#C0392B',
+  line: '#EEF0EA',
+  muted: '#6E7F7A',
 };
 
-const securityPalette = [
-  '#DC2626', // Critical Threats (SQLi / RCE)
-  '#E8792F', // High Severity (XSS / CSRF)
-  '#2A8B68', // Behavioral / Bot Mitigations
-  '#0B2522', // Ingress Edge Neutral
-  '#60716B', // Muted Scanner Probes
-  '#87948D'  // Low Severity
-];
+const THREAT_COLORS = ['#C0392B', '#E8792F', '#B7791F', '#2F6F62', '#6E7F7A', '#0B2B26'];
 
-const severityConfig = {
-  sqli: { label: 'CRITICAL', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
-  sql: { label: 'CRITICAL', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
-  rce: { label: 'CRITICAL', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
-  command: { label: 'CRITICAL', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
-  xss: { label: 'HIGH', color: '#D97706', bg: '#FEF3EB', border: '#FCD8BF' },
-  lfi: { label: 'HIGH', color: '#D97706', bg: '#FEF3EB', border: '#FCD8BF' },
-  path: { label: 'HIGH', color: '#D97706', bg: '#FEF3EB', border: '#FCD8BF' },
-  traversal: { label: 'HIGH', color: '#D97706', bg: '#FEF3EB', border: '#FCD8BF' },
-  bot: { label: 'BLOCKED', color: '#60716B', bg: '#E8EEE8', border: '#D9E1DC' },
-  scanner: { label: 'BLOCKED', color: '#60716B', bg: '#E8EEE8', border: '#D9E1DC' },
-  probe: { label: 'DETECTED', color: '#60716B', bg: '#E8EEE8', border: '#D9E1DC' },
-  clean: { label: 'PASSED', color: '#2A8B68', bg: '#E8F3EC', border: '#CFE2D4' },
-  allowed: { label: 'PASSED', color: '#2A8B68', bg: '#E8F3EC', border: '#CFE2D4' },
-  ingress: { label: 'PASSED', color: '#2A8B68', bg: '#E8F3EC', border: '#CFE2D4' },
-  default: { label: 'MITIGATED', color: '#E8792F', bg: '#FFF4ED', border: '#FCD3B6' }
-};
-
-function getSeverity(type = '') {
-  const lower = (type || '').toLowerCase();
-  for (const [k, v] of Object.entries(severityConfig)) {
-    if (lower.includes(k)) return v;
+function lastSevenDays() {
+  const out = [];
+  const now = new Date();
+  for (let i = 6; i >= 0; i -= 1) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    out.push(d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' }));
   }
-  return severityConfig.default;
+  return out;
 }
 
-function formatRelativeTime(timestamp) {
-  if (!timestamp) return 'Just now';
-  try {
-    if (typeof timestamp === 'string' && timestamp.toLowerCase().includes('just')) return timestamp;
-    const dateStr = String(timestamp).replace(' ', 'T');
-    const time = new Date(dateStr).getTime();
-    if (isNaN(time)) return String(timestamp);
-    const diff = Math.floor((Date.now() - time) / 1000);
-    if (diff < 10) return 'Just now';
-    if (diff < 60) return `${diff}s ago`;
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return `${Math.floor(diff / 86400)}d ago`;
-  } catch {
-    return String(timestamp);
+function timeAgo(value) {
+  if (!value) return 'just now';
+  const date = new Date(String(value).replace(' ', 'T'));
+  if (Number.isNaN(date.getTime())) return String(value);
+  const diff = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+function postureFor(sites) {
+  if (!sites.length) {
+    return { score: 0, label: 'Not configured', tone: 'idle', tasks: [] };
   }
+  let points = 0;
+  const tasks = [];
+  sites.forEach((site) => {
+    const active = String(site.status || '').toLowerCase() === 'active';
+    const protecting = String(site.waf_mode || '').toLowerCase() === 'protect';
+    const plugin = Boolean(site.plugin_version);
+    if (active) points += 1;
+    if (protecting) points += 1;
+    if (plugin) points += 1;
+    if (!active) tasks.push({ id: `resume-${site.id}`, text: `Resume protection for ${site.domain}`, to: '/user/websites' });
+    if (active && !protecting) tasks.push({ id: `waf-${site.id}`, text: `Turn on WAF protection for ${site.domain}`, to: '/user/websites' });
+    if (active && !plugin) tasks.push({ id: `plugin-${site.id}`, text: `Install the plugin on ${site.domain}`, to: '/user/connect' });
+  });
+  const score = Math.round((points / (sites.length * 3)) * 100);
+  const tone = score >= 85 ? 'ok' : score >= 60 ? 'warn' : 'bad';
+  const label = score >= 85 ? 'Strong' : score >= 60 ? 'Needs attention' : 'At risk';
+  return { score, label, tone, tasks: tasks.slice(0, 3) };
 }
 
-// =========================================================================
-// KPI STAT CARD — MATCHING UserPricing CARD SPECIFICATIONS
-// =========================================================================
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  sublabel,
-  actionLink,
-  actionText,
-  isThreat = false,
-  badgeText
-}) {
-  const isPercent = typeof value === 'string' && value.includes('%');
-  const displayVal = isPercent ? value : formatMetricNumber(value);
-  const exactVal = isPercent ? value : formatExactNumber(value);
-
-  return (
-    <div
-      title={exactVal ? `${label}: ${exactVal}` : undefined}
-      style={{
-        background: brandTokens.cardBg,
-        borderRadius: brandTokens.cardRadius,
-        border: brandTokens.cardBorder,
-        padding: '12px 16px',
-        boxShadow: brandTokens.cardShadow,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        position: 'relative'
-      }}>
-      <div>
-        {/* Top Header: Label & Icon */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <span style={{
-            fontSize: '11px',
-            fontWeight: '700',
-            color: brandTokens.bodyColor,
-            textTransform: 'uppercase',
-            letterSpacing: '0.06em'
-          }}>
-            {label}
-          </span>
-          <div style={{
-            width: '28px',
-            height: '28px',
-            borderRadius: '8px',
-            background: isThreat ? '#FEF2F2' : brandTokens.pillBg,
-            border: isThreat ? '1px solid #FECACA' : '1px solid #D9E1DC',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: isThreat ? brandTokens.dangerRed : brandTokens.brandForest
-          }}>
-            {Icon && <Icon size={15} strokeWidth={2.4} />}
-          </div>
-        </div>
-
-        {/* Primary Metric Number (Compact international SaaS notation: 1k, 1.6k, 2k, 1M, 1B) */}
-        <div
-          title={exactVal ? `${exactVal} ${label.toLowerCase()}` : undefined}
-          style={{
-            fontSize: '20px',
-            fontWeight: '700',
-            fontVariantNumeric: 'tabular-nums',
-            color: isThreat && value > 0 ? brandTokens.dangerRed : brandTokens.headingColor,
-            lineHeight: '1.1',
-            letterSpacing: '-0.03em',
-            cursor: 'default'
-          }}>
-          {displayVal}
-        </div>
-
-        {/* Sublabel / Context */}
-        {sublabel && (
-          <div style={{
-            fontSize: '12px',
-            color: brandTokens.bodyColor,
-            marginTop: '6px',
-            fontWeight: '500'
-          }}>
-            {sublabel}
-          </div>
-        )}
-      </div>
-
-      {/* Action Footer */}
-      {actionLink && actionText && (
-        <div style={{ marginTop: '18px', paddingTop: '12px', borderTop: '1px solid #E8EEE8' }}>
-          <Link
-            to={actionLink}
-            style={{
-              fontSize: '12px',
-              fontWeight: '700',
-              color: brandTokens.brandEmerald,
-              textDecoration: 'none',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}
-          >
-            <span>{actionText}</span>
-            <ArrowRight size={12} />
-          </Link>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// =========================================================================
-// MAIN USER DASHBOARD
-// =========================================================================
 export default function UserDashboard() {
   const navigate = useNavigate();
-  const [selectedWebsite, setSelectedWebsite] = useState(() => (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdf_bulk_selected_site') || localStorage.getItem('mdefender_selected_site')) : null) || 'all');
-  const [data, setData] = useState(() => userStore.get('dashboard'));
-  const [loading, setLoading] = useState(() => !userStore.get('dashboard'));
+  const cached = useMemo(() => userStore.get('dashboard'), []);
+  const [data, setData] = useState(cached || null);
+  const [loading, setLoading] = useState(!cached);
   const [refreshing, setRefreshing] = useState(false);
-  const [lastRefreshed, setLastRefreshed] = useState(() => new Date());
-  const [ddosEnabled, setDdosEnabled] = useState(true);
-  const [ddosToggling, setDdosToggling] = useState(false);
-  const [copiedIp, setCopiedIp] = useState(null);
-  const [copiedUri, setCopiedUri] = useState(null);
-  const [bannedIps, setBannedIps] = useState(() => new Set());
-  const [showBlockModal, setShowBlockModal] = useState(false);
-  const [blockForm, setBlockForm] = useState({ ip: '', reason: '', duration: '1d', website_id: 'all', action_type: 'block' });
-  const [submittingBlock, setSubmittingBlock] = useState(false);
-  const [toastMsg, setToastMsg] = useState(null);
+  const [selectedWebsite, setSelectedWebsite] = useState(() => {
+    if (typeof localStorage === 'undefined') return 'all';
+    return localStorage.getItem('mdf_bulk_selected_site') || localStorage.getItem('mdefender_selected_site') || 'all';
+  });
+  const [chartMetric, setChartMetric] = useState('both');
+  const [toast, setToast] = useState(null);
+  const [blockOpen, setBlockOpen] = useState(false);
+  const [blockForm, setBlockForm] = useState({ ip: '', reason: '', duration: '1d', action_type: 'block' });
+  const [submitting, setSubmitting] = useState(false);
 
   const showToast = (text, isError = false) => {
-    setToastMsg({ text, isError });
-    setTimeout(() => setToastMsg(null), 4000);
+    setToast({ text, isError });
+    setTimeout(() => setToast(null), 3500);
   };
 
-  const handleOpenBlockModal = (ip, reason = 'Automated IP Quarantine via Dashboard') => {
-    if (!ip) return;
-    setBlockForm({
-      ip,
-      reason,
-      duration: '1d',
-      website_id: selectedWebsite || 'all',
-      action_type: 'block'
-    });
-    setShowBlockModal(true);
-  };
-
-  const handleConfirmBlock = async (e) => {
-    if (e) e.preventDefault();
-    if (!blockForm.ip) return;
-    setSubmittingBlock(true);
-    try {
-      if (blockForm.action_type === 'whitelist') {
-        const res = await api.addUserWhitelist({ ip: blockForm.ip, reason: blockForm.reason || 'Whitelisted via Dashboard' });
-        showToast(res?.message || `IP ${blockForm.ip} added to safe whitelist successfully.`);
-      } else {
-        const res = await api.addUserBlacklist({
-          ip: blockForm.ip,
-          reason: blockForm.reason || 'Quarantined via Dashboard',
-          duration: blockForm.duration,
-          website_id: blockForm.website_id
-        });
-        setBannedIps(prev => new Set(prev).add(blockForm.ip));
-        showToast(res?.message || `IP ${blockForm.ip} quarantined successfully.`);
+  const fetchData = useCallback(
+    async (siteId = selectedWebsite, manual = false) => {
+      if (manual) setRefreshing(true);
+      try {
+        const params = siteId && siteId !== 'all' ? { website_id: siteId } : {};
+        if (manual) params.refresh = '1';
+        const result = await api.getUserDashboard(params);
+        setData(result);
+        userStore.set('dashboard', result);
+      } catch (err) {
+        showToast(err.message || 'Could not refresh telemetry', true);
+      } finally {
+        setLoading(false);
+        if (manual) setTimeout(() => setRefreshing(false), 300);
       }
-      setShowBlockModal(false);
-      userStore.clear();
-      fetchData(true, selectedWebsite);
-    } catch (err) {
-      showToast(err.message || `Failed to quarantine IP ${blockForm.ip}`, true);
-    } finally {
-      setSubmittingBlock(false);
-    }
-  };
-  const [streamFilter, setStreamFilter] = useState('all'); // 'all' | 'critical' | 'bots'
-  const [chartMetric, setChartMetric] = useState('both'); // 'both' | 'clean' | 'threats'
-
-  const rawPlan = data?.user?.plan || data?.plan || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_plan') : null) || 'free';
-  const userPlan = (typeof rawPlan === 'string' ? rawPlan : (rawPlan?.id || rawPlan?.name || 'free')).toLowerCase();
-  const isPaidActive = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan);
-
-  const userName = data?.user?.name || data?.user?.full_name || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_name') : '') || 'User';
-
-  const fetchData = useCallback(async (manual = false, siteId = selectedWebsite) => {
-    if (manual) setRefreshing(true);
-    try {
-      const params = siteId && siteId !== 'all' ? { website_id: siteId } : {};
-      if (manual) params.refresh = '1';
-      const result = await api.getUserDashboard(params);
-      setData(result);
-      userStore.set('dashboard', result);
-      setLastRefreshed(new Date());
-      if (result?.user?.name) localStorage.setItem('mdefender_user_name', result.user.name);
-      const freshPlan = result?.user?.plan || result?.plan;
-      if (freshPlan) localStorage.setItem('mdefender_user_plan', freshPlan);
-      if (result?.user?.trial_days_remaining !== undefined) localStorage.setItem('mdefender_trial_days', result.user.trial_days_remaining);
-      if (result?.user?.created_at) localStorage.setItem('mdefender_user_created_at', result.user.created_at);
-    } catch (err) {
-      console.error('Telemetry fetch error:', err);
-    } finally {
-      setLoading(false);
-      if (manual) setTimeout(() => setRefreshing(false), 300);
-    }
-  }, [selectedWebsite]);
+    },
+    [selectedWebsite]
+  );
 
   useEffect(() => {
-    fetchData(false, selectedWebsite);
-    api.getDdosStatus().then(r => setDdosEnabled(r.ddos_enabled ?? true)).catch(() => {});
-
-    // Polling every 6 seconds for telemetry
+    fetchData(selectedWebsite, false);
     const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        fetchData(false, selectedWebsite);
-      }
-    }, 6000);
-
+      if (document.visibilityState === 'visible') fetchData(selectedWebsite, false);
+    }, 15000);
     return () => clearInterval(interval);
   }, [fetchData, selectedWebsite]);
 
   useEffect(() => {
-    const handleDomainSync = () => {
-      const cur = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdf_bulk_selected_site') || localStorage.getItem('mdefender_selected_site')) : null) || 'all';
-      setSelectedWebsite(cur);
-      fetchData(true, cur);
+    const onDomainSync = () => {
+      const next = localStorage.getItem('mdf_bulk_selected_site') || localStorage.getItem('mdefender_selected_site') || 'all';
+      setSelectedWebsite(next);
+      fetchData(next, true);
     };
-    window.addEventListener('mdf_bulk_domain_changed', handleDomainSync);
-    window.addEventListener('mdefender_domain_changed', handleDomainSync);
+    window.addEventListener('mdf_bulk_domain_changed', onDomainSync);
+    window.addEventListener('mdefender_domain_changed', onDomainSync);
     return () => {
-      window.removeEventListener('mdf_bulk_domain_changed', handleDomainSync);
-      window.removeEventListener('mdefender_domain_changed', handleDomainSync);
+      window.removeEventListener('mdf_bulk_domain_changed', onDomainSync);
+      window.removeEventListener('mdefender_domain_changed', onDomainSync);
     };
   }, [fetchData]);
 
-  const websitesList = data?.websites || [];
-  const [ddosFeedback, setDdosFeedback] = useState(null);
+  const sites = data?.websites || [];
+  const activity = data?.recent_activity || [];
+  const posture = postureFor(sites);
+  const selectedSite = selectedWebsite !== 'all' ? sites.find((s) => s.id === selectedWebsite) : null;
 
-  // Determine Under Attack status for currently selected scope
-  const currentSiteObj = selectedWebsite !== 'all' ? websitesList.find(w => (w.id || w._id) === selectedWebsite) : null;
-  const isSelectedSiteAttacked = currentSiteObj 
-    ? Boolean(currentSiteObj.under_attack_mode) 
-    : (websitesList.length > 0 ? websitesList.some(w => Boolean(w.under_attack_mode)) : !ddosEnabled);
+  const requestsToday = Number(data?.requests_today || 0);
+  const blockedToday = Number(data?.blocked_today || 0);
+  const activeSites = Number(data?.active_websites ?? sites.filter((s) => s.status === 'active').length);
+  const blockRate = requestsToday > 0 ? (blockedToday / requestsToday) * 100 : 0;
 
-  const handleUnderAttackToggle = async () => {
-    setDdosToggling(true);
-    try {
-      if (selectedWebsite !== 'all' && currentSiteObj) {
-        const nextState = !isSelectedSiteAttacked;
-        await api.toggleWebsiteUnderAttack(selectedWebsite, nextState);
-        // Optimistic update
-        setData(prev => {
-          if (!prev) return prev;
-          const updated = (prev.websites || []).map(w => {
-            if ((w.id || w._id) === selectedWebsite) {
-              return { ...w, under_attack_mode: nextState };
-            }
-            return w;
-          });
-          return { ...prev, websites: updated };
-        });
-        setDdosFeedback({
-          type: 'success',
-          msg: nextState
-            ? `⚡ "I'm Under Attack" Mode ACTIVATED for ${currentSiteObj.domain || currentSiteObj.name || 'site'}! Proof-of-Work (PoW) cryptographic challenge is active on origin.`
-            : `✅ "I'm Under Attack" Mode DEACTIVATED for ${currentSiteObj.domain || currentSiteObj.name || 'site'}. Standard passive WAF protection resumed.`
-        });
-      } else {
-        const nextState = !isSelectedSiteAttacked;
-        await api.toggleDdos(nextState);
-        setDdosEnabled(nextState);
-        // Batch push to all connected sites
-        if (websitesList.length > 0) {
-          for (const w of websitesList) {
-            try {
-              await api.toggleWebsiteUnderAttack(w.id || w._id, nextState);
-            } catch {}
-          }
-        }
-        setDdosFeedback({
-          type: 'success',
-          msg: nextState
-            ? `⚡ Fleet DDoS & Under Attack Shield ACTIVATED across all connected WordPress origins! Real-time PoW puzzle is now shielding all traffic.`
-            : `✅ Fleet DDoS Protection returned to Standard Passive Rate-Limiting mode.`
-        });
-      }
-      userStore.clear();
-      await fetchData(true, selectedWebsite);
-    } catch (err) {
-      setDdosFeedback({
-        type: 'error',
-        msg: `Failed to toggle DDoS protection: ${err.message || 'Server error'}`
-      });
-    } finally {
-      setDdosToggling(false);
-      setTimeout(() => setDdosFeedback(null), 6000);
-    }
+  const labels = lastSevenDays();
+  const cleanSeries = Array.isArray(data?.daily_clean) ? data.daily_clean : [];
+  const threatSeries = Array.isArray(data?.daily_threats) ? data.daily_threats : [];
+
+  const trafficData = {
+    labels,
+    datasets: [
+      chartMetric !== 'threats' && {
+        label: 'Clean traffic',
+        data: cleanSeries,
+        borderColor: COLORS.forest,
+        backgroundColor: 'rgba(11, 43, 38, 0.06)',
+        fill: true,
+        tension: 0.35,
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+      },
+      chartMetric !== 'clean' && {
+        label: 'Threats',
+        data: threatSeries,
+        borderColor: COLORS.amber,
+        backgroundColor: 'rgba(232, 121, 47, 0.10)',
+        fill: true,
+        tension: 0.35,
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+      },
+    ].filter(Boolean),
   };
 
-  const blockTopIP = async (ip) => {
-    if (!ip) return;
-    try {
-      await api.userBlockIp(ip, 'Automated IP Quarantine via Dashboard', 0, selectedWebsite);
-      setBannedIps(prev => new Set(prev).add(ip));
-      showToast(`IP ${ip} quarantined successfully.`);
-      userStore.clear();
-      fetchData(true, selectedWebsite);
-    } catch (err) {
-      showToast(err.message || `Failed to block IP ${ip}`, true);
-    }
-  };
-
-  const handleCopyIp = async (ip) => {
-    const ok = await copyToClipboard(ip);
-    if (ok) {
-      setCopiedIp(ip);
-      setTimeout(() => setCopiedIp(null), 2000);
-    }
-  };
-
-  const handleCopyUri = async (uri) => {
-    const ok = await copyToClipboard(uri);
-    if (ok) {
-      setCopiedUri(uri);
-      setTimeout(() => setCopiedUri(null), 2000);
-    }
-  };
-
-  // Filtered live stream events
-  const filteredRecentActivity = useMemo(() => {
-    const list = data?.recent_activity || [];
-    if (streamFilter === 'critical') {
-      return list.filter(item => {
-        const type = (item.attack_type || '').toLowerCase();
-        return type.includes('sql') || type.includes('rce') || type.includes('command') || type.includes('inject');
-      });
-    }
-    if (streamFilter === 'bots') {
-      return list.filter(item => {
-        const type = (item.attack_type || '').toLowerCase();
-        return type.includes('bot') || type.includes('scan') || type.includes('probe') || type.includes('crawler');
-      });
-    }
-    return list;
-  }, [data?.recent_activity, streamFilter]);
-
-  // Threat Vectors breakdown calculation
-  const rawAttackTypes = data?.attack_types?.length ? data.attack_types : ['SQL Injection', 'Cross-Site Scripting (XSS)', 'Local File Inclusion (LFI)', 'Remote Code Execution (RCE)', 'Bot Scanner Probes'];
-  const rawAttackCounts = data?.attack_counts?.length ? data.attack_counts : [0, 0, 0, 0, 0];
-  const totalAttacksCount = rawAttackCounts.reduce((a, b) => a + b, 0);
-
-  const attackChartData = {
-    labels: rawAttackTypes,
-    datasets: [{
-      data: rawAttackCounts.map(c => Math.max(c, 0)),
-      backgroundColor: securityPalette,
-      borderWidth: 2,
-      borderColor: '#FFFFFF',
-      hoverOffset: 6
-    }]
-  };
-
-  // 7-Day Ingress Timeline
-  const dailyDays = [];
-  const dailyCleanCounts = [];
-  const dailyThreatCounts = [];
-  const now = new Date();
-
-  const totalReq = data?.total_requests || 0;
-  const totalBlk = data?.total_blocked || 0;
-  const threatRatio = totalReq > 0 ? (totalBlk / totalReq) : 0;
-
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - (6 - i));
-    dailyDays.push(d.toLocaleDateString('en', { weekday: 'short', month: 'numeric', day: 'numeric' }));
-    const count = data?.daily_requests?.[i] || 0;
-    const realClean = data?.daily_clean?.[i];
-    const realThreat = data?.daily_threats?.[i];
-
-    if (realClean !== undefined && realThreat !== undefined) {
-      dailyCleanCounts.push(Number(realClean) || 0);
-      dailyThreatCounts.push(Number(realThreat) || 0);
-    } else {
-      const estimatedThreats = Math.round(count * threatRatio);
-      dailyThreatCounts.push(estimatedThreats);
-      dailyCleanCounts.push(Math.max(0, count - estimatedThreats));
-    }
-  }
-
-  const dailyDatasets = [];
-  if (chartMetric === 'both' || chartMetric === 'clean') {
-    dailyDatasets.push({
-      label: 'Clean Traffic',
-      data: dailyCleanCounts,
-      borderColor: brandTokens.brandForest,
-      backgroundColor: 'rgba(11, 37, 34, 0.05)',
-      borderWidth: 2.2,
-      fill: true,
-      tension: 0.35,
-      pointBackgroundColor: brandTokens.brandForest,
-      pointBorderColor: '#FFFFFF',
-      pointBorderWidth: 2,
-      pointRadius: 3.5,
-      pointHoverRadius: 6
-    });
-  }
-
-  if (chartMetric === 'both' || chartMetric === 'threats') {
-    dailyDatasets.push({
-      label: 'Mitigated Threats (403)',
-      data: dailyThreatCounts,
-      borderColor: brandTokens.dangerRed,
-      backgroundColor: 'rgba(220, 38, 38, 0.06)',
-      borderWidth: 2,
-      fill: true,
-      tension: 0.35,
-      pointBackgroundColor: brandTokens.dangerRed,
-      pointBorderColor: '#FFFFFF',
-      pointBorderWidth: 2,
-      pointRadius: 3.5,
-      pointHoverRadius: 6
-    });
-  }
-
-  const dailyChartData = {
-    labels: dailyDays,
-    datasets: dailyDatasets
-  };
-
-  const doughnutOptions = {
+  const trafficOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    cutout: '74%',
+    interaction: { mode: 'index', intersect: false },
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: brandTokens.brandForest,
-        titleFont: { family: 'Inter', weight: '700', size: 12 },
-        bodyFont: { family: 'Inter', size: 11.5 },
+        backgroundColor: COLORS.forest,
         padding: 10,
-        cornerRadius: 8,
-        callbacks: {
-          label(ctx) {
-            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-            const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : '0.0';
-            return ` ${ctx.label}: ${ctx.parsed.toLocaleString()} (${pct}%)`;
-          }
-        }
-      }
-    }
-  };
-
-  const lineOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: brandTokens.brandForest,
-        titleFont: { family: 'Inter', weight: '700', size: 12 },
-        bodyFont: { family: 'Inter', size: 12 },
-        padding: 10,
-        cornerRadius: 8,
-        callbacks: {
-          label(ctx) {
-            return ` ${ctx.dataset.label}: ${Number(ctx.parsed.y).toLocaleString()} requests`;
-          }
-        }
-      }
+        titleFont: { size: 11 },
+        bodyFont: { size: 11 },
+        borderColor: 'rgba(255,255,255,0.08)',
+        borderWidth: 1,
+      },
     },
     scales: {
-      y: {
-        beginAtZero: true,
-        grid: { color: 'rgba(217, 225, 220, 0.55)', drawBorder: false },
-        ticks: { font: { size: 11, family: 'Inter', weight: '600' }, color: brandTokens.bodyColor, padding: 6 }
-      },
       x: {
         grid: { display: false },
-        ticks: { font: { size: 11, family: 'Inter', weight: '600' }, color: brandTokens.bodyColor, padding: 6 }
+        border: { display: false },
+        ticks: { color: COLORS.muted, font: { size: 10.5 } },
+      },
+      y: {
+        beginAtZero: true,
+        grid: { color: COLORS.line },
+        border: { display: false },
+        ticks: { color: COLORS.muted, font: { size: 10.5 }, maxTicksLimit: 5 },
+      },
+    },
+  };
+
+  const attackTypes = data?.attack_types || [];
+  const attackCounts = data?.attack_counts || [];
+  const hasThreatMix = attackTypes.length > 0 && attackCounts.some((n) => Number(n) > 0);
+
+  const threatData = {
+    labels: attackTypes,
+    datasets: [
+      {
+        data: attackCounts,
+        backgroundColor: THREAT_COLORS,
+        borderWidth: 0,
+        hoverOffset: 4,
+      },
+    ],
+  };
+
+  const changeSite = (value) => {
+    setSelectedWebsite(value);
+    if (typeof localStorage !== 'undefined') localStorage.setItem('mdf_bulk_selected_site', value);
+    fetchData(value, true);
+  };
+
+  const toggleUnderAttack = async () => {
+    const next = !(selectedSite ? selectedSite.under_attack_mode : sites.some((s) => s.under_attack_mode));
+    try {
+      if (selectedSite) {
+        await api.toggleWebsiteUnderAttack(selectedSite.id, next);
+      } else {
+        await api.toggleDdos(next);
       }
+      showToast(next ? 'Under-attack shield enabled' : 'Under-attack shield disabled');
+      fetchData(selectedWebsite, true);
+    } catch (err) {
+      showToast(err.message || 'Could not change shield state', true);
     }
   };
 
-  const cleanRatio = totalReq > 0
-    ? (((totalReq - totalBlk) / totalReq) * 100).toFixed(1)
-    : '100.0';
+  const submitBlock = async (e) => {
+    e.preventDefault();
+    if (!blockForm.ip.trim()) return;
+    setSubmitting(true);
+    try {
+      if (blockForm.action_type === 'allow') {
+        await api.addUserWhitelist({ ip: blockForm.ip.trim(), reason: blockForm.reason || 'Allowed from dashboard' });
+        showToast(`${blockForm.ip} added to allowlist`);
+      } else {
+        await api.addUserBlacklist({
+          ip: blockForm.ip.trim(),
+          reason: blockForm.reason || 'Blocked from dashboard',
+          duration: blockForm.duration,
+          website_id: selectedWebsite,
+        });
+        showToast(`${blockForm.ip} blocked`);
+      }
+      setBlockOpen(false);
+      setBlockForm({ ip: '', reason: '', duration: '1d', action_type: 'block' });
+      fetchData(selectedWebsite, true);
+    } catch (err) {
+      showToast(err.message || 'Action failed', true);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const underAttack = selectedSite ? Boolean(selectedSite.under_attack_mode) : sites.some((s) => s.under_attack_mode);
+  const firstName = (data?.user?.name || data?.user?.full_name || '').trim().split(/\s+/)[0];
 
   return (
-    <div className="mdf-dashboard-container">
-      {toastMsg && (
-        <div style={{
-          position: 'fixed',
-          bottom: '24px',
-          right: '24px',
-          zIndex: 999999,
-          background: toastMsg.isError ? '#DC2626' : '#0B2522',
-          color: '#FFFFFF',
-          padding: '10px 18px',
-          borderRadius: '8px',
-          fontSize: '12.5px',
-          fontWeight: '700',
-          boxShadow: '0 8px 24px rgba(11, 37, 34, 0.25)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          {toastMsg.isError ? <ShieldAlert size={15} /> : <CheckCircle2 size={15} color="#4ADE80" />}
-          <span>{toastMsg.text}</span>
-        </div>
-      )}
-      
-      {/* ========================================================================= */}
-      {/* 1. SLIM STATUS & UNDER ATTACK SHIELD ACTION BAR                           */}
-      {/* ========================================================================= */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        background: '#ffffff',
-        border: '1px solid #D9E1DC',
-        borderRadius: '10px',
-        padding: '8px 16px',
-        marginBottom: '14px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-        flexWrap: 'wrap',
-        gap: '10px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', fontWeight: '600', color: brandTokens.headingColor }}>
-          <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: brandTokens.brandEmerald }} />
-          <span>Active Fleet Security Posture</span>
-          <span style={{ color: brandTokens.mutedText, fontSize: '11px', fontWeight: '500' }}>
-            • Synced: {lastRefreshed ? lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Live'}
-          </span>
-          <button
-            onClick={() => fetchData(true, selectedWebsite)}
-            disabled={refreshing}
-            title="Refresh fleet telemetry"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: brandTokens.bodyColor, display: 'inline-flex', alignItems: 'center', padding: '0 4px' }}
-          >
-            <RefreshCw size={12} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
-          </button>
-        </div>
+    <div className="mdf-ud">
+      <style>{`
+        .mdf-ud { display: flex; flex-direction: column; gap: 14px; max-width: 1680px; margin: 0 auto; width: 100%; }
+        .mdf-ud-select {
+          height: 36px; min-width: 190px; border: 1px solid var(--md-line-strong, #cfd5cb);
+          border-radius: 8px; background: var(--md-surface, #fff); color: var(--md-ink, #10201e);
+          font-family: var(--md-font-sans, Inter); font-size: 12.5px; padding: 0 10px; outline: none;
+        }
+        .mdf-ud-select:focus { border-color: var(--md-amber, #e8792f); box-shadow: 0 0 0 3px rgba(232,121,47,.14); }
+        .mdf-ud-posture {
+          display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 20px; align-items: center;
+          padding: 18px 20px; background: var(--md-surface, #fff);
+          border: 1px solid var(--md-line, #e2e5de); border-radius: 14px;
+        }
+        .mdf-ud-ring {
+          width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center;
+          background: conic-gradient(var(--ring, #12805c) calc(var(--pct, 0) * 1%), #eceee7 0);
+          position: relative; flex-shrink: 0;
+        }
+        .mdf-ud-ring::after {
+          content: ''; position: absolute; inset: 6px; border-radius: 50%; background: var(--md-surface, #fff);
+        }
+        .mdf-ud-ring span { position: relative; z-index: 1; font-size: 15px; font-weight: 700; color: var(--md-ink, #10201e); font-variant-numeric: tabular-nums; }
+        .mdf-ud-posture-title { font-size: 14px; font-weight: 650; color: var(--md-ink); margin: 0 0 3px; letter-spacing: -.01em; }
+        .mdf-ud-posture-sub { font-size: 12px; color: var(--md-ink-3); margin: 0; line-height: 1.5; }
+        .mdf-ud-tasks { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 9px; }
+        .mdf-ud-task { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--md-ink-2); text-decoration: none; }
+        .mdf-ud-task:hover { color: var(--md-amber); }
+        .mdf-ud-chart { height: 220px; position: relative; }
+        .mdf-ud-legend { display: flex; gap: 16px; align-items: center; margin-top: 10px; font-size: 11.5px; color: var(--md-ink-3); }
+        .mdf-ud-legend i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 5px; }
+        .mdf-ud-actions { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
+        .mdf-ud-action {
+          display: flex; align-items: center; gap: 9px; padding: 10px 11px; border-radius: 9px;
+          border: 1px solid var(--md-line); background: var(--md-surface); color: var(--md-ink-2);
+          font-size: 12px; font-weight: 500; text-decoration: none; transition: border-color .14s, color .14s, background .14s;
+        }
+        .mdf-ud-action:hover { border-color: #d6d9cf; background: var(--md-surface-hover); color: var(--md-ink); }
+        .mdf-ud-action svg { color: var(--md-ink-3); }
+        .mdf-ud-site { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--md-ink); text-decoration: none; }
+        .mdf-ud-site:hover { color: var(--md-amber); }
+        .mdf-ud-scope { font-size: 11px; color: var(--md-ink-3); }
+        .mdf-ud-activity { display: flex; align-items: center; gap: 10px; padding: 10px 20px; border-bottom: 1px solid var(--md-line); }
+        .mdf-ud-activity:last-child { border-bottom: 0; }
+        .mdf-ud-activity .meta { min-width: 0; flex: 1; }
+        .mdf-ud-activity .title { font-size: 12px; font-weight: 600; color: var(--md-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mdf-ud-activity .sub { font-size: 11px; color: var(--md-ink-3); margin-top: 2px; display: flex; gap: 8px; flex-wrap: wrap; }
+        @media (max-width: 900px) {
+          .mdf-ud-posture { grid-template-columns: auto minmax(0,1fr); }
+          .mdf-ud-posture > :last-child { grid-column: 1 / -1; }
+        }
+      `}</style>
 
-        {/* 1-Click Under Attack Shield Quick Toggle */}
-        <button
-          type="button"
-          onClick={handleUnderAttackToggle}
-          disabled={ddosToggling}
+      <PageHeader
+        eyebrow="Fleet overview"
+        title={firstName ? `Welcome back, ${firstName}` : 'Overview'}
+        description="Protection status, live traffic and what needs attention across your WordPress sites."
+        actions={
+          <>
+            <select className="mdf-ud-select" value={selectedWebsite} onChange={(e) => changeSite(e.target.value)} aria-label="Site scope">
+              <option value="all">All sites ({sites.length})</option>
+              {sites.map((site) => (
+                <option key={site.id} value={site.id}>
+                  {site.domain || site.name || site.id}
+                </option>
+              ))}
+            </select>
+            <Button variant="secondary" icon={RefreshCw} onClick={() => fetchData(selectedWebsite, true)} disabled={refreshing}>
+              {refreshing ? 'Refreshing' : 'Refresh'}
+            </Button>
+            <Button variant="secondary" icon={Ban} onClick={() => setBlockOpen(true)}>
+              Block IP
+            </Button>
+            <Button variant="primary" icon={Globe2} onClick={() => navigate('/user/websites')}>
+              Manage sites
+            </Button>
+          </>
+        }
+      />
+
+      <div className="mdf-ud-posture">
+        <div
+          className="mdf-ud-ring"
           style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '5px 14px',
-            borderRadius: '6px',
-            border: isSelectedSiteAttacked ? '1px solid #FCA5A5' : '1px solid #D9E1DC',
-            background: isSelectedSiteAttacked ? '#FEF2F2' : '#0B2522',
-            color: isSelectedSiteAttacked ? '#DC2626' : '#FFFFFF',
-            fontSize: '11.5px',
-            fontWeight: '700',
-            cursor: ddosToggling ? 'not-allowed' : 'pointer',
-            boxShadow: 'none',
-            transition: 'all 0.15s ease'
+            '--pct': posture.score,
+            '--ring': posture.tone === 'ok' ? COLORS.emerald : posture.tone === 'warn' ? COLORS.amber : COLORS.danger,
           }}
-          title="1-Click Proof-of-Work Challenge for All Traffic"
+          aria-label={`Protection score ${posture.score} out of 100`}
         >
-          {ddosToggling ? (
-            <>
-              <RefreshCw size={11} style={{ animation: 'spin 1s linear infinite' }} />
-              <span>Syncing Fleet...</span>
-            </>
-          ) : isSelectedSiteAttacked ? (
-            <>
-              <Power size={11} color="#DC2626" />
-              <span>Under Attack: ACTIVE (Click to Disarm)</span>
-            </>
+          <span>{posture.score}</span>
+        </div>
+        <div>
+          <p className="mdf-ud-posture-title">
+            Protection posture: {posture.label}{' '}
+            <Badge tone={posture.tone === 'ok' ? 'success' : posture.tone === 'warn' ? 'warning' : posture.tone === 'bad' ? 'danger' : 'neutral'} dot>
+              {activeSites}/{sites.length} active
+            </Badge>
+          </p>
+          <p className="mdf-ud-posture-sub">
+            {sites.length
+              ? `${requestsToday.toLocaleString()} requests inspected today · ${blockedToday.toLocaleString()} blocked · ${blockRate.toFixed(1)}% block rate`
+              : 'Connect your first WordPress site to start inspecting traffic and blocking attacks.'}
+          </p>
+          <div className="mdf-ud-tasks">
+            {posture.tasks.length ? (
+              posture.tasks.map((task) => (
+                <Link key={task.id} to={task.to} className="mdf-ud-task">
+                  <ArrowRight size={12} /> {task.text}
+                </Link>
+              ))
+            ) : (
+              <span className="mdf-ud-task"><CheckCircle2 size={12} /> All connected sites are protected</span>
+            )}
+          </div>
+        </div>
+        <Button
+          variant={underAttack ? 'danger' : 'secondary'}
+          icon={Zap}
+          onClick={toggleUnderAttack}
+          disabled={!sites.length}
+        >
+          {underAttack ? 'Shield is active' : 'Under-attack shield'}
+        </Button>
+      </div>
+
+      <div className="mdui-grid mdui-kpi-grid">
+        <StatCard
+          label="Requests inspected"
+          value={formatMetricNumber(requestsToday)}
+          hint={`${formatMetricNumber(data?.total_requests || 0)} lifetime`}
+          icon={Activity}
+        />
+        <StatCard
+          label="Threats blocked"
+          value={formatMetricNumber(blockedToday)}
+          hint={`${blockRate.toFixed(1)}% of today's traffic`}
+          icon={ShieldAlert}
+          trend={blockedToday > 0 ? 'Shield held' : 'No attacks today'}
+          trendDir={blockedToday > 0 ? 'up' : 'neutral'}
+        />
+        <StatCard
+          label="Protected sites"
+          value={`${activeSites}/${sites.length || 0}`}
+          hint={sites.length ? `${sites.length - activeSites} need attention` : 'No sites connected yet'}
+          icon={ShieldCheck}
+        />
+        <StatCard
+          label="Block rate"
+          value={`${blockRate.toFixed(1)}%`}
+          hint="Blocked vs inspected today"
+          icon={Gauge}
+        />
+      </div>
+
+      <div className="mdui-grid mdui-split">
+        <Card
+          title="Traffic & threats"
+          subtitle="Clean traffic compared with mitigated requests over the last 7 days"
+          action={
+            <Segmented
+              label="Chart metric"
+              value={chartMetric}
+              onChange={setChartMetric}
+              options={[
+                { value: 'both', label: 'Both' },
+                { value: 'clean', label: 'Clean' },
+                { value: 'threats', label: 'Threats' },
+              ]}
+            />
+          }
+        >
+          {loading && !data ? (
+            <div style={{ height: 250 }} />
           ) : (
             <>
-              <Flame size={11} color="#F38A3E" />
-              <span>Activate Under Attack Shield</span>
-            </>
-          )}
-        </button>
-      </div>
-
-      {/* DDoS & Status Feedback Alert */}
-      {ddosFeedback && (
-        <div style={{
-          padding: '12px 18px',
-          borderRadius: '10px',
-          background: ddosFeedback.type === 'success' ? '#ECFDF5' : '#FEF2F2',
-          border: `1px solid ${ddosFeedback.type === 'success' ? '#A7F3D0' : '#FECACA'}`,
-          color: ddosFeedback.type === 'success' ? '#065F46' : '#991B1B',
-          fontSize: '13px',
-          fontWeight: '600',
-          marginBottom: '20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>{ddosFeedback.msg}</span>
-          </div>
-          <button
-            onClick={() => setDdosFeedback(null)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontWeight: '800' }}
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
-      {/* Onboarding Banner if 0 Sites */}
-      {!loading && websitesList.length === 0 && (
-        <div style={{
-          background: brandTokens.cardBg,
-          borderRadius: brandTokens.cardRadius,
-          border: '1.5px dashed #D9E1DC',
-          padding: '24px 28px',
-          marginBottom: '18px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '16px',
-          boxShadow: brandTokens.cardShadow
-        }}>
-          <div>
-            <div style={{ fontSize: '16px', fontWeight: '700', color: brandTokens.headingColor }}>
-              No WordPress Websites Connected Yet
-            </div>
-            <div style={{ fontSize: '13px', color: brandTokens.bodyColor, marginTop: '4px' }}>
-              Install the MDefender Pro plugin on your WordPress site to activate edge telemetry and two-way threat defense.
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <a
-              href="/mdefender-pro.zip"
-              download="mdefender-pro.zip"
-              style={{
-                padding: '9px 16px',
-                borderRadius: '8px',
-                background: '#ffffff',
-                color: brandTokens.headingColor,
-                textDecoration: 'none',
-                fontSize: '13px',
-                fontWeight: '700',
-                border: '1px solid #D9E1DC'
-              }}
-            >
-              Download Plugin
-            </a>
-            <Link
-              to="/user/websites"
-              style={{
-                padding: '9px 18px',
-                borderRadius: '8px',
-                background: brandTokens.brandForest,
-                color: '#ffffff',
-                textDecoration: 'none',
-                fontSize: '13px',
-                fontWeight: '700',
-                boxShadow: '0 4px 14px rgba(11, 37, 34, 0.2)'
-              }}
-            >
-              + Connect Site
-            </Link>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 2. 4 STAT CARDS — MATCHING UserPricing CARD COLOR & ELEVATION             */}
-      {/* ========================================================================= */}
-      <div className="mdf-stat-grid">
-        <StatCard
-          icon={Activity}
-          label="Total Ingress Requests"
-          value={data?.total_requests || 0}
-          sublabel="Aggregated edge network traffic"
-          actionLink="/user/logs"
-          actionText="View Ingress Logs"
-        />
-
-        <StatCard
-          icon={ShieldAlert}
-          label="Threats Quarantined"
-          value={data?.total_blocked || 0}
-          sublabel="Malicious 403 drops"
-          isThreat={true}
-          actionLink="/user/logs"
-          actionText="Inspect Threat Events"
-        />
-
-        <StatCard
-          icon={ShieldCheck}
-          label="Traffic Cleanliness"
-          value={`${cleanRatio}%`}
-          sublabel="Legitimate human visitors"
-          actionLink="/user/security/bot-shield"
-          actionText="Bot Defense Controls"
-        />
-
-        <StatCard
-          icon={Globe}
-          label="Protected Web Fleet"
-          value={websitesList.length || data?.active_websites || 0}
-          sublabel="Connected WordPress origins"
-          actionLink="/user/websites"
-          actionText="Manage Websites"
-        />
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 3. PRIMARY ANALYTICS ROW: 2D TRAFFIC TIMELINE & THREAT BREAKDOWN          */}
-      {/* ========================================================================= */}
-      <div className="mdf-analytics-grid responsive-dashboard-grid">
-        
-        {/* Left: 2D High-Precision Area Chart */}
-        <div style={{
-          background: brandTokens.cardBg,
-          borderRadius: brandTokens.cardRadius,
-          border: brandTokens.cardBorder,
-          padding: '26px 28px',
-          boxShadow: brandTokens.cardShadow,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          minHeight: '380px'
-        }}>
-          <div>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '18px',
-              flexWrap: 'wrap',
-              gap: '12px'
-            }}>
-              <div>
-                <h3 style={{ fontSize: '14px', fontWeight: '600', color: brandTokens.headingColor, margin: '0 0 3px', letterSpacing: '-0.01em' }}>
-                  Traffic &amp; Threat Volume (7 Days)
-                </h3>
-                <div style={{ fontSize: '13px', color: brandTokens.bodyColor }}>
-                  Dual-stream comparison of clean visitor traffic vs mitigated threats
-                </div>
+              <div className="mdf-ud-chart">
+                <Line data={trafficData} options={trafficOptions} />
               </div>
-
-              {/* Metric Filter Pills — Matching UserPricing Billing Toggle */}
-              <div style={{
-                background: brandTokens.pillBg,
-                padding: '4px',
-                borderRadius: '999px',
-                display: 'inline-flex',
-                gap: '4px',
-                border: '1px solid #D9E1DC'
-              }}>
-                <button
-                  type="button"
-                  onClick={() => setChartMetric('both')}
-                  style={{
-                    padding: '5px 14px',
-                    borderRadius: '999px',
-                    border: 'none',
-                    background: chartMetric === 'both' ? brandTokens.brandForest : 'transparent',
-                    color: chartMetric === 'both' ? '#ffffff' : brandTokens.bodyColor,
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    boxShadow: chartMetric === 'both' ? '0 2px 6px rgba(11, 37, 34, 0.2)' : 'none',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  All Traffic
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChartMetric('clean')}
-                  style={{
-                    padding: '5px 14px',
-                    borderRadius: '999px',
-                    border: 'none',
-                    background: chartMetric === 'clean' ? brandTokens.brandForest : 'transparent',
-                    color: chartMetric === 'clean' ? '#ffffff' : brandTokens.bodyColor,
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    boxShadow: chartMetric === 'clean' ? '0 2px 6px rgba(11, 37, 34, 0.2)' : 'none',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  Clean
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChartMetric('threats')}
-                  style={{
-                    padding: '5px 14px',
-                    borderRadius: '999px',
-                    border: 'none',
-                    background: chartMetric === 'threats' ? brandTokens.dangerRed : 'transparent',
-                    color: chartMetric === 'threats' ? '#ffffff' : brandTokens.bodyColor,
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    boxShadow: chartMetric === 'threats' ? '0 2px 6px rgba(220, 38, 38, 0.25)' : 'none',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  Threats
-                </button>
-              </div>
-            </div>
-
-            {/* High-Precision 2D Area Chart */}
-            <div style={{ height: '260px', position: 'relative' }}>
-              <Line data={dailyChartData} options={lineOptions} />
-            </div>
-          </div>
-
-          {/* Clean Legend Strip */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingTop: '16px',
-            marginTop: '12px',
-            borderTop: '1px solid #D9E1DC',
-            fontSize: '12px',
-            color: brandTokens.bodyColor,
-            flexWrap: 'wrap',
-            gap: '12px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: brandTokens.brandForest }} />
-              <span>Clean: <strong style={{ color: brandTokens.headingColor }} title={`${formatExactNumber(dailyCleanCounts.reduce((a, b) => a + b, 0))} clean requests`}>{formatMetricNumber(dailyCleanCounts.reduce((a, b) => a + b, 0))}</strong></span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: brandTokens.dangerRed }} />
-              <span>Mitigated: <strong style={{ color: brandTokens.dangerRed }} title={`${formatExactNumber(dailyThreatCounts.reduce((a, b) => a + b, 0))} threats mitigated`}>{formatMetricNumber(dailyThreatCounts.reduce((a, b) => a + b, 0))}</strong></span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <ShieldCheck size={14} color={brandTokens.brandEmerald} />
-              <span>WAF Rule Engine: <strong style={{ color: brandTokens.brandEmerald }}>Enforcing</strong></span>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Threat Breakdown Doughnut */}
-        <div style={{
-          background: brandTokens.cardBg,
-          borderRadius: brandTokens.cardRadius,
-          border: brandTokens.cardBorder,
-          padding: '26px 28px',
-          boxShadow: brandTokens.cardShadow,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          minHeight: '380px'
-        }}>
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ fontSize: '14px', fontWeight: '600', color: brandTokens.headingColor, margin: 0, letterSpacing: '-0.01em' }}>
-                Threat Breakdown
-              </h3>
-              <span
-                title={`${formatExactNumber(totalAttacksCount)} Total Threat Drops`}
-                style={{
-                  fontSize: '11px',
-                  fontWeight: '800',
-                  padding: '3px 9px',
-                  borderRadius: '999px',
-                  background: brandTokens.pillBg,
-                  color: brandTokens.bodyColor,
-                  border: '1px solid #D9E1DC',
-                  cursor: 'help'
-                }}>
-                {formatMetricNumber(totalAttacksCount)} Total Drops
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '18px', flexWrap: 'wrap', marginTop: '8px' }}>
-              {/* Donut Chart */}
-              <div style={{ height: '145px', width: '145px', position: 'relative', margin: '0 auto' }}>
-                <Doughnut data={attackChartData} options={doughnutOptions} />
-                <div style={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  pointerEvents: 'none'
-                }}>
-                  <span
-                    title={`${formatExactNumber(totalAttacksCount)} Total Drops`}
-                    style={{ fontSize: '20px', fontWeight: '700', color: brandTokens.headingColor, lineHeight: '1' }}>
-                    {formatMetricNumber(totalAttacksCount)}
-                  </span>
-                  <span style={{ fontSize: '10px', color: brandTokens.bodyColor, textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.06em', marginTop: '3px' }}>
-                    QUARANTINED
-                  </span>
-                </div>
-              </div>
-
-              {/* Breakdown List */}
-              <div style={{ flex: 1, minWidth: '180px', display: 'flex', flexDirection: 'column', gap: '7px' }}>
-                {rawAttackTypes.slice(0, 5).map((type, tIdx) => {
-                  const count = rawAttackCounts[tIdx] || 0;
-                  const pct = totalAttacksCount > 0 ? ((count / totalAttacksCount) * 100).toFixed(0) : '0';
-
-                  return (
-                    <Link
-                      key={tIdx}
-                      to={`/user/logs?search=${encodeURIComponent(type)}`}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        fontSize: '12px',
-                        padding: '7px 10px',
-                        borderRadius: '8px',
-                        background: brandTokens.subCardBg,
-                        textDecoration: 'none',
-                        border: '1px solid #D9E1DC',
-                        color: brandTokens.headingColor,
-                        transition: 'border-color 0.15s ease'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
-                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: securityPalette[tIdx], flexShrink: 0 }} />
-                        <span style={{ fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {type}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px' }}>
-                        <span style={{ fontWeight: '800' }}>{count}</span>
-                        <span style={{ fontSize: '10px', color: brandTokens.bodyColor }}>({pct}%)</span>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingTop: '14px',
-            marginTop: '12px',
-            borderTop: '1px solid #D9E1DC',
-            fontSize: '12px'
-          }}>
-            <span style={{ color: brandTokens.bodyColor }}>Automated Offender Defense Active</span>
-            <Link to="/user/security/rate-limits" style={{ color: brandTokens.brandEmerald, fontWeight: '700', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '3px' }}>
-              <span>Configure Defense</span>
-              <ArrowRight size={11} />
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 4. SECURITY OPERATIONS: TOP ATTACKERS & RECENT BLOCKED EVENTS             */}
-      {/* ========================================================================= */}
-      <div className="mdf-operations-grid">
-        {/* Left: Top Hostile IPs */}
-        <div style={{
-          background: brandTokens.cardBg,
-          borderRadius: brandTokens.cardRadius,
-          border: brandTokens.cardBorder,
-          padding: '26px 28px',
-          boxShadow: brandTokens.cardShadow,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between'
-        }}>
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-              <div>
-                <h3 style={{ fontSize: '14px', fontWeight: '600', color: brandTokens.headingColor, margin: '0 0 3px', letterSpacing: '-0.01em' }}>
-                  Top Attacking IPs
-                </h3>
-                <div style={{ fontSize: '13px', color: brandTokens.bodyColor }}>
-                  Most aggressive hostile origins detected in sampling windows
-                </div>
-              </div>
-              <Link
-                to="/user/logs"
-                style={{
-                  fontSize: '12px',
-                  fontWeight: '700',
-                  color: brandTokens.brandEmerald,
-                  textDecoration: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                <span>All Logs</span>
-                <ArrowRight size={12} />
-              </Link>
-            </div>
-
-            <div className="mdf-table-responsive">
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-                <thead>
-                  <tr style={{
-                    borderBottom: '1px solid #D9E1DC',
-                    color: brandTokens.bodyColor,
-                    fontSize: '11px',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
-                    fontWeight: '700'
-                  }}>
-                    <th style={{ padding: '8px 6px' }}>Rank</th>
-                    <th style={{ padding: '8px 12px' }}>Hostile IP</th>
-                    <th style={{ padding: '8px 12px' }}>Attempts</th>
-                    <th style={{ padding: '8px 6px', textAlign: 'right' }}>Enforcement</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data?.top_attackers?.slice(0, 5).map((attacker, i) => {
-                    const maxAttacks = data.top_attackers[0]?.count || 1;
-                    const ratio = Math.min(100, Math.round((attacker.count / maxAttacks) * 100));
-                    const isBanned = bannedIps.has(attacker.ip);
-
-                    return (
-                      <tr key={i} style={{ borderBottom: '1px solid #E8EEE8' }}>
-                        <td style={{ padding: '12px 6px', color: brandTokens.bodyColor, fontWeight: '600', fontSize: '11px' }}>
-                          #{i + 1}
-                        </td>
-                        <td style={{ padding: '12px 12px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontFamily: 'monospace', fontWeight: '700', color: brandTokens.headingColor, fontSize: '13px' }}>
-                              {attacker.ip}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopyIp(attacker.ip)}
-                              title="Copy IP"
-                              style={{ background: 'none', border: 'none', color: brandTokens.bodyColor, cursor: 'pointer', padding: '1px 3px' }}
-                            >
-                              {copiedIp === attacker.ip ? <Check size={11} color={brandTokens.brandEmerald} /> : <Copy size={11} />}
-                            </button>
-                          </div>
-                        </td>
-                        <td style={{ padding: '12px 12px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ width: '65px', height: '6px', background: brandTokens.pillBg, borderRadius: '4px', overflow: 'hidden' }}>
-                              <div style={{ width: `${ratio}%`, height: '100%', background: brandTokens.dangerRed }} />
-                            </div>
-                            <span
-                              title={`${formatExactNumber(attacker.count)} hostile attempts`}
-                              style={{ fontWeight: '700', color: brandTokens.headingColor, fontSize: '13px', cursor: 'default' }}>
-                              {formatMetricNumber(attacker.count)}
-                            </span>
-                          </div>
-                        </td>
-                        <td style={{ padding: '12px 6px', textAlign: 'right' }}>
-                          {isBanned ? (
-                            <span style={{ fontSize: '11px', fontWeight: '700', color: brandTokens.brandAmber, background: '#FFF4ED', padding: '3px 8px', borderRadius: '6px', border: '1px solid #FCD3B6' }}>
-                              Blocked
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenBlockModal(attacker.ip, `Hostile probe detected (${attacker.count} hits)`)}
-                              style={{
-                                padding: '5px 12px',
-                                borderRadius: '6px',
-                                background: '#FEF2F2',
-                                color: brandTokens.dangerRed,
-                                border: '1px solid #FECACA',
-                                fontSize: '11px',
-                                fontWeight: '600',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Block IP
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  }) || (
-                    <tr>
-                      <td colSpan="4" style={{ textAlign: 'center', color: brandTokens.bodyColor, padding: '24px' }}>
-                        No hostile IPs recorded in current sampling window
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Recent Blocked Events Feed */}
-        <div style={{
-          background: brandTokens.cardBg,
-          borderRadius: brandTokens.cardRadius,
-          border: brandTokens.cardBorder,
-          padding: '26px 28px',
-          boxShadow: brandTokens.cardShadow,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between'
-        }}>
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div>
-                <h3 style={{ fontSize: '14px', fontWeight: '600', color: brandTokens.headingColor, margin: '0 0 3px', letterSpacing: '-0.01em' }}>
-                  Recent Blocked Events
-                </h3>
-                <div style={{ fontSize: '13px', color: brandTokens.bodyColor }}>
-                  Quarantined malicious requests intercepted at origin edge
-                </div>
-              </div>
-
-              {/* Filter Tabs */}
-              <div style={{ display: 'flex', gap: '4px', background: brandTokens.pillBg, padding: '3px', borderRadius: '999px', border: '1px solid #D9E1DC' }}>
-                <button
-                  type="button"
-                  onClick={() => setStreamFilter('all')}
-                  style={{
-                    padding: '3px 10px',
-                    borderRadius: '999px',
-                    border: 'none',
-                    background: streamFilter === 'all' ? brandTokens.brandForest : 'transparent',
-                    color: streamFilter === 'all' ? '#ffffff' : brandTokens.bodyColor,
-                    fontSize: '11px',
-                    fontWeight: '700',
-                    cursor: 'pointer'
-                  }}
-                >
-                  All
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStreamFilter('critical')}
-                  style={{
-                    padding: '3px 10px',
-                    borderRadius: '999px',
-                    border: 'none',
-                    background: streamFilter === 'critical' ? brandTokens.dangerRed : 'transparent',
-                    color: streamFilter === 'critical' ? '#ffffff' : brandTokens.bodyColor,
-                    fontSize: '11px',
-                    fontWeight: '700',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Critical
-                </button>
-              </div>
-            </div>
-
-            {/* Event List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '9px', maxHeight: '290px', overflowY: 'auto' }}>
-              {filteredRecentActivity?.slice(0, 5).map((log, i) => {
-                const sev = getSeverity(log.attack_type);
-                const method = (log.method || (log.url?.includes('login') ? 'POST' : 'GET')).toUpperCase();
-
-                return (
-                  <div
-                    key={i}
-                    style={{
-                      padding: '11px 13px',
-                      borderRadius: '10px',
-                      background: brandTokens.subCardBg,
-                      border: '1px solid #D9E1DC',
-                      fontSize: '12px'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                        <span style={{
-                          fontSize: '10px',
-                          fontWeight: '800',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          background: sev.bg,
-                          color: sev.color,
-                          border: `1px solid ${sev.border}`
-                        }}>
-                          {log.attack_type || 'Malicious Payload'}
-                        </span>
-                        <code style={{ fontSize: '12px', color: brandTokens.headingColor, fontWeight: '700', fontFamily: 'monospace' }}>
-                          {log.ip}
-                        </code>
-                        <button
-                          type="button"
-                          onClick={() => handleCopyIp(log.ip)}
-                          title="Copy IP"
-                          style={{ background: 'none', border: 'none', color: brandTokens.bodyColor, cursor: 'pointer', padding: '1px 3px' }}
-                        >
-                          {copiedIp === log.ip ? <Check size={11} color={brandTokens.brandEmerald} /> : <Copy size={11} />}
-                        </button>
-                      </div>
-                      <span style={{ fontSize: '11px', color: brandTokens.bodyColor }}>
-                        {formatRelativeTime(log.timestamp || log.time)}
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                      <span style={{ color: brandTokens.bodyColor, fontSize: '12px', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {method} {log.url || '/'}
-                      </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {bannedIps.has(log.ip) ? (
-                          <span style={{ fontSize: '10px', fontWeight: '700', color: brandTokens.brandAmber, background: '#FFF4ED', padding: '2px 6px', borderRadius: '4px', border: '1px solid #FCD3B6' }}>
-                            Quarantined
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenBlockModal(log.ip, `Hostile vector: ${log.attack_type || 'Malicious URI probing'}`)}
-                            title={`Ban IP ${log.ip}`}
-                            style={{
-                              padding: '2px 7px',
-                              borderRadius: '4px',
-                              background: '#FEF2F2',
-                              color: brandTokens.dangerRed,
-                              border: '1px solid #FECACA',
-                              fontSize: '10px',
-                              fontWeight: '700',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            Ban IP
-                          </button>
-                        )}
-                        <span style={{ fontSize: '10px', fontWeight: '800', color: brandTokens.dangerRed, background: '#FEF2F2', padding: '2px 7px', borderRadius: '4px', border: '1px solid #FECACA' }}>
-                          Blocked
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              }) || (
-                <div style={{ textAlign: 'center', color: brandTokens.bodyColor, padding: '30px' }}>
-                  No recent threat events recorded
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 5. SYSTEM POSTURE DOCK — MATCHING UserPricing FOOTER DOCK                */}
-      {/* ========================================================================= */}
-      <div className="mdf-posture-dock" style={{
-        background: brandTokens.cardBg,
-        borderRadius: brandTokens.cardRadius,
-        border: brandTokens.cardBorder,
-        padding: '18px 26px',
-        fontSize: '13px',
-        boxShadow: brandTokens.cardShadow
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '22px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: brandTokens.brandEmerald }} />
-            <span style={{ color: brandTokens.bodyColor }}>Edge WAF:</span>
-            <strong style={{ color: brandTokens.headingColor }}>Active</strong>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: brandTokens.brandEmerald }} />
-            <span style={{ color: brandTokens.bodyColor }}>Bot Shield:</span>
-            <strong style={{ color: brandTokens.headingColor }}>Enforcing</strong>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: brandTokens.brandEmerald }} />
-            <span style={{ color: brandTokens.bodyColor }}>Rate Limiting:</span>
-            <strong style={{ color: brandTokens.headingColor }}>Active</strong>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <Link to="/user/websites" style={{ color: brandTokens.headingColor, textDecoration: 'none', fontWeight: '600', fontSize: '12px' }}>
-            WordPress Sites ({websitesList.length})
-          </Link>
-          <span style={{ color: '#D9E1DC' }}>|</span>
-          <Link to="/user/security/bot-shield" style={{ color: brandTokens.brandEmerald, textDecoration: 'none', fontWeight: '600', fontSize: '12px' }}>
-            Bot Defense &amp; Rate Limit Settings →
-          </Link>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* SCOPED QUARANTINE MODAL (SINGLE-SITE VS FLEET-WIDE BAN)                   */}
-      {/* ========================================================================= */}
-      {showBlockModal && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(11, 37, 34, 0.65)',
-          backdropFilter: 'blur(5px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 99999,
-          padding: '20px'
-        }} onClick={() => setShowBlockModal(false)}>
-          <div style={{
-            background: '#FFFFFF',
-            borderRadius: '20px',
-            width: '100%',
-            maxWidth: '520px',
-            padding: '24px',
-            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-            border: '1px solid #D9E1DC'
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Ban size={18} />
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#10201E' }}>
-                    Quarantine Attacker IP
-                  </h3>
-                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#60716B' }}>
-                    Choose isolation scope: Target Domain Only or Global Fleet-Wide Ban
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowBlockModal(false)}
-                style={{ background: 'none', border: 'none', color: '#60716B', cursor: 'pointer', padding: '4px' }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleConfirmBlock}>
-              {/* Target IP Header Card */}
-              <div style={{
-                padding: '12px 14px',
-                background: '#FAFBF9',
-                border: '1px solid #D9E1DC',
-                borderRadius: '12px',
-                marginBottom: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}>
-                <div>
-                  <span style={{ fontSize: '11px', fontWeight: '700', color: '#87948D', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Target IP Address</span>
-                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '14px', fontWeight: '700', color: '#10201E', marginTop: '2px' }}>
-                    {blockForm.ip}
-                  </div>
-                </div>
-                <span style={{ fontSize: '11px', fontWeight: '800', background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA', padding: '3px 8px', borderRadius: '6px' }}>
-                  THREAT DETECTED
+              <div className="mdf-ud-legend">
+                <span><i style={{ background: COLORS.forest }} />Clean traffic</span>
+                <span><i style={{ background: COLORS.amber }} />Mitigated threats</span>
+                <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <Dotline tone={underAttack ? 'warn' : 'ok'}>{underAttack ? 'Under-attack mode' : 'WAF enforcing'}</Dotline>
                 </span>
               </div>
+            </>
+          )}
+        </Card>
 
-              {/* Scoped Website Choice */}
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#10201E', marginBottom: '8px' }}>
-                  Quarantine Scope
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-                  <div
-                    onClick={() => setBlockForm({ ...blockForm, website_id: selectedWebsite !== 'all' ? selectedWebsite : (websitesList[0]?.id || 'all') })}
-                    style={{
-                      padding: '12px',
-                      borderRadius: '12px',
-                      border: blockForm.website_id !== 'all' ? '2px solid #2A8B68' : '1px solid #D9E1DC',
-                      background: blockForm.website_id !== 'all' ? '#F4FBF7' : '#FFFFFF',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: '700', color: blockForm.website_id !== 'all' ? '#0B2522' : '#10201E' }}>
-                        This Website Only
-                      </span>
-                      <input
-                        type="radio"
-                        checked={blockForm.website_id !== 'all'}
-                        onChange={() => {}}
-                        style={{ accentColor: '#2A8B68' }}
-                      />
-                    </div>
-                    <p style={{ margin: 0, fontSize: '11px', color: '#60716B', lineHeight: '1.4' }}>
-                      Blocks ONLY on {selectedWebsite !== 'all' ? (websitesList.find(w => w.id === selectedWebsite)?.domain || selectedWebsite) : (websitesList[0]?.domain || 'selected domain')}. Other sites remain open.
-                    </p>
-                  </div>
-
-                  <div
-                    onClick={() => setBlockForm({ ...blockForm, website_id: 'all' })}
-                    style={{
-                      padding: '12px',
-                      borderRadius: '12px',
-                      border: blockForm.website_id === 'all' ? '2px solid #DC2626' : '1px solid #D9E1DC',
-                      background: blockForm.website_id === 'all' ? '#FEF2F2' : '#FFFFFF',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: '700', color: blockForm.website_id === 'all' ? '#DC2626' : '#10201E' }}>
-                        Global Fleet-Wide
-                      </span>
-                      <input
-                        type="radio"
-                        checked={blockForm.website_id === 'all'}
-                        onChange={() => {}}
-                        style={{ accentColor: '#DC2626' }}
-                      />
-                    </div>
-                    <p style={{ margin: 0, fontSize: '11px', color: '#60716B', lineHeight: '1.4' }}>
-                      Instant cascade across all {websitesList.length || 5} connected WordPress sites in parallel.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Mode */}
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#10201E', marginBottom: '6px' }}>
-                  Enforcement Action
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-                  {[
-                    { key: 'block', label: 'Hard 403 Forbidden', color: '#DC2626' },
-                    { key: 'challenge', label: 'PoW Challenge', color: '#D97735' },
-                    { key: 'whitelist', label: 'Safe Whitelist', color: '#065F46' }
-                  ].map(act => (
-                    <button
-                      key={act.key}
-                      type="button"
-                      onClick={() => setBlockForm({ ...blockForm, action_type: act.key })}
-                      style={{
-                        padding: '8px 6px',
-                        borderRadius: '8px',
-                        border: blockForm.action_type === act.key ? `2px solid ${act.color}` : '1px solid #D9E1DC',
-                        background: blockForm.action_type === act.key ? '#FFFFFF' : '#FAFBF9',
-                        color: blockForm.action_type === act.key ? act.color : '#60716B',
-                        fontSize: '11px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        textAlign: 'center'
-                      }}
-                    >
-                      {act.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Duration */}
-              {blockForm.action_type !== 'whitelist' && (
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#10201E', marginBottom: '6px' }}>
-                    Ban Duration
-                  </label>
-                  <select
-                    value={blockForm.duration}
-                    onChange={e => setBlockForm({ ...blockForm, duration: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '9px 12px',
-                      borderRadius: '10px',
-                      border: '1px solid #D9E1DC',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      background: '#FFFFFF',
-                      boxSizing: 'border-box',
-                      outline: 'none'
-                    }}
-                  >
-                    <option value="1d">1 Day (24 Hours) — Recommended</option>
-                    <option value="2d">2 Days (48 Hours)</option>
-                    <option value="7d">7 Days (1 Week)</option>
-                    <option value="30d">30 Days (1 Month)</option>
-                    <option value="permanent">Permanent (Until manual unban)</option>
-                  </select>
-                </div>
-              )}
-
-              {/* Note */}
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#10201E', marginBottom: '6px' }}>
-                  Quarantine Reason / Note
-                </label>
-                <input
-                  type="text"
-                  value={blockForm.reason}
-                  onChange={e => setBlockForm({ ...blockForm, reason: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '9px 12px',
-                    borderRadius: '10px',
-                    border: '1px solid #D9E1DC',
-                    fontSize: '13px',
-                    boxSizing: 'border-box',
-                    outline: 'none'
+        <Card title="Threat mix" subtitle="What the firewall stopped in this period">
+          {hasThreatMix ? (
+            <>
+              <div style={{ height: 180, position: 'relative' }}>
+                <Doughnut
+                  data={threatData}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: { legend: { display: false } },
                   }}
                 />
               </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+                {attackTypes.slice(0, 5).map((type, i) => (
+                  <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: 'var(--md-ink-2)' }}>
+                    <i style={{ width: 7, height: 7, borderRadius: 2, background: THREAT_COLORS[i % THREAT_COLORS.length] }} />
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{type}</span>
+                    <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--md-ink)' }}>{Number(attackCounts[i] || 0).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <EmptyState
+              icon={ShieldCheck}
+              title="No threats detected"
+              description="Nothing has been blocked in this period. We will surface the mix here as soon as an attack is mitigated."
+            />
+          )}
+        </Card>
+      </div>
 
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowBlockModal(false)}
-                  style={{
-                    padding: '9px 16px',
-                    background: '#FAFBF9',
-                    border: '1px solid #D9E1DC',
-                    borderRadius: '10px',
-                    fontSize: '12px',
-                    fontWeight: '600',
-                    color: '#60716B',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingBlock}
-                  style={{
-                    padding: '9px 20px',
-                    background: blockForm.action_type === 'whitelist' ? '#065F46' : '#DC2626',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    borderRadius: '10px',
-                    fontSize: '12px',
-                    fontWeight: '700',
-                    cursor: submittingBlock ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
-                  }}
-                >
-                  {submittingBlock ? 'Quarantining Fleet...' : (blockForm.action_type === 'whitelist' ? 'Confirm Whitelist' : 'Enforce Quarantine')}
-                </button>
+      <Card
+        title="Sites"
+        subtitle={selectedWebsite === 'all' ? 'Every site connected to this workspace' : 'Selected site'}
+        action={<Link to="/user/websites" style={{ fontSize: 12, color: 'var(--md-ink-3)', textDecoration: 'none' }}>View all sites</Link>}
+        flush
+      >
+        {sites.length ? (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="mdui-table">
+              <thead>
+                <tr>
+                  <th scope="col">Site</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">WAF</th>
+                  <th scope="col">Requests</th>
+                  <th scope="col">Plugin</th>
+                  <th scope="col" aria-label="Actions" />
+                </tr>
+              </thead>
+              <tbody>
+                {sites.map((site) => {
+                  const active = String(site.status || '').toLowerCase() === 'active';
+                  const protecting = String(site.waf_mode || '').toLowerCase() === 'protect';
+                  return (
+                    <tr key={site.id}>
+                      <td>
+                        <Link className="mdf-ud-site" to={`/user/websites`}>
+                          <Shield size={14} style={{ color: 'var(--md-ink-3)' }} />
+                          {site.domain || site.name || site.id}
+                        </Link>
+                        <div className="mdf-ud-scope">{site.platform || 'WordPress'} · {site.url || site.origin_server || '—'}</div>
+                      </td>
+                      <td>
+                        <Badge tone={active ? 'success' : 'warning'} dot>{active ? 'Active' : 'Paused'}</Badge>
+                      </td>
+                      <td>
+                        <Badge tone={protecting ? 'info' : 'neutral'}>{protecting ? 'Protect' : (site.waf_mode || 'monitor')}</Badge>
+                      </td>
+                      <td style={{ fontVariantNumeric: 'tabular-nums' }}>{Number(site.requests_today || 0).toLocaleString()}</td>
+                      <td style={{ fontSize: 11.5, color: 'var(--md-ink-3)' }}>{site.plugin_version ? `v${site.plugin_version}` : 'Not installed'}</td>
+                      <td>
+                        <Link to="/user/websites" style={{ fontSize: 11.5, color: 'var(--md-ink-2)', textDecoration: 'none' }}>
+                          Open <ArrowUpRight size={11} style={{ verticalAlign: -1 }} />
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState
+            icon={Globe2}
+            title="No sites connected yet"
+            description="Add your first WordPress site, install the plugin and paste the site key to start blocking attacks."
+            action={<Button variant="primary" icon={ArrowRight} onClick={() => navigate('/user/connect')}>Connect a site</Button>}
+          />
+        )}
+      </Card>
+
+      <div className="mdui-grid mdui-split">
+        <Card title="Recent activity" subtitle="Latest requests inspected at the edge" flush>
+          {activity.length ? (
+            <div>
+              {activity.slice(0, 6).map((event) => {
+                const blocked = String(event.status || '').toLowerCase() === 'blocked';
+                const clean = String(event.attack_type || '').toLowerCase().includes('clean');
+                return (
+                  <div className="mdf-ud-activity" key={event.id || `${event.ip}-${event.timestamp}`}>
+                    <Badge tone={blocked ? 'danger' : clean ? 'success' : 'warning'}>{blocked ? 'Blocked' : clean ? 'Allowed' : 'Mitigated'}</Badge>
+                    <div className="meta">
+                      <div className="title">{clean ? 'Clean request' : event.attack_type || 'Inspected request'}</div>
+                      <div className="sub">
+                        <span>{event.method || 'GET'} {event.url || '/'}</span>
+                        <span>{event.ip || 'unknown IP'}</span>
+                        <span>{timeAgo(event.timestamp)}</span>
+                      </div>
+                    </div>
+                    <Link to="/user/logs" style={{ fontSize: 11.5, color: 'var(--md-ink-3)', textDecoration: 'none' }}>Details</Link>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <EmptyState
+              icon={Clock3}
+              title="No traffic recorded yet"
+              description="Once your site sends its first request, the live feed will appear here."
+            />
+          )}
+        </Card>
+
+        <Card title="Quick actions" subtitle="Common tasks for this fleet">
+          <div className="mdf-ud-actions">
+            <Link className="mdf-ud-action" to="/user/bulk/scanner"><ScanLine size={15} /> Run malware scan</Link>
+            <Link className="mdf-ud-action" to="/user/logs"><Activity size={15} /> Inspect traffic</Link>
+            <Link className="mdf-ud-action" to="/user/access/ip-blocklist"><Ban size={15} /> IP blocklist</Link>
+            <Link className="mdf-ud-action" to="/user/bulk/backup"><Download size={15} /> Create backup</Link>
+            <Link className="mdf-ud-action" to="/user/reports"><Layers size={15} /> Security report</Link>
+            <Link className="mdf-ud-action" to="/user/bulk/plugins"><Zap size={15} /> Update plugins</Link>
+          </div>
+        </Card>
+      </div>
+
+      {toast && <div className={`mdui-toast ${toast.isError ? 'error' : ''}`} role="status">{toast.text}</div>}
+
+      {blockOpen && (
+        <div className="mdui-overlay" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setBlockOpen(false); }}>
+          <div className="mdui-dialog" role="dialog" aria-modal="true" aria-labelledby="block-title">
+            <div className="mdui-dialog-head">
+              <div>
+                <h3 id="block-title">Block an IP address</h3>
+                <p>Applies to {selectedSite ? selectedSite.domain : 'all connected sites'}.</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setBlockOpen(false)} aria-label="Close">Close</Button>
+            </div>
+            <form className="mdui-dialog-body" onSubmit={submitBlock}>
+              <div className="mdui-field">
+                <label htmlFor="block-ip">IP address</label>
+                <input
+                  id="block-ip"
+                  placeholder="203.0.113.42"
+                  value={blockForm.ip}
+                  onChange={(e) => setBlockForm((f) => ({ ...f, ip: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="mdui-field">
+                <label htmlFor="block-reason">Reason (optional)</label>
+                <input
+                  id="block-reason"
+                  placeholder="Repeated login attempts"
+                  value={blockForm.reason}
+                  onChange={(e) => setBlockForm((f) => ({ ...f, reason: e.target.value }))}
+                />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="mdui-field">
+                  <label htmlFor="block-duration">Duration</label>
+                  <select
+                    id="block-duration"
+                    value={blockForm.duration}
+                    onChange={(e) => setBlockForm((f) => ({ ...f, duration: e.target.value }))}
+                  >
+                    <option value="1h">1 hour</option>
+                    <option value="1d">1 day</option>
+                    <option value="7d">7 days</option>
+                    <option value="30d">30 days</option>
+                    <option value="permanent">Permanent</option>
+                  </select>
+                </div>
+                <div className="mdui-field">
+                  <label htmlFor="block-type">Action</label>
+                  <select
+                    id="block-type"
+                    value={blockForm.action_type}
+                    onChange={(e) => setBlockForm((f) => ({ ...f, action_type: e.target.value }))}
+                  >
+                    <option value="block">Block</option>
+                    <option value="allow">Allow</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+                <Button variant="secondary" onClick={() => setBlockOpen(false)}>Cancel</Button>
+                <Button variant="primary" type="submit" disabled={submitting}>
+                  {submitting ? 'Applying…' : blockForm.action_type === 'allow' ? 'Allow IP' : 'Block IP'}
+                </Button>
               </div>
             </form>
           </div>

@@ -1,0 +1,178 @@
+[
+  {
+    "_id": "sdk_a6219fc37355712333458421",
+    "id": "sdk_a6219fc37355712333458421",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "name": "mahabub",
+    "domain": "mahabubur.shop",
+    "url": "https://mahabubur.shop",
+    "platform": "custom_sdk",
+    "framework": "python_fastapi",
+    "environment": "production",
+    "api_key": "mdef_live_a399af83086ffae4fe1e63c547444dc61d14fe65e7fcfee0",
+    "site_token": "mdf_stk_d5bda222ece04403f1e8435aac8f36c6",
+    "status": "active",
+    "protection_enabled": true,
+    "verified": true,
+    "waf_mode": "protect",
+    "threat_level": "LOW",
+    "connected_at": {
+      "$date": "2026-11-08T10:05:34.936Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-08T12:29:38.903Z"
+    },
+    "last_heartbeat": null,
+    "settings": {
+      "waf_mode": "protect",
+      "bot_shield": true,
+      "bot_sensitivity": "medium",
+      "rate_limit_rpm": 120,
+      "burst_limit_rps": 30,
+      "block_tor_vpn": false,
+      "country_blacklist": [],
+      "ip_blacklist": [],
+      "ip_whitelist": []
+    },
+    "metrics": {
+      "requests_today": 0,
+      "total_requests": 0,
+      "blocked_today": 0,
+      "total_blocked": 0,
+      "uptime_percentage": 100.0
+    },
+    "sdk_meta": {
+      "version": null,
+      "node_version": null,
+      "hostname": null,
+      "runtime": "python_fastapi"
+    },
+    "last_handshake": {
+      "$date": "2026-11-08T12:29:38.903Z"
+    }
+  },
+  {
+    "_id": "sdk_c9fc000d1010f567bd2cf039",
+    "id": "sdk_c9fc000d1010f567bd2cf039",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "name": "FastShop Live E-Commerce",
+    "domain": "fastshop-live.internal",
+    "url": "https://fastshop-live.internal",
+    "platform": "custom_sdk",
+    "framework": "node_express",
+    "environment": "production",
+    "api_key": "mdef_live_84dd0241669f30fb5469002ff3d5a68eb76b517811ce6336",
+    "site_token": "mdf_stk_296846cd8d5d268e67685185b18d9e50",
+    "status": "active",
+    "protection_enabled": true,
+    "verified": true,
+    "waf_mode": "protect",
+    "threat_level": "LOW",
+    "connected_at": {
+      "$date": "2026-11-08T10:13:19.526Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-08T13:03:50.840Z"
+    },
+    "last_heartbeat": {
+      "$date": "2026-11-08T10:46:23.637Z"
+    },
+    "settings": {
+      "waf_mode": "protect",
+      "bot_shield": false,
+      "bot_sensitivity": "medium",
+      "rate_limit_rpm": 60,
+      "burst_limit_rps": 30,
+      "block_tor_vpn": false,
+      "country_blacklist": [],
+      "ip_blacklist": [],
+      "ip_whitelist": []
+    },
+    "metrics": {
+      "requests_today": 345,
+      "total_requests": 345,
+      "blocked_today": 171,
+      "total_blocked": 171,
+      "uptime_percentage": 100.0
+    },
+    "sdk_meta": {
+      "version": "2.0.0",
+      "node_version": "v24.14.1",
+      "hostname": "DESKTOP-D349KC9",
+      "runtime": "node_express",
+      "os": "Windows_NT 10.0.26200",
+      "cpu_pct": null,
+      "memory_mb": 63.0,
+      "uptime_sec": 60
+    },
+    "last_handshake": {
+      "$date": "2026-11-08T10:45:23.626Z"
+    },
+    "blocked_today": 171,
+    "requests_today": 345,
+    "total_blocked": 171,
+    "total_requests": 345
+  },
+  {
+    "_id": "sdk_c7074d36a9b3aa67e02eb44e",
+    "id": "sdk_c7074d36a9b3aa67e02eb44e",
+    "user_id": "admin-user-001",
+    "name": "Book Store App",
+    "domain": "bookstore.local",
+    "url": "https://bookstore.local",
+    "platform": "custom_sdk",
+    "framework": "node",
+    "environment": "development",
+    "api_key": "mdef_live_45abaa97f7ea6efbf58340e7a111d09a239758cae8c58380",
+    "site_token": "mdf_stk_e5d1c0836fb162182ba46feb5c4ee9b5",
+    "status": "active",
+    "protection_enabled": true,
+    "verified": true,
+    "waf_mode": "protect",
+    "threat_level": "LOW",
+    "connected_at": {
+      "$date": "2026-11-08T12:30:37.281Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-08T15:39:25.728Z"
+    },
+    "last_heartbeat": {
+      "$date": "2026-11-08T15:39:25.728Z"
+    },
+    "settings": {
+      "waf_mode": "protect",
+      "bot_shield": true,
+      "bot_sensitivity": "medium",
+      "rate_limit_rpm": 120,
+      "burst_limit_rps": 30,
+      "block_tor_vpn": false,
+      "country_blacklist": [],
+      "ip_blacklist": [],
+      "ip_whitelist": []
+    },
+    "metrics": {
+      "requests_today": 3329,
+      "total_requests": 3329,
+      "blocked_today": 4091,
+      "total_blocked": 4091,
+      "uptime_percentage": 100.0
+    },
+    "sdk_meta": {
+      "version": "2.1.0",
+      "node_version": "v24.14.1",
+      "hostname": "DESKTOP-D349KC9",
+      "runtime": "node",
+      "os": "Windows_NT 10.0.26200",
+      "cpu_pct": null,
+      "memory_mb": 68.6,
+      "uptime_sec": 4620
+    },
+    "last_handshake": {
+      "$date": "2026-11-08T15:00:14.598Z"
+    },
+    "requests_today": 3329,
+    "total_requests": 3329,
+    "blocked_today": 4091,
+    "total_blocked": 4091
+  }
+]

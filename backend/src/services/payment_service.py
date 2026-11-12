@@ -5,7 +5,7 @@ Provides complete real-world multi-channel payment processing:
 - Stripe Webhook Verification (HMAC signature verification)
 - Credit / Debit Card direct PCI validation & tokenization
 - Bank Wire Transfer (Swift / Routing / IBAN verification)
-- Digital Wallet & Online Banking (bKash / PayPal)
+- Digital Wallet & Online Banking (PayPal)
 - Automated Subscription & Entitlement Lifecycle
 """
 
@@ -61,7 +61,7 @@ class PaymentService:
         return {
             "mode": os.getenv("PAYMENT_GATEWAY_MODE", "live"),
             "currency": "USD",
-            "supported_methods": ["stripe_checkout", "card", "bank_transfer", "bkash", "paypal"],
+            "supported_methods": ["stripe_checkout", "card", "bank_transfer", "paypal"],
             "stripe_publishable_key": self.stripe_publishable_key or "pk_live_51MdefSec_9482910481",
             "stripe_enabled": bool(self.stripe_secret_key and not self.stripe_secret_key.startswith("sk_live_51MdefSec")),
             "bank_details": {
@@ -74,7 +74,6 @@ class PaymentService:
                 "instructions": "Please include your Registered Email or Reference ID in the transfer memo."
             },
             "mobile_banking": {
-                "bkash_merchant": os.getenv("BKASH_MERCHANT_NO", "+8801715044575"),
                 "paypal_email": os.getenv("PAYPAL_EMAIL", "billing@mdefender.pro")
             },
             "plans": pricing_map

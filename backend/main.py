@@ -81,7 +81,7 @@ def ensure_default_wordpress_site():
                 'email': 'admin@mdefender-pro.io',
                 'username': 'admin',
                 'name': 'Mahabub (Super Admin)',
-                'password_hash': pw_svc.hash_password('admin123'),
+                'password_hash': pw_svc.hash_password(os.getenv('ADMIN_PASSWORD') or 'admin123'),
                 'api_key': wp_api_key,
                 'role': 'super_admin',
                 'is_admin': True,
@@ -217,6 +217,9 @@ async def startup_event():
     print(f"API Endpoint: http://localhost:{port}/api")
     print(f"Frontend App: http://localhost:5173")
     print("="*45 + "\n")
+
+    if os.getenv('APP_ENV', 'development').lower() == 'production' and (os.getenv('ADMIN_PASSWORD') or '').strip() in ('', 'admin123'):
+        raise RuntimeError('Refusing to start: set a strong, non-default ADMIN_PASSWORD before running with APP_ENV=production.')
 
     ensure_default_wordpress_site()
 
@@ -810,6 +813,8 @@ def verify_user_token_compat(request: Request):
     if not token:
         raise HTTPException(status_code=401, detail='Unauthorized')
     payload = jwt_svc.decode_access_token(token)
+    if payload and payload.get('mfa_pending'):
+        raise HTTPException(status_code=401, detail='MFA verification required')
     user = None
     if not payload:
         # Support WordPress Plugin API key authentication
@@ -1542,10 +1547,11 @@ async def user_dashboard(request: Request, user: dict = Depends(verify_user_toke
 
 @app.post("/api/user/upgrade-plan")
 async def upgrade_user_plan(request: Request, user: dict = Depends(verify_user_token_compat)):
-    data = await request.json()
-    plan = data.get('plan', 'premium')
-    days = data.get('days', 30)
-    return await asyncio.to_thread(user_api.upgrade_plan, user, plan=plan, days=days)
+    # Plan changes must originate from a verified payment webhook or an admin grant.
+    raise HTTPException(
+        status_code=403,
+        detail="Plan changes require a completed checkout or an administrator grant.",
+    )
 
 @app.post("/api/user/downgrade-plan")
 async def downgrade_user_plan(user: dict = Depends(verify_user_token_compat)):
@@ -1611,30 +1617,6 @@ async def process_payment_wallet(request: Request, user: dict = Depends(verify_u
     wallet_data = data.get('wallet_data', {})
     service = PaymentService()
     return service.process_wallet_payment(user, plan_id=plan, billing_cycle=cycle, wallet_data=wallet_data)
-
-@app.get("/api/payment/bkash/config")
-async def get_bkash_config_endpoint():
-    from src.services.bkash_service import BkashService
-    return BkashService().get_bkash_config()
-
-@app.post("/api/payment/bkash/create")
-async def create_bkash_payment_endpoint(request: Request, user: dict = Depends(verify_user_token_compat)):
-    from src.services.bkash_service import BkashService
-    data = await request.json()
-    plan = data.get('plan', 'pro')
-    cycle = data.get('billing_cycle', 'monthly')
-    frontend_url = data.get('frontend_url')
-    return BkashService().create_checkout_payment(user, plan_id=plan, billing_cycle=cycle, frontend_url=frontend_url)
-
-@app.post("/api/payment/bkash/verify")
-async def verify_bkash_payment_endpoint(request: Request, user: dict = Depends(verify_user_token_compat)):
-    from src.services.bkash_service import BkashService
-    data = await request.json()
-    trx_id = data.get('trx_id', '')
-    sender_mobile = data.get('sender_mobile', '')
-    plan = data.get('plan', 'pro')
-    cycle = data.get('billing_cycle', 'monthly')
-    return BkashService().verify_trx_id(user, trx_id=trx_id, sender_mobile=sender_mobile, plan_id=plan, billing_cycle=cycle)
 
 @app.get("/api/payment/history")
 async def get_user_payment_history(user: dict = Depends(verify_user_token_compat)):

@@ -91,12 +91,6 @@ class LoginService:
 
         password_hash = user.get('password_hash', '')
         is_pw_valid = self.password_service.verify_password(password, password_hash)
-        if not is_pw_valid and user.get('email') == 'user@gmail.com' and password in ('user123', 'password123', 'Admin123456!@', 'user'):
-            is_pw_valid = True
-            try:
-                self.db.users.update_one({'_id': user['_id']}, {'$set': {'password_hash': self.password_service.hash_password(password)}})
-            except Exception:
-                pass
 
         if not is_pw_valid:
             result = self.brute_force.record_failed_attempt(
@@ -302,39 +296,6 @@ class LoginService:
         user = self.db.users.find_one({'username': ident})
         if user:
             return user
-        if ident in ('user@gmail.com', 'user'):
-            seed_doc = {
-                'email': 'user@gmail.com',
-                'username': 'user',
-                'full_name': 'Demo User',
-                'name': 'Demo User',
-                'password_hash': self.password_service.hash_password('user123'),
-                'role': 'user',
-                'plan': 'pro',
-                'is_active': True,
-                'email_verified': True,
-                'api_key': 'mdf_live_sec_demo_key_9948',
-                'websites': [
-                    {
-                        'id': 'site_demo_1',
-                        'domain': 'mahabub.shop',
-                        'url': 'http://localhost/mahabub',
-                        'platform': 'wordpress',
-                        'verified': True,
-                        'status': 'online'
-                    }
-                ],
-                'created_at': datetime.now(timezone.utc),
-                'updated_at': datetime.now(timezone.utc),
-                'total_requests': 1420,
-                'total_blocked': 18
-            }
-            try:
-                res = self.db.users.insert_one(seed_doc)
-                seed_doc['_id'] = res.inserted_id if hasattr(res, 'inserted_id') else seed_doc.get('_id', 'usr_demo_1')
-            except Exception:
-                pass
-            return seed_doc
         return None
 
     def admin_login(self, username: str, password: str,

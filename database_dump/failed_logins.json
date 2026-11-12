@@ -1,0 +1,50 @@
+[
+  {
+    "_id": {
+      "$oid": "6a7eb45202d1d15635fccf6e"
+    },
+    "identifier": "fe_test_84856@example.com",
+    "ip": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "timestamp": {
+      "$date": "2026-08-14T06:23:14.574Z"
+    },
+    "metadata": {}
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb46e02d1d15635fccf70"
+    },
+    "identifier": "fe_test_58376@example.com",
+    "ip": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "timestamp": {
+      "$date": "2026-08-14T06:23:42.375Z"
+    },
+    "metadata": {}
+  },
+  {
+    "_id": {
+      "$oid": "6a7f0b5ef34ca42f1f5d68f8"
+    },
+    "identifier": "testuser2@mdefender.com",
+    "ip": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "timestamp": {
+      "$date": "2026-08-14T12:34:38.646Z"
+    },
+    "metadata": {}
+  },
+  {
+    "_id": {
+      "$oid": "6ae46de09af5309860d56c17"
+    },
+    "identifier": "user@example.com",
+    "ip": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "timestamp": {
+      "$date": "2026-10-30T10:13:52.244Z"
+    },
+    "metadata": {}
+  }
+]

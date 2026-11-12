@@ -126,6 +126,9 @@ async def get_current_admin(request: Request) -> str:
             raise HTTPException(status_code=401, detail='Not authenticated')
         raise HTTPException(status_code=401, detail='Invalid or expired token')
 
+    if payload.get('mfa_pending'):
+        raise HTTPException(status_code=401, detail='MFA verification required')
+
     if not payload.get('is_admin') and payload.get('role') not in ('super_admin', 'admin'):
         raise HTTPException(status_code=403, detail='Admin access required')
 

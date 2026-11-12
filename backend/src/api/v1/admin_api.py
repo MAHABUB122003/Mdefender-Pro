@@ -1724,7 +1724,7 @@ async def test_attack_evasion(body: TestEvasionBody, admin_email: str = Depends(
         "matched_virtual_patch": matched_patch.get("cve_id") if matched_patch else None,
         "latency_ms": elapsed_ms,
         "suggested_hot_patch": {
-            "cve_id": f"CVE-{datetime.now().year}-{secrets.randbelow(8999)+1000}",
+            "cve_id": "LOCAL-DRAFT",
             "name": "Rapid Fleet Blocker Signature",
             "component": "web-request",
             "pattern": suggested_pattern,
@@ -1747,15 +1747,13 @@ async def get_checksums_status(admin_email: str = Depends(get_current_admin)):
     db = get_db()
     cached_versions = list(db.system_cache.find({"key": {"$regex": "^wp_checksums_"}}, {"version": 1, "total_files": 1, "cached_at": 1}))
     total_signatures = sum(v.get("total_files", 0) for v in cached_versions)
-    if total_signatures == 0:
-        total_signatures = 5324810
 
     return success({
         "upstream_latest_version": latest_ver,
         "total_signatures": total_signatures,
-        "cached_versions_count": max(len(cached_versions), 18),
+        "cached_versions_count": len(cached_versions),
         "last_synced": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
-        "integrity_status": "SYNCHRONIZED",
+        "integrity_status": "SYNCHRONIZED" if total_signatures else "NOT_SYNCED",
         "official_source": "https://api.wordpress.org/core/checksums/1.0/"
     })
 
@@ -1773,15 +1771,15 @@ async def sync_wordpress_checksums(admin_email: str = Depends(get_current_admin)
         user_id=admin_email,
         action="wordpress_checksums_synced",
         ip_address="admin_panel",
-        details={"version": latest_ver, "files_indexed": len(checksums) if checksums else 1842}
+        details={"version": latest_ver, "files_indexed": len(checksums or [])}
     )
 
     return success({
         "synced_version": latest_ver,
-        "files_indexed": len(checksums) if checksums else 1842,
+        "files_indexed": len(checksums or []),
         "synced_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
         "status": "UP_TO_DATE"
-    }, message=f"Successfully synchronized {len(checksums) if checksums else 1842} official core checksums for WordPress {latest_ver}.")
+    }, message=f"Successfully synchronized {len(checksums or [])} official core checksums for WordPress {latest_ver}.")
 
 
 # ==================== FLEET GLOBAL BROADCAST NOTICE ====================

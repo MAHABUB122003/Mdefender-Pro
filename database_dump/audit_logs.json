@@ -1,0 +1,7603 @@
+[
+  {
+    "_id": {
+      "$oid": "6a7ea5def80ca7ee63ca88f5"
+    },
+    "user_id": "admin_admin",
+    "action": "admin_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T05:21:34.969Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eaf060517dd8ac2aa8e2e"
+    },
+    "user_id": "6a7eaf060517dd8ac2aa8e2c",
+    "action": "register",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "smoke_v1_test@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:00:38.534Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eaf0c0517dd8ac2aa8e30"
+    },
+    "user_id": "6a7eaf060517dd8ac2aa8e2c",
+    "action": "login",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:00:44.843Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eaf3b4b59ab26c1826d12"
+    },
+    "user_id": "6a7eaf3b4b59ab26c1826d10",
+    "action": "register",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "smoke_v1_test@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:01:31.227Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eaf414b59ab26c1826d14"
+    },
+    "user_id": "6a7eaf3b4b59ab26c1826d10",
+    "action": "login",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:01:37.215Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eaf60b8dd03b4129bcec2"
+    },
+    "user_id": "6a7eaf60b8dd03b4129bcec0",
+    "action": "register",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "smoke_v1_test@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:02:08.343Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eaf67b8dd03b4129bcec4"
+    },
+    "user_id": "6a7eaf60b8dd03b4129bcec0",
+    "action": "login",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:02:15.274Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eaf67b8dd03b4129bcec6"
+    },
+    "user_id": "6a7eaf60b8dd03b4129bcec0",
+    "action": "website_added",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "7b2956a9-2ffe-4ddc-9a96-b5dbc4bab596",
+      "url": "https://smoke-example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:02:15.408Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eaf7e0929361204e20f9f"
+    },
+    "user_id": "6a7eaf7e0929361204e20f9d",
+    "action": "register",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "smoke_v1_test@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:02:38.261Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eaf840929361204e20fa1"
+    },
+    "user_id": "6a7eaf7e0929361204e20f9d",
+    "action": "login",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:02:44.313Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eaf9dc85b0088cd8dc68b"
+    },
+    "user_id": "6a7eaf9dc85b0088cd8dc689",
+    "action": "register",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "smoke_v1_test@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:03:09.707Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eafa4c85b0088cd8dc68d"
+    },
+    "user_id": "6a7eaf9dc85b0088cd8dc689",
+    "action": "login",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:03:16.041Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eafb71747ec163562a745"
+    },
+    "user_id": "6a7eafb71747ec163562a743",
+    "action": "register",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "smoke_v1_test@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:03:35.759Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eafbd1747ec163562a747"
+    },
+    "user_id": "6a7eafb71747ec163562a743",
+    "action": "login",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:03:41.717Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eafbd1747ec163562a749"
+    },
+    "user_id": "6a7eafb71747ec163562a743",
+    "action": "website_added",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "9182fc93-b39c-486f-b721-2fd674d1cb17",
+      "url": "https://smoke-example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:03:41.750Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eafefba7ef88d48826485"
+    },
+    "user_id": "6a7eafefba7ef88d48826483",
+    "action": "register",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "smoke_v1_test@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:04:31.947Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eaff5ba7ef88d48826487"
+    },
+    "user_id": "6a7eafefba7ef88d48826483",
+    "action": "login",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:04:37.821Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eaff5ba7ef88d48826489"
+    },
+    "user_id": "6a7eafefba7ef88d48826483",
+    "action": "website_added",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "e9a3de6f-9e61-48eb-819b-ba4f290ac1eb",
+      "url": "https://smoke-example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:04:37.847Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb009e1fefcb34955c5e1"
+    },
+    "user_id": "6a7eb009e1fefcb34955c5df",
+    "action": "register",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "smoke_v1_test@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:04:57.488Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb00fe1fefcb34955c5e3"
+    },
+    "user_id": "6a7eb009e1fefcb34955c5df",
+    "action": "login",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:05:03.313Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb00fe1fefcb34955c5e5"
+    },
+    "user_id": "6a7eb009e1fefcb34955c5df",
+    "action": "website_added",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "accf9433-135b-4d58-9f31-5c0be8c1d57b",
+      "url": "https://smoke-example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:05:03.399Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb0249c4d1dbb197275af"
+    },
+    "user_id": "6a7eb0249c4d1dbb197275ad",
+    "action": "register",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "smoke_v1_test@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:05:24.864Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb02a9c4d1dbb197275b1"
+    },
+    "user_id": "6a7eb0249c4d1dbb197275ad",
+    "action": "login",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:05:30.705Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb02a9c4d1dbb197275b3"
+    },
+    "user_id": "6a7eb0249c4d1dbb197275ad",
+    "action": "website_added",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "0038c88c-1d24-4378-909c-a0e2ce4c2ef1",
+      "url": "https://smoke-example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:05:30.733Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb05885aab60e4eb51a77"
+    },
+    "user_id": "6a7eb0249c4d1dbb197275ad",
+    "action": "login",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:06:16.798Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb06ee326fce86d722976"
+    },
+    "user_id": "6a7eb06ee326fce86d722974",
+    "action": "register",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "smoke_v1_test@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:06:38.856Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb075e326fce86d722978"
+    },
+    "user_id": "6a7eb06ee326fce86d722974",
+    "action": "login",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:06:45.133Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb075e326fce86d72297a"
+    },
+    "user_id": "6a7eb06ee326fce86d722974",
+    "action": "website_added",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "facb2b87-b6d6-4fc4-9a0d-9554f8da22a2",
+      "url": "https://smoke-example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:06:45.177Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb09cd1f0cff4e2124f8d"
+    },
+    "user_id": "admin_admin",
+    "action": "admin_login",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:07:24.188Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb09cd1f0cff4e2124f8e"
+    },
+    "user_id": "admin",
+    "action": "plan_granted",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "user_id": "smoke_v1_test@example.com",
+      "plan": "pro"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:07:24.514Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb0b0ac72d6c3054361a8"
+    },
+    "user_id": "admin_admin",
+    "action": "admin_login",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:07:44.504Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb0b0ac72d6c3054361a9"
+    },
+    "user_id": "admin",
+    "action": "plan_granted",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "user_id": "smoke_v1_test@example.com",
+      "plan": "pro"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:07:44.517Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb0c35c742e2b9d4122c6"
+    },
+    "user_id": "admin_admin",
+    "action": "admin_login",
+    "ip_address": "testclient",
+    "user_agent": "testclient",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:08:03.721Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb0c45c742e2b9d4122c7"
+    },
+    "user_id": "admin",
+    "action": "plan_granted",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "user_id": "smoke_v1_test@example.com",
+      "plan": "pro"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:08:04.099Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb0c55c742e2b9d4122c8"
+    },
+    "user_id": "admin",
+    "action": "feature_flag_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "flag": "technical_dashboard_enabled",
+      "enabled": true
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:08:05.226Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb49002d1d15635fccf74"
+    },
+    "user_id": "6a7eb49002d1d15635fccf72",
+    "action": "register",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "fe_test_22321@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:24:16.535Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb4b002d1d15635fccf77"
+    },
+    "user_id": "6a7eb4b002d1d15635fccf75",
+    "action": "register",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "fe_test_83351@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:24:48.665Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb4b102d1d15635fccf79"
+    },
+    "user_id": "6a7eb4b002d1d15635fccf75",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:24:49.268Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb4b102d1d15635fccf7b"
+    },
+    "user_id": "6a7eb4b002d1d15635fccf75",
+    "action": "website_added",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "b7b058ca-38b8-42cd-b48c-98a435e6a1f7",
+      "url": "https://fe-test.example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:24:49.304Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb4b202d1d15635fccf80"
+    },
+    "user_id": "6a7eb4b002d1d15635fccf75",
+    "action": "website_removed",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "b7b058ca-38b8-42cd-b48c-98a435e6a1f7"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:24:50.782Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb50c02d1d15635fccf81"
+    },
+    "user_id": "admin_admin",
+    "action": "admin_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:26:20.371Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb54102d1d15635fccf82"
+    },
+    "user_id": "admin_admin",
+    "action": "admin_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:27:13.974Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb60377baddee636233cc"
+    },
+    "user_id": "6a7e1cb8856ac73ae5289a06",
+    "action": "google_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:30:27.905Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb61377baddee636233ce"
+    },
+    "user_id": "6a7e1cb8856ac73ae5289a06",
+    "action": "google_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:30:43.184Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb76277baddee636233cf"
+    },
+    "user_id": "6a7e1cb8856ac73ae5289a06",
+    "action": "logout",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:36:18.415Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb82977baddee636233d2"
+    },
+    "user_id": "6a7eb82977baddee636233d0",
+    "action": "register",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "plugtest_81234@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:39:37.829Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb8370cc374974e154f59"
+    },
+    "user_id": "6a7eb82977baddee636233d0",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:39:51.693Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb8370cc374974e154f5b"
+    },
+    "user_id": "6a7eb82977baddee636233d0",
+    "action": "website_added",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "485bc730-fa76-44ce-9d0e-968040d90cec",
+      "url": "https://plugtest.example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:39:51.710Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb84c0cc374974e154f5d"
+    },
+    "user_id": "6a7eb82977baddee636233d0",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:40:12.206Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb86d0cc374974e154f60"
+    },
+    "user_id": "6a7eb86d0cc374974e154f5e",
+    "action": "register",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "plugtest_96262@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:40:45.953Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb86e0cc374974e154f62"
+    },
+    "user_id": "6a7eb86d0cc374974e154f5e",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:40:46.315Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb86e0cc374974e154f64"
+    },
+    "user_id": "6a7eb86d0cc374974e154f5e",
+    "action": "website_added",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "c0e2062a-02dc-48c8-8445-ff2951bb36d9",
+      "url": "https://plugtest.example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:40:46.330Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb86e0cc374974e154f66"
+    },
+    "user_id": "6a7eb86d0cc374974e154f5e",
+    "action": "api_key_created",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "c0e2062a-02dc-48c8-8445-ff2951bb36d9"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:40:46.337Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb8ba0cc374974e154f6c"
+    },
+    "user_id": "6a7eb8ba0cc374974e154f6a",
+    "action": "register",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "dbg_38762@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:42:02.140Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb8ba0cc374974e154f6e"
+    },
+    "user_id": "6a7eb8ba0cc374974e154f6a",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:42:02.513Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb8ba0cc374974e154f70"
+    },
+    "user_id": "6a7eb8ba0cc374974e154f6a",
+    "action": "website_added",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "72ff8ca3-6667-4424-a1bf-6af1d858ed37",
+      "url": "https://dbg.example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:42:02.526Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb8ba0cc374974e154f72"
+    },
+    "user_id": "6a7eb8ba0cc374974e154f6a",
+    "action": "api_key_created",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "72ff8ca3-6667-4424-a1bf-6af1d858ed37"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:42:02.533Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb8da0cc374974e154f75"
+    },
+    "user_id": "6a7eb8da0cc374974e154f73",
+    "action": "register",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "plugtest_93402@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:42:34.780Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb8db0cc374974e154f77"
+    },
+    "user_id": "6a7eb8da0cc374974e154f73",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:42:35.259Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb8e64fa51a521b9ade5c"
+    },
+    "user_id": "6a7eb8da0cc374974e154f73",
+    "action": "website_added",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "9705cf1a-80b5-4c06-997f-79abcbf5d04d",
+      "url": "https://plugtest.example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:42:46.478Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb8e64fa51a521b9ade5e"
+    },
+    "user_id": "6a7eb8da0cc374974e154f73",
+    "action": "api_key_created",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "9705cf1a-80b5-4c06-997f-79abcbf5d04d"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:42:46.485Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eba004fa51a521b9ade64"
+    },
+    "user_id": "6a7eba004fa51a521b9ade62",
+    "action": "register",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "finalplug_41582467@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:47:28.803Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eba0d4fa51a521b9ade67"
+    },
+    "user_id": "6a7eba0d4fa51a521b9ade65",
+    "action": "register",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "finalplug_14738062@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:47:41.598Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eba194fa51a521b9ade6a"
+    },
+    "user_id": "6a7eba194fa51a521b9ade68",
+    "action": "register",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "finalplug_23752710@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:47:53.424Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eba194fa51a521b9ade6c"
+    },
+    "user_id": "6a7eba194fa51a521b9ade68",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:47:53.822Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eba194fa51a521b9ade6e"
+    },
+    "user_id": "6a7eba194fa51a521b9ade68",
+    "action": "website_added",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "82688225-279a-4e81-ae24-9078adc21eeb",
+      "url": "https://final-plug.example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:47:53.876Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eba3b4fa51a521b9ade77"
+    },
+    "user_id": "6a7eba3b4fa51a521b9ade75",
+    "action": "register",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "fpcheck_30070616@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:48:27.058Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eba3b4fa51a521b9ade79"
+    },
+    "user_id": "6a7eba3b4fa51a521b9ade75",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:48:27.403Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eba3b4fa51a521b9ade7b"
+    },
+    "user_id": "6a7eba3b4fa51a521b9ade75",
+    "action": "website_added",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "6b8dee71-91d4-428d-8c4d-38cfa6cff058",
+      "url": "https://fp.example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:48:27.416Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eba464fa51a521b9ade80"
+    },
+    "user_id": "admin_admin",
+    "action": "admin_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:48:38.795Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eba544fa51a521b9ade83"
+    },
+    "user_id": "6a7eba544fa51a521b9ade81",
+    "action": "register",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "finalplug_98123981@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:48:52.408Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eba544fa51a521b9ade85"
+    },
+    "user_id": "6a7eba544fa51a521b9ade81",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:48:52.828Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eba714fa51a521b9ade88"
+    },
+    "user_id": "6a7eba714fa51a521b9ade86",
+    "action": "register",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "finalplug_32281262@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:49:21.852Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eba724fa51a521b9ade8a"
+    },
+    "user_id": "6a7eba714fa51a521b9ade86",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:49:22.191Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eba724fa51a521b9ade8c"
+    },
+    "user_id": "6a7eba714fa51a521b9ade86",
+    "action": "website_added",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "a99112e5-7f88-4709-adb6-682d0198fad6",
+      "url": "https://final-plug.example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:49:22.204Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eba974fa51a521b9ade91"
+    },
+    "user_id": "admin_admin",
+    "action": "admin_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:49:59.560Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebaa37a0ac36510cd50ee"
+    },
+    "user_id": "6a7ebaa37a0ac36510cd50ec",
+    "action": "register",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "finalplug_70333539@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:50:11.651Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebaa37a0ac36510cd50f0"
+    },
+    "user_id": "6a7ebaa37a0ac36510cd50ec",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:50:11.970Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebaa37a0ac36510cd50f2"
+    },
+    "user_id": "6a7ebaa37a0ac36510cd50ec",
+    "action": "website_added",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "1b4f90cf-7aa2-45d2-9687-be4cfce0c38a",
+      "url": "https://final-plug.example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T06:50:11.985Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebf0f7a0ac36510cd50fb"
+    },
+    "user_id": "6a7ebf0f7a0ac36510cd50f9",
+    "action": "register",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Python-urllib/3.12",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "e2e_7a3b6178@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T07:09:03.199Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebf117a0ac36510cd50fd"
+    },
+    "user_id": "6a7ebf0f7a0ac36510cd50f9",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Python-urllib/3.12",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T07:09:05.783Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebf287a0ac36510cd5100"
+    },
+    "user_id": "6a7ebf287a0ac36510cd50fe",
+    "action": "register",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Python-urllib/3.12",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "e2e_23ccf57b@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T07:09:28.456Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebf2b7a0ac36510cd5102"
+    },
+    "user_id": "6a7ebf287a0ac36510cd50fe",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Python-urllib/3.12",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T07:09:31.048Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebf417a0ac36510cd5105"
+    },
+    "user_id": "6a7ebf417a0ac36510cd5103",
+    "action": "register",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "e2e_84d3d816@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T07:09:53.547Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebf417a0ac36510cd5107"
+    },
+    "user_id": "6a7ebf417a0ac36510cd5103",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T07:09:53.934Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebf4e7a0ac36510cd510a"
+    },
+    "user_id": "6a7ebf4e7a0ac36510cd5108",
+    "action": "register",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "e2e_da58fca1@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T07:10:06.792Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebf4f7a0ac36510cd510c"
+    },
+    "user_id": "6a7ebf4e7a0ac36510cd5108",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T07:10:07.181Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebf4f7a0ac36510cd510e"
+    },
+    "user_id": "6a7ebf4e7a0ac36510cd5108",
+    "action": "website_added",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "b08ffd31-5c26-4e9e-bf94-afa898f81245",
+      "url": "https://wp-demo-64f77508.example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T07:10:07.193Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebf5f7a0ac36510cd5111"
+    },
+    "user_id": "6a7ebf5f7a0ac36510cd510f",
+    "action": "register",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "e2e_aea78369@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T07:10:23.061Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebf5f7a0ac36510cd5113"
+    },
+    "user_id": "6a7ebf5f7a0ac36510cd510f",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T07:10:23.368Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebf5f7a0ac36510cd5115"
+    },
+    "user_id": "6a7ebf5f7a0ac36510cd510f",
+    "action": "website_added",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "bca9072e-07a2-4e6e-b551-8106665d60ea",
+      "url": "https://wp-demo-b1fd4842.example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T07:10:23.381Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebf727a0ac36510cd511c"
+    },
+    "user_id": "6a7ebf727a0ac36510cd511a",
+    "action": "register",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "e2e_7cb112f8@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T07:10:42.430Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebf727a0ac36510cd511e"
+    },
+    "user_id": "6a7ebf727a0ac36510cd511a",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T07:10:42.732Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebf727a0ac36510cd5120"
+    },
+    "user_id": "6a7ebf727a0ac36510cd511a",
+    "action": "website_added",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "a2afb20a-fed0-477b-942d-d340fb363775",
+      "url": "https://wp-demo-445da97a.example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T07:10:42.745Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ecede7a0ac36510cd5126"
+    },
+    "user_id": "admin_admin",
+    "action": "admin_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T08:16:30.007Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ecf267a0ac36510cd5127"
+    },
+    "user_id": "admin_admin",
+    "action": "admin_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T08:17:42.124Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ed0433b5cc75a67aee982"
+    },
+    "user_id": "admin_admin",
+    "action": "admin_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T08:22:27.003Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ed1d33b5cc75a67aee984"
+    },
+    "user_id": "6a6b1911d72083319bdd09bc",
+    "action": "google_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T08:29:07.816Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ee54cf34ca42f1f5d68f3"
+    },
+    "user_id": "6a6b1911d72083319bdd09bc",
+    "action": "google_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T09:52:12.094Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eec2ff34ca42f1f5d68f5"
+    },
+    "user_id": "6a7e1cb8856ac73ae5289a06",
+    "action": "google_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T10:21:35.750Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eee5bf34ca42f1f5d68f7"
+    },
+    "user_id": "6a6b1911d72083319bdd09bc",
+    "action": "google_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T10:30:51.730Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7f0b92f34ca42f1f5d68fc"
+    },
+    "user_id": "6a7f0b92f34ca42f1f5d68fa",
+    "action": "register",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "localdiag1786710925@gmail.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T12:35:30.242Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7f0be0f34ca42f1f5d68fe"
+    },
+    "user_id": "6a6b1911d72083319bdd09bc",
+    "action": "google_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T12:36:48.782Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7f1430f34ca42f1f5d6900"
+    },
+    "user_id": "6a6b1911d72083319bdd09bc",
+    "action": "google_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-08-14T13:12:16.731Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6adef7217315288c59270c7a"
+    },
+    "user_id": "test_user_bulk_123",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "6adef7217315288c59270c78",
+      "updates": [
+        "disable_xmlrpc",
+        "block_uploads_php",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-10-26T06:45:53.991Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6adef765ba9c15773f339001"
+    },
+    "user_id": "test_user_bulk_123",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "6adef765ba9c15773f338fff",
+      "updates": [
+        "disable_xmlrpc",
+        "block_uploads_php",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-10-26T06:47:01.884Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6adef7cc70b4c390d0bfc04b"
+    },
+    "user_id": "test_user_bulk_123",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "6adef7cc70b4c390d0bfc049",
+      "updates": [
+        "disable_xmlrpc",
+        "block_uploads_php",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-10-26T06:48:44.542Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6adef7e3a754be895b20e5b9"
+    },
+    "user_id": "test_user_bulk_123",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "6adef7e3a754be895b20e5b7",
+      "updates": [
+        "disable_xmlrpc",
+        "block_uploads_php",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-10-26T06:49:07.208Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6adef7ff55b0dead9aa4ffb5"
+    },
+    "user_id": "test_user_bulk_123",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "6adef7ff55b0dead9aa4ffb3",
+      "updates": [
+        "disable_xmlrpc",
+        "block_uploads_php",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-10-26T06:49:35.500Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6adef81e7827013a1ede9f01"
+    },
+    "user_id": "test_user_bulk_123",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "6adef81e7827013a1ede9eff",
+      "updates": [
+        "disable_xmlrpc",
+        "block_uploads_php",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-10-26T06:50:06.067Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6ae5a7ba41a4da9248ae0822"
+    },
+    "user_id": "admin-user-001",
+    "action": "core_policy_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "site_demo_1",
+      "domain": "mahabub.shop",
+      "policy": "disabled"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-10-31T08:32:58.519Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6ae753f7d6d53a70aeb8539c"
+    },
+    "user_id": "admin-user-001",
+    "action": "malware_quarantined",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "file": "wp-content/plugins/create_backdoor_admin.php",
+      "category": "malware"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-01T15:00:07.346Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aec95ce5b9bc510c4c68a4f"
+    },
+    "user_id": "admin-user-001",
+    "action": "ip_unblocked",
+    "ip_address": "198.51.100.77",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "ip": "198.51.100.77",
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "target": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "category": "security"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-05T14:42:22.979Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aec95d25b9bc510c4c68a50"
+    },
+    "user_id": "admin-user-001",
+    "action": "ip_unblocked",
+    "ip_address": "198.51.100.77",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "ip": "198.51.100.77",
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "target": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "category": "security"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-05T14:42:26.682Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aec95f65b9bc510c4c68a51"
+    },
+    "user_id": "admin-user-001",
+    "action": "ip_unblocked",
+    "ip_address": "198.51.100.77",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "ip": "198.51.100.77",
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "target": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "category": "security"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-05T14:43:02.597Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aec95f95b9bc510c4c68a52"
+    },
+    "user_id": "admin-user-001",
+    "action": "ip_unblocked",
+    "ip_address": "198.51.100.77",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "ip": "198.51.100.77",
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "target": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "category": "security"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-05T14:43:05.924Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aec99a65b9bc510c4c68a53"
+    },
+    "user_id": "admin-user-001",
+    "action": "ip_unblocked",
+    "ip_address": "198.51.100.123",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "ip": "198.51.100.123",
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "target": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "category": "security"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-05T14:58:46.204Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aec99a95b9bc510c4c68a54"
+    },
+    "user_id": "admin-user-001",
+    "action": "ip_unblocked",
+    "ip_address": "198.51.100.123",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "ip": "198.51.100.123",
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "target": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "category": "security"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-05T14:58:49.902Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aec99e65b9bc510c4c68a55"
+    },
+    "user_id": "admin-user-001",
+    "action": "ip_unblocked",
+    "ip_address": "198.51.100.123",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "ip": "198.51.100.123",
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "target": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "category": "security"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-05T14:59:50.381Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aec99e95b9bc510c4c68a56"
+    },
+    "user_id": "admin-user-001",
+    "action": "ip_unblocked",
+    "ip_address": "198.51.100.123",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "ip": "198.51.100.123",
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "target": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "category": "security"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-05T14:59:53.275Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af011fb58604e1d18494e87"
+    },
+    "user_id": "admin-user-001",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-08T06:08:59.459Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0120458604e1d18494e89"
+    },
+    "user_id": "admin-user-001",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-08T06:09:08.109Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0120958604e1d18494e8b"
+    },
+    "user_id": "admin-user-001",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-08T06:09:13.541Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0122658604e1d18494e8d"
+    },
+    "user_id": "admin-user-001",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-08T06:09:42.670Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a419a2b5039e27dd57e4"
+    },
+    "user_id": "admin-user-001",
+    "action": "ip_unblocked",
+    "ip_address": "198.51.100.88",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "ip": "198.51.100.88",
+      "website_id": "site_54a1944fb65c",
+      "target": "site_54a1944fb65c",
+      "category": "security"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-08T16:32:25.034Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a419a2b5039e27dd57e5"
+    },
+    "user_id": "admin-user-001",
+    "action": "ip_unblocked",
+    "ip_address": "198.51.100.88",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "ip": "198.51.100.88",
+      "website_id": "site_54a1944fb65c",
+      "target": "site_54a1944fb65c",
+      "category": "security"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-08T16:32:25.088Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af18ecc76713079babca6aa"
+    },
+    "user_id": "admin_admin",
+    "action": "admin_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T09:13:48.845Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af193fc76713079babca6ab"
+    },
+    "user_id": "admin_admin",
+    "action": "admin_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T09:35:56.768Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1a38a18df6e7c02723411"
+    },
+    "user_id": "admin",
+    "action": "dynamic_pricing_updated",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "base_monthly_rate": 4.0,
+      "base_yearly_rate": 40.0,
+      "trial_days": 14,
+      "currency": "USD"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T10:42:18.375Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1a38a18df6e7c02723412"
+    },
+    "user_id": "admin",
+    "action": "pricing_plans_updated",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "plans_updated": [
+        "free",
+        "go",
+        "pro",
+        "enterprise"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T10:42:18.379Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1a3c118df6e7c02723413"
+    },
+    "user_id": "admin",
+    "action": "dynamic_pricing_updated",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "base_monthly_rate": 4.0,
+      "base_yearly_rate": 40.0,
+      "trial_days": 14,
+      "currency": "USD"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T10:43:13.523Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1a3c118df6e7c02723414"
+    },
+    "user_id": "admin",
+    "action": "pricing_plans_updated",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "plans_updated": [
+        "free",
+        "go",
+        "pro",
+        "enterprise"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T10:43:13.529Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1a3d318df6e7c02723415"
+    },
+    "user_id": "admin_admin",
+    "action": "logout",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T10:43:31.995Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1a3db18df6e7c02723416"
+    },
+    "user_id": "admin_admin",
+    "action": "admin_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T10:43:39.248Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1a83f7b019b8c7d5dcc99"
+    },
+    "user_id": "admin@mdefender.pro",
+    "action": "user_impersonation_session_created",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "impersonated_user": "e2e_7a3b6178@example.com",
+      "duration_minutes": 30
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T11:02:23.056Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1aa3957dacc02da937cba"
+    },
+    "user_id": "admin@mdefender-pro.io",
+    "action": "compliance_settings_updated",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "ip_anonymization": true,
+      "data_retention_days": 90,
+      "soc2_audit_trail": true,
+      "cookie_consent_mode": "gdpr_strict"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T11:10:49.033Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1aa5557dacc02da937cbb"
+    },
+    "user_id": "admin@mdefender-pro.io",
+    "action": "gdpr_data_bundle_exported",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "user_id": "6a7ebf0f7a0ac36510cd50f9",
+      "user_email": "e2e_7a3b6178@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T11:11:17.763Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1aaf396628cd430f69902"
+    },
+    "user_id": "admin@mdefender-pro.io",
+    "action": "compliance_settings_updated",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "ip_anonymization": true,
+      "data_retention_days": 90,
+      "soc2_audit_trail": true,
+      "cookie_consent_mode": "gdpr_strict"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T11:13:55.849Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1aaf396628cd430f69903"
+    },
+    "user_id": "admin@mdefender-pro.io",
+    "action": "gdpr_data_bundle_exported",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "user_id": "6a7ebf0f7a0ac36510cd50f9",
+      "user_email": "e2e_7a3b6178@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T11:13:55.863Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1ab8cf93158567121620d"
+    },
+    "user_id": "admin@mdefender-pro.io",
+    "action": "wordpress_checksums_synced",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "version": "6.7.2",
+      "files_indexed": 3224
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T11:16:28.868Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1b8f44b325229fd5c53ca"
+    },
+    "user_id": "admin@mdefender-pro.io",
+    "action": "fleet_notice_broadcast",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "title": "WordPress 6.7.2 Fleet Integrity Check Completed",
+      "severity": "info"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T12:13:40.431Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1b9004b325229fd5c53cb"
+    },
+    "user_id": "admin",
+    "action": "user_impersonation_session_created",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "impersonated_user": "admin@mdefender-pro.io",
+      "duration_minutes": 30
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T12:13:52.801Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1e9aa00050a27c30504d3"
+    },
+    "user_id": "admin",
+    "action": "user_unlocked",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "unlocked_user": "admin@mdefender-pro.io",
+      "user_id": "admin-user-001"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T15:41:30.889Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1e9ad00050a27c30504d4"
+    },
+    "user_id": "admin",
+    "action": "user_unlocked",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "unlocked_user": "admin@mdefender-pro.io",
+      "user_id": "admin-user-001"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T15:41:33.072Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1e9b000050a27c30504d5"
+    },
+    "user_id": "admin",
+    "action": "user_email_force_verified",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "target_email": "admin@mdefender-pro.io",
+      "user_id": "admin-user-001"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T15:41:36.631Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1e9b900050a27c30504d6"
+    },
+    "user_id": "admin",
+    "action": "user_api_key_reset",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "user_email": "admin@mdefender-pro.io",
+      "user_id": "admin-user-001"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T15:41:45.193Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1e9e000050a27c30504d7"
+    },
+    "user_id": "admin",
+    "action": "user_impersonation_session_created",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "impersonated_user": "admin@mdefender-pro.io",
+      "duration_minutes": 30
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T15:42:24.214Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1ebba051744b5d7d36695"
+    },
+    "user_id": "admin",
+    "action": "user_impersonation_session_created",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "impersonated_user": "admin@mdefender-pro.io",
+      "duration_minutes": 30
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T15:50:18.953Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1f22a0924e43a6742cf43"
+    },
+    "user_id": "admin_admin",
+    "action": "plugin_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "site_e6972fbd7efa",
+      "action": "bulk_plugins_action",
+      "target": "",
+      "status": null
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T16:17:46.592Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1f26d0924e43a6742cf44"
+    },
+    "user_id": "admin_admin",
+    "action": "plugin_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "site_e6972fbd7efa",
+      "action": "bulk_plugins_action",
+      "target": "",
+      "status": null
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T16:18:53.452Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1f2920924e43a6742cf45"
+    },
+    "user_id": "admin_admin",
+    "action": "plugin_toggled",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "site_e6972fbd7efa",
+      "action": "toggle_plugin",
+      "target": "akismet/akismet.php",
+      "status": "active"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T16:19:30.630Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1f3070924e43a6742cf48"
+    },
+    "user_id": "admin_admin",
+    "action": "plugin_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "site_e6972fbd7efa",
+      "action": "bulk_plugins_action",
+      "target": "",
+      "status": null
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T16:21:27.675Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1f3d20924e43a6742cf49"
+    },
+    "user_id": "admin_admin",
+    "action": "plugin_toggled",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "site_e6972fbd7efa",
+      "action": "toggle_plugin",
+      "target": "akismet/akismet.php",
+      "status": "inactive"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T16:24:50.106Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1f74e0924e43a6742cf4a"
+    },
+    "user_id": "admin_admin",
+    "action": "plugin_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "site_e6972fbd7efa",
+      "action": "bulk_plugins_action",
+      "target": "",
+      "status": null
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T16:39:42.408Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af2133ef94d38064bbb3801"
+    },
+    "user_id": "admin_admin",
+    "action": "logout",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-09T18:38:54.901Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af31aaabaef0cfe08f8e0e1"
+    },
+    "user_id": "rahmanmdmahabubur575@gmail.com",
+    "action": "register_pending_otp_generated",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "rahmanmdmahabubur575@gmail.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T13:22:50.409Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af35bed5e4aa5f015bb6baf"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "test_alert_dispatched",
+    "ip_address": "127.0.0.1",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "title": "MDefender Pro Security Verification Test",
+      "category": "test"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T18:01:17.170Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af35bf15e4aa5f015bb6bb0"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "all_notifications_cleared",
+    "ip_address": "127.0.0.1",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T18:01:21.134Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af35dcb5e4aa5f015bb6bb6"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T18:09:15.591Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af35dec5e4aa5f015bb6bb8"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T18:09:48.506Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af35dee5e4aa5f015bb6bb9"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "api_key_rotated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "type": "master_account_key",
+      "prefix": "3b823c36\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u202297dde682"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T18:09:50.554Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af35df05e4aa5f015bb6bbb"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T18:09:52.905Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af35edf5b8774d55f2a7b25"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T18:13:51.510Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af35ee15b8774d55f2a7b27"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "api_key_rotated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "type": "user_account_key",
+      "prefix": "970e0966\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u202290db73bc"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T18:13:53.584Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af35ee45b8774d55f2a7b29"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T18:13:56.018Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af35f7b5099016f2373e3cd"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T18:16:27.079Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af35f825099016f2373e3cf"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "api_key_rotated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "type": "user_account_key",
+      "prefix": "e442fbca\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u20223b76c570"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T18:16:34.133Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af365745099016f2373e3df"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "logout",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T18:41:56.713Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3687f5099016f2373e3e6"
+    },
+    "user_id": "admin_admin",
+    "action": "admin_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T18:54:55.012Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af369124961f4b77704ffa6"
+    },
+    "user_id": "admin_admin",
+    "action": "logout",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T18:57:22.318Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af369ab4961f4b77704ffa9"
+    },
+    "user_id": "rahmanmdmahabubur575@gmail.com",
+    "action": "register_pending_otp_generated",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "rahmanmdmahabubur575@gmail.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T18:59:55.466Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af369be4961f4b77704ffab"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "email_verified_and_account_created",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "rahmanmdmahabubur575@gmail.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:00:14.092Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af369ce4961f4b77704ffad"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:00:30.750Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36b700346b043adaf3e39"
+    },
+    "user_id": "onboard_test_ec84e0c1@example.com",
+    "action": "register_pending_otp_generated",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "onboard_test_ec84e0c1@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:07:28.441Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36b720346b043adaf3e3b"
+    },
+    "user_id": "6af36b720346b043adaf3e3a",
+    "action": "email_verified_and_account_created",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "onboard_test_ec84e0c1@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:07:30.466Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36b970346b043adaf3e3c"
+    },
+    "user_id": "onboard_test_1d7eb9ba@example.com",
+    "action": "register_pending_otp_generated",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "onboard_test_1d7eb9ba@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:08:07.272Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36b990346b043adaf3e3e"
+    },
+    "user_id": "6af36b990346b043adaf3e3d",
+    "action": "email_verified_and_account_created",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "onboard_test_1d7eb9ba@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:08:09.301Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36b9c0346b043adaf3e40"
+    },
+    "user_id": "6af36b990346b043adaf3e3d",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:08:12.081Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36d6c25d77c10e3e34428"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "logout",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:15:56.624Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36d7825d77c10e3e3442a"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:16:08.102Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36d8925d77c10e3e3442d"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "logout",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:16:25.510Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36d8e25d77c10e3e3442f"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:16:30.630Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36daf25d77c10e3e34430"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "updates": [
+        "custom_login_slug",
+        "hardening.custom_login_slug",
+        "hide_login_url",
+        "hardening.hide_login_url",
+        "login_redirect_type",
+        "hardening.login_redirect_type",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:17:03.659Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36dcd25d77c10e3e34431"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "logout",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:17:33.418Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36df125d77c10e3e34433"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:18:09.480Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36eb625d77c10e3e3443c"
+    },
+    "user_id": "sec_audit_b54fc8bb@example.com",
+    "action": "register_pending_otp_generated",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "sec_audit_b54fc8bb@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:21:26.073Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36eb825d77c10e3e3443e"
+    },
+    "user_id": "6af36eb825d77c10e3e3443d",
+    "action": "email_verified_and_account_created",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "sec_audit_b54fc8bb@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:21:28.123Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36eba25d77c10e3e34440"
+    },
+    "user_id": "6af36eb825d77c10e3e3443d",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:21:30.500Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36ebc25d77c10e3e34441"
+    },
+    "user_id": "6af36eb825d77c10e3e3443d",
+    "action": "profile_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "fields": [
+        "onboarded"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:21:32.534Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36f0825d77c10e3e34442"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "logout",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:22:48.866Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36f7025d77c10e3e34443"
+    },
+    "user_id": "pentest_dffa2a89@example.com",
+    "action": "register_pending_otp_generated",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "pentest_dffa2a89@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:24:32.334Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36f7225d77c10e3e34445"
+    },
+    "user_id": "6af36f7225d77c10e3e34444",
+    "action": "email_verified_and_account_created",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "pentest_dffa2a89@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:24:34.394Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36f7425d77c10e3e34447"
+    },
+    "user_id": "6af36f7225d77c10e3e34444",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:24:36.794Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36f9d25d77c10e3e34448"
+    },
+    "user_id": "pentest_check_051d8e4a@example.com",
+    "action": "register_pending_otp_generated",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "pentest_check_051d8e4a@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:25:17.834Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36f9f25d77c10e3e3444a"
+    },
+    "user_id": "6af36f9f25d77c10e3e34449",
+    "action": "email_verified_and_account_created",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "pentest_check_051d8e4a@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:25:19.878Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36fa225d77c10e3e3444c"
+    },
+    "user_id": "6af36f9f25d77c10e3e34449",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:25:22.387Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36fe625d77c10e3e3444f"
+    },
+    "user_id": "pentest_11f649c2@example.com",
+    "action": "register_pending_otp_generated",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "pentest_11f649c2@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:26:30.170Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36fe825d77c10e3e34451"
+    },
+    "user_id": "6af36fe825d77c10e3e34450",
+    "action": "email_verified_and_account_created",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "pentest_11f649c2@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:26:32.277Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36fea25d77c10e3e34453"
+    },
+    "user_id": "6af36fe825d77c10e3e34450",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:26:34.755Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3702425d77c10e3e34454"
+    },
+    "user_id": "pentest_37438708@example.com",
+    "action": "register_pending_otp_generated",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "pentest_37438708@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:27:32.595Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3702625d77c10e3e34456"
+    },
+    "user_id": "6af3702625d77c10e3e34455",
+    "action": "email_verified_and_account_created",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "pentest_37438708@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:27:34.652Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3702925d77c10e3e34458"
+    },
+    "user_id": "6af3702625d77c10e3e34455",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:27:37.093Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3704225d77c10e3e34459"
+    },
+    "user_id": "inspect_d6b2d6c9@example.com",
+    "action": "register_pending_otp_generated",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "inspect_d6b2d6c9@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:28:02.341Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3704425d77c10e3e3445b"
+    },
+    "user_id": "6af3704425d77c10e3e3445a",
+    "action": "email_verified_and_account_created",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "inspect_d6b2d6c9@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:28:04.391Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3704625d77c10e3e3445d"
+    },
+    "user_id": "6af3704425d77c10e3e3445a",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:28:06.809Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af370bdf4d4e9c13f552e08"
+    },
+    "user_id": "pentest_123bd427@example.com",
+    "action": "register_pending_otp_generated",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "pentest_123bd427@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:30:05.510Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af370bff4d4e9c13f552e0a"
+    },
+    "user_id": "6af370bff4d4e9c13f552e09",
+    "action": "email_verified_and_account_created",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "pentest_123bd427@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:30:07.544Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af370c2f4d4e9c13f552e0c"
+    },
+    "user_id": "6af370bff4d4e9c13f552e09",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:30:10.072Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af370c8f4d4e9c13f552e0d"
+    },
+    "user_id": "6af370bff4d4e9c13f552e09",
+    "action": "profile_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "fields": []
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:30:16.240Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af37181ecd11df797f7c1c1"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:33:21.644Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3718cecd11df797f7c1c2"
+    },
+    "user_id": "live_verify_69045e06@example.com",
+    "action": "register_pending_otp_generated",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "live_verify_69045e06@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:33:32.396Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3718eecd11df797f7c1c4"
+    },
+    "user_id": "6af3718eecd11df797f7c1c3",
+    "action": "email_verified_and_account_created",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "email": "live_verify_69045e06@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:33:34.473Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af37190ecd11df797f7c1c6"
+    },
+    "user_id": "6af3718eecd11df797f7c1c3",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:33:36.823Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af37232ecd11df797f7c1c8"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "logout",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:36:18.377Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af372e9ecd11df797f7c1cc"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:39:21.356Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af37324ecd11df797f7c1cd"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "logout",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:40:20.034Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af37423ecd11df797f7c1d2"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:44:35.430Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3743eecd11df797f7c1d3"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "logout",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:45:02.756Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af37448ecd11df797f7c1d5"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:45:12.806Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af375b8c06131e5318607c2"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "logout",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:51:20.864Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af375bec06131e5318607c4"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T19:51:26.629Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af382617effb2a08f10573a"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "updates": [
+        "custom_login_slug",
+        "hardening.custom_login_slug",
+        "hide_login_url",
+        "hardening.hide_login_url",
+        "login_redirect_type",
+        "hardening.login_redirect_type",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T20:45:21.945Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af382737effb2a08f10573b"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "updates": [
+        "admin_ip_whitelist",
+        "hardening.admin_ip_whitelist",
+        "admin_ip_whitelist_enabled",
+        "hardening.admin_ip_whitelist_enabled",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T20:45:39.007Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af382777effb2a08f10573c"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "updates": [
+        "custom_login_slug",
+        "hardening.custom_login_slug",
+        "hide_login_url",
+        "hardening.hide_login_url",
+        "login_redirect_type",
+        "hardening.login_redirect_type",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T20:45:43.371Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3827c7effb2a08f10573d"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "updates": [
+        "admin_ip_whitelist",
+        "hardening.admin_ip_whitelist",
+        "admin_ip_whitelist_enabled",
+        "hardening.admin_ip_whitelist_enabled",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T20:45:48.772Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af382897effb2a08f10573e"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "updates": [
+        "custom_login_slug",
+        "hardening.custom_login_slug",
+        "hide_login_url",
+        "hardening.hide_login_url",
+        "login_redirect_type",
+        "hardening.login_redirect_type",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T20:46:01.188Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af382a07effb2a08f10573f"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "updates": [
+        "admin_ip_whitelist",
+        "hardening.admin_ip_whitelist",
+        "admin_ip_whitelist_enabled",
+        "hardening.admin_ip_whitelist_enabled",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T20:46:24.988Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af382fa7effb2a08f105740"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "updates": [
+        "custom_login_slug",
+        "hardening.custom_login_slug",
+        "hide_login_url",
+        "hardening.hide_login_url",
+        "login_redirect_type",
+        "hardening.login_redirect_type",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T20:47:54.829Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3834f7effb2a08f105741"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "logout",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T20:49:19.772Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af383597effb2a08f105743"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T20:49:29.186Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3836b7effb2a08f105744"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "logout",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T20:49:47.211Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af383727effb2a08f105746"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T20:49:54.983Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af383817effb2a08f105749"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "updates": [
+        "custom_login_slug",
+        "hardening.custom_login_slug",
+        "hide_login_url",
+        "hardening.hide_login_url",
+        "login_redirect_type",
+        "hardening.login_redirect_type",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T20:50:09.135Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af383947effb2a08f10574a"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "updates": [
+        "custom_login_slug",
+        "hardening.custom_login_slug",
+        "hide_login_url",
+        "hardening.hide_login_url",
+        "login_redirect_type",
+        "hardening.login_redirect_type",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-10T20:50:28.242Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3e8f723f7cd9dd67368f9"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T04:03:03.143Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3e92523f7cd9dd67368fa"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "logout",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T04:03:49.376Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3e93023f7cd9dd6736902"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T04:04:00.510Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3e9d223f7cd9dd6736903"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "notification_marked_read",
+    "ip_address": "127.0.0.1",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "notification_id": "6af3e92823f7cd9dd6736900"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T04:06:42.474Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3f1e16ae5e96969cdf486"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "malware_quarantined",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "file": "wp-content/plugins/rce_backdoor.php",
+      "category": "malware"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T04:41:05.175Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3f1f1cea298a77626650a"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "malware_quarantined",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "file": "wp-content/plugins/create_backdoor_admin.php",
+      "category": "malware"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T04:41:21.510Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3f48caec3e7a4832b42d1"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "malware_quarantined",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "file": "wp-content/plugins/test_quarantine_sample.php",
+      "category": "malware"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T04:52:28.819Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3f54fcb1cb349d62c5585"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "plugin_toggled",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "action": "toggle_plugin",
+      "target": "hello.php",
+      "status": "active"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T04:55:43.734Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3f550cb1cb349d62c5586"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "plugin_toggled",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "action": "toggle_plugin",
+      "target": "hello.php",
+      "status": "inactive"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T04:55:44.271Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3f550cb1cb349d62c5587"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "theme_activated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "action": "activate_theme",
+      "target": "twentytwentyfour",
+      "status": null
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T04:55:44.900Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3f551cb1cb349d62c5588"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "theme_activated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "action": "activate_theme",
+      "target": "twentytwentyfive",
+      "status": null
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T04:55:45.500Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3f552cb1cb349d62c5589"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "run_db_optimization",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "action": "run_db_optimization",
+      "target": "",
+      "status": null
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T04:55:46.453Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3f5c28e122c86f4574bbe"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "core_checksums_verified",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "domain": "localhost/mahabub",
+      "status": "verified",
+      "total_files": 3782,
+      "modified_count": 0,
+      "integrity_percentage": "100.0"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T04:57:38.061Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3f5d9dfdfe110bd3cde52"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "core_checksums_verified",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "domain": "localhost/mahabub",
+      "status": "verified",
+      "total_files": 3782,
+      "modified_count": 0,
+      "integrity_percentage": "100.0"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T04:58:01.162Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3f5ecfdc574beed0b2d4b"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "core_checksums_verified",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "domain": "localhost/mahabub",
+      "status": "modified_files_detected",
+      "total_files": 3782,
+      "modified_count": 1,
+      "integrity_percentage": "99.97"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T04:58:20.405Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3f5eefdc574beed0b2d4c"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "core_checksums_verified",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "domain": "localhost/mahabub",
+      "status": "modified_files_detected",
+      "total_files": 3782,
+      "modified_count": 1,
+      "integrity_percentage": "99.97"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T04:58:22.846Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3f5fa1bbd2e4dd4f278ba"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "core_checksums_verified",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "domain": "localhost/mahabub",
+      "status": "modified_files_detected",
+      "total_files": 3782,
+      "modified_count": 1,
+      "integrity_percentage": "99.97"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T04:58:34.431Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3f60f4c04354542df68c8"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "core_checksums_verified",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "domain": "localhost/mahabub",
+      "status": "verified",
+      "total_files": 3782,
+      "modified_count": 0,
+      "integrity_percentage": "100.0"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T04:58:55.703Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3f61e149f57c6911dcadd"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "core_checksums_verified",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "domain": "localhost/mahabub",
+      "status": "verified",
+      "total_files": 3782,
+      "modified_count": 0,
+      "integrity_percentage": "100.0"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T04:59:10.306Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3f827271c9a95077316fe"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "updates": [
+        "blocked_countries",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T05:07:51.468Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3f82a271c9a95077316ff"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "updates": [
+        "custom_login_slug",
+        "hardening.custom_login_slug",
+        "hide_login_url",
+        "hardening.hide_login_url",
+        "login_redirect_type",
+        "hardening.login_redirect_type",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T05:07:54.506Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3f82c271c9a9507731700"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "updates": [
+        "custom_login_slug",
+        "hardening.custom_login_slug",
+        "hide_login_url",
+        "hardening.hide_login_url",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T05:07:56.569Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3f82c271c9a9507731701"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "updates": [
+        "admin_ip_whitelist",
+        "hardening.admin_ip_whitelist",
+        "admin_ip_whitelist_enabled",
+        "hardening.admin_ip_whitelist_enabled",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T05:07:56.577Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3ff215105336275ce5a27"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "user_email": "user@gmail.com",
+    "action": "Invited team member Security Analyst John (john.analyst@example.com) as Security Operations (SecOps)",
+    "ip": "127.0.0.1",
+    "created_at": {
+      "$date": "2026-11-11T11:37:37.961Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3ff215105336275ce5a28"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "user_email": "user@gmail.com",
+    "action": "Updated role/permissions for team member Security Analyst John (john.analyst@example.com)",
+    "ip": "127.0.0.1",
+    "created_at": {
+      "$date": "2026-11-11T11:37:37.984Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3ff215105336275ce5a29"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "user_email": "user@gmail.com",
+    "action": "Removed team member Security Analyst John (john.analyst@example.com)",
+    "ip": "127.0.0.1",
+    "created_at": {
+      "$date": "2026-11-11T11:37:37.987Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3ff215105336275ce5a2a"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "notification_preferences_updated",
+    "ip_address": "127.0.0.1",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "webhook_enabled": false,
+      "webhook_url": null
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T05:37:37.995Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3ff225105336275ce5a2c"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "test_alert_dispatched",
+    "ip_address": "127.0.0.1",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "title": "MDefender Pro Security Verification Test",
+      "category": "test"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T05:37:38.001Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3ff225105336275ce5a2d"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "all_notifications_read",
+    "ip_address": "127.0.0.1",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T05:37:38.018Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3ff225105336275ce5a2f"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "report_schedule_created",
+    "ip_address": "127.0.0.1",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "schedule_id": "6af3ff225105336275ce5a2e",
+      "name": "Weekly Enterprise Security Digest",
+      "frequency": "weekly",
+      "website_id": "all"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T05:37:38.113Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3ff225105336275ce5a30"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "report_schedule_deleted",
+    "ip_address": "127.0.0.1",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "schedule_id": "6af3ff225105336275ce5a2e"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T05:37:38.117Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af41e27196f9f4cd3d974d1"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T07:49:59.531Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af41e3a196f9f4cd3d974d2"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "logout",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T07:50:18.599Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af42408196f9f4cd3d974dd"
+    },
+    "user_id": "admin_admin",
+    "action": "admin_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T08:15:04.803Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af42518196f9f4cd3d974de"
+    },
+    "user_id": "admin_admin",
+    "action": "logout",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T08:19:36.685Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af428368537d81931c8e547"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T08:32:54.772Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af428688537d81931c8e548"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "logout",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T08:33:44.940Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af428738537d81931c8e549"
+    },
+    "user_id": "admin_admin",
+    "action": "admin_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T08:33:55.624Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af429aca16905179ea96626"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T08:39:08.672Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af42af0a16905179ea9662a"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T08:44:32.807Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af42b87f0ed90d0b61289f3"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T08:47:03.145Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4305c122c79831b15a380"
+    },
+    "user_id": "admin_admin",
+    "action": "admin_login",
+    "ip_address": "",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T09:07:40.352Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af43067719950c986260967"
+    },
+    "user_id": "admin_admin",
+    "action": "admin_login",
+    "ip_address": "",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T09:07:51.939Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af43c0449f5c236f1a8508c"
+    },
+    "user_id": "admin@mdefender-pro.io",
+    "action": "admin_updated_waf_mode",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "site_d9caceb5",
+      "new_waf_mode": "under_attack"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T09:57:24.136Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af43c0e49f5c236f1a8508d"
+    },
+    "user_id": "admin@mdefender-pro.io",
+    "action": "admin_updated_waf_mode",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "site_d9caceb5",
+      "new_waf_mode": "protect"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T09:57:34.556Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af43c1749f5c236f1a8508e"
+    },
+    "user_id": "admin@mdefender-pro.io",
+    "action": "user_impersonation_session_created",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "impersonated_user": "tester@example.com",
+      "duration_minutes": 30
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T09:57:43.456Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af446bd8e88f31b285b03f1"
+    },
+    "user_id": "admin",
+    "action": "wordpress_checksums_synced",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "version": "6.7.2",
+      "files_indexed": 3224
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T10:43:09.185Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af448068e88f31b285b03f4"
+    },
+    "user_id": "admin",
+    "action": "wordpress_checksums_synced",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "version": "6.7.2",
+      "files_indexed": 3224
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T10:48:38.008Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af448be8e88f31b285b03f5"
+    },
+    "user_id": "admin",
+    "action": "user_deleted",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "deleted_user": "pentest_37438708@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T10:51:42.224Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af448cf8e88f31b285b03f6"
+    },
+    "user_id": "admin",
+    "action": "user_deleted",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "deleted_user": "localdiag1786710925@gmail.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T10:51:59.396Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af448d38e88f31b285b03f7"
+    },
+    "user_id": "admin",
+    "action": "user_deleted",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "deleted_user": "tester_1d9e7b@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T10:52:03.386Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af448d68e88f31b285b03f8"
+    },
+    "user_id": "admin",
+    "action": "user_deleted",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "deleted_user": "tester_104d04@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T10:52:06.316Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af449578e88f31b285b03fb"
+    },
+    "user_id": "admin",
+    "action": "user_deleted",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "deleted_user": "pentest_11f649c2@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T10:54:15.438Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4495a8e88f31b285b03fc"
+    },
+    "user_id": "admin",
+    "action": "user_deleted",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "deleted_user": "pentest_dffa2a89@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T10:54:18.566Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4495f8e88f31b285b03fd"
+    },
+    "user_id": "admin",
+    "action": "user_deleted",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "deleted_user": "tester@example.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T10:54:23.818Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af449835122976ba085f490"
+    },
+    "user_id": "admin",
+    "action": "user_impersonation_session_created",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "impersonated_user": "user@gmail.com",
+      "duration_minutes": 30
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T10:54:59.470Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af44f29926372d3257af713"
+    },
+    "user_id": "admin@mdefender-pro.io",
+    "action": "admin_updated_waf_mode",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "new_waf_mode": "protect"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T11:19:05.016Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af44f9e926372d3257af714"
+    },
+    "user_id": "admin_admin",
+    "action": "admin_login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T11:21:02.385Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af45008926372d3257af715"
+    },
+    "user_id": "admin",
+    "action": "user_impersonation_session_created",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "impersonated_user": "user@gmail.com",
+      "duration_minutes": 30
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T11:22:48.964Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4575b926372d3257af725"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T11:54:03.520Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af45768926372d3257af726"
+    },
+    "user_id": "6af369bd4961f4b77704ffaa",
+    "action": "logout",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T11:54:16.310Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4598e926372d3257af729"
+    },
+    "user_id": "admin@mdefender.pro",
+    "action": "dynamic_pricing_updated",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "base_monthly_rate": 3.0,
+      "base_yearly_rate": 30.0,
+      "trial_days": 14,
+      "currency": "USD"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T12:03:26.950Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af459bc926372d3257af72c"
+    },
+    "user_id": "admin@mdefender.pro",
+    "action": "dynamic_pricing_updated",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "base_monthly_rate": 3.0,
+      "base_yearly_rate": 30.0,
+      "trial_days": 14,
+      "currency": "USD"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T12:04:12.759Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af459de926372d3257af72d"
+    },
+    "user_id": "admin@mdefender.pro",
+    "action": "dynamic_pricing_updated",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "base_monthly_rate": 3.0,
+      "base_yearly_rate": 30.0,
+      "trial_days": 14,
+      "currency": "USD"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T12:04:46.332Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af459ec926372d3257af72e"
+    },
+    "user_id": "admin@mdefender.pro",
+    "action": "dynamic_pricing_updated",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "base_monthly_rate": 3.0,
+      "base_yearly_rate": 30.0,
+      "trial_days": 14,
+      "currency": "USD"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T12:05:00.653Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af459ec926372d3257af72f"
+    },
+    "user_id": "admin@mdefender.pro",
+    "action": "dynamic_pricing_updated",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "base_monthly_rate": 4.0,
+      "base_yearly_rate": 40.0,
+      "trial_days": 14,
+      "currency": "USD"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T12:05:00.682Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af45aca926372d3257af730"
+    },
+    "user_id": "admin@mdefender-pro.io",
+    "action": "user_email_force_verified",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "target_email": "rahmanmdmahabubur575@gmail.com",
+      "user_id": "6af369bd4961f4b77704ffaa"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T12:08:42.631Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af45ad4926372d3257af731"
+    },
+    "user_id": "admin@mdefender-pro.io",
+    "action": "user_unlocked",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "unlocked_user": "rahmanmdmahabubur575@gmail.com",
+      "user_id": "6af369bd4961f4b77704ffaa"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T12:08:52.640Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af45ad4926372d3257af732"
+    },
+    "user_id": "admin@mdefender-pro.io",
+    "action": "user_plan_updated",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "target_user": "rahmanmdmahabubur575@gmail.com",
+      "plan": "pro",
+      "expires_at": "2027-11-11 18:08:52.698050"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T12:08:52.702Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af45ad5926372d3257af733"
+    },
+    "user_id": "admin@mdefender-pro.io",
+    "action": "dynamic_pricing_updated",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "base_monthly_rate": 4.0,
+      "base_yearly_rate": 40.0,
+      "trial_days": 14,
+      "currency": "USD"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T12:08:53.064Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af45b02926372d3257af736"
+    },
+    "user_id": "admin@mdefender-pro.io",
+    "action": "user_email_force_verified",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "target_email": "rahmanmdmahabubur575@gmail.com",
+      "user_id": "6af369bd4961f4b77704ffaa"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T12:09:38.878Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af45b02926372d3257af737"
+    },
+    "user_id": "admin@mdefender-pro.io",
+    "action": "user_unlocked",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "unlocked_user": "rahmanmdmahabubur575@gmail.com",
+      "user_id": "6af369bd4961f4b77704ffaa"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T12:09:38.927Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af45b02926372d3257af738"
+    },
+    "user_id": "admin@mdefender-pro.io",
+    "action": "user_plan_updated",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "target_user": "rahmanmdmahabubur575@gmail.com",
+      "plan": "pro",
+      "expires_at": "2027-11-11 18:09:38.946592"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T12:09:38.947Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af45b02926372d3257af739"
+    },
+    "user_id": "admin@mdefender-pro.io",
+    "action": "admin_updated_waf_mode",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "new_waf_mode": "monitor"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T12:09:38.979Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af45b02926372d3257af73a"
+    },
+    "user_id": "admin@mdefender-pro.io",
+    "action": "admin_updated_waf_mode",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "new_waf_mode": "protect"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T12:09:38.987Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af45b03926372d3257af73b"
+    },
+    "user_id": "admin@mdefender-pro.io",
+    "action": "dynamic_pricing_updated",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "base_monthly_rate": 4.0,
+      "base_yearly_rate": 40.0,
+      "trial_days": 14,
+      "currency": "USD"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T12:09:39.095Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af45b16926372d3257af73d"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T12:09:58.128Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af45ba2926372d3257af742"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "test_alert_dispatched",
+    "ip_address": "127.0.0.1",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "title": "MDefender Pro Security Verification Test",
+      "category": "test"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T12:12:18.283Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af48c8d904f12ba5dfda31a"
+    },
+    "user_id": "admin",
+    "action": "user_deleted",
+    "ip_address": "admin_panel",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "deleted_user": "rahmanmdmahabubur575@gmail.com"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T15:41:01.491Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af499ffd0b203df253f043c"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "login",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T16:38:23.972Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af49b6ed0b203df253f043f"
+    },
+    "user_id": "admin_admin",
+    "action": "logout",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T16:44:30.994Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4a1fb98ab60ddd192dd8c"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "backup_restored",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "domain": "localhost/mahabub",
+      "target": "localhost/mahabub",
+      "filename": "localhost-mahabub.zip",
+      "category": "backup"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T17:12:27.209Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c3e3977aa722f0d7d496"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "sync_inventory",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "action": "sync_inventory",
+      "target": "",
+      "status": null
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:37:07.645Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c406430df8d25c4bdff8"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "sync_inventory",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "action": "sync_inventory",
+      "target": "",
+      "status": null
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:37:42.589Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c407430df8d25c4bdff9"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "plugin_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "action": "toggle_auto_update",
+      "target": "akismet/akismet.php",
+      "status": null
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:37:43.065Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c407430df8d25c4bdffa"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "plugin_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "action": "toggle_auto_update",
+      "target": "akismet/akismet.php",
+      "status": null
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:37:43.747Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c41997b6cd97be3a8adf"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "sync_inventory",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "action": "sync_inventory",
+      "target": "",
+      "status": null
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:38:01.254Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c41a97b6cd97be3a8ae0"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "plugin_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "action": "toggle_auto_update",
+      "target": "akismet/akismet.php",
+      "status": null
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:38:02.194Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c41b97b6cd97be3a8ae1"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "plugin_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "action": "toggle_auto_update",
+      "target": "akismet/akismet.php",
+      "status": null
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:38:03.261Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c43ddb9c9ec3bce20178"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "sync_inventory",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "action": "sync_inventory",
+      "target": "",
+      "status": null
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:38:37.378Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c43edb9c9ec3bce20179"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "plugin_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "action": "toggle_auto_update",
+      "target": "akismet/akismet.php",
+      "status": null
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:38:38.111Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c43edb9c9ec3bce2017a"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "plugin_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "action": "toggle_auto_update",
+      "target": "akismet/akismet.php",
+      "status": null
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:38:38.705Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c45fd219d539455cb7ec"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "sync_inventory",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "action": "sync_inventory",
+      "target": "",
+      "status": null
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:39:11.413Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c460d219d539455cb7ed"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "plugin_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "action": "toggle_auto_update",
+      "target": "akismet/akismet.php",
+      "status": null
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:39:12.185Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c461d219d539455cb7ee"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "plugin_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "action": "toggle_auto_update",
+      "target": "akismet/akismet.php",
+      "status": null
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:39:13.029Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c6df8a6417b3ab7d1be1"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "ip_quarantined",
+    "ip_address": "198.51.100.99",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "ip": "198.51.100.99",
+      "reason": "Perimeter Defense Audit Ban",
+      "duration": "24 Hours",
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "target": "localhost/mahabub",
+      "category": "security"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:49:51.760Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c6e18a6417b3ab7d1be2"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "ip_unblocked",
+    "ip_address": "198.51.100.99",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "ip": "198.51.100.99",
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "target": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "category": "security"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:49:53.385Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c6e28a6417b3ab7d1be3"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "ip_whitelisted",
+    "ip_address": "198.51.100.77",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "ip": "198.51.100.77",
+      "reason": "Perimeter Defense Audit Whitelist",
+      "category": "security"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:49:54.982Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c6e38a6417b3ab7d1be4"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "ip_whitelist_removed",
+    "ip_address": "198.51.100.77",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "ip": "198.51.100.77",
+      "category": "security"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:49:55.289Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c6e58a6417b3ab7d1be5"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "updates": [
+        "rate_limit_per_minute",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:49:57.193Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c6e58a6417b3ab7d1be6"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "updates": [
+        "rate_limit_per_minute",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:49:57.540Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c6e98a6417b3ab7d1be7"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "ip_unblocked",
+    "ip_address": "198.51.100.77",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "ip": "198.51.100.77",
+      "website_id": "site_e6972fbd7efa",
+      "target": "site_e6972fbd7efa",
+      "category": "security"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:50:01.172Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c6e98a6417b3ab7d1be8"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "ip_unblocked",
+    "ip_address": "198.51.100.77",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "ip": "198.51.100.77",
+      "website_id": "site_e6972fbd7efa",
+      "target": "site_e6972fbd7efa",
+      "category": "security"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:50:01.457Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c88b5963448e6e4e5297"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "backup_deleted",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "domain": "localhost/mahabub",
+      "target": "localhost/mahabub",
+      "filename": "localhost-mahabub-database.zip",
+      "category": "backup"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:56:59.341Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c8b64cbd21d6f26a04f8"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "backup_created",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "domain": "localhost/mahabub",
+      "target": "localhost/mahabub",
+      "type": "database",
+      "note": "Phase 6 Automated Test Snapshot",
+      "category": "backup"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:57:42.606Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c8b74cbd21d6f26a04f9"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "backup_deleted",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "domain": "localhost/mahabub",
+      "target": "localhost/mahabub",
+      "filename": "localhost-mahabub-database.zip",
+      "category": "backup"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T19:57:43.855Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c9552476fc3311d53594"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "updates": [
+        "under_attack_mode",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T20:00:21.175Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c9562476fc3311d53595"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "updates": [
+        "under_attack_mode",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T20:00:22.834Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c9562476fc3311d53596"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "updates": [
+        "bot_challenge_mode",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T20:00:22.861Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c9562476fc3311d53597"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "updates": [
+        "custom_login_slug",
+        "hardening.custom_login_slug",
+        "hide_login_url",
+        "hardening.hide_login_url",
+        "login_redirect_type",
+        "hardening.login_redirect_type",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T20:00:22.914Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4c9572476fc3311d53598"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "website_security_updated",
+    "ip_address": "system",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "updates": [
+        "custom_login_slug",
+        "hardening.custom_login_slug",
+        "hide_login_url",
+        "hardening.hide_login_url",
+        "updated_at"
+      ]
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T20:00:23.012Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4cc014a779b68d39b0421"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "test_alert_dispatched",
+    "ip_address": "127.0.0.1",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "title": "MDefender Pro Security Verification Test",
+      "category": "test"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T20:11:45.084Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4cc0c4a779b68d39b0422"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "user_email": "user@gmail.com",
+    "action": "Invited team member Alex Analyst (analyst.test@example.com) as Security Operations (SecOps)",
+    "ip": "127.0.0.1",
+    "created_at": {
+      "$date": "2026-11-12T02:11:56.919Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4cc1a4a779b68d39b0423"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "user_email": "user@gmail.com",
+    "action": "Removed team member Alex Analyst (analyst.test@example.com)",
+    "ip": "127.0.0.1",
+    "created_at": {
+      "$date": "2026-11-12T02:12:10.719Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4cc6110c0ecbf0004c084"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "user_email": "user@gmail.com",
+    "action": "Invited team member Sarah SecOps (sarah.secops@example.com) as Security Operations (SecOps)",
+    "ip": "127.0.0.1",
+    "created_at": {
+      "$date": "2026-11-12T02:13:21.864Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4cc6110c0ecbf0004c085"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "user_email": "user@gmail.com",
+    "action": "Removed team member Sarah SecOps (sarah.secops@example.com)",
+    "ip": "127.0.0.1",
+    "created_at": {
+      "$date": "2026-11-12T02:13:21.890Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4cc6110c0ecbf0004c087"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "test_alert_dispatched",
+    "ip_address": "127.0.0.1",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "title": "MDefender Pro Security Verification Test",
+      "category": "test"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T20:13:21.915Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4cc6110c0ecbf0004c088"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "all_notifications_read",
+    "ip_address": "127.0.0.1",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {},
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T20:13:21.946Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4cc6110c0ecbf0004c08a"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "report_schedule_created",
+    "ip_address": "127.0.0.1",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "schedule_id": "6af4cc6110c0ecbf0004c089",
+      "name": "Phase 9 Enterprise Weekly Digest",
+      "frequency": "weekly",
+      "website_id": "all"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T20:13:21.991Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af4cc6210c0ecbf0004c08b"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "action": "report_schedule_deleted",
+    "ip_address": "127.0.0.1",
+    "user_agent": "",
+    "device": "Unknown",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "country": null,
+    "status": "success",
+    "details": {
+      "schedule_id": "6af4cc6110c0ecbf0004c089"
+    },
+    "request_id": "",
+    "timestamp": {
+      "$date": "2026-11-11T20:13:22.002Z"
+    }
+  }
+]

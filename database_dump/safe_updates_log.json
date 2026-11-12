@@ -1,0 +1,117 @@
+[
+  {
+    "_id": {
+      "$oid": "6af0ae78a2b5039e27dd5803"
+    },
+    "id": "mdf_safe_20261108_231640_e105d7",
+    "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+    "domain": "localhost/mahabub",
+    "target_type": "plugin",
+    "target_name": "akismet",
+    "timestamp": "2026-11-08 23:16:40",
+    "status": "verified_clean",
+    "regression_detected": false,
+    "rolled_back": false,
+    "failure_reason": "",
+    "baseline_latency_ms": 32,
+    "probe_results": [
+      {
+        "endpoint": "Frontend Homepage (/)",
+        "status": "healthy",
+        "http_code": 200,
+        "latency_ms": 22
+      },
+      {
+        "endpoint": "WordPress Admin (/wp-admin/)",
+        "status": "healthy",
+        "http_code": 200,
+        "latency_ms": 25
+      },
+      {
+        "endpoint": "REST API Gateway (/wp-json/)",
+        "status": "healthy",
+        "http_code": 200,
+        "latency_ms": 19
+      }
+    ],
+    "snapshot_saved": true
+  },
+  {
+    "_id": {
+      "$oid": "6af0aec9a2b5039e27dd5806"
+    },
+    "id": "mdf_safe_20261108_231801_a54845",
+    "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+    "domain": "localhost/mahabub",
+    "target_type": "plugin",
+    "target_name": "akismet",
+    "timestamp": "2026-11-08 23:18:01",
+    "status": "verified_clean",
+    "regression_detected": false,
+    "rolled_back": false,
+    "failure_reason": "",
+    "baseline_latency_ms": 32,
+    "probe_results": [
+      {
+        "endpoint": "Frontend Homepage (/)",
+        "status": "healthy",
+        "http_code": 200,
+        "latency_ms": 22
+      },
+      {
+        "endpoint": "WordPress Admin (/wp-admin/)",
+        "status": "healthy",
+        "http_code": 200,
+        "latency_ms": 25
+      },
+      {
+        "endpoint": "REST API Gateway (/wp-json/)",
+        "status": "healthy",
+        "http_code": 200,
+        "latency_ms": 19
+      }
+    ],
+    "snapshot_saved": true
+  },
+  {
+    "_id": {
+      "$oid": "6af1eaad00050a27c30504d8"
+    },
+    "id": "mdf_safe_20261109_214549_ec2136",
+    "website_id": "site_e6972fbd7efa",
+    "domain": "localhost",
+    "target_type": "plugin",
+    "target_name": "akismet",
+    "timestamp": "2026-11-09 21:45:49",
+    "status": "verified_clean",
+    "regression_detected": false,
+    "rolled_back": false,
+    "failure_reason": "",
+    "baseline_latency_ms": 32,
+    "probe_results": [
+      {
+        "endpoint": "Frontend Homepage (/)",
+        "status": "healthy",
+        "http_code": 200,
+        "latency_ms": 18
+      },
+      {
+        "endpoint": "WordPress Admin (/wp-admin/)",
+        "status": "healthy",
+        "http_code": 200,
+        "latency_ms": 18
+      },
+      {
+        "endpoint": "REST API Gateway (/wp-json/)",
+        "status": "healthy",
+        "http_code": 200,
+        "latency_ms": 18
+      }
+    ],
+    "snapshot_saved": true,
+    "success": true,
+    "checkpoint_id": "mdf_safe_20261109_154549_5cb96e",
+    "baseline_ms": 45,
+    "message": "Safe Update Verified: 0 regression detected across all synthetic probes. Health score 100%."
+  }
+]

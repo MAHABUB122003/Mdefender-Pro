@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
+import { Fragment } from 'react'
 import {
   LayoutDashboard,
   LifeBuoy,
@@ -7,6 +8,11 @@ import {
   CreditCard,
   ShieldAlert,
   Settings,
+  FileText,
+  ShieldCheck,
+  Brain,
+  Activity,
+  Search,
   ChevronLeft,
   ChevronRight,
   LogOut
@@ -24,7 +30,10 @@ export default function Sidebar({ isOpen, isCollapsed, onToggleCollapse, onClose
       return currentPath === '/admin/clients' || currentPath === '/admin/websites'
     }
     if (toPath === '/admin/support') {
-      return currentPath.startsWith('/admin/support')
+      return currentPath === '/admin/support' || currentPath === '/admin/support/inquiries'
+    }
+    if (toPath === '/admin/support/inspector') {
+      return currentPath === '/admin/support/inspector'
     }
     if (toPath === '/admin/pricing') {
       return currentPath.startsWith('/admin/pricing')
@@ -32,42 +41,38 @@ export default function Sidebar({ isOpen, isCollapsed, onToggleCollapse, onClose
     return currentPath === toPath
   }
 
-  const navItems = [
+  const navGroups = [
     {
-      to: '/admin/dashboard',
-      label: 'Overview',
-      icon: LayoutDashboard
+      label: 'Operations',
+      items: [
+        { to: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
+        { to: '/admin/support', label: 'Support Desk', icon: LifeBuoy }
+      ]
     },
     {
-      to: '/admin/support',
-      label: 'Support Desk',
-      icon: LifeBuoy,
-      badge: { text: 'Helpdesk', type: 'primary' }
+      label: 'Customers',
+      items: [
+        { to: '/admin/users', label: 'Tenants & Users', icon: Users },
+        { to: '/admin/clients', label: 'Protected Websites', icon: Globe },
+        { to: '/admin/pricing', label: 'Plans & Pricing', icon: CreditCard }
+      ]
     },
     {
-      to: '/admin/users',
-      label: 'Tenants & Users',
-      icon: Users
+      label: 'Security operations',
+      items: [
+        { to: '/admin/blacklist', label: 'Firewall & IP Rules', icon: ShieldAlert },
+        { to: '/admin/logs', label: 'Attack Logs', icon: FileText },
+        { to: '/admin/rules', label: 'Patches & Rules', icon: ShieldCheck },
+        { to: '/admin/learning', label: 'Evasion Lab', icon: Brain },
+        { to: '/admin/ddos', label: 'DDoS Shield', icon: Activity },
+        { to: '/admin/support/inspector', label: 'Remote Inspector', icon: Search }
+      ]
     },
     {
-      to: '/admin/clients',
-      label: 'Protected Websites',
-      icon: Globe
-    },
-    {
-      to: '/admin/pricing',
-      label: 'Plans & Pricing',
-      icon: CreditCard
-    },
-    {
-      to: '/admin/blacklist',
-      label: 'Firewall & IP Rules',
-      icon: ShieldAlert
-    },
-    {
-      to: '/admin/settings',
-      label: 'Platform Settings',
-      icon: Settings
+      label: 'Platform',
+      items: [
+        { to: '/admin/settings', label: 'Settings', icon: Settings }
+      ]
     }
   ]
 
@@ -90,7 +95,7 @@ export default function Sidebar({ isOpen, isCollapsed, onToggleCollapse, onClose
           {!isCollapsed && (
             <div className="brand-text">
               <span className="brand-name">MDefender</span>
-              <span className="brand-badge">HQ CONSOLE</span>
+              <span className="brand-badge">ADMIN</span>
             </div>
           )}
         </Link>
@@ -106,75 +111,63 @@ export default function Sidebar({ isOpen, isCollapsed, onToggleCollapse, onClose
         </button>
       </div>
 
-      {/* Navigation List - Pure Direct Links (Zero Bloat, Zero Accordion Confusion) */}
-      <nav className="admin-sidebar-nav" style={{ padding: '16px 10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        {!isCollapsed && (
-          <div style={{
-            fontSize: '11px',
-            fontWeight: '700',
-            textTransform: 'uppercase',
-            letterSpacing: '0.6px',
-            color: '#94A3B8',
-            padding: '4px 12px 8px',
-            userSelect: 'none'
-          }}>
-            Mission Control
-          </div>
-        )}
-
-        {navItems.map((item) => {
-          const Icon = item.icon
-          const active = isLinkActive(item.to)
-          return (
-            <Link
-              key={item.to}
-              to={item.to}
-              onClick={onCloseMobile}
-              className={`admin-nav-item ${active ? 'active' : ''}`}
-              title={isCollapsed ? item.label : undefined}
-            >
-              <span className="admin-nav-icon">
-                <Icon size={17} strokeWidth={active ? 2.3 : 2} />
-              </span>
-              {!isCollapsed && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                  <span className="admin-nav-label" style={{ fontWeight: active ? '700' : '500' }}>
-                    {item.label}
+      {/* Grouped navigation: Operations / Customers / Security / Platform */}
+      <nav className="admin-sidebar-nav" style={{ padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+        {navGroups.map((group) => (
+          <Fragment key={group.label}>
+            {!isCollapsed && (
+              <div style={{
+                fontSize: '10px',
+                fontWeight: '600',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                color: '#8A9A95',
+                padding: '14px 12px 6px',
+                userSelect: 'none'
+              }}>
+                {group.label}
+              </div>
+            )}
+            {group.items.map((item) => {
+              const Icon = item.icon
+              const active = isLinkActive(item.to)
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  onClick={onCloseMobile}
+                  className={`admin-nav-item ${active ? 'active' : ''}`}
+                  title={isCollapsed ? item.label : undefined}
+                >
+                  <span className="admin-nav-icon">
+                    <Icon size={17} strokeWidth={active ? 2.2 : 1.9} />
                   </span>
-                  {item.badge && !active && (
-                    <span style={{
-                      fontSize: '10.5px',
-                      fontWeight: '700',
-                      padding: '1px 6px',
-                      borderRadius: '4px',
-                      background: '#EFF6FF',
-                      color: '#2563EB',
-                      border: '1px solid #DBEAFE'
-                    }}>
-                      {item.badge.text}
+                  {!isCollapsed && (
+                    <span className="admin-nav-label" style={{ fontWeight: active ? '650' : '500' }}>
+                      {item.label}
                     </span>
                   )}
-                </div>
-              )}
-            </Link>
-          )
-        })}
+                </Link>
+              )
+            })}
+          </Fragment>
+        ))}
       </nav>
 
-      {/* Tech Giant Standard Footer */}
+      {/* Admin footer */}
       <div className="admin-sidebar-footer">
         <div className="admin-profile-card">
-          <div className="admin-profile-avatar" title="Platform Owner (Super Admin)">
-            <span>HQ</span>
-            <span className="avatar-status-dot" title="Mission Control 99.99% Operational" />
+          <div className="admin-profile-avatar" title="Administrator">
+            <span>AD</span>
+            <span className="avatar-status-dot" title="Signed in" />
           </div>
 
           {!isCollapsed && (
             <div className="admin-profile-info">
-              <span className="admin-name">Platform Owner</span>
+              <span className="admin-name">Administrator</span>
               <span className="admin-status-text">
                 <span className="status-pulse-dot" />
-                SecOps HQ 99.99%
+                Signed in
               </span>
             </div>
           )}
@@ -182,7 +175,7 @@ export default function Sidebar({ isOpen, isCollapsed, onToggleCollapse, onClose
           <button
             className="admin-profile-logout-btn"
             onClick={() => window.__doLogout && window.__doLogout()}
-            title="Sign Out of Mission Control"
+            title="Sign out"
             aria-label="Logout"
           >
             <LogOut size={15} />

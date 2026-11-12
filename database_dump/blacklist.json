@@ -1,0 +1,23 @@
+[
+  {
+    "_id": {
+      "$oid": "6ae8816f9a4299bb22839c12"
+    },
+    "ip": "127.0.0.1",
+    "reason": "Auto-blocked: 10 attack attempts within 24h",
+    "blocked_at": {
+      "$date": "2026-11-02T18:26:23.631Z"
+    },
+    "created_at": {
+      "$date": "2026-11-02T18:26:23.631Z"
+    },
+    "type": "temporary",
+    "expires_at": {
+      "$date": "2026-11-03T18:26:23.631Z"
+    },
+    "auto_blocked": true,
+    "user_id": "admin-user-001",
+    "added_by_user_id": "admin-user-001",
+    "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba"
+  }
+]

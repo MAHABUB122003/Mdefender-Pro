@@ -1,0 +1,310 @@
+[
+  {
+    "_id": {
+      "$oid": "6a65cc8f4f9f6cff91f54942"
+    },
+    "_type": "admin_password",
+    "password_hash": "$2b$12$dEVrBp9M9M/YIWtjcSrJPelH3SiYelysXw7KzyVRChNVQSRdNGqQC"
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb02cfcfc6f4494c5be13"
+    },
+    "user_id": "6a7eb0249c4d1dbb197275ad",
+    "_type": "notification_prefs",
+    "prefs": {
+      "scan_completed": true
+    },
+    "updated_at": {
+      "$date": "2026-08-14T12:05:32.932Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb077fcfc6f4494c5be16"
+    },
+    "user_id": "6a7eb06ee326fce86d722974",
+    "_type": "notification_prefs",
+    "prefs": {
+      "scan_completed": true
+    },
+    "updated_at": {
+      "$date": "2026-08-14T12:06:47.508Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eb0c5fcfc6f4494c5be18"
+    },
+    "_type": "feature_flags",
+    "flags": {
+      "ml_waf_enabled": true,
+      "wordpress_scanner_enabled": true,
+      "technical_dashboard_enabled": true,
+      "wordpress_dashboard_enabled": true,
+      "paddle_billing_enabled": false,
+      "real_time_monitoring_enabled": false,
+      "maintenance_mode": false,
+      "public_registration": true
+    },
+    "updated_at": {
+      "$date": "2026-08-14T12:08:05.225Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6ae4db2788a8639b43f0f8c9"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "_type": "user_security_config",
+    "admin_bruteforce_protection": true,
+    "auto_block_duration_hours": 12,
+    "auto_block_enabled": true,
+    "auto_block_permanent": false,
+    "auto_block_threshold": 5,
+    "auto_block_window_hours": 24,
+    "ddos_mitigation_enabled": true,
+    "hold_press_duration_ms": 2000,
+    "hold_press_enabled": true,
+    "rate_limit_per_minute": 50,
+    "turnstile_enabled": false,
+    "turnstile_mode": "forms",
+    "turnstile_secret_key": "",
+    "turnstile_site_key": "",
+    "turnstile_theme": "auto",
+    "two_factor_domain_overrides": {},
+    "two_factor_enabled": false,
+    "two_factor_lockout_hours": 24,
+    "two_factor_max_attempts": 3,
+    "two_factor_method_backup": true,
+    "two_factor_method_email": true,
+    "two_factor_method_totp": true,
+    "two_factor_remember_days": 0,
+    "two_factor_roles": "admins",
+    "two_factor_scope": "all",
+    "updated_at": {
+      "$date": "2026-11-09T00:17:24.528Z"
+    },
+    "login_lockout_duration_minutes": 30,
+    "login_lockout_scope": "gateway_only",
+    "login_lockout_threshold": 4,
+    "rate_limit_action": "throttle_429"
+  },
+  {
+    "_id": {
+      "$oid": "6ae5ab6049b4bb6200d0da66"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "_type": "notification_prefs",
+    "prefs": {
+      "email": true,
+      "email_alerts": true,
+      "slack": false,
+      "telegram": false,
+      "webhook": false,
+      "frequency": "realtime"
+    },
+    "updated_at": {
+      "$date": "2026-11-11T05:37:37.991Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af19ee9ab8adfcf3ebce503"
+    },
+    "_type": "dynamic_pricing",
+    "config": {
+      "base_monthly_rate": 4.0,
+      "base_yearly_rate": 40.0,
+      "currency": "USD",
+      "currency_symbol": "$",
+      "trial_days": 14,
+      "price_id_monthly": "",
+      "price_id_yearly": "",
+      "bulk_tiers": [
+        {
+          "min_sites": 1,
+          "max_sites": 9,
+          "discount_percent": 0,
+          "label": "Starter Fleet"
+        },
+        {
+          "min_sites": 10,
+          "max_sites": 24,
+          "discount_percent": 10,
+          "label": "Growth Agency"
+        },
+        {
+          "min_sites": 25,
+          "max_sites": 49,
+          "discount_percent": 15,
+          "label": "Scale Partner"
+        },
+        {
+          "min_sites": 50,
+          "max_sites": 500,
+          "discount_percent": 25,
+          "label": "Enterprise MSP"
+        }
+      ],
+      "features_included": [
+        "Sub-millisecond (<0.12ms) Edge WAF Inspection",
+        "AST Heuristics + Machine Learning Threat Classifier",
+        "5.32M+ Checksum Malware Scanner (SQLite B-Tree)",
+        "Layer-7 DDoS Mitigation & Anti-Bot PoW Challenge",
+        "1-Click Post-Hack Disinfection & Salts Rotation",
+        "Zero-Day Real-Time Virtual Patching Engine",
+        "WordPress RASP Lockdown & Stealth Gateway",
+        "Centralized Multi-Site Fleet Safe Updates",
+        "Automated White-Label PDF Audit Reports",
+        "24/7 Priority Emergency Security Response SLA"
+      ]
+    },
+    "updated_at": {
+      "$date": "2026-11-11T18:09:39.094Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1a38aab8adfcf3ebce505"
+    },
+    "_type": "plans",
+    "plans": {
+      "free": {
+        "name": "Starter Free",
+        "display_name": "Starter",
+        "badge": "14-Day Free Trial",
+        "price_id": "",
+        "price_id_monthly": "",
+        "price_id_yearly": "",
+        "monthly_price": 0,
+        "yearly_price": 0,
+        "website_limit": 1,
+        "requests_per_day": 10000,
+        "scans_per_day": 5,
+        "max_scan_size_mb": 2,
+        "waf_mode": "basic",
+        "ml_waf": false,
+        "malware_scanner": true,
+        "analytics": false,
+        "notifications": false,
+        "priority_support": false,
+        "team_seats": 1
+      },
+      "go": {
+        "name": "Developer Go",
+        "display_name": "Developer Go",
+        "badge": "Growing Apps",
+        "price_id": "",
+        "price_id_monthly": "pri_01m51269zdg3kxk6pg4pty72es",
+        "price_id_yearly": "pri_01m5128n710108f65tjgbbr555",
+        "monthly_price": 9,
+        "yearly_price": 90,
+        "website_limit": 5,
+        "requests_per_day": 100000,
+        "scans_per_day": 50,
+        "max_scan_size_mb": 10,
+        "waf_mode": "advanced",
+        "ml_waf": true,
+        "malware_scanner": true,
+        "analytics": true,
+        "notifications": true,
+        "priority_support": false,
+        "team_seats": 3
+      },
+      "pro": {
+        "name": "Enterprise Pro",
+        "display_name": "Enterprise Pro",
+        "badge": "Most Popular",
+        "price_id": "",
+        "price_id_monthly": "pri_01m512c2fjjk5s2n2knn8ewwn4",
+        "price_id_yearly": "pri_01m512dtwq01869bw0k8jnxawx",
+        "monthly_price": 20,
+        "yearly_price": 190,
+        "website_limit": 10,
+        "requests_per_day": 1000000,
+        "scans_per_day": 200,
+        "max_scan_size_mb": 25,
+        "waf_mode": "advanced",
+        "ml_waf": true,
+        "malware_scanner": true,
+        "analytics": true,
+        "notifications": true,
+        "priority_support": true,
+        "team_seats": 10
+      },
+      "enterprise": {
+        "name": "Business & Agency",
+        "display_name": "Business & Agency",
+        "badge": "Agency & Scale",
+        "price_id": "",
+        "price_id_monthly": "pri_01m512h8wh77j3s78ky8hd4jy2",
+        "price_id_yearly": "pri_01m512jnpgwenv25af29trq2fh",
+        "monthly_price": 49,
+        "yearly_price": 470,
+        "website_limit": 20,
+        "requests_per_day": 10000000,
+        "scans_per_day": 10000,
+        "max_scan_size_mb": 100,
+        "waf_mode": "advanced",
+        "ml_waf": true,
+        "malware_scanner": true,
+        "analytics": true,
+        "notifications": true,
+        "priority_support": true,
+        "team_seats": 100
+      }
+    },
+    "updated_at": {
+      "$date": "2026-11-09T16:43:13.528Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1aa39ab8adfcf3ebce510"
+    },
+    "_type": "compliance",
+    "config": {
+      "ip_anonymization": true,
+      "data_retention_days": 90,
+      "soc2_audit_trail": true,
+      "cookie_consent_mode": "gdpr_strict"
+    },
+    "updated_at": {
+      "$date": "2026-11-09T17:13:55.847Z"
+    },
+    "updated_by": "admin@mdefender-pro.io"
+  },
+  {
+    "_id": {
+      "$oid": "6af322e5a91999497e457be3"
+    },
+    "_type": "notification_prefs",
+    "user_id": "admin-user-001",
+    "prefs": {
+      "email": true,
+      "dashboard": true,
+      "primary_email": "rahmanmdmahabubur575@gmail.com",
+      "secondary_email": "",
+      "instant_critical": true,
+      "weekly_digest": true,
+      "include_forensic_payload": true,
+      "webhook": false,
+      "webhook_url": "",
+      "webhook_secret": "",
+      "policy_states": {
+        "site_lifecycle": true,
+        "origin_down": true,
+        "ssl": true,
+        "malware": true,
+        "ddos": true,
+        "bruteforce": true,
+        "exploit": true,
+        "wp_admin": true
+      }
+    },
+    "updated_at": {
+      "$date": "2026-11-10T13:57:57.081Z"
+    }
+  }
+]

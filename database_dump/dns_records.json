@@ -1,0 +1,249 @@
+[
+  {
+    "_id": "fd467bc6-be3e-4ada-a520-b9f4307df0a3",
+    "website_id": "sdk_a6219fc37355712333458421",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "domain": "mahabubur.shop",
+    "type": "A",
+    "name": "@",
+    "content": "49.12.82.48",
+    "ttl": "Auto",
+    "proxied": true,
+    "priority": null,
+    "purpose": "Root A record",
+    "created_at": {
+      "$date": "2026-11-09T10:42:52.514Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-09T10:42:52.514Z"
+    }
+  },
+  {
+    "_id": "71b1b01d-0a25-4d4a-9650-15add1fe0810",
+    "website_id": "sdk_a6219fc37355712333458421",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "domain": "mahabubur.shop",
+    "type": "A",
+    "name": "ftp",
+    "content": "49.12.82.48",
+    "ttl": "Auto",
+    "proxied": false,
+    "priority": null,
+    "purpose": "FTP A record",
+    "created_at": {
+      "$date": "2026-11-09T10:42:52.530Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-09T10:42:52.530Z"
+    }
+  },
+  {
+    "_id": "c5644ea9-88e3-46e9-998e-d10b1f99e3e7",
+    "website_id": "sdk_a6219fc37355712333458421",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "domain": "mahabubur.shop",
+    "type": "CNAME",
+    "name": "mail",
+    "content": "mahabubur.shop",
+    "ttl": "Auto",
+    "proxied": false,
+    "priority": null,
+    "purpose": "MAIL CNAME record",
+    "created_at": {
+      "$date": "2026-11-09T10:42:52.531Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-09T10:42:52.531Z"
+    }
+  },
+  {
+    "_id": "b4daee66-4eb2-4869-bf1b-c2d2c5506b5c",
+    "website_id": "sdk_a6219fc37355712333458421",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "domain": "mahabubur.shop",
+    "type": "CNAME",
+    "name": "www",
+    "content": "mahabubur.shop",
+    "ttl": "Auto",
+    "proxied": true,
+    "priority": null,
+    "purpose": "WWW CNAME record",
+    "created_at": {
+      "$date": "2026-11-09T10:42:52.533Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-09T10:42:52.533Z"
+    }
+  },
+  {
+    "_id": "c95e05c5-d69a-4274-801a-15fc67f2fdfd",
+    "website_id": "sdk_a6219fc37355712333458421",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "domain": "mahabubur.shop",
+    "type": "MX",
+    "name": "@",
+    "content": "mahabubur.shop",
+    "ttl": "Auto",
+    "proxied": false,
+    "priority": 0,
+    "purpose": "Root MX record",
+    "created_at": {
+      "$date": "2026-11-09T10:42:52.534Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-09T10:42:52.534Z"
+    }
+  },
+  {
+    "_id": "2efeb906-97f2-4d37-9735-be4dd88dd5af",
+    "website_id": "sdk_a6219fc37355712333458421",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "domain": "mahabubur.shop",
+    "type": "TXT",
+    "name": "@",
+    "content": "v=spf1 +a +mx +ip4:49.12.82.48 ~all",
+    "ttl": "Auto",
+    "proxied": false,
+    "priority": null,
+    "purpose": "Root TXT record",
+    "created_at": {
+      "$date": "2026-11-09T10:42:52.536Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-09T10:42:52.536Z"
+    }
+  },
+  {
+    "_id": "1d2f5aff-0b3c-42a1-bac2-609a45169c07",
+    "website_id": "sdk_a6219fc37355712333458421",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "domain": "mahabubur.shop",
+    "type": "TXT",
+    "name": "_dmarc",
+    "content": "v=DMARC1; p=none;",
+    "ttl": "Auto",
+    "proxied": false,
+    "priority": null,
+    "purpose": "_DMARC TXT record",
+    "created_at": {
+      "$date": "2026-11-09T10:42:52.536Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-09T10:42:52.536Z"
+    }
+  },
+  {
+    "_id": "b2eee6ce-1b8b-4aff-9087-4cc5aa20aa04",
+    "website_id": "64cf4a35-9c66-4fd1-a4db-e4d74afc6522",
+    "user_id": "6af36b990346b043adaf3e3d",
+    "domain": "sarah-site-b9344e.com",
+    "type": "A",
+    "name": "@",
+    "content": "217.15.170.82",
+    "ttl": "Auto",
+    "proxied": true,
+    "priority": null,
+    "purpose": "Root domain WAF Anycast edge",
+    "created_at": {
+      "$date": "2026-11-11T01:08:20.325Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-11T01:08:20.325Z"
+    }
+  },
+  {
+    "_id": "8693fc14-5e3e-44a9-b512-4cff93a4872b",
+    "website_id": "64cf4a35-9c66-4fd1-a4db-e4d74afc6522",
+    "user_id": "6af36b990346b043adaf3e3d",
+    "domain": "sarah-site-b9344e.com",
+    "type": "CNAME",
+    "name": "www",
+    "content": "@",
+    "ttl": "Auto",
+    "proxied": true,
+    "priority": null,
+    "purpose": "WWW subdomain alias",
+    "created_at": {
+      "$date": "2026-11-11T01:08:20.325Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-11T01:08:20.325Z"
+    }
+  },
+  {
+    "_id": "7f9ff354-3d82-412f-839a-1fb0a07f25b3",
+    "website_id": "193a1fe4-c889-467d-b8a8-41e7ec33164c",
+    "user_id": "6af370bff4d4e9c13f552e09",
+    "domain": "charlie-site-1dd1f5.com",
+    "type": "A",
+    "name": "@",
+    "content": "217.15.170.82",
+    "ttl": "Auto",
+    "proxied": true,
+    "priority": null,
+    "purpose": "Root domain WAF Anycast edge",
+    "created_at": {
+      "$date": "2026-11-11T01:30:20.333Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-11T01:30:20.333Z"
+    }
+  },
+  {
+    "_id": "30af7bd9-67cf-4066-9ca1-a64b1266e197",
+    "website_id": "193a1fe4-c889-467d-b8a8-41e7ec33164c",
+    "user_id": "6af370bff4d4e9c13f552e09",
+    "domain": "charlie-site-1dd1f5.com",
+    "type": "CNAME",
+    "name": "www",
+    "content": "@",
+    "ttl": "Auto",
+    "proxied": true,
+    "priority": null,
+    "purpose": "WWW subdomain alias",
+    "created_at": {
+      "$date": "2026-11-11T01:30:20.333Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-11T01:30:20.333Z"
+    }
+  },
+  {
+    "_id": "37bff83d-1e34-4111-b689-43fd2e81dff3",
+    "website_id": "af1ac8b6-a5c2-4927-8aee-50bd49172491",
+    "user_id": "6af3718eecd11df797f7c1c3",
+    "domain": "fleet-9b2148.store",
+    "type": "A",
+    "name": "@",
+    "content": "217.15.170.82",
+    "ttl": "Auto",
+    "proxied": true,
+    "priority": null,
+    "purpose": "Root domain WAF Anycast edge",
+    "created_at": {
+      "$date": "2026-11-11T01:33:44.984Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-11T01:33:44.984Z"
+    }
+  },
+  {
+    "_id": "3d7ef5f2-9918-437d-a88b-daf972ac0cb7",
+    "website_id": "af1ac8b6-a5c2-4927-8aee-50bd49172491",
+    "user_id": "6af3718eecd11df797f7c1c3",
+    "domain": "fleet-9b2148.store",
+    "type": "CNAME",
+    "name": "www",
+    "content": "@",
+    "ttl": "Auto",
+    "proxied": true,
+    "priority": null,
+    "purpose": "WWW subdomain alias",
+    "created_at": {
+      "$date": "2026-11-11T01:33:44.984Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-11T01:33:44.984Z"
+    }
+  }
+]

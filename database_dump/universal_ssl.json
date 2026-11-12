@@ -1,0 +1,122 @@
+[
+  {
+    "_id": "ussl_site_demo_1",
+    "website_id": "site_demo_1",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "domain": "mahabub.shop",
+    "universal_ssl_enabled": true,
+    "ssl_mode": "flexible",
+    "always_use_https": true,
+    "auto_https_rewrites": true,
+    "min_tls_version": "1.2",
+    "tls_13_enabled": true,
+    "hsts_enabled": true,
+    "hsts_max_age": 15552000,
+    "hsts_include_subdomains": true,
+    "hsts_preload": false,
+    "certificate": {
+      "cert_id": "mdf_cert_1ab58916e485fd68",
+      "status": "active",
+      "hosts": [
+        "mahabub.shop",
+        "*.mahabub.shop"
+      ],
+      "issuer": "Let's Encrypt Authority / MDefender Global Edge CA",
+      "ca": "Let's Encrypt",
+      "signature_algorithm": "SHA256withECDSA",
+      "key_type": "ECDSA P-256 (High-Speed Curve)",
+      "serial_number": "D8462B9E23B90C8A21269E5BB10837D5",
+      "fingerprint_sha256": "05:B8:27:DA:F1:68:BB:FE:BF:B1:EB:CF:00:A5:94:82:01:64:1F:1E:DF:59:D4:22:E2:84:1C:63:F8:F2:A4:19",
+      "valid_from": "2026-10-31T01:10:25.837861",
+      "valid_to": "2027-01-29T01:10:25.837861",
+      "auto_renewal": true,
+      "edge_pops_deployed": "240+ Anycast PoPs"
+    },
+    "created_at": {
+      "$date": "2026-10-31T01:10:25.837Z"
+    },
+    "updated_at": {
+      "$date": "2026-10-31T01:11:27.984Z"
+    }
+  },
+  {
+    "_id": "ussl_sdk_a6219fc37355712333458421",
+    "website_id": "sdk_a6219fc37355712333458421",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "domain": "mahabubur.shop",
+    "universal_ssl_enabled": true,
+    "ssl_mode": "flexible",
+    "always_use_https": true,
+    "auto_https_rewrites": true,
+    "min_tls_version": "1.2",
+    "tls_13_enabled": true,
+    "hsts_enabled": true,
+    "hsts_max_age": 15552000,
+    "hsts_include_subdomains": true,
+    "hsts_preload": false,
+    "certificate": {
+      "cert_id": "mdf_cert_72bb4c35fe35c5c0",
+      "status": "active",
+      "hosts": [
+        "mahabubur.shop",
+        "*.mahabubur.shop"
+      ],
+      "issuer": "Let's Encrypt Authority / MDefender Global Edge CA",
+      "ca": "Let's Encrypt",
+      "signature_algorithm": "SHA256withECDSA",
+      "key_type": "ECDSA P-256 (High-Speed Curve)",
+      "serial_number": "27697747974A2DC5C00F7D79AEF8FDE1",
+      "fingerprint_sha256": "2D:55:CF:D3:D5:20:EC:A2:E4:45:C8:7F:94:59:85:79:1B:83:BF:AA:4A:B2:0D:B2:2D:D3:B6:DB:12:D6:03:11",
+      "valid_from": "2026-11-09T10:42:45.393327",
+      "valid_to": "2027-02-07T10:42:45.393327",
+      "auto_renewal": true,
+      "edge_pops_deployed": "240+ Anycast PoPs"
+    },
+    "created_at": {
+      "$date": "2026-11-09T10:42:45.393Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-09T10:42:45.393Z"
+    }
+  },
+  {
+    "_id": "ussl_eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+    "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "domain": "localhost",
+    "universal_ssl_enabled": true,
+    "ssl_mode": "flexible",
+    "always_use_https": true,
+    "auto_https_rewrites": true,
+    "min_tls_version": "1.2",
+    "tls_13_enabled": true,
+    "hsts_enabled": true,
+    "hsts_max_age": 15552000,
+    "hsts_include_subdomains": true,
+    "hsts_preload": false,
+    "certificate": {
+      "cert_id": "mdf_cert_80c4947eb897e5d3",
+      "status": "active",
+      "hosts": [
+        "localhost",
+        "*.localhost"
+      ],
+      "issuer": "Let's Encrypt Authority / MDefender Global Edge CA",
+      "ca": "Let's Encrypt",
+      "signature_algorithm": "SHA256withECDSA",
+      "key_type": "ECDSA P-256 (High-Speed Curve)",
+      "serial_number": "7D4D809ABB6F0F7F8DEE65CF4D095C7B",
+      "fingerprint_sha256": "92:15:0A:D9:80:D7:D3:29:7D:5F:95:DD:FC:4C:BA:7D:C6:C0:D3:BD:B3:42:25:80:6A:9A:0F:AF:DA:9F:D9:40",
+      "valid_from": "2026-11-11T13:47:21.699200",
+      "valid_to": "2027-02-09T13:47:21.699200",
+      "auto_renewal": true,
+      "edge_pops_deployed": "240+ Anycast PoPs"
+    },
+    "created_at": {
+      "$date": "2026-11-11T13:47:21.699Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-11T13:47:21.699Z"
+    }
+  }
+]

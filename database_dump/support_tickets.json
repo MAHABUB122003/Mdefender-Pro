@@ -1,0 +1,162 @@
+[
+  {
+    "_id": {
+      "$oid": "6af425a39270230f395f87e0"
+    },
+    "ticket_id": "TICK-3031E063",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "user_email": "user@gmail.com",
+    "subject": "Site returning 403 on checkout",
+    "category": "waf_false_positive",
+    "priority": "high",
+    "status": "in_progress",
+    "target_domain": "example.com",
+    "diagnostics": {},
+    "messages": [
+      {
+        "msg_id": "e5a7d22fdf5c",
+        "sender_type": "user",
+        "sender_id": "6addfa54c2c6599343d03ed8",
+        "sender_email": "user@gmail.com",
+        "message": "Checkout API is blocked by WAF rule #104",
+        "created_at": "2026-11-11T08:21:55.100721+00:00",
+        "attachments": []
+      },
+      {
+        "msg_id": "9476f75c4477",
+        "sender_type": "admin",
+        "sender_id": "admin",
+        "sender_email": "admin@mdefender-pro.io",
+        "message": "Whitelisted checkout endpoint in rule #104. Please test now.",
+        "created_at": "2026-11-11T08:21:55.110745+00:00",
+        "attachments": []
+      },
+      {
+        "msg_id": "c7ca6d4a0150",
+        "sender_type": "user",
+        "sender_id": "6addfa54c2c6599343d03ed8",
+        "sender_email": "user@gmail.com",
+        "message": "Thanks, it is working now!",
+        "created_at": "2026-11-11T08:23:44.050766+00:00",
+        "attachments": []
+      }
+    ],
+    "message_count": 3,
+    "created_at": {
+      "$date": "2026-11-11T08:21:55.100Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-11T08:23:44.050Z"
+    },
+    "closed_at": null,
+    "purge_at": null,
+    "admin_notes": ""
+  },
+  {
+    "_id": {
+      "$oid": "6af42d9cbf653a155856b4bc"
+    },
+    "ticket_id": "TICK-F73194C5",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "user_email": "user@gmail.com",
+    "subject": "Checkout Webhook blocked on localhost/mahabub",
+    "category": "general_inquiry",
+    "priority": "medium",
+    "status": "in_progress",
+    "target_domain": "localhost/mahabub",
+    "diagnostics": {},
+    "messages": [
+      {
+        "msg_id": "401e44a40592",
+        "sender_type": "user",
+        "sender_id": "6addfa54c2c6599343d03ed8",
+        "sender_email": "user@gmail.com",
+        "message": "Whenever Stripe sends a webhook POST to /wp-json/stripe/webhook, MDefender blocks it with 403 Forbidden. Please whitelist this endpoint.",
+        "created_at": "2026-11-11T08:55:56.008687+00:00",
+        "attachments": []
+      },
+      {
+        "msg_id": "e5fccd0b1904",
+        "sender_type": "admin",
+        "sender_id": "super_admin",
+        "sender_email": "admin@mdefender-pro.io",
+        "message": "We inspected the WAF log and added /wp-json/stripe/webhook to the allowed ingress exceptions. The webhook should now pass through smoothly.",
+        "created_at": "2026-11-11T08:55:56.025206+00:00",
+        "attachments": []
+      },
+      {
+        "msg_id": "f1c27433bbe8",
+        "sender_type": "user",
+        "sender_id": "6addfa54c2c6599343d03ed8",
+        "sender_email": "user@gmail.com",
+        "message": "Thank you! The Stripe webhooks are now returning 200 OK without any issues.",
+        "created_at": "2026-11-11T08:55:56.048731+00:00",
+        "attachments": []
+      }
+    ],
+    "message_count": 3,
+    "created_at": {
+      "$date": "2026-11-11T08:55:56.008Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-11T08:55:56.048Z"
+    },
+    "closed_at": null,
+    "purge_at": null,
+    "admin_notes": ""
+  },
+  {
+    "_id": {
+      "$oid": "6af42ddbbf653a155856b4bd"
+    },
+    "ticket_id": "TICK-D5554D65",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "user_email": "user@gmail.com",
+    "subject": "Hello",
+    "category": "waf_false_positive",
+    "priority": "medium",
+    "status": "waiting_user",
+    "target_domain": "",
+    "diagnostics": {},
+    "messages": [
+      {
+        "msg_id": "882b3c7665e1",
+        "sender_type": "user",
+        "sender_id": "6addfa54c2c6599343d03ed8",
+        "sender_email": "user@gmail.com",
+        "message": "I have one problem",
+        "created_at": "2026-11-11T08:56:59.316158+00:00",
+        "attachments": []
+      },
+      {
+        "msg_id": "1a47cc2f7503",
+        "sender_type": "admin",
+        "sender_id": "super_admin",
+        "sender_email": "admin",
+        "message": "it ok",
+        "created_at": "2026-11-11T09:13:58.718229+00:00",
+        "attachments": []
+      },
+      {
+        "msg_id": "bb447c04d50c",
+        "sender_type": "admin",
+        "sender_id": "super_admin",
+        "sender_email": "admin",
+        "sender_name": "Hasan",
+        "message": "Hello good for you",
+        "created_at": "2026-11-11T09:31:08.613009+00:00",
+        "attachments": []
+      }
+    ],
+    "message_count": 3,
+    "created_at": {
+      "$date": "2026-11-11T08:56:59.316Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-11T09:31:08.613Z"
+    },
+    "closed_at": null,
+    "purge_at": null,
+    "admin_notes": ""
+  }
+]

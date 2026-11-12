@@ -99,7 +99,7 @@ export default function AttackLearning() {
   const loadWhitelists = async () => {
     setWhitelistsLoading(true)
     try {
-      const res = await api.adminGetWhitelists()
+      const res = await api.adminGetLearningWhitelists()
       setWhitelists(res.data?.whitelists || [])
     } catch (err) {
       showNotification("Failed to fetch whitelists", "error")
@@ -249,7 +249,7 @@ export default function AttackLearning() {
   const handleDeleteWhitelist = async (id) => {
     if (!window.confirm("Remove this whitelist rule?")) return
     try {
-      await api.adminDeleteWhitelist(id)
+      await api.adminDeleteLearningWhitelist(id)
       showNotification("Whitelist rule deleted")
       loadWhitelists()
       loadStats()

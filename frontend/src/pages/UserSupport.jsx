@@ -771,118 +771,125 @@ export default function UserSupport() {
                 </div>
               </div>
 
-              {/* Message Cards (Matches Image 2 exactly: Individual card for each message) */}
-              {activeTicket.messages?.map((msg, idx) => {
-                const isStaff = msg.sender_type === 'admin'
-                return (
-                  <div
-                    key={msg.msg_id || idx}
-                    style={{
-                      background: isStaff ? '#ffffff' : '#f8fafc',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '10px',
-                      padding: '24px',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-                    }}
-                  >
-                    {/* Message Sender Header */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                      <div
-                        style={{
-                          width: '38px',
-                          height: '38px',
-                          borderRadius: '50%',
-                          background: isStaff ? '#6366f1' : '#e2e8f0',
-                          color: isStaff ? '#ffffff' : '#64748b',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: '700',
-                          fontSize: '14px'
-                        }}
-                      >
-                        {isStaff ? (msg.sender_name ? msg.sender_name.charAt(0).toUpperCase() : 'S') : <User size={18} />}
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>
-                          {isStaff ? (msg.sender_name || 'MDefender Support Specialist') : (msg.sender_name || userName)}
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#94a3b8' }}>
-                          {msg.created_at ? new Date(msg.created_at).toLocaleString() : ''}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Message Body */}
+              {/* Conversation */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {activeTicket.messages?.map((msg, idx) => {
+                  const isStaff = msg.sender_type === 'admin'
+                  return (
                     <div
+                      key={msg.msg_id || idx}
                       style={{
-                        fontSize: '14px',
-                        color: '#334155',
-                        lineHeight: '1.6',
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word'
+                        display: 'flex',
+                        gap: 9,
+                        maxWidth: 660,
+                        marginLeft: isStaff ? 0 : 'auto',
+                        flexDirection: isStaff ? 'row' : 'row-reverse',
+                        alignItems: 'flex-start'
                       }}
                     >
-                      {msg.message}
+                      <div
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: '50%',
+                          flexShrink: 0,
+                          display: 'grid',
+                          placeItems: 'center',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          background: isStaff ? 'var(--md-surface-sunken)' : 'var(--md-forest)',
+                          color: isStaff ? 'var(--md-ink-2)' : '#fff'
+                        }}
+                      >
+                        {isStaff ? (msg.sender_name ? msg.sender_name.charAt(0).toUpperCase() : 'S') : (userName || 'You').slice(0, 1).toUpperCase()}
+                      </div>
+                      <div
+                        style={{
+                          background: isStaff ? 'var(--md-surface)' : '#eaf1ee',
+                          border: `1px solid ${isStaff ? 'var(--md-line)' : '#d5e3dd'}`,
+                          borderRadius: 12,
+                          padding: '10px 13px',
+                          minWidth: 0
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 10, color: 'var(--md-ink-3)', marginBottom: 4 }}>
+                          <strong style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--md-ink-2)' }}>
+                            {isStaff ? (msg.sender_name || 'MDefender Support') : (msg.sender_name || userName || 'You')}
+                          </strong>
+                          <span>{msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                        </div>
+                        <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--md-ink)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                          {msg.message}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
 
               <div ref={messagesEndRef} />
 
-              {/* Reply Box */}
+              {/* Reply composer */}
               <form
                 onSubmit={handleSendReply}
                 style={{
-                  background: '#ffffff',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '10px',
-                  padding: '20px',
+                  background: 'var(--md-surface)',
+                  border: '1px solid var(--md-line)',
+                  borderRadius: 12,
+                  padding: 14,
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '12px'
+                  gap: 8
                 }}
               >
                 <textarea
-                  rows={4}
-                  placeholder="Type your response to the support specialist..."
+                  rows={3}
+                  placeholder="Write a reply to the support team…"
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && replyText.trim() && !replying) handleSendReply(e)
+                  }}
                   style={{
                     width: '100%',
-                    padding: '12px 14px',
-                    background: '#ffffff',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '6px',
-                    fontSize: '13.5px',
-                    color: '#0f172a',
+                    padding: '10px 11px',
+                    background: 'var(--md-surface)',
+                    border: '1px solid var(--md-line-strong)',
+                    borderRadius: 9,
+                    fontSize: 13,
+                    lineHeight: 1.55,
+                    color: 'var(--md-ink)',
                     outline: 'none',
                     resize: 'vertical',
+                    minHeight: 74,
+                    maxHeight: 200,
                     boxSizing: 'border-box',
                     fontFamily: 'inherit'
                   }}
                 />
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 10.5, color: 'var(--md-ink-3)' }}>
+                    ⌘/Ctrl + Enter to send · Typical first response: 4 hours
+                  </span>
                   <button
                     type="submit"
                     disabled={replying || !replyText.trim()}
                     style={{
-                      background: '#6366f1',
+                      background: 'var(--md-forest)',
                       border: 'none',
-                      borderRadius: '6px',
-                      padding: '10px 22px',
+                      borderRadius: 8,
+                      padding: '9px 18px',
                       color: '#ffffff',
-                      fontSize: '13px',
-                      fontWeight: '700',
+                      fontSize: 12.5,
+                      fontWeight: 600,
                       cursor: replying || !replyText.trim() ? 'not-allowed' : 'pointer',
                       opacity: replying || !replyText.trim() ? 0.6 : 1,
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '8px'
+                      gap: 7
                     }}
                   >
-                    {replying ? <RotateCw size={14} className="animate-spin" /> : <Send size={14} />} Reply
+                    {replying ? <RotateCw size={14} className="animate-spin" /> : <Send size={14} />} Send reply
                   </button>
                 </div>
               </form>

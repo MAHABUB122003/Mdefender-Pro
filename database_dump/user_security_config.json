@@ -1,0 +1,63 @@
+[
+  {
+    "_id": {
+      "$oid": "6ae96cb4f4dd7bae987d522c"
+    },
+    "user_id": "6a7ebf0f7a0ac36510cd50f9",
+    "login_two_factor": true,
+    "two_factor_enabled": true,
+    "two_factor_recovery_codes": [
+      "6450-D5E4",
+      "79B2-AD6D",
+      "4351-971D",
+      "0209-E252",
+      "FB50-AD03",
+      "9FF7-2942",
+      "6310-15E8",
+      "1586-BFB6"
+    ],
+    "two_factor_secret": "NOTYYAXFYVP4KZFLKNFIIGJPH6KOAA5S",
+    "updated_at": {
+      "$date": "2026-11-03T11:14:41.521Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0af4e0eb7ab96d961f21f"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "_type": "user_security_config",
+    "admin_bruteforce_protection": true,
+    "auto_block_duration_hours": 12,
+    "auto_block_enabled": true,
+    "auto_block_permanent": false,
+    "auto_block_threshold": 5,
+    "auto_block_window_hours": 24,
+    "ddos_mitigation_enabled": true,
+    "hold_press_duration_ms": 2000,
+    "hold_press_enabled": true,
+    "login_lockout_duration_minutes": 30,
+    "login_lockout_scope": "gateway_only",
+    "login_lockout_threshold": 4,
+    "rate_limit_action": "throttle_429",
+    "rate_limit_per_minute": 50,
+    "turnstile_enabled": false,
+    "turnstile_mode": "forms",
+    "turnstile_secret_key": "",
+    "turnstile_site_key": "",
+    "turnstile_theme": "auto",
+    "two_factor_domain_overrides": {},
+    "two_factor_enabled": false,
+    "two_factor_lockout_hours": 24,
+    "two_factor_max_attempts": 3,
+    "two_factor_method_backup": true,
+    "two_factor_method_email": true,
+    "two_factor_method_totp": true,
+    "two_factor_remember_days": 0,
+    "two_factor_roles": "admins",
+    "two_factor_scope": "all",
+    "updated_at": {
+      "$date": "2026-11-09T00:17:24.528Z"
+    }
+  }
+]

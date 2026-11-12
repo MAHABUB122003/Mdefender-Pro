@@ -1,0 +1,18 @@
+[
+  {
+    "_id": {
+      "$oid": "6a7eb09cfcfc6f4494c5be17"
+    },
+    "user_id": "smoke_v1_test@example.com",
+    "expires_at": null,
+    "granted_at": {
+      "$date": "2026-08-14T12:08:04.098Z"
+    },
+    "granted_by": "admin",
+    "note": {
+      "granted_by": "admin"
+    },
+    "plan": "pro",
+    "status": "active"
+  }
+]

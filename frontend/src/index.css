@@ -3045,3 +3045,169 @@ main button:active:not(:disabled) {
   filter: brightness(0.95);
 }
 
+/* ==========================================================================
+   Console visual refresh (2026-11) — warm paper, forest, signal amber.
+   Overrides surface, header and card chrome only; page logic is unchanged.
+   ========================================================================== */
+body {
+  background: var(--md-paper, #f6f5f0);
+  color: var(--md-ink, #10201e);
+}
+
+.header {
+  background: var(--md-surface, #fff);
+  border: 1px solid var(--md-line, #e2e5de);
+  border-radius: 14px;
+  box-shadow: none;
+  padding: 10px 16px;
+}
+.header-left h1 {
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--md-ink, #10201e);
+}
+.header-left .breadcrumb { color: var(--md-ink-3, #6e7f7a); font-size: 12px; }
+.header-page-icon {
+  background: var(--md-amber-soft, #fbebdd);
+  color: var(--md-amber, #e8792f);
+  border: 1px solid #f3d3b7;
+  border-radius: 9px;
+}
+
+.stat-card {
+  background: var(--md-surface, #fff);
+  border: 1px solid var(--md-line, #e2e5de);
+  border-radius: 14px;
+  box-shadow: none;
+  padding: 16px 18px;
+  cursor: default;
+  animation: none;
+  opacity: 1;
+}
+.stat-card:hover {
+  transform: none;
+  box-shadow: 0 1px 2px rgba(16, 32, 30, 0.04);
+}
+.stat-card .stat-icon-wrap {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: rgba(11, 43, 38, 0.06);
+  color: var(--md-forest, #0b2b26);
+}
+.stat-icon-wrap.blue,
+.stat-icon-wrap.green,
+.stat-icon-wrap.purple,
+.stat-icon-wrap.red {
+  background: rgba(11, 43, 38, 0.06);
+  color: var(--md-forest, #0b2b26);
+}
+.stat-card .stat-number {
+  font-size: 26px;
+  letter-spacing: -0.03em;
+  color: var(--md-ink, #10201e);
+  margin-top: 10px;
+}
+.stat-card .stat-label { font-size: 12px; color: var(--md-ink-3, #6e7f7a); }
+.stat-trend.up { color: var(--md-emerald, #12805c); background: var(--md-emerald-soft, #e3f1ea); }
+.stat-trend.down { color: var(--md-danger, #c0392b); background: var(--md-danger-soft, #f8e5e1); }
+.stat-trend.neutral { color: var(--md-ink-2, #465955); background: var(--md-surface-sunken, #efeee8); }
+
+.chart-card,
+.top-attackers {
+  background: var(--md-surface, #fff);
+  border: 1px solid var(--md-line, #e2e5de);
+  border-radius: 14px;
+  box-shadow: none;
+  animation: none;
+  opacity: 1;
+}
+.chart-card .chart-header h3,
+.top-attackers .section-header h3 {
+  font-size: 13.5px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--md-ink, #10201e);
+}
+.chart-card .chart-header .chart-action { color: var(--md-ink-3, #6e7f7a); }
+.chart-card .chart-header .chart-action:hover {
+  background: var(--md-surface-sunken, #efeee8);
+  color: var(--md-ink, #10201e);
+}
+
+/* ==========================================================================
+   Admin console theme — match the tenant console (2026-11)
+   Warm paper canvas, warm-white sidebar, white cards, no zoom blur.
+   ========================================================================== */
+.admin-app-root {
+  zoom: 1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  min-height: 100vh !important;
+  background: var(--md-paper) !important;
+  color: var(--md-ink) !important;
+}
+.admin-sidebar {
+  height: 100vh !important;
+  background: #fbfaf6 !important;
+  border-right: 1px solid var(--md-line) !important;
+}
+.admin-sidebar-brand {
+  background: transparent !important;
+  border-bottom: 1px solid var(--md-line) !important;
+}
+.admin-main-viewport,
+.admin-content-canvas {
+  background: var(--md-paper) !important;
+}
+.admin-main-viewport { min-height: 100vh !important; }
+.admin-header {
+  background: var(--md-paper) !important;
+  border-bottom: 1px solid var(--md-line) !important;
+}
+.admin-content-canvas {
+  padding: 20px 24px 48px !important;
+}
+
+/* New UI primitives inside the admin canvas must not inherit legacy table chrome */
+.admin-content-canvas .mdui-table th {
+  background: transparent !important;
+  color: var(--md-ink-3) !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.06em !important;
+  padding: 9px 12px !important;
+  border-bottom: 1px solid var(--md-line) !important;
+}
+.admin-content-canvas .mdui-table td {
+  padding: 12px !important;
+  border-bottom: 1px solid var(--md-line) !important;
+  color: var(--md-ink-2) !important;
+  font-size: 13px !important;
+}
+.admin-content-canvas .mdui-table tbody tr:hover td {
+  background: var(--md-surface-hover) !important;
+}
+.admin-content-canvas .mdui-table tr:last-child td {
+  border-bottom: 0 !important;
+}
+
+/* Admin top bar: keep it calm and prevent overflow on 1280–1500 px screens */
+.admin-header {
+  padding: 0 20px !important;
+  gap: 12px !important;
+}
+.admin-header-center {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  max-width: 520px !important;
+}
+.admin-global-search { width: 100% !important; min-width: 0 !important; }
+@media (max-width: 1500px) {
+  .admin-header-clock { display: none !important; }
+  .admin-fleet-badge .badge-text { display: none !important; }
+  .admin-global-search kbd { display: none !important; }
+}
+

@@ -1,0 +1,1090 @@
+[
+  {
+    "_id": {
+      "$oid": "6af1e743ab8adfcf3ebce51b"
+    },
+    "domain": "localhost",
+    "authorities": [
+      {
+        "authority": "Google Safe Browsing",
+        "status": "clean",
+        "badge": "Safe (Local Dev)",
+        "threat_types": [],
+        "details": "Local development host; not indexed by public search crawlers.",
+        "latency_ms": 12,
+        "monitored_vectors": [
+          "Malware",
+          "Phishing / Social Engineering",
+          "Unwanted Software"
+        ]
+      },
+      {
+        "authority": "Spamhaus DBL",
+        "status": "clean",
+        "badge": "Not Listed (Local)",
+        "threat_types": [],
+        "details": "Local domain not registered in public DNSBL zones.",
+        "latency_ms": 5,
+        "monitored_vectors": [
+          "Spam Sources",
+          "Phishing Domains",
+          "Botnet C&C"
+        ]
+      },
+      {
+        "authority": "Norton SafeWeb",
+        "status": "clean",
+        "badge": "Safe & Verified",
+        "threat_types": [],
+        "details": "Symantec / Norton intelligence verifies domain as clean.",
+        "latency_ms": 32,
+        "monitored_vectors": [
+          "Drive-by Downloads",
+          "Identity Theft",
+          "Cryptomining Scripts"
+        ]
+      },
+      {
+        "authority": "McAfee WebAdvisor",
+        "status": "clean",
+        "badge": "Minimal Risk (Safe)",
+        "threat_types": [],
+        "details": "Minimal risk profile. Safe for browsing and transactions.",
+        "latency_ms": 28,
+        "monitored_vectors": [
+          "Malicious Links",
+          "Suspicious Downloads",
+          "Browser Exploits"
+        ]
+      },
+      {
+        "authority": "PhishTank & APWG",
+        "status": "clean",
+        "badge": "Clean (No Phishing)",
+        "threat_types": [],
+        "details": "Domain is not listed in any active phishing or credential-harvesting databases.",
+        "latency_ms": 22,
+        "monitored_vectors": [
+          "Credential Harvesters",
+          "Cloned Brand Gateways",
+          "Social Engineering"
+        ]
+      },
+      {
+        "authority": "SURBL & URIBL",
+        "status": "clean",
+        "badge": "Unlisted (Clean)",
+        "threat_types": [],
+        "details": "No unsolicited spam URI listings detected.",
+        "latency_ms": 19,
+        "monitored_vectors": [
+          "Unsolicited Spam URIs",
+          "Email Malware Delivery",
+          "Domain Reputation"
+        ]
+      },
+      {
+        "authority": "Yandex Safe Browsing",
+        "status": "clean",
+        "badge": "Search Safe",
+        "threat_types": [],
+        "details": "Domain is verified safe in Yandex search index.",
+        "latency_ms": 36,
+        "monitored_vectors": [
+          "Search Defacement",
+          "Mobile Redirect Malvertising"
+        ]
+      }
+    ],
+    "badge_color": "emerald",
+    "delisting_guide": {
+      "is_needed": false,
+      "affected_services": [],
+      "google_search_console_url": "https://search.google.com/search-console",
+      "action_plan": [
+        "1. Run MDefender Malware Scanner (/user/bulk/scanner) to isolate and delete backdoors and webshells.",
+        "2. Ensure WP Core and Plugins are restored to official repository hashes via Post-Hack Recovery.",
+        "3. Enforce Production Lockdown under Security Hardening to seal WP_DEBUG and display_errors.",
+        "4. Log in to Google Search Console -> Security & Manual Actions -> Request Review.",
+        "5. Paste the MDefender clean audit verification certificate into the reconsideration request."
+      ],
+      "reconsideration_template": "Subject: Security Issue Review Request for localhost\n\nDear Google Search Console Security Team,\n\nOur domain localhost was recently reviewed following a security inspection. We have thoroughly cleaned our entire web root, purged all unauthorized code, updated all core WordPress files to pristine official hashes, and enforced enterprise WAF shielding. A comprehensive security audit confirmed zero malware, zero spam scripts, and zero deceptive redirects remain. We kindly request a re-evaluation of localhost to remove the warning interstitial."
+    },
+    "flagged_count": 0,
+    "is_blacklisted": false,
+    "last_audited_at": "2026-11-09 15:31:15 UTC",
+    "site_id": "",
+    "ssl_and_headers": {
+      "has_ssl": false,
+      "ssl_valid": true,
+      "issuer": "Local Development (No TLS required)",
+      "days_remaining": 365,
+      "hsts_active": false,
+      "csp_active": false,
+      "x_frame_options": true
+    },
+    "status_category": "clean",
+    "status_label": "Pristine & Trusted",
+    "total_authorities": 7,
+    "total_latency_ms": 0,
+    "trust_score": 100
+  },
+  {
+    "_id": {
+      "$oid": "6af1e744ab8adfcf3ebce51c"
+    },
+    "domain": "testsafebrowsing.appspot.com",
+    "authorities": [
+      {
+        "authority": "Google Safe Browsing",
+        "status": "flagged",
+        "badge": "Deceptive / Malware Alert",
+        "threat_types": [
+          "MALWARE",
+          "SOCIAL_ENGINEERING"
+        ],
+        "details": "Flagged by Google Safe Browsing. Visitors see red warning screen.",
+        "latency_ms": 45,
+        "monitored_vectors": [
+          "Malware",
+          "Phishing / Social Engineering",
+          "Unwanted Software"
+        ]
+      },
+      {
+        "authority": "Spamhaus DBL",
+        "status": "flagged",
+        "badge": "Listed in Spamhaus DBL",
+        "threat_types": [
+          "SPAM_SOURCE",
+          "PHISHING"
+        ],
+        "details": "Domain IP/host is actively listed on Spamhaus Domain Block List.",
+        "latency_ms": 25,
+        "monitored_vectors": [
+          "Spam Sources",
+          "Phishing Domains",
+          "Botnet C&C"
+        ]
+      },
+      {
+        "authority": "Norton SafeWeb",
+        "status": "flagged",
+        "badge": "Known Threat Detected",
+        "threat_types": [
+          "COMPUTER_THREATS"
+        ],
+        "details": "Flagged for drive-by download patterns.",
+        "latency_ms": 32,
+        "monitored_vectors": [
+          "Drive-by Downloads",
+          "Identity Theft",
+          "Cryptomining Scripts"
+        ]
+      },
+      {
+        "authority": "McAfee WebAdvisor",
+        "status": "flagged",
+        "badge": "High Risk Warning",
+        "threat_types": [
+          "HIGH_RISK_CONTENT"
+        ],
+        "details": "McAfee threat sensors detected risky download scripts.",
+        "latency_ms": 28,
+        "monitored_vectors": [
+          "Malicious Links",
+          "Suspicious Downloads",
+          "Browser Exploits"
+        ]
+      },
+      {
+        "authority": "PhishTank & APWG",
+        "status": "flagged",
+        "badge": "Verified Phishing Trap",
+        "threat_types": [
+          "CREDENTIAL_HARVESTING"
+        ],
+        "details": "Domain contains fake login gateways designed to steal credentials.",
+        "latency_ms": 22,
+        "monitored_vectors": [
+          "Credential Harvesters",
+          "Cloned Brand Gateways",
+          "Social Engineering"
+        ]
+      },
+      {
+        "authority": "SURBL & URIBL",
+        "status": "flagged",
+        "badge": "Listed in SURBL",
+        "threat_types": [
+          "UNSOLICITED_URI"
+        ],
+        "details": "URI detected in spam campaigns.",
+        "latency_ms": 19,
+        "monitored_vectors": [
+          "Unsolicited Spam URIs",
+          "Email Malware Delivery",
+          "Domain Reputation"
+        ]
+      },
+      {
+        "authority": "Yandex Safe Browsing",
+        "status": "flagged",
+        "badge": "Security Warning",
+        "threat_types": [
+          "SEARCH_PENALTY"
+        ],
+        "details": "Yandex search index has removed domain due to malicious code.",
+        "latency_ms": 36,
+        "monitored_vectors": [
+          "Search Defacement",
+          "Mobile Redirect Malvertising"
+        ]
+      }
+    ],
+    "badge_color": "rose",
+    "delisting_guide": {
+      "is_needed": true,
+      "affected_services": [
+        "Google Safe Browsing",
+        "Spamhaus DBL",
+        "Norton SafeWeb",
+        "McAfee WebAdvisor",
+        "PhishTank & APWG",
+        "SURBL & URIBL",
+        "Yandex Safe Browsing"
+      ],
+      "google_search_console_url": "https://search.google.com/search-console",
+      "action_plan": [
+        "1. Run MDefender Malware Scanner (/user/bulk/scanner) to isolate and delete backdoors and webshells.",
+        "2. Ensure WP Core and Plugins are restored to official repository hashes via Post-Hack Recovery.",
+        "3. Enforce Production Lockdown under Security Hardening to seal WP_DEBUG and display_errors.",
+        "4. Log in to Google Search Console -> Security & Manual Actions -> Request Review.",
+        "5. Paste the MDefender clean audit verification certificate into the reconsideration request."
+      ],
+      "reconsideration_template": "Subject: Security Issue Review Request for testsafebrowsing.appspot.com\n\nDear Google Search Console Security Team,\n\nOur domain testsafebrowsing.appspot.com was recently reviewed following a security inspection. We have thoroughly cleaned our entire web root, purged all unauthorized code, updated all core WordPress files to pristine official hashes, and enforced enterprise WAF shielding. A comprehensive security audit confirmed zero malware, zero spam scripts, and zero deceptive redirects remain. We kindly request a re-evaluation of testsafebrowsing.appspot.com to remove the warning interstitial."
+    },
+    "flagged_count": 7,
+    "is_blacklisted": true,
+    "last_audited_at": "2026-11-09 15:31:16 UTC",
+    "site_id": "",
+    "ssl_and_headers": {
+      "has_ssl": true,
+      "ssl_valid": true,
+      "issuer": "WE2",
+      "days_remaining": 51,
+      "hsts_active": false,
+      "csp_active": false,
+      "x_frame_options": false
+    },
+    "status_category": "blacklisted",
+    "status_label": "Blacklisted / Deceptive",
+    "total_authorities": 7,
+    "total_latency_ms": 1025,
+    "trust_score": 0
+  },
+  {
+    "_id": {
+      "$oid": "6af1e80dab8adfcf3ebce51d"
+    },
+    "site_id": "site_e6972fbd7efa",
+    "authorities": [
+      {
+        "authority": "Google Safe Browsing",
+        "status": "clean",
+        "badge": "Safe (Local Dev)",
+        "threat_types": [],
+        "details": "Local development host; not indexed by public search crawlers.",
+        "latency_ms": 12,
+        "monitored_vectors": [
+          "Malware",
+          "Phishing / Social Engineering",
+          "Unwanted Software"
+        ]
+      },
+      {
+        "authority": "Spamhaus DBL",
+        "status": "clean",
+        "badge": "Not Listed (Local)",
+        "threat_types": [],
+        "details": "Local domain not registered in public DNSBL zones.",
+        "latency_ms": 5,
+        "monitored_vectors": [
+          "Spam Sources",
+          "Phishing Domains",
+          "Botnet C&C"
+        ]
+      },
+      {
+        "authority": "Norton SafeWeb",
+        "status": "clean",
+        "badge": "Safe & Verified",
+        "threat_types": [],
+        "details": "Symantec / Norton intelligence verifies domain as clean.",
+        "latency_ms": 32,
+        "monitored_vectors": [
+          "Drive-by Downloads",
+          "Identity Theft",
+          "Cryptomining Scripts"
+        ]
+      },
+      {
+        "authority": "McAfee WebAdvisor",
+        "status": "clean",
+        "badge": "Minimal Risk (Safe)",
+        "threat_types": [],
+        "details": "Minimal risk profile. Safe for browsing and transactions.",
+        "latency_ms": 28,
+        "monitored_vectors": [
+          "Malicious Links",
+          "Suspicious Downloads",
+          "Browser Exploits"
+        ]
+      },
+      {
+        "authority": "PhishTank & APWG",
+        "status": "clean",
+        "badge": "Clean (No Phishing)",
+        "threat_types": [],
+        "details": "Domain is not listed in any active phishing or credential-harvesting databases.",
+        "latency_ms": 22,
+        "monitored_vectors": [
+          "Credential Harvesters",
+          "Cloned Brand Gateways",
+          "Social Engineering"
+        ]
+      },
+      {
+        "authority": "SURBL & URIBL",
+        "status": "clean",
+        "badge": "Unlisted (Clean)",
+        "threat_types": [],
+        "details": "No unsolicited spam URI listings detected.",
+        "latency_ms": 19,
+        "monitored_vectors": [
+          "Unsolicited Spam URIs",
+          "Email Malware Delivery",
+          "Domain Reputation"
+        ]
+      },
+      {
+        "authority": "Yandex Safe Browsing",
+        "status": "clean",
+        "badge": "Search Safe",
+        "threat_types": [],
+        "details": "Domain is verified safe in Yandex search index.",
+        "latency_ms": 36,
+        "monitored_vectors": [
+          "Search Defacement",
+          "Mobile Redirect Malvertising"
+        ]
+      }
+    ],
+    "badge_color": "emerald",
+    "delisting_guide": {
+      "is_needed": false,
+      "affected_services": [],
+      "google_search_console_url": "https://search.google.com/search-console",
+      "action_plan": [
+        "1. Run MDefender Malware Scanner (/user/bulk/scanner) to isolate and delete backdoors and webshells.",
+        "2. Ensure WP Core and Plugins are restored to official repository hashes via Post-Hack Recovery.",
+        "3. Enforce Production Lockdown under Security Hardening to seal WP_DEBUG and display_errors.",
+        "4. Log in to Google Search Console -> Security & Manual Actions -> Request Review.",
+        "5. Paste the MDefender clean audit verification certificate into the reconsideration request."
+      ],
+      "reconsideration_template": "Subject: Security Issue Review Request for localhost\n\nDear Google Search Console Security Team,\n\nOur domain localhost was recently reviewed following a security inspection. We have thoroughly cleaned our entire web root, purged all unauthorized code, updated all core WordPress files to pristine official hashes, and enforced enterprise WAF shielding. A comprehensive security audit confirmed zero malware, zero spam scripts, and zero deceptive redirects remain. We kindly request a re-evaluation of localhost to remove the warning interstitial."
+    },
+    "domain": "localhost",
+    "flagged_count": 0,
+    "is_blacklisted": false,
+    "last_audited_at": "2026-11-09 15:45:42 UTC",
+    "ssl_and_headers": {
+      "has_ssl": false,
+      "ssl_valid": true,
+      "issuer": "Local Development (No TLS required)",
+      "days_remaining": 365,
+      "hsts_active": false,
+      "csp_active": false,
+      "x_frame_options": true
+    },
+    "status_category": "clean",
+    "status_label": "Pristine & Trusted",
+    "total_authorities": 7,
+    "total_latency_ms": 0,
+    "trust_score": 100
+  },
+  {
+    "_id": {
+      "$oid": "6af1e85cab8adfcf3ebce51e"
+    },
+    "site_id": "sdk_c7074d36a9b3aa67e02eb44e",
+    "authorities": [
+      {
+        "authority": "Google Safe Browsing",
+        "status": "clean",
+        "badge": "No Threats Found",
+        "threat_types": [],
+        "details": "Pristine standing in Google Safe Browsing. No deceptive or harmful software detected.",
+        "latency_ms": 1648,
+        "monitored_vectors": [
+          "Malware",
+          "Phishing / Social Engineering",
+          "Unwanted Software"
+        ]
+      },
+      {
+        "authority": "Spamhaus DBL",
+        "status": "clean",
+        "badge": "Not Listed (Pristine)",
+        "threat_types": [],
+        "details": "Domain is clean and unlisted in Spamhaus DNSBL registry.",
+        "latency_ms": 68,
+        "monitored_vectors": [
+          "Spam Sources",
+          "Phishing Domains",
+          "Botnet C&C"
+        ]
+      },
+      {
+        "authority": "Norton SafeWeb",
+        "status": "clean",
+        "badge": "Safe & Verified",
+        "threat_types": [],
+        "details": "Symantec / Norton intelligence verifies domain as clean.",
+        "latency_ms": 32,
+        "monitored_vectors": [
+          "Drive-by Downloads",
+          "Identity Theft",
+          "Cryptomining Scripts"
+        ]
+      },
+      {
+        "authority": "McAfee WebAdvisor",
+        "status": "clean",
+        "badge": "Minimal Risk (Safe)",
+        "threat_types": [],
+        "details": "Minimal risk profile. Safe for browsing and transactions.",
+        "latency_ms": 28,
+        "monitored_vectors": [
+          "Malicious Links",
+          "Suspicious Downloads",
+          "Browser Exploits"
+        ]
+      },
+      {
+        "authority": "PhishTank & APWG",
+        "status": "clean",
+        "badge": "Clean (No Phishing)",
+        "threat_types": [],
+        "details": "Domain is not listed in any active phishing or credential-harvesting databases.",
+        "latency_ms": 22,
+        "monitored_vectors": [
+          "Credential Harvesters",
+          "Cloned Brand Gateways",
+          "Social Engineering"
+        ]
+      },
+      {
+        "authority": "SURBL & URIBL",
+        "status": "clean",
+        "badge": "Unlisted (Clean)",
+        "threat_types": [],
+        "details": "No unsolicited spam URI listings detected.",
+        "latency_ms": 19,
+        "monitored_vectors": [
+          "Unsolicited Spam URIs",
+          "Email Malware Delivery",
+          "Domain Reputation"
+        ]
+      },
+      {
+        "authority": "Yandex Safe Browsing",
+        "status": "clean",
+        "badge": "Search Safe",
+        "threat_types": [],
+        "details": "Domain is verified safe in Yandex search index.",
+        "latency_ms": 36,
+        "monitored_vectors": [
+          "Search Defacement",
+          "Mobile Redirect Malvertising"
+        ]
+      }
+    ],
+    "badge_color": "emerald",
+    "delisting_guide": {
+      "is_needed": false,
+      "affected_services": [],
+      "google_search_console_url": "https://search.google.com/search-console",
+      "action_plan": [
+        "1. Run MDefender Malware Scanner (/user/bulk/scanner) to isolate and delete backdoors and webshells.",
+        "2. Ensure WP Core and Plugins are restored to official repository hashes via Post-Hack Recovery.",
+        "3. Enforce Production Lockdown under Security Hardening to seal WP_DEBUG and display_errors.",
+        "4. Log in to Google Search Console -> Security & Manual Actions -> Request Review.",
+        "5. Paste the MDefender clean audit verification certificate into the reconsideration request."
+      ],
+      "reconsideration_template": "Subject: Security Issue Review Request for bookstore.local\n\nDear Google Search Console Security Team,\n\nOur domain bookstore.local was recently reviewed following a security inspection. We have thoroughly cleaned our entire web root, purged all unauthorized code, updated all core WordPress files to pristine official hashes, and enforced enterprise WAF shielding. A comprehensive security audit confirmed zero malware, zero spam scripts, and zero deceptive redirects remain. We kindly request a re-evaluation of bookstore.local to remove the warning interstitial."
+    },
+    "domain": "bookstore.local",
+    "flagged_count": 0,
+    "is_blacklisted": false,
+    "last_audited_at": "2026-11-09 15:35:56 UTC",
+    "ssl_and_headers": {
+      "has_ssl": false,
+      "ssl_valid": false,
+      "issuer": "Unknown Issuer",
+      "days_remaining": 0,
+      "hsts_active": false,
+      "csp_active": false,
+      "x_frame_options": false
+    },
+    "status_category": "good",
+    "status_label": "Healthy Standing",
+    "total_authorities": 7,
+    "total_latency_ms": 11617,
+    "trust_score": 80
+  },
+  {
+    "_id": {
+      "$oid": "6af1ea32ab8adfcf3ebce521"
+    },
+    "site_id": "test_flagged",
+    "authorities": [
+      {
+        "authority": "Google Safe Browsing",
+        "status": "flagged",
+        "badge": "Deceptive / Malware Alert",
+        "threat_types": [
+          "MALWARE",
+          "SOCIAL_ENGINEERING"
+        ],
+        "details": "Flagged by Google Safe Browsing. Visitors see red warning screen.",
+        "latency_ms": 45,
+        "monitored_vectors": [
+          "Malware",
+          "Phishing / Social Engineering",
+          "Unwanted Software"
+        ]
+      },
+      {
+        "authority": "Spamhaus DBL",
+        "status": "flagged",
+        "badge": "Listed in Spamhaus DBL",
+        "threat_types": [
+          "SPAM_SOURCE",
+          "PHISHING"
+        ],
+        "details": "Domain IP/host is actively listed on Spamhaus Domain Block List.",
+        "latency_ms": 25,
+        "monitored_vectors": [
+          "Spam Sources",
+          "Phishing Domains",
+          "Botnet C&C"
+        ]
+      },
+      {
+        "authority": "Norton SafeWeb",
+        "status": "flagged",
+        "badge": "Known Threat Detected",
+        "threat_types": [
+          "COMPUTER_THREATS"
+        ],
+        "details": "Flagged for drive-by download patterns.",
+        "latency_ms": 32,
+        "monitored_vectors": [
+          "Drive-by Downloads",
+          "Identity Theft",
+          "Cryptomining Scripts"
+        ]
+      },
+      {
+        "authority": "McAfee WebAdvisor",
+        "status": "flagged",
+        "badge": "High Risk Warning",
+        "threat_types": [
+          "HIGH_RISK_CONTENT"
+        ],
+        "details": "McAfee threat sensors detected risky download scripts.",
+        "latency_ms": 28,
+        "monitored_vectors": [
+          "Malicious Links",
+          "Suspicious Downloads",
+          "Browser Exploits"
+        ]
+      },
+      {
+        "authority": "PhishTank & APWG",
+        "status": "flagged",
+        "badge": "Verified Phishing Trap",
+        "threat_types": [
+          "CREDENTIAL_HARVESTING"
+        ],
+        "details": "Domain contains fake login gateways designed to steal credentials.",
+        "latency_ms": 22,
+        "monitored_vectors": [
+          "Credential Harvesters",
+          "Cloned Brand Gateways",
+          "Social Engineering"
+        ]
+      },
+      {
+        "authority": "SURBL & URIBL",
+        "status": "flagged",
+        "badge": "Listed in SURBL",
+        "threat_types": [
+          "UNSOLICITED_URI"
+        ],
+        "details": "URI detected in spam campaigns.",
+        "latency_ms": 19,
+        "monitored_vectors": [
+          "Unsolicited Spam URIs",
+          "Email Malware Delivery",
+          "Domain Reputation"
+        ]
+      },
+      {
+        "authority": "Yandex Safe Browsing",
+        "status": "flagged",
+        "badge": "Security Warning",
+        "threat_types": [
+          "SEARCH_PENALTY"
+        ],
+        "details": "Yandex search index has removed domain due to malicious code.",
+        "latency_ms": 36,
+        "monitored_vectors": [
+          "Search Defacement",
+          "Mobile Redirect Malvertising"
+        ]
+      }
+    ],
+    "badge_color": "rose",
+    "delisting_guide": {
+      "is_needed": true,
+      "affected_services": [
+        "Google Safe Browsing",
+        "Spamhaus DBL",
+        "Norton SafeWeb",
+        "McAfee WebAdvisor",
+        "PhishTank & APWG",
+        "SURBL & URIBL",
+        "Yandex Safe Browsing"
+      ],
+      "google_search_console_url": "https://search.google.com/search-console",
+      "action_plan": [
+        "1. Run MDefender Malware Scanner (/user/bulk/scanner) to isolate and delete backdoors and webshells.",
+        "2. Ensure WP Core and Plugins are restored to official repository hashes via Post-Hack Recovery.",
+        "3. Enforce Production Lockdown under Security Hardening to seal WP_DEBUG and display_errors.",
+        "4. Log in to Google Search Console -> Security & Manual Actions -> Request Review.",
+        "5. Paste the MDefender clean audit verification certificate into the reconsideration request."
+      ],
+      "reconsideration_template": "Subject: Security Issue Review Request for testsafebrowsing.appspot.com\n\nDear Google Search Console Security Team,\n\nOur domain testsafebrowsing.appspot.com was recently reviewed following a security inspection. We have thoroughly cleaned our entire web root, purged all unauthorized code, updated all core WordPress files to pristine official hashes, and enforced enterprise WAF shielding. A comprehensive security audit confirmed zero malware, zero spam scripts, and zero deceptive redirects remain. We kindly request a re-evaluation of testsafebrowsing.appspot.com to remove the warning interstitial."
+    },
+    "domain": "testsafebrowsing.appspot.com",
+    "flagged_count": 7,
+    "is_blacklisted": true,
+    "last_audited_at": "2026-11-09 15:43:46 UTC",
+    "ssl_and_headers": {
+      "has_ssl": true,
+      "ssl_valid": true,
+      "issuer": "WE2",
+      "days_remaining": 51,
+      "hsts_active": false,
+      "csp_active": false,
+      "x_frame_options": false
+    },
+    "status_category": "blacklisted",
+    "status_label": "Blacklisted / Deceptive",
+    "total_authorities": 7,
+    "total_latency_ms": 853,
+    "trust_score": 0
+  },
+  {
+    "_id": {
+      "$oid": "6af1ea7eab8adfcf3ebce522"
+    },
+    "site_id": "site_d9caceb5",
+    "authorities": [
+      {
+        "authority": "Google Safe Browsing",
+        "status": "clean",
+        "badge": "No Threats Found",
+        "threat_types": [],
+        "details": "Pristine standing in Google Safe Browsing. No deceptive or harmful software detected.",
+        "latency_ms": 1681,
+        "monitored_vectors": [
+          "Malware",
+          "Phishing / Social Engineering",
+          "Unwanted Software"
+        ]
+      },
+      {
+        "authority": "Spamhaus DBL",
+        "status": "clean",
+        "badge": "Not Listed (Pristine)",
+        "threat_types": [],
+        "details": "Domain is clean and unlisted in Spamhaus DNSBL registry.",
+        "latency_ms": 99,
+        "monitored_vectors": [
+          "Spam Sources",
+          "Phishing Domains",
+          "Botnet C&C"
+        ]
+      },
+      {
+        "authority": "Norton SafeWeb",
+        "status": "clean",
+        "badge": "Safe & Verified",
+        "threat_types": [],
+        "details": "Symantec / Norton intelligence verifies domain as clean.",
+        "latency_ms": 32,
+        "monitored_vectors": [
+          "Drive-by Downloads",
+          "Identity Theft",
+          "Cryptomining Scripts"
+        ]
+      },
+      {
+        "authority": "McAfee WebAdvisor",
+        "status": "clean",
+        "badge": "Minimal Risk (Safe)",
+        "threat_types": [],
+        "details": "Minimal risk profile. Safe for browsing and transactions.",
+        "latency_ms": 28,
+        "monitored_vectors": [
+          "Malicious Links",
+          "Suspicious Downloads",
+          "Browser Exploits"
+        ]
+      },
+      {
+        "authority": "PhishTank & APWG",
+        "status": "clean",
+        "badge": "Clean (No Phishing)",
+        "threat_types": [],
+        "details": "Domain is not listed in any active phishing or credential-harvesting databases.",
+        "latency_ms": 22,
+        "monitored_vectors": [
+          "Credential Harvesters",
+          "Cloned Brand Gateways",
+          "Social Engineering"
+        ]
+      },
+      {
+        "authority": "SURBL & URIBL",
+        "status": "clean",
+        "badge": "Unlisted (Clean)",
+        "threat_types": [],
+        "details": "No unsolicited spam URI listings detected.",
+        "latency_ms": 19,
+        "monitored_vectors": [
+          "Unsolicited Spam URIs",
+          "Email Malware Delivery",
+          "Domain Reputation"
+        ]
+      },
+      {
+        "authority": "Yandex Safe Browsing",
+        "status": "clean",
+        "badge": "Search Safe",
+        "threat_types": [],
+        "details": "Domain is verified safe in Yandex search index.",
+        "latency_ms": 36,
+        "monitored_vectors": [
+          "Search Defacement",
+          "Mobile Redirect Malvertising"
+        ]
+      }
+    ],
+    "badge_color": "emerald",
+    "delisting_guide": {
+      "is_needed": false,
+      "affected_services": [],
+      "google_search_console_url": "https://search.google.com/search-console",
+      "action_plan": [
+        "1. Run MDefender Malware Scanner (/user/bulk/scanner) to isolate and delete backdoors and webshells.",
+        "2. Ensure WP Core and Plugins are restored to official repository hashes via Post-Hack Recovery.",
+        "3. Enforce Production Lockdown under Security Hardening to seal WP_DEBUG and display_errors.",
+        "4. Log in to Google Search Console -> Security & Manual Actions -> Request Review.",
+        "5. Paste the MDefender clean audit verification certificate into the reconsideration request."
+      ],
+      "reconsideration_template": "Subject: Security Issue Review Request for my-wordpress-site.local\n\nDear Google Search Console Security Team,\n\nOur domain my-wordpress-site.local was recently reviewed following a security inspection. We have thoroughly cleaned our entire web root, purged all unauthorized code, updated all core WordPress files to pristine official hashes, and enforced enterprise WAF shielding. A comprehensive security audit confirmed zero malware, zero spam scripts, and zero deceptive redirects remain. We kindly request a re-evaluation of my-wordpress-site.local to remove the warning interstitial."
+    },
+    "domain": "my-wordpress-site.local",
+    "flagged_count": 0,
+    "is_blacklisted": false,
+    "last_audited_at": "2026-11-09 15:45:09 UTC",
+    "ssl_and_headers": {
+      "has_ssl": false,
+      "ssl_valid": false,
+      "issuer": "Unknown Issuer",
+      "days_remaining": 0,
+      "hsts_active": false,
+      "csp_active": false,
+      "x_frame_options": false
+    },
+    "status_category": "good",
+    "status_label": "Healthy Standing",
+    "total_authorities": 7,
+    "total_latency_ms": 4414,
+    "trust_score": 80
+  },
+  {
+    "_id": {
+      "$oid": "6af34bcca91999497e457c02"
+    },
+    "site_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+    "authorities": [
+      {
+        "authority": "Google Safe Browsing",
+        "status": "clean",
+        "badge": "Safe (Local Dev)",
+        "threat_types": [],
+        "details": "Local development host; not indexed by public search crawlers.",
+        "latency_ms": 12,
+        "monitored_vectors": [
+          "Malware",
+          "Phishing / Social Engineering",
+          "Unwanted Software"
+        ]
+      },
+      {
+        "authority": "Spamhaus DBL",
+        "status": "clean",
+        "badge": "Not Listed (Local)",
+        "threat_types": [],
+        "details": "Local domain not registered in public DNSBL zones.",
+        "latency_ms": 5,
+        "monitored_vectors": [
+          "Spam Sources",
+          "Phishing Domains",
+          "Botnet C&C"
+        ]
+      },
+      {
+        "authority": "Norton SafeWeb",
+        "status": "clean",
+        "badge": "Safe & Verified",
+        "threat_types": [],
+        "details": "Symantec / Norton intelligence verifies domain as clean.",
+        "latency_ms": 32,
+        "monitored_vectors": [
+          "Drive-by Downloads",
+          "Identity Theft",
+          "Cryptomining Scripts"
+        ]
+      },
+      {
+        "authority": "McAfee WebAdvisor",
+        "status": "clean",
+        "badge": "Minimal Risk (Safe)",
+        "threat_types": [],
+        "details": "Minimal risk profile. Safe for browsing and transactions.",
+        "latency_ms": 28,
+        "monitored_vectors": [
+          "Malicious Links",
+          "Suspicious Downloads",
+          "Browser Exploits"
+        ]
+      },
+      {
+        "authority": "PhishTank & APWG",
+        "status": "clean",
+        "badge": "Clean (No Phishing)",
+        "threat_types": [],
+        "details": "Domain is not listed in any active phishing or credential-harvesting databases.",
+        "latency_ms": 22,
+        "monitored_vectors": [
+          "Credential Harvesters",
+          "Cloned Brand Gateways",
+          "Social Engineering"
+        ]
+      },
+      {
+        "authority": "SURBL & URIBL",
+        "status": "clean",
+        "badge": "Unlisted (Clean)",
+        "threat_types": [],
+        "details": "No unsolicited spam URI listings detected.",
+        "latency_ms": 19,
+        "monitored_vectors": [
+          "Unsolicited Spam URIs",
+          "Email Malware Delivery",
+          "Domain Reputation"
+        ]
+      },
+      {
+        "authority": "Yandex Safe Browsing",
+        "status": "clean",
+        "badge": "Search Safe",
+        "threat_types": [],
+        "details": "Domain is verified safe in Yandex search index.",
+        "latency_ms": 36,
+        "monitored_vectors": [
+          "Search Defacement",
+          "Mobile Redirect Malvertising"
+        ]
+      }
+    ],
+    "badge_color": "emerald",
+    "delisting_guide": {
+      "is_needed": false,
+      "affected_services": [],
+      "google_search_console_url": "https://search.google.com/search-console",
+      "action_plan": [
+        "1. Run MDefender Malware Scanner (/user/bulk/scanner) to isolate and delete backdoors and webshells.",
+        "2. Ensure WP Core and Plugins are restored to official repository hashes via Post-Hack Recovery.",
+        "3. Enforce Production Lockdown under Security Hardening to seal WP_DEBUG and display_errors.",
+        "4. Log in to Google Search Console -> Security & Manual Actions -> Request Review.",
+        "5. Paste the MDefender clean audit verification certificate into the reconsideration request."
+      ],
+      "reconsideration_template": "Subject: Security Issue Review Request for localhost\n\nDear Google Search Console Security Team,\n\nOur domain localhost was recently reviewed following a security inspection. We have thoroughly cleaned our entire web root, purged all unauthorized code, updated all core WordPress files to pristine official hashes, and enforced enterprise WAF shielding. A comprehensive security audit confirmed zero malware, zero spam scripts, and zero deceptive redirects remain. We kindly request a re-evaluation of localhost to remove the warning interstitial."
+    },
+    "domain": "localhost",
+    "flagged_count": 0,
+    "is_blacklisted": false,
+    "last_audited_at": "2026-11-10 16:52:28 UTC",
+    "ssl_and_headers": {
+      "has_ssl": false,
+      "ssl_valid": true,
+      "issuer": "Local Development (No TLS required)",
+      "days_remaining": 365,
+      "hsts_active": false,
+      "csp_active": false,
+      "x_frame_options": true
+    },
+    "status_category": "clean",
+    "status_label": "Pristine & Trusted",
+    "total_authorities": 7,
+    "total_latency_ms": 0,
+    "trust_score": 100
+  },
+  {
+    "_id": {
+      "$oid": "6af4c164724fe9bbf4f6c022"
+    },
+    "site_id": "sdk_a6219fc37355712333458421",
+    "authorities": [
+      {
+        "authority": "Google Safe Browsing",
+        "status": "clean",
+        "badge": "No Threats Found",
+        "threat_types": [],
+        "details": "Pristine standing in Google Safe Browsing. No deceptive or harmful software detected.",
+        "latency_ms": 1448,
+        "monitored_vectors": [
+          "Malware",
+          "Phishing / Social Engineering",
+          "Unwanted Software"
+        ]
+      },
+      {
+        "authority": "Spamhaus DBL",
+        "status": "clean",
+        "badge": "Not Listed (Pristine)",
+        "threat_types": [],
+        "details": "Domain is clean and unlisted in Spamhaus DNSBL registry.",
+        "latency_ms": 98,
+        "monitored_vectors": [
+          "Spam Sources",
+          "Phishing Domains",
+          "Botnet C&C"
+        ]
+      },
+      {
+        "authority": "Norton SafeWeb",
+        "status": "clean",
+        "badge": "Safe & Verified",
+        "threat_types": [],
+        "details": "Symantec / Norton intelligence verifies domain as clean.",
+        "latency_ms": 32,
+        "monitored_vectors": [
+          "Drive-by Downloads",
+          "Identity Theft",
+          "Cryptomining Scripts"
+        ]
+      },
+      {
+        "authority": "McAfee WebAdvisor",
+        "status": "clean",
+        "badge": "Minimal Risk (Safe)",
+        "threat_types": [],
+        "details": "Minimal risk profile. Safe for browsing and transactions.",
+        "latency_ms": 28,
+        "monitored_vectors": [
+          "Malicious Links",
+          "Suspicious Downloads",
+          "Browser Exploits"
+        ]
+      },
+      {
+        "authority": "PhishTank & APWG",
+        "status": "clean",
+        "badge": "Clean (No Phishing)",
+        "threat_types": [],
+        "details": "Domain is not listed in any active phishing or credential-harvesting databases.",
+        "latency_ms": 22,
+        "monitored_vectors": [
+          "Credential Harvesters",
+          "Cloned Brand Gateways",
+          "Social Engineering"
+        ]
+      },
+      {
+        "authority": "SURBL & URIBL",
+        "status": "clean",
+        "badge": "Unlisted (Clean)",
+        "threat_types": [],
+        "details": "No unsolicited spam URI listings detected.",
+        "latency_ms": 19,
+        "monitored_vectors": [
+          "Unsolicited Spam URIs",
+          "Email Malware Delivery",
+          "Domain Reputation"
+        ]
+      },
+      {
+        "authority": "Yandex Safe Browsing",
+        "status": "clean",
+        "badge": "Search Safe",
+        "threat_types": [],
+        "details": "Domain is verified safe in Yandex search index.",
+        "latency_ms": 36,
+        "monitored_vectors": [
+          "Search Defacement",
+          "Mobile Redirect Malvertising"
+        ]
+      }
+    ],
+    "badge_color": "emerald",
+    "delisting_guide": {
+      "is_needed": false,
+      "affected_services": [],
+      "google_search_console_url": "https://search.google.com/search-console",
+      "action_plan": [
+        "1. Run MDefender Malware Scanner (/user/bulk/scanner) to isolate and delete backdoors and webshells.",
+        "2. Ensure WP Core and Plugins are restored to official repository hashes via Post-Hack Recovery.",
+        "3. Enforce Production Lockdown under Security Hardening to seal WP_DEBUG and display_errors.",
+        "4. Log in to Google Search Console -> Security & Manual Actions -> Request Review.",
+        "5. Paste the MDefender clean audit verification certificate into the reconsideration request."
+      ],
+      "reconsideration_template": "Subject: Security Issue Review Request for mahabubur.shop\n\nDear Google Search Console Security Team,\n\nOur domain mahabubur.shop was recently reviewed following a security inspection. We have thoroughly cleaned our entire web root, purged all unauthorized code, updated all core WordPress files to pristine official hashes, and enforced enterprise WAF shielding. A comprehensive security audit confirmed zero malware, zero spam scripts, and zero deceptive redirects remain. We kindly request a re-evaluation of mahabubur.shop to remove the warning interstitial."
+    },
+    "domain": "mahabubur.shop",
+    "flagged_count": 0,
+    "is_blacklisted": false,
+    "last_audited_at": "2026-11-11 19:28:28 UTC",
+    "ssl_and_headers": {
+      "has_ssl": true,
+      "ssl_valid": true,
+      "issuer": "YR2",
+      "days_remaining": 39,
+      "hsts_active": true,
+      "csp_active": true,
+      "x_frame_options": true
+    },
+    "status_category": "clean",
+    "status_label": "Pristine & Trusted",
+    "total_authorities": 7,
+    "total_latency_ms": 2680,
+    "trust_score": 100
+  }
+]

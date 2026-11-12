@@ -131,7 +131,7 @@ export default function DDoSDashboard() {
     labels: data?.stats?.timeline?.map(t => t.time || '') || ['00:00', '01:00', '02:00', '03:00', '04:00', '05:00'],
     datasets: [{
       label: 'Requests/sec',
-      data: data?.stats?.timeline?.map(t => t.count || 0) || [12, 19, 14, 25, 20, 18],
+      data: data?.stats?.timeline?.map(t => t.count || 0) || [],
       borderColor: '#2563eb',
       backgroundColor: 'rgba(37,99,235,0.08)',
       borderWidth: 2.5,

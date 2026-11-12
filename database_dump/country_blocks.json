@@ -1,0 +1,18 @@
+[
+  {
+    "_id": {
+      "$oid": "6aec95cbbf59ec507f9a9425"
+    },
+    "website_id": "site_demo_1",
+    "country_code": "KP",
+    "added_by": "user@gmail.com",
+    "added_by_user_id": "6addfa54c2c6599343d03ed8",
+    "country_name": "North Korea",
+    "created_at": {
+      "$date": "2026-11-05T20:42:19.283Z"
+    },
+    "reason": "Geo-Restriction Policy (North Korea)",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "website_domain": "mahabub.shop"
+  }
+]

@@ -1,0 +1,40 @@
+[
+  {
+    "_id": {
+      "$oid": "6ae3e74c88a8639b43f0f8b4"
+    },
+    "domain": "mahabubur.shop",
+    "checked_at": "2026-11-12T01:28:21.486447",
+    "cipher_suite": "TLS_AES_256_GCM_SHA384 (256-bit)",
+    "common_name": "*.mahabubur.shop",
+    "days_remaining": 39,
+    "expiring_soon": false,
+    "grade": "A+",
+    "has_ssl": true,
+    "is_expired": false,
+    "issuer": "Let's Encrypt",
+    "issuer_common_name": "YR2",
+    "san_hosts": [
+      "*.mahabubur.shop",
+      "mahabubur.shop"
+    ],
+    "serial_number": "06:CC:76:F2:7A:34:72:A5:F7:1D:EC:6D:7D:45:34:B7:5B:77",
+    "site_id": "sdk_a6219fc37355712333458421",
+    "status": "active",
+    "tls_protocol": "TLSv1.3",
+    "valid_from": "2026-09-22T07:26:45",
+    "valid_to": "2026-12-21T07:26:44",
+    "cipher_bits": 256,
+    "cipher_name": "TLS_AES_256_GCM_SHA384",
+    "crl_distribution": "http://yr2.c.lencr.org/120.crl",
+    "handshake_latency_ms": 417.9,
+    "issuer_country": "US",
+    "ocsp_issuer": "http://yr2.i.lencr.org/",
+    "sha1_fingerprint": "A4:52:03:BC:EB:A9:97:57:DC:CC:8F:C7:B0:20:C5:20:A5:08:E6:55",
+    "sha256_fingerprint": "D7:62:3A:79:7D:4C:34:1A:9C:28:0E:BF:DF:83:E8:68:D9:4F:E1:B1:38:2C:25:15:68:02:F3:81:C7:05:5D:50",
+    "total_validity_days": 89,
+    "valid_from_raw": "Sep 22 07:26:45 2026 GMT",
+    "valid_to_raw": "Dec 21 07:26:44 2026 GMT",
+    "x509_version": "X.509 v3"
+  }
+]

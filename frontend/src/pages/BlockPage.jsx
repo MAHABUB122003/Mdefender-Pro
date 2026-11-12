@@ -1,513 +1,409 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import {
+  ShieldCheck,
+  Copy,
+  Check,
+  ArrowLeft,
+  Mail,
+  X,
+  AlertTriangle,
+  Lock,
+  Clock3,
+  Globe2,
+} from 'lucide-react';
+
+const LOCAL_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
+const API_BASE = (
+  typeof window !== 'undefined' && LOCAL_HOSTS.includes(window.location.hostname)
+    ? 'http://localhost:8000'
+    : (import.meta.env.VITE_API_BASE || '')
+).replace(/\/+$/, '');
 
 export default function BlockPage() {
   const [searchParams] = useSearchParams();
 
-  // Dynamic parameters or sensible fallback defaults
-  const domain = searchParams.get('domain') || window.location.hostname || 'mahabubur.shop';
-  const rayId = searchParams.get('ray_id') || searchParams.get('ref_id') || 'MDEF-2070BF20';
-  const ip = searchParams.get('ip') || '103.120.45.241';
-  const ruleName = searchParams.get('rule') || 'Pre-Flight WAAP: SQL & NoSQL Injection Guard';
-  const timestamp = searchParams.get('timestamp') || new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+  const domain = searchParams.get('domain') || (typeof window !== 'undefined' ? window.location.hostname : '') || 'this website';
+  const rayId = searchParams.get('ray_id') || searchParams.get('ref_id') || 'MDEF-PENDING';
+  const ip = searchParams.get('ip') || '';
+  const rule = searchParams.get('rule') || 'Managed WAF policy';
+  const timestamp = searchParams.get('timestamp') || new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
 
   const [copied, setCopied] = useState(false);
-  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [reportEmail, setReportEmail] = useState('');
   const [reportNote, setReportNote] = useState('');
-  const [reportSubmitted, setReportSubmitted] = useState(false);
+  const [reportState, setReportState] = useState('idle'); // idle | sending | sent | error
+  const [toast, setToast] = useState('');
+  const dialogRef = useRef(null);
+  const closeRef = useRef(null);
 
-  const handleCopy = () => {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(rayId);
+  useEffect(() => {
+    if (!toast) return undefined;
+    const id = setTimeout(() => setToast(''), 3200);
+    return () => clearTimeout(id);
+  }, [toast]);
+
+  useEffect(() => {
+    if (!reportOpen) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setReportOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    const previous = document.activeElement;
+    closeRef.current?.focus();
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      if (previous && previous.focus) previous.focus();
+    };
+  }, [reportOpen]);
+
+  const copyReference = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(rayId);
+      }
       setCopied(true);
+      setToast('Reference ID copied');
       setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setToast('Copy failed — select the reference ID manually');
     }
   };
 
-  const handleReportSubmit = (e) => {
+  const submitReport = async (e) => {
     e.preventDefault();
-    setReportSubmitted(true);
-    setTimeout(() => {
-      setIsReportOpen(false);
-      setReportSubmitted(false);
-      setReportEmail('');
-      setReportNote('');
-    }, 1800);
+    setReportState('sending');
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/waf/report-false-positive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reference_id: rayId,
+          client_ip: ip,
+          url: typeof window !== 'undefined' ? window.location.href : '',
+          attack_type: rule,
+          reason: 'Visitor reports a legitimate request was blocked',
+          user_email: reportEmail,
+          comments: reportNote,
+        }),
+      });
+      if (!res.ok) throw new Error('Report failed');
+      setReportState('sent');
+    } catch {
+      setReportState('error');
+    }
   };
 
+  const details = useMemo(
+    () => [
+      { icon: Lock, label: 'Reference ID', value: rayId, mono: true, copy: true },
+      { icon: Globe2, label: 'Website', value: domain },
+      { icon: Clock3, label: 'Timestamp', value: timestamp },
+      ...(ip ? [{ icon: ShieldCheck, label: 'Your IP address', value: ip, mono: true }] : []),
+    ],
+    [domain, ip, rayId, timestamp]
+  );
+
   return (
-    <div className="bp-root">
+    <div className="bp">
       <style>{`
-        :root {
-            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
-            --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
-            --text-main: #333333;
-            --text-sub: #555555;
-            --text-muted: #777777;
-            --bg-gray: #eeeeee;
-            --browser-bar: #8a8a8a;
-            --alert-red: #bd2426;
+        .bp {
+          min-height: 100vh;
+          background: var(--md-paper, #f6f5f0);
+          color: var(--md-ink, #10201e);
+          font-family: var(--md-font-sans, 'Inter', sans-serif);
+          display: flex;
+          flex-direction: column;
         }
-
-        *,
-        *::before,
-        *::after {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        .bp * { box-sizing: border-box; }
+        .bp a { color: inherit; }
+        .bp-top {
+          display: flex; align-items: center; justify-content: space-between; gap: 16px;
+          padding: 20px 32px; border-bottom: 1px solid var(--md-line, #e2e5de);
+          background: rgba(255,255,255,.55);
         }
-
-        html,
-        body {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #ffffff;
-            font-family: var(--font-family);
-            color: var(--text-main);
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+        .bp-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+        .bp-brand img { width: 30px; height: 30px; object-fit: contain; }
+        .bp-brand span { font-weight: 700; font-size: 14px; letter-spacing: -.01em; }
+        .bp-brand em { font-style: normal; color: var(--md-amber, #e8792f); }
+        .bp-status {
+          display: inline-flex; align-items: center; gap: 7px;
+          font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+          color: var(--md-danger, #c0392b); background: var(--md-danger-soft, #f8e5e1);
+          border: 1px solid rgba(192,57,43,.18); border-radius: 999px; padding: 6px 11px;
         }
-
-        .bp-root {
-            width: 100%;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            background-color: #ffffff;
-            overflow: hidden;
+        .bp-main {
+          width: 100%; max-width: 1120px; margin: 0 auto; padding: 56px 32px 40px;
+          display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 48px;
+          align-items: start; align-content: center; flex: 1;
         }
-
-        .content-wrap {
-            max-width: 1100px;
-            width: 100%;
-            margin: 0 auto;
-            padding: 0 36px;
+        .bp-eyebrow {
+          font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+          color: var(--md-amber, #e8792f); margin: 0 0 14px;
         }
-
-        /* Top Heading Section */
-        .header-section {
-            padding-top: 18px;
-            padding-bottom: 12px;
+        .bp h1 {
+          font-family: var(--md-font-display, 'Plus Jakarta Sans', sans-serif);
+          font-size: clamp(30px, 4vw, 44px); line-height: 1.06; letter-spacing: -.035em;
+          font-weight: 700; margin: 0 0 16px;
         }
-
-        .policy-pill {
-            display: inline-block;
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            color: #555555;
-            background: #f3f4f6;
-            border: 1px solid #e5e7eb;
-            padding: 3px 12px;
-            border-radius: 9999px;
-            margin-bottom: 6px;
+        .bp-lead { font-size: 14.5px; line-height: 1.65; color: var(--md-ink-2, #465955); margin: 0 0 24px; max-width: 52ch; }
+        .bp-rule {
+          display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
+          background: var(--md-surface, #fff); border: 1px solid var(--md-line, #e2e5de);
+          border-radius: 10px; padding: 9px 12px; font-size: 12px; color: var(--md-ink-2, #465955);
+          margin-bottom: 28px;
         }
-
-        .blocked-title {
-            font-size: 40px;
-            font-weight: 400;
-            color: #333333;
-            margin: 0 0 6px 0;
-            letter-spacing: -0.02em;
-            line-height: 1.15;
+        .bp-rule code {
+          font-family: var(--md-font-mono, monospace); font-size: 11.5px; color: var(--md-ink, #10201e);
+          background: var(--md-surface-sunken, #efeee8); border-radius: 5px; padding: 3px 6px;
         }
-
-        .blocked-subtitle {
-            font-size: 16px;
-            font-weight: 400;
-            color: #666666;
-            margin: 0;
-            line-height: 1.35;
+        .bp-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+        .bp-btn {
+          display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+          height: 40px; padding: 0 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+          cursor: pointer; text-decoration: none; border: 1px solid transparent;
+          transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
         }
-
-        .blocked-domain {
-            color: #333333;
-            font-weight: 500;
+        .bp-btn-primary { background: var(--md-forest, #0b2b26); color: #fff; }
+        .bp-btn-primary:hover { background: var(--md-forest-2, #123f37); }
+        .bp-btn-secondary { background: var(--md-surface, #fff); border-color: var(--md-line-strong, #cfd5cb); color: var(--md-ink, #10201e); }
+        .bp-btn-secondary:hover { background: var(--md-surface-hover, #faf9f5); }
+        .bp-btn-ghost { background: transparent; color: var(--md-ink-2, #465955); }
+        .bp-btn-ghost:hover { background: rgba(16,32,30,.05); }
+        .bp-card {
+          background: var(--md-surface, #fff); border: 1px solid var(--md-line, #e2e5de);
+          border-radius: 14px; box-shadow: 0 1px 2px rgba(16,32,30,.04); overflow: hidden;
         }
-
-        /* Center Full-Width Gray Section with Browser Mockup */
-        .mockup-section {
-            width: 100%;
-            background-color: var(--bg-gray);
-            border-top: 1px solid #dcdcdc;
-            border-bottom: none;
-            padding: 38px 36px 0 36px;
-            display: flex;
-            justify-content: center;
-            align-items: flex-end;
+        .bp-card-head { padding: 18px 20px 14px; border-bottom: 1px solid var(--md-line, #e2e5de); }
+        .bp-card-head h2 { font-size: 13.5px; font-weight: 650; margin: 0 0 3px; }
+        .bp-card-head p { font-size: 11.5px; color: var(--md-ink-3, #6e7f7a); margin: 0; }
+        .bp-dl { margin: 0; padding: 6px 20px 14px; }
+        .bp-row {
+          display: flex; align-items: flex-start; gap: 10px; padding: 11px 0;
+          border-bottom: 1px solid var(--md-line, #e2e5de);
         }
-
-        .browser-mockup {
-            max-width: 980px;
-            width: 100%;
-            background: #ffffff;
-            border-top-left-radius: 10px;
-            border-top-right-radius: 10px;
-            border-bottom-left-radius: 0px;
-            border-bottom-right-radius: 0px;
-            box-shadow: 0 -4px 22px rgba(0, 0, 0, 0.06);
-            overflow: hidden;
-            border: 1px solid #dcdcdc;
-            border-bottom: none;
+        .bp-row:last-child { border-bottom: 0; }
+        .bp-row svg { color: var(--md-ink-3, #6e7f7a); margin-top: 2px; flex-shrink: 0; }
+        .bp-row dt { font-size: 11px; color: var(--md-ink-3, #6e7f7a); margin-bottom: 2px; }
+        .bp-row dd { margin: 0; font-size: 12.5px; font-weight: 500; overflow-wrap: anywhere; }
+        .bp-row dd.mono { font-family: var(--md-font-mono, monospace); font-size: 12px; }
+        .bp-copy {
+          margin-left: auto; background: none; border: 0; padding: 4px; border-radius: 6px;
+          color: var(--md-ink-3, #6e7f7a); cursor: pointer; display: inline-flex;
         }
-
-        .browser-header {
-            background: var(--browser-bar);
-            height: 38px;
-            display: flex;
-            align-items: center;
-            padding: 0 16px;
-            gap: 8px;
+        .bp-copy:hover { background: var(--md-surface-sunken, #efeee8); color: var(--md-ink, #10201e); }
+        .bp-help { margin-top: 20px; display: grid; gap: 12px; }
+        .bp-help-item { display: flex; gap: 10px; font-size: 12px; line-height: 1.55; color: var(--md-ink-2, #465955); }
+        .bp-help-item strong { color: var(--md-ink, #10201e); font-weight: 600; }
+        .bp-section { border-top: 1px solid var(--md-line, #e2e5de); background: rgba(255,255,255,.45); }
+        .bp-section-inner {
+          max-width: 1120px; margin: 0 auto; padding: 36px 32px 44px;
+          display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px;
         }
-
-        .browser-dot {
-            width: 9px;
-            height: 9px;
-            border-radius: 50%;
-            background: #ffffff;
-            opacity: 0.85;
-            display: inline-block;
+        .bp-section h3 { font-size: 13px; font-weight: 650; margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
+        .bp-section p { font-size: 12.5px; line-height: 1.6; color: var(--md-ink-2, #465955); margin: 0; }
+        .bp-foot {
+          border-top: 1px solid var(--md-line, #e2e5de); padding: 16px 32px;
+          display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; justify-content: space-between;
+          font-size: 11.5px; color: var(--md-ink-3, #6e7f7a);
         }
-
-        .browser-address-bar {
-            margin-left: 16px;
-            background: rgba(255, 255, 255, 0.3);
-            height: 20px;
-            border-radius: 3px;
-            width: 38%;
-            max-width: 240px;
+        .bp-foot strong { color: var(--md-ink-2, #465955); font-weight: 600; }
+        .bp-toast {
+          position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+          background: var(--md-forest, #0b2b26); color: #fff; font-size: 12.5px; font-weight: 500;
+          padding: 10px 16px; border-radius: 999px; box-shadow: 0 12px 32px rgba(16,32,30,.2); z-index: 60;
         }
-
-        .browser-body {
-            height: 305px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #ffffff;
+        .bp-overlay {
+          position: fixed; inset: 0; background: rgba(10,25,22,.55); backdrop-filter: blur(3px);
+          display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50;
         }
-
-        .block-badge-circle {
-            width: 104px;
-            height: 104px;
-            border-radius: 50%;
-            background-color: var(--alert-red);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 6px 22px rgba(189, 36, 38, 0.25);
+        .bp-dialog {
+          width: 100%; max-width: 520px; background: var(--md-surface, #fff); border-radius: 16px;
+          box-shadow: 0 24px 64px rgba(16,32,30,.28); overflow: hidden;
         }
-
-        .block-badge-circle svg {
-            width: 48px;
-            height: 48px;
-            stroke: #ffffff;
-            stroke-width: 3.4;
-            stroke-linecap: round;
-            stroke-linejoin: round;
+        .bp-dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 22px 0; }
+        .bp-dialog-head h2 { font-size: 16px; margin: 0 0 4px; }
+        .bp-dialog-head p { font-size: 12px; color: var(--md-ink-3, #6e7f7a); margin: 0; }
+        .bp-dialog-body { padding: 18px 22px 22px; display: grid; gap: 14px; }
+        .bp-field { display: grid; gap: 6px; }
+        .bp-field label { font-size: 11.5px; font-weight: 600; color: var(--md-ink-2, #465955); }
+        .bp-field input, .bp-field textarea {
+          width: 100%; border: 1px solid var(--md-line-strong, #cfd5cb); border-radius: 8px;
+          padding: 9px 11px; font-family: inherit; font-size: 13px; color: var(--md-ink, #10201e);
+          background: var(--md-surface, #fff); outline: none;
         }
-
-        /* Bottom 2 Columns */
-        .columns-section {
-            padding-top: 18px;
-            padding-bottom: 18px;
-        }
-
-        .columns-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 52px;
-        }
-
-        @media (max-width: 740px) {
-            .columns-grid {
-                grid-template-columns: 1fr;
-                gap: 16px;
-            }
-            html, body, .bp-root {
-                overflow: auto;
-            }
-        }
-
-        .col-heading {
-            font-size: 18px;
-            font-weight: 500;
-            color: #333333;
-            margin: 0 0 6px 0;
-            line-height: 1.3;
-        }
-
-        .col-desc {
-            font-size: 14px;
-            line-height: 1.55;
-            color: #555555;
-            margin: 0;
-        }
-
-        .attack-pill {
-            margin-top: 10px;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 3px 10px;
-            background: #fee2e2;
-            border: 1px solid #fca5a5;
-            border-radius: 4px;
-            font-size: 12px;
-            color: #991b1b;
-            font-family: var(--font-mono);
-        }
-
-        .action-tools {
-            margin-top: 12px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .btn-contact {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 7px 15px;
-            background: #2b2b2b;
-            color: #ffffff;
-            border-radius: 4px;
-            font-size: 13px;
-            font-weight: 500;
-            border: none;
-            cursor: pointer;
-            transition: background 0.15s ease;
-        }
-
-        .btn-contact:hover {
-            background: #111111;
-        }
-
-        .btn-copy {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 7px 15px;
-            background: #f3f4f6;
-            color: #374151;
-            border: 1px solid #d1d5db;
-            border-radius: 4px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.15s ease;
-        }
-
-        .btn-copy:hover {
-            background: #e5e7eb;
-            color: #111111;
-        }
-
-        /* Footer Metadata */
-        .footer-section {
-            border-top: 1px solid #e2e2e2;
-            padding: 10px 0 12px 0;
-            background: #fafafa;
-        }
-
-        .footer-meta {
-            font-size: 12.5px;
-            color: var(--text-muted);
-            line-height: 1.4;
-            text-align: center;
-        }
-
-        .footer-meta strong {
-            color: #222222;
-        }
-
-        .meta-dot {
-            margin: 0 8px;
-            color: #9ca3af;
-        }
-
-        .ip-mono {
-            font-family: var(--font-mono);
-            color: #374151;
-            font-weight: 500;
-        }
-
-        /* Modal Styles */
-        .bp-modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(15, 23, 42, 0.45);
-            backdrop-filter: blur(4px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            padding: 16px;
-        }
-
-        .bp-modal-card {
-            background: #ffffff;
-            border-radius: 8px;
-            max-width: 480px;
-            width: 100%;
-            padding: 24px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        .bp-field input:focus, .bp-field textarea:focus { border-color: var(--md-amber, #e8792f); box-shadow: 0 0 0 3px rgba(232,121,47,.15); }
+        .bp-field textarea { min-height: 84px; resize: vertical; }
+        .bp-note { font-size: 11px; color: var(--md-ink-3, #6e7f7a); line-height: 1.5; }
+        .bp-close { background: none; border: 0; cursor: pointer; color: var(--md-ink-3, #6e7f7a); padding: 4px; border-radius: 6px; }
+        .bp-close:hover { background: var(--md-surface-sunken, #efeee8); }
+        @media (max-width: 900px) {
+          .bp-main { grid-template-columns: 1fr; gap: 32px; padding: 36px 20px 28px; }
+          .bp-section-inner { grid-template-columns: 1fr; gap: 20px; padding: 28px 20px 32px; }
+          .bp-top { padding: 16px 20px; }
+          .bp-foot { padding: 14px 20px; }
         }
       `}</style>
 
-      {/* Top Heading Section */}
-      <header className="header-section">
-        <div className="content-wrap">
-          <span className="policy-pill">MDEFENDER PRO &bull; EDGE POLICY ENFORCEMENT</span>
-          <h1 className="blocked-title">Access Restricted by Security Policy</h1>
-          <p className="blocked-subtitle">
-            Your connection to <span className="blocked-domain">{domain}</span> was flagged and intercepted by automated threat protection.
-          </p>
-        </div>
+      <header className="bp-top">
+        <a className="bp-brand" href="/" aria-label="MDefender Pro home">
+          <img src="/assets/mdefender_logo.png" alt="" />
+          <span>MDefender <em>Pro</em></span>
+        </a>
+        <span className="bp-status">
+          <AlertTriangle size={12} strokeWidth={2.2} /> Request blocked
+        </span>
       </header>
 
-      {/* Center Full-Width Gray Section with Browser Mockup Connected to Bottom Background */}
-      <section className="mockup-section">
-        <div className="browser-mockup">
-          <div className="browser-header" aria-hidden="true">
-            <span className="browser-dot"></span>
-            <span className="browser-dot"></span>
-            <span className="browser-dot"></span>
-            <span className="browser-address-bar"></span>
+      <main className="bp-main">
+        <section aria-labelledby="bp-title">
+          <p className="bp-eyebrow">Access restricted · HTTP 403</p>
+          <h1 id="bp-title">This request was blocked to keep the site safe.</h1>
+          <p className="bp-lead">
+            Our security layer flagged this request as potentially malicious before it reached the website.
+            If you are the site owner or a legitimate visitor, use the reference below to look it up or ask for a review.
+          </p>
+
+          <div className="bp-rule">
+            <ShieldCheck size={14} /> Matched policy <code>{rule}</code>
           </div>
-          <div className="browser-body">
-            <div className="block-badge-circle" role="img" aria-label="Blocked Access">
-              <svg viewBox="0 0 24 24" fill="none">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
+
+          <div className="bp-actions">
+            <button type="button" className="bp-btn bp-btn-primary" onClick={() => setReportOpen(true)}>
+              <Mail size={15} /> Request a review
+            </button>
+            <button type="button" className="bp-btn bp-btn-secondary" onClick={copyReference}>
+              {copied ? <Check size={15} /> : <Copy size={15} />} {copied ? 'Copied' : 'Copy reference ID'}
+            </button>
+            <button
+              type="button"
+              className="bp-btn bp-btn-ghost"
+              onClick={() => (window.history.length > 1 ? window.history.back() : (window.location.href = '/'))}
+            >
+              <ArrowLeft size={15} /> Go back
+            </button>
+          </div>
+        </section>
+
+        <aside aria-label="Request details">
+          <div className="bp-card">
+            <div className="bp-card-head">
+              <h2>Request details</h2>
+              <p>Share these details with the site owner if you need help.</p>
             </div>
+            <dl className="bp-dl">
+              {details.map(({ icon: Icon, label, value, mono, copy }) => (
+                <div className="bp-row" key={label}>
+                  <Icon size={14} />
+                  <div style={{ minWidth: 0 }}>
+                    <dt>{label}</dt>
+                    <dd className={mono ? 'mono' : ''}>{value}</dd>
+                  </div>
+                  {copy && (
+                    <button type="button" className="bp-copy" onClick={copyReference} aria-label="Copy reference ID">
+                      {copied ? <Check size={14} /> : <Copy size={14} />}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </dl>
+          </div>
+
+          <div className="bp-help">
+            <div className="bp-help-item">
+              <ShieldCheck size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+              <span><strong>Nothing was installed or changed.</strong> The request was stopped at the edge.</span>
+            </div>
+            <div className="bp-help-item">
+              <Clock3 size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+              <span><strong>Legitimate action?</strong> Submit a review and the site owner can whitelist the rule.</span>
+            </div>
+          </div>
+        </aside>
+      </main>
+
+      <section className="bp-section" aria-label="Why this happened">
+        <div className="bp-section-inner">
+          <div>
+            <h3><ShieldCheck size={15} /> Automated protection</h3>
+            <p>Every request passes through signature, behavioural and machine-learning checks before it reaches the origin server.</p>
+          </div>
+          <div>
+            <h3><AlertTriangle size={15} /> Why this one</h3>
+            <p>The request matched a rule designed to stop injection, scripted abuse or known exploit patterns. False positives are rare but possible.</p>
+          </div>
+          <div>
+            <h3><Mail size={15} /> What happens next</h3>
+            <p>Your review request is logged with the reference ID. The site owner can inspect the request and adjust the policy.</p>
           </div>
         </div>
       </section>
 
-      {/* Bottom Explanations */}
-      <main className="columns-section">
-        <div className="content-wrap">
-          <div className="columns-grid">
-            {/* Left Column */}
-            <div>
-              <h2 className="col-heading">Why have I been blocked?</h2>
-              <p className="col-desc">
-                This website is using a security service to protect itself from online attacks. The action you just performed triggered the security solution. There are several actions that could trigger this block including submitting a certain word or phrase, a SQL command or malformed data.
-              </p>
-              <div className="attack-pill">
-                <span>Violation:</span>
-                <strong>{ruleName}</strong>
-              </div>
-            </div>
-
-            {/* Right Column */}
-            <div>
-              <h2 className="col-heading">What can I do to resolve this?</h2>
-              <p className="col-desc">
-                You can email the site owner to let them know you were blocked. Please include what you were doing when this page came up and the MDefender Ray ID found at the bottom of this page.
-              </p>
-              <div className="action-tools">
-                <button
-                  type="button"
-                  className="btn-contact"
-                  onClick={() => setIsReportOpen(true)}
-                >
-                  Contact Site Administrator
-                </button>
-                <button
-                  type="button"
-                  className="btn-copy"
-                  onClick={handleCopy}
-                  style={copied ? { borderColor: '#10b981', color: '#10b981' } : {}}
-                >
-                  {copied ? 'Copied!' : 'Copy Ray ID'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {/* Footer Metadata */}
-      <footer className="footer-section">
-        <div className="content-wrap">
-          <div className="footer-meta">
-            <div>
-              <span>MDefender Ray ID: <strong id="rayIdVal">{rayId}</strong></span>
-              <span className="meta-dot">&bull;</span>
-              <span>Your IP: <span className="ip-mono">{ip}</span></span>
-              <span className="meta-dot">&bull;</span>
-              <span>Performance &amp; security by <strong>MDefender Pro</strong></span>
-            </div>
-            <div style={{ marginTop: '2px', fontSize: '11.5px', color: '#888888' }}>
-              <span>Timestamp: <span>{timestamp}</span></span>
-            </div>
-          </div>
-        </div>
+      <footer className="bp-foot">
+        <span>Protected by <strong>MDefender Pro</strong> · Reference <strong>{rayId}</strong></span>
+        <span>{timestamp}</span>
       </footer>
 
-      {/* Report False Positive Modal */}
-      {isReportOpen && (
-        <div className="bp-modal-overlay" onClick={() => setIsReportOpen(false)}>
-          <div className="bp-modal-card" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ fontSize: '18px', fontWeight: 600, color: '#0f172a', marginBottom: '8px' }}>
-              Report False Positive / Request Access
-            </h3>
-            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>
-              Your report will be sent to the security team of <strong>{domain}</strong> along with Ray ID <code>{rayId}</code>.
-            </p>
-            {reportSubmitted ? (
-              <div style={{ padding: '16px', background: '#ecfdf5', color: '#065f46', borderRadius: '6px', fontSize: '13px', fontWeight: 500, textAlign: 'center' }}>
-                Report sent successfully! The administrator will review your incident.
+      {toast && <div className="bp-toast" role="status">{toast}</div>}
+
+      {reportOpen && (
+        <div className="bp-overlay" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setReportOpen(false); }}>
+          <div className="bp-dialog" role="dialog" aria-modal="true" aria-labelledby="bp-report-title" ref={dialogRef}>
+            <div className="bp-dialog-head">
+              <div>
+                <h2 id="bp-report-title">Request a review</h2>
+                <p>Tell the site owner what you were doing when this page appeared.</p>
+              </div>
+              <button type="button" className="bp-close" onClick={() => setReportOpen(false)} aria-label="Close dialog" ref={closeRef}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {reportState === 'sent' ? (
+              <div className="bp-dialog-body">
+                <h3 style={{ margin: 0, fontSize: 14 }}>Review requested</h3>
+                <p style={{ margin: 0, fontSize: 12.5, color: 'var(--md-ink-2, #465955)', lineHeight: 1.6 }}>
+                  Your report has been recorded against reference <strong>{rayId}</strong>. The site owner can now inspect
+                  the blocked request and adjust the policy if it was legitimate.
+                </p>
+                <button type="button" className="bp-btn bp-btn-primary" onClick={() => setReportOpen(false)}>Close</button>
               </div>
             ) : (
-              <form onSubmit={handleReportSubmit}>
-                <div style={{ marginBottom: '12px' }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
-                    Your Email Address
-                  </label>
+              <form className="bp-dialog-body" onSubmit={submitReport}>
+                <div className="bp-field">
+                  <label htmlFor="bp-email">Your email (optional)</label>
                   <input
+                    id="bp-email"
                     type="email"
-                    required
+                    autoComplete="email"
+                    placeholder="you@example.com"
                     value={reportEmail}
                     onChange={(e) => setReportEmail(e.target.value)}
-                    placeholder="user@example.com"
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }}
                   />
                 </div>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
-                    What were you doing when blocked?
-                  </label>
+                <div className="bp-field">
+                  <label htmlFor="bp-note">What were you trying to do?</label>
                   <textarea
-                    rows={3}
-                    required
+                    id="bp-note"
+                    placeholder="e.g. submitting a support form with a link in the message"
                     value={reportNote}
                     onChange={(e) => setReportNote(e.target.value)}
-                    placeholder="Describe your actions so the administrator can verify your request..."
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                    required
                   />
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                  <button
-                    type="button"
-                    onClick={() => setIsReportOpen(false)}
-                    style={{ padding: '7px 14px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#475569', fontSize: '13px', cursor: 'pointer' }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    style={{ padding: '7px 16px', borderRadius: '4px', border: 'none', background: '#1e293b', color: '#ffffff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
-                  >
-                    Send Incident Report
+                <p className="bp-note">
+                  We send the reference ID, the page URL and your note. We never ask for passwords or payment details.
+                </p>
+                {reportState === 'error' && (
+                  <p className="bp-note" style={{ color: 'var(--md-danger, #c0392b)' }}>
+                    We could not submit the report. Please try again, or copy the reference ID and contact the site owner.
+                  </p>
+                )}
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                  <button type="button" className="bp-btn bp-btn-secondary" onClick={() => setReportOpen(false)}>Cancel</button>
+                  <button type="submit" className="bp-btn bp-btn-primary" disabled={reportState === 'sending'}>
+                    {reportState === 'sending' ? 'Sending…' : 'Submit request'}
                   </button>
                 </div>
               </form>

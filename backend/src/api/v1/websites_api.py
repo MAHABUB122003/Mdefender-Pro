@@ -12781,9 +12781,8 @@ async def get_2fa_config(website_id: str = "all", user=Depends(get_current_user)
     # Find target website or fleet
     website = None
     if website_id and website_id != "all":
-        website = db.websites.find_one({"$or": [{"_id": website_id}, {"id": website_id}, {"domain": website_id}]})
-        if not website and ObjectId.is_valid(website_id):
-            website = db.websites.find_one({"_id": ObjectId(website_id)})
+        # Tenant boundary: raises 404 when the website is not owned by the caller.
+        website = get_owned_website(user, website_id)
 
     # Also check user security config
     u_cfg = db.user_security_config.find_one({"user_id": u_str}) or {}
@@ -12894,9 +12893,8 @@ async def verify_and_enable_2fa(body: Verify2FARequest, user=Depends(get_current
             upsert=True
         )
     else:
-        w_query = {"$or": [{"_id": w_id}, {"id": w_id}, {"domain": w_id}]}
-        if ObjectId.is_valid(w_id):
-            w_query["$or"].append({"_id": ObjectId(w_id)})
+        owned = get_owned_website(user, w_id)
+        w_query = {"_id": owned["_id"]}
         db.websites.update_one(
             w_query,
             {"$set": {
@@ -12967,9 +12965,8 @@ async def disable_2fa(body: Disable2FARequest, user=Depends(get_current_user)):
             upsert=True
         )
     else:
-        w_query = {"$or": [{"_id": w_id}, {"id": w_id}, {"domain": w_id}]}
-        if ObjectId.is_valid(w_id):
-            w_query["$or"].append({"_id": ObjectId(w_id)})
+        owned = get_owned_website(user, w_id)
+        w_query = {"_id": owned["_id"]}
         db.websites.update_one(
             w_query,
             {"$set": {
@@ -12982,8 +12979,10 @@ async def disable_2fa(body: Disable2FARequest, user=Depends(get_current_user)):
         )
         # If no remaining sites have 2FA enabled, reset user-level security config
         any_remaining = db.websites.find_one({
-            "$or": [{"user_id": u_str}, {"added_by_user_id": u_str}, {"created_by": u_str}],
-            "$or": [{"two_factor_enabled": True}, {"login_two_factor": True}]
+            "$and": [
+                {"$or": [{"user_id": u_str}, {"added_by_user_id": u_str}, {"created_by": u_str}]},
+                {"$or": [{"two_factor_enabled": True}, {"login_two_factor": True}]},
+            ]
         })
         if not any_remaining:
             db.user_security_config.update_one(

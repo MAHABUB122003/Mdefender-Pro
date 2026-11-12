@@ -1,0 +1,519 @@
+[
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d7e"
+    },
+    "name": "SQL Injection - Union Select",
+    "pattern": "(?i)(\\bUNION\\b.*\\bSELECT\\b)",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 0
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d7f"
+    },
+    "name": "SQL Injection - Drop Table",
+    "pattern": "(?i)(\\bDROP\\b.*\\bTABLE\\b)",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 1
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d80"
+    },
+    "name": "SQL Injection - OR/AND Bypass",
+    "pattern": "(?i)('\\s*(OR|AND)\\s+['\\w])",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 2
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d81"
+    },
+    "name": "SQL Injection - Comment Bypass",
+    "pattern": "(?i)(--\\s*$|\\/\\*[\\s\\S]*\\*\\/)",
+    "action": "block",
+    "severity": "high",
+    "enabled": true,
+    "sort_order": 3
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d82"
+    },
+    "name": "SQL Injection - Stacked Queries",
+    "pattern": "(?i)(;\\s*(SELECT|INSERT|UPDATE|DELETE|DROP|ALTER))",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 4
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d83"
+    },
+    "name": "SQL Injection - Hex/Char Encoding",
+    "pattern": "(?i)(0x[0-9a-f]+|CHAR\\s*\\()",
+    "action": "block",
+    "severity": "high",
+    "enabled": true,
+    "sort_order": 5
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d84"
+    },
+    "name": "SQL Injection - Keywords",
+    "pattern": "(?i)(INFORMATION_SCHEMA|SYSOBJECTS|SYSCOLUMNS)",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 6
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d85"
+    },
+    "name": "SQL Injection - Time Based",
+    "pattern": "(?i)(\\bSLEEP\\s*\\(|BENCHMARK\\s*\\()",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 7
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d86"
+    },
+    "name": "SQL Injection - File Access",
+    "pattern": "(?i)(LOAD_FILE\\s*\\(|INTO\\s+(OUT|DUMP)FILE)",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 8
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d87"
+    },
+    "name": "SQL Injection - SELECT FROM",
+    "pattern": "(?i)(\\bSELECT\\b.*\\bFROM\\b)",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 9
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d88"
+    },
+    "name": "XSS - Script Tag",
+    "pattern": "(?i)(<script[^>]*>)",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 10
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d89"
+    },
+    "name": "XSS - Event Handler",
+    "pattern": "(?i)\\bon\\w+\\s*=",
+    "action": "block",
+    "severity": "high",
+    "enabled": true,
+    "sort_order": 11
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d8a"
+    },
+    "name": "XSS - JavaScript Protocol",
+    "pattern": "(?i)(javascript\\s*:)",
+    "action": "block",
+    "severity": "high",
+    "enabled": true,
+    "sort_order": 12
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d8b"
+    },
+    "name": "XSS - Dangerous Tags",
+    "pattern": "(?i)(<\\s*(svg|img|iframe|object|embed|form|input|body|meta|link|base)\\b[^>]*>)",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 13
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d8c"
+    },
+    "name": "XSS - Alert/Confirm/Prompt",
+    "pattern": "(?i)(alert\\s*\\(|confirm\\s*\\(|prompt\\s*\\()",
+    "action": "block",
+    "severity": "high",
+    "enabled": true,
+    "sort_order": 14
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d8d"
+    },
+    "name": "XSS - Eval/Document/Window",
+    "pattern": "(?i)(eval\\s*\\(|document\\.(cookie|write|location)|window\\.location)",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 15
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d8e"
+    },
+    "name": "LFI - Directory Traversal",
+    "pattern": "(?i)(\\.\\.\\/|\\.\\.\\\\)",
+    "action": "block",
+    "severity": "high",
+    "enabled": true,
+    "sort_order": 16
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d8f"
+    },
+    "name": "LFI - etc/passwd",
+    "pattern": "(?i)(\\/etc\\/(passwd|shadow|hosts))",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 17
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d90"
+    },
+    "name": "LFI - PHP Filter",
+    "pattern": "(?i)(php:\\/\\/|file:\\/\\/|data:\\/\\/)",
+    "action": "block",
+    "severity": "high",
+    "enabled": true,
+    "sort_order": 18
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d91"
+    },
+    "name": "LFI - Windows Paths",
+    "pattern": "(?i)(c:\\\\windows|boot\\.ini|web\\.config|\\.htaccess)",
+    "action": "block",
+    "severity": "high",
+    "enabled": true,
+    "sort_order": 19
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d92"
+    },
+    "name": "RCE - Backtick Exec",
+    "pattern": "`[^`]+`",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 20
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d93"
+    },
+    "name": "RCE - Dollar Paren",
+    "pattern": "\\$\\([^)]+\\)",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 21
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d94"
+    },
+    "name": "RCE - Dollar Brace",
+    "pattern": "\\$\\{[^}]+\\}",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 22
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d95"
+    },
+    "name": "RCE - System Commands",
+    "pattern": "(?i)(;\\s*(ls|cat|id|whoami|ping|nc|bash|sh|cmd|powershell|wget|curl)\\b)",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 23
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d96"
+    },
+    "name": "RCE - Pipe Commands",
+    "pattern": "(?i)(\\|\\s*(ls|cat|id|whoami|ping|nc|bash|sh|cmd|powershell)\\b)",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 24
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d97"
+    },
+    "name": "SSTI - Template Syntax",
+    "pattern": "(\\{\\{.*?\\}\\}|\\{%.*?%\\}|\\#\\{.*?\\})",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 25
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d98"
+    },
+    "name": "SSTI - Python Internals",
+    "pattern": "(?i)(__class__|__mro__|__subclasses__|__builtins__|__import__)",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 26
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d99"
+    },
+    "name": "SSRF - Internal IP",
+    "pattern": "(?i)(169\\.254\\.\\d+\\.\\d+|10\\.\\d+\\.\\d+\\.\\d+|172\\.(1[6-9]|2\\d|3[01])\\.\\d+\\.\\d+|192\\.168\\.\\d+\\.\\d+)",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 27
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d9a"
+    },
+    "name": "SSRF - Cloud Metadata",
+    "pattern": "(?i)(/latest/meta-data|/computeMetadata|metadata\\.google)",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 28
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d9b"
+    },
+    "name": "XXE - DOCTYPE/ENTITY",
+    "pattern": "(?i)(<!DOCTYPE|<!ENTITY|SYSTEM\\s+[\"\\'])",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 29
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d9c"
+    },
+    "name": "Open Redirect - URL Redirect",
+    "pattern": "(?i)(redirect\\s*=\\s*https?://|return\\s*=\\s*https?://|next\\s*=\\s*https?://|url\\s*=\\s*https?://)",
+    "action": "block",
+    "severity": "high",
+    "enabled": true,
+    "sort_order": 30
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d9d"
+    },
+    "name": "NoSQL Injection - $gt/$gte",
+    "pattern": "[\"\\']?\\$gt[\"\\']?\\s*:",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 31
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d9e"
+    },
+    "name": "NoSQL Injection - $ne/$nin",
+    "pattern": "[\"\\']?\\$(ne|nin)[\"\\']?\\s*:",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 32
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19d9f"
+    },
+    "name": "NoSQL Injection - $regex",
+    "pattern": "[\"\\']?\\$regex[\"\\']?\\s*:",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 33
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19da0"
+    },
+    "name": "NoSQL Injection - $where",
+    "pattern": "[\"\\']?\\$where[\"\\']?\\s*:",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 34
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19da1"
+    },
+    "name": "NoSQL Injection - $exists",
+    "pattern": "[\"\\']?\\$exists[\"\\']?\\s*:",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 35
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19da2"
+    },
+    "name": "NoSQL Injection - $or/$and",
+    "pattern": "[\"\\']?\\$(or|and)[\"\\']?\\s*:\\s*\\[",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 36
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19da3"
+    },
+    "name": "NoSQL Injection - $unset/$set",
+    "pattern": "[\"\\']?\\$(unset|set|push|pull|pop|inc|mul|rename|currentDate)[\"\\']?\\s*:",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 37
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19da4"
+    },
+    "name": "NoSQL Injection - $function/$accumulator",
+    "pattern": "[\"\\']?\\$(function|accumulator|mapReduce|aggregate|group)[\"\\']?\\s*:",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 38
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19da5"
+    },
+    "name": "NoSQL Injection - $expr",
+    "pattern": "[\"\\']?\\$expr[\"\\']?\\s*:",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 39
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19da6"
+    },
+    "name": "NoSQL Injection - $jsonSchema",
+    "pattern": "[\"\\']?\\$jsonSchema[\"\\']?\\s*:",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 40
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19da7"
+    },
+    "name": "Header Injection - CRLF",
+    "pattern": "(\\r\\n|\\r|\\n)\\s*(Content-Type|Set-Cookie|Location|Authorization)",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 41
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19da8"
+    },
+    "name": "Input - Null Byte",
+    "pattern": "(\\x00|%00)",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 42
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19da9"
+    },
+    "name": "Input - Excessive Length Field",
+    "pattern": "(.{5000,})",
+    "action": "block",
+    "severity": "medium",
+    "enabled": true,
+    "sort_order": 43
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19daa"
+    },
+    "name": "SQL Injection - Information Extract",
+    "pattern": "(?i)(pg_sleep|waitfor\\s+delay|dbms_lock\\.sleep|utl_http)",
+    "action": "block",
+    "severity": "critical",
+    "enabled": true,
+    "sort_order": 44
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19dab"
+    },
+    "name": "XSS - Data URI",
+    "pattern": "(?i)(data\\s*:\\s*text\\/html)",
+    "action": "block",
+    "severity": "high",
+    "enabled": true,
+    "sort_order": 45
+  },
+  {
+    "_id": {
+      "$oid": "6a6205c6c00e49b9acf19dac"
+    },
+    "name": "Path Traversal - Encoded",
+    "pattern": "(%2e%2e%2f|%2e%2e\\/|%252e%252e)",
+    "action": "block",
+    "severity": "high",
+    "enabled": true,
+    "sort_order": 46
+  }
+]

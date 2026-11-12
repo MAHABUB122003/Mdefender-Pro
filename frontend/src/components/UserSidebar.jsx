@@ -134,7 +134,7 @@ export default function UserSidebar({ isOpen, onClose }) {
 
     if (!sidebarApiKey) {
       import('../api/api').then(({ default: api }) => {
-        api.getUserData().then(res => {
+        api.getUserProfile().then(res => {
           const key = res?.data?.api_key || res?.data?.user?.api_key || res?.api_key || res?.user?.api_key
           if (key) {
             setSidebarApiKey(key)
@@ -153,7 +153,7 @@ export default function UserSidebar({ isOpen, onClose }) {
     if (!key) {
       try {
         const { default: api } = await import('../api/api')
-        const res = await api.getUserData()
+        const res = await api.getUserProfile()
         const fetched = res?.data?.api_key || res?.data?.user?.api_key || res?.api_key || res?.user?.api_key
         if (fetched) {
           key = fetched

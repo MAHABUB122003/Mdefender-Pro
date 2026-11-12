@@ -1,0 +1,15 @@
+[
+  {
+    "_id": {
+      "$oid": "6af1b8f44b325229fd5c53c9"
+    },
+    "title": "WordPress 6.7.2 Fleet Integrity Check Completed",
+    "message": "Official core signatures updated across all 500,000+ connected WordPress sites with 0 false positives.",
+    "severity": "info",
+    "created_by": "admin@mdefender-pro.io",
+    "created_at": {
+      "$date": "2026-11-09T12:13:40.421Z"
+    },
+    "active": true
+  }
+]

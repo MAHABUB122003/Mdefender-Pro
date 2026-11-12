@@ -1,0 +1,571 @@
+[
+  {
+    "_id": {
+      "$oid": "6ae3e74e88a8639b43f0f8b5"
+    },
+    "domain": "mahabubur.shop",
+    "strategy": "desktop",
+    "audited_at": "2026-11-12T01:28:22.663761",
+    "badge_color": "#15803D",
+    "grade": "A",
+    "metrics": {
+      "ttfb_ms": 730.28,
+      "fcp_ms": 840.0,
+      "lcp_ms": 1116.0,
+      "speed_index_ms": 964.0,
+      "cls": 0.0,
+      "inp_ms": 66.0,
+      "tbt_ms": 19.0,
+      "total_duration_ms": 1489.35
+    },
+    "page_composition": {
+      "page_size_kb": 71.0,
+      "external_scripts_count": 1,
+      "stylesheets_count": 0,
+      "images_count": 0,
+      "is_compressed": false,
+      "compression_type": "None",
+      "has_browser_caching": false
+    },
+    "rating": "GOOD",
+    "recommendations": [
+      {
+        "title": "Enable Text Compression (Gzip / Brotli)",
+        "impact": "HIGH",
+        "savings": "Save up to ~49.7 KB transfer",
+        "description": "Your origin server is serving uncompressed HTML. Enabling Gzip or Brotli reduces network payload by up to 70%."
+      },
+      {
+        "title": "Serve Static Assets with an Efficient Cache Policy",
+        "impact": "MEDIUM",
+        "savings": "Speed up repeat visits",
+        "description": "Add Cache-Control headers with max-age >= 31536000 for static images, CSS, and fonts."
+      }
+    ],
+    "score": 100,
+    "screen_label": "Desktop (1920 x 1080 Full HD \u2022 Broadband)",
+    "site_id": "sdk_a6219fc37355712333458421",
+    "url": "https://mahabubur.shop",
+    "audit_status_text": "Last audit recently, next one in 2 days",
+    "response_time_stats": {
+      "thirty_day_avg_ms": 975,
+      "fastest_day_ms": 175,
+      "slowest_day_ms": 3504,
+      "current_ms": 730,
+      "history": [
+        {
+          "date": "04 Nov",
+          "ms": 3504,
+          "status": "slow"
+        },
+        {
+          "date": "05 Nov",
+          "ms": 694,
+          "status": "fast"
+        },
+        {
+          "date": "06 Nov",
+          "ms": 766,
+          "status": "fast"
+        },
+        {
+          "date": "07 Nov",
+          "ms": 642,
+          "status": "fast"
+        },
+        {
+          "date": "08 Nov",
+          "ms": 803,
+          "status": "average"
+        },
+        {
+          "date": "09 Nov",
+          "ms": 672,
+          "status": "fast"
+        },
+        {
+          "date": "10 Nov",
+          "ms": 175,
+          "status": "fast"
+        },
+        {
+          "date": "11 Nov",
+          "ms": 788,
+          "status": "fast"
+        },
+        {
+          "date": "12 Nov",
+          "ms": 730,
+          "status": "fast"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6ae3e75088a8639b43f0f8b6"
+    },
+    "domain": "mahabubur.shop",
+    "strategy": "mobile",
+    "audited_at": "2026-11-08T12:36:59.066366",
+    "badge_color": "#B91C1C",
+    "grade": "C",
+    "metrics": {
+      "ttfb_ms": 8169.65,
+      "fcp_ms": 11274.0,
+      "lcp_ms": 14281.0,
+      "speed_index_ms": 12627.0,
+      "cls": 0.0,
+      "inp_ms": 794.0,
+      "tbt_ms": 893.0,
+      "total_duration_ms": 12054.17
+    },
+    "page_composition": {
+      "page_size_kb": 68.4,
+      "external_scripts_count": 1,
+      "stylesheets_count": 0,
+      "images_count": 0,
+      "is_compressed": false,
+      "compression_type": "None",
+      "has_browser_caching": false
+    },
+    "rating": "POOR",
+    "recommendations": [
+      {
+        "title": "Enable Text Compression (Gzip / Brotli)",
+        "impact": "HIGH",
+        "savings": "Save up to ~47.9 KB transfer",
+        "description": "Your origin server is serving uncompressed HTML. Enabling Gzip or Brotli reduces network payload by up to 70%."
+      },
+      {
+        "title": "Reduce Server Response Time (TTFB)",
+        "impact": "HIGH",
+        "savings": "Reduce 7920ms latency",
+        "description": "Initial server response was 8169.65ms. Implement WordPress page caching (WP Super Cache / Redis Object Cache) or MDefender Edge Caching."
+      },
+      {
+        "title": "Serve Static Assets with an Efficient Cache Policy",
+        "impact": "MEDIUM",
+        "savings": "Speed up repeat visits",
+        "description": "Add Cache-Control headers with max-age >= 31536000 for static images, CSS, and fonts."
+      }
+    ],
+    "score": 29,
+    "screen_label": "Mobile (390 x 844 CSS px \u2022 Emulated 4G)",
+    "site_id": "9e992173-ff7b-4f1e-a1b5-b8e5ad670058",
+    "url": "https://mahabubur.shop",
+    "audit_status_text": "Last audit recently, next one in 2 days",
+    "response_time_stats": {
+      "thirty_day_avg_ms": 10912,
+      "fastest_day_ms": 1961,
+      "slowest_day_ms": 39216,
+      "current_ms": 8170,
+      "history": [
+        {
+          "date": "31 Oct",
+          "ms": 39216,
+          "status": "slow"
+        },
+        {
+          "date": "01 Nov",
+          "ms": 7762,
+          "status": "slow"
+        },
+        {
+          "date": "02 Nov",
+          "ms": 8578,
+          "status": "slow"
+        },
+        {
+          "date": "03 Nov",
+          "ms": 7190,
+          "status": "slow"
+        },
+        {
+          "date": "04 Nov",
+          "ms": 8987,
+          "status": "slow"
+        },
+        {
+          "date": "05 Nov",
+          "ms": 7516,
+          "status": "slow"
+        },
+        {
+          "date": "06 Nov",
+          "ms": 1961,
+          "status": "slow"
+        },
+        {
+          "date": "07 Nov",
+          "ms": 8824,
+          "status": "slow"
+        },
+        {
+          "date": "08 Nov",
+          "ms": 8170,
+          "status": "slow"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6ae8f4a3c094d43d8ebc0462"
+    },
+    "domain": "wordpress.org",
+    "strategy": "desktop",
+    "audited_at": "2026-11-03T02:37:53.895987",
+    "badge_color": "#B45309",
+    "grade": "B",
+    "metrics": {
+      "ttfb_ms": 920.61,
+      "fcp_ms": 1151.0,
+      "lcp_ms": 1737.0,
+      "speed_index_ms": 1699.0,
+      "cls": 0.02,
+      "inp_ms": 110.0,
+      "total_duration_ms": 1346.33
+    },
+    "page_composition": {
+      "page_size_kb": 36.5,
+      "external_scripts_count": 0,
+      "stylesheets_count": 0,
+      "images_count": 0,
+      "is_compressed": true,
+      "compression_type": "br",
+      "has_browser_caching": false
+    },
+    "rating": "NEEDS IMPROVEMENT",
+    "recommendations": [
+      {
+        "title": "Reduce Server Response Time (TTFB)",
+        "impact": "HIGH",
+        "savings": "Reduce 671ms latency",
+        "description": "Initial server response was 920.61ms. Implement WordPress page caching (WP Super Cache / Redis Object Cache) or MDefender Edge Caching."
+      },
+      {
+        "title": "Serve Static Assets with an Efficient Cache Policy",
+        "impact": "MEDIUM",
+        "savings": "Speed up repeat visits",
+        "description": "Add Cache-Control headers with max-age >= 31536000 for static images, CSS, and fonts."
+      }
+    ],
+    "score": 84,
+    "screen_label": "Desktop (1920 x 1080 Full HD \u2022 Broadband)",
+    "site_id": "",
+    "url": "https://wordpress.org"
+  },
+  {
+    "_id": {
+      "$oid": "6ae961c0f4dd7bae987d522b"
+    },
+    "strategy": "desktop",
+    "domain": "localhost",
+    "audited_at": "2026-11-12T01:28:21.911990",
+    "badge_color": "#15803D",
+    "grade": "A",
+    "metrics": {
+      "ttfb_ms": 591.94,
+      "fcp_ms": 681.0,
+      "lcp_ms": 913.0,
+      "speed_index_ms": 785.0,
+      "cls": 0.0,
+      "inp_ms": 55.0,
+      "tbt_ms": 6.0,
+      "total_duration_ms": 748.94
+    },
+    "page_composition": {
+      "page_size_kb": 68.1,
+      "external_scripts_count": 1,
+      "stylesheets_count": 0,
+      "images_count": 0,
+      "is_compressed": false,
+      "compression_type": "None",
+      "has_browser_caching": false
+    },
+    "rating": "GOOD",
+    "recommendations": [
+      {
+        "title": "Enable Text Compression (Gzip / Brotli)",
+        "impact": "HIGH",
+        "savings": "Save up to ~47.7 KB transfer",
+        "description": "Your origin server is serving uncompressed HTML. Enabling Gzip or Brotli reduces network payload by up to 70%."
+      },
+      {
+        "title": "Serve Static Assets with an Efficient Cache Policy",
+        "impact": "MEDIUM",
+        "savings": "Speed up repeat visits",
+        "description": "Add Cache-Control headers with max-age >= 31536000 for static images, CSS, and fonts."
+      }
+    ],
+    "score": 100,
+    "screen_label": "Desktop (1920 x 1080 Full HD \u2022 Broadband)",
+    "site_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+    "url": "http://localhost/mahabub",
+    "audit_status_text": "Last audit recently, next one in 2 days",
+    "response_time_stats": {
+      "thirty_day_avg_ms": 791,
+      "fastest_day_ms": 142,
+      "slowest_day_ms": 2842,
+      "current_ms": 592,
+      "history": [
+        {
+          "date": "04 Nov",
+          "ms": 2842,
+          "status": "slow"
+        },
+        {
+          "date": "05 Nov",
+          "ms": 562,
+          "status": "fast"
+        },
+        {
+          "date": "06 Nov",
+          "ms": 622,
+          "status": "fast"
+        },
+        {
+          "date": "07 Nov",
+          "ms": 521,
+          "status": "fast"
+        },
+        {
+          "date": "08 Nov",
+          "ms": 651,
+          "status": "fast"
+        },
+        {
+          "date": "09 Nov",
+          "ms": 545,
+          "status": "fast"
+        },
+        {
+          "date": "10 Nov",
+          "ms": 142,
+          "status": "fast"
+        },
+        {
+          "date": "11 Nov",
+          "ms": 639,
+          "status": "fast"
+        },
+        {
+          "date": "12 Nov",
+          "ms": 592,
+          "status": "fast"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aec8f19bf59ec507f9a9422"
+    },
+    "domain": "localhost",
+    "strategy": "mobile",
+    "audited_at": "2026-11-10T02:56:43.509898",
+    "badge_color": "#15803D",
+    "grade": "A",
+    "metrics": {
+      "ttfb_ms": 628.18,
+      "fcp_ms": 867.0,
+      "lcp_ms": 1158.0,
+      "speed_index_ms": 998.0,
+      "cls": 0.0,
+      "inp_ms": 70.0,
+      "tbt_ms": 24.0,
+      "total_duration_ms": 673.6
+    },
+    "page_composition": {
+      "page_size_kb": 68.1,
+      "external_scripts_count": 1,
+      "stylesheets_count": 0,
+      "images_count": 0,
+      "is_compressed": false,
+      "compression_type": "None",
+      "has_browser_caching": false
+    },
+    "rating": "GOOD",
+    "recommendations": [
+      {
+        "title": "Enable Text Compression (Gzip / Brotli)",
+        "impact": "HIGH",
+        "savings": "Save up to ~47.7 KB transfer",
+        "description": "Your origin server is serving uncompressed HTML. Enabling Gzip or Brotli reduces network payload by up to 70%."
+      },
+      {
+        "title": "Serve Static Assets with an Efficient Cache Policy",
+        "impact": "MEDIUM",
+        "savings": "Speed up repeat visits",
+        "description": "Add Cache-Control headers with max-age >= 31536000 for static images, CSS, and fonts."
+      }
+    ],
+    "score": 100,
+    "screen_label": "Mobile (390 x 844 CSS px \u2022 Emulated 4G)",
+    "site_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+    "url": "http://localhost/mahabub",
+    "audit_status_text": "Last audit recently, next one in 2 days",
+    "response_time_stats": {
+      "thirty_day_avg_ms": 839,
+      "fastest_day_ms": 151,
+      "slowest_day_ms": 3014,
+      "current_ms": 628,
+      "history": [
+        {
+          "date": "02 Nov",
+          "ms": 3014,
+          "status": "slow"
+        },
+        {
+          "date": "03 Nov",
+          "ms": 597,
+          "status": "fast"
+        },
+        {
+          "date": "04 Nov",
+          "ms": 659,
+          "status": "fast"
+        },
+        {
+          "date": "05 Nov",
+          "ms": 553,
+          "status": "fast"
+        },
+        {
+          "date": "06 Nov",
+          "ms": 691,
+          "status": "fast"
+        },
+        {
+          "date": "07 Nov",
+          "ms": 578,
+          "status": "fast"
+        },
+        {
+          "date": "08 Nov",
+          "ms": 151,
+          "status": "fast"
+        },
+        {
+          "date": "09 Nov",
+          "ms": 678,
+          "status": "fast"
+        },
+        {
+          "date": "10 Nov",
+          "ms": 628,
+          "status": "fast"
+        }
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aeffe640eb7ab96d961f1fc"
+    },
+    "strategy": "desktop",
+    "domain": "127.0.0.1",
+    "audit_status_text": "Last audit recently, next one in 2 days",
+    "audited_at": "2026-11-08T10:45:23.453032",
+    "badge_color": "#15803D",
+    "grade": "A",
+    "metrics": {
+      "ttfb_ms": 886.5,
+      "fcp_ms": 1019.0,
+      "lcp_ms": 1340.0,
+      "speed_index_ms": 1163.0,
+      "cls": 0.0,
+      "inp_ms": 79.0,
+      "tbt_ms": 35.0,
+      "total_duration_ms": 996.0
+    },
+    "page_composition": {
+      "page_size_kb": 68.2,
+      "external_scripts_count": 1,
+      "stylesheets_count": 0,
+      "images_count": 0,
+      "is_compressed": false,
+      "compression_type": "None",
+      "has_browser_caching": false
+    },
+    "rating": "GOOD",
+    "recommendations": [
+      {
+        "title": "Enable Text Compression (Gzip / Brotli)",
+        "impact": "HIGH",
+        "savings": "Save up to ~47.7 KB transfer",
+        "description": "Your origin server is serving uncompressed HTML. Enabling Gzip or Brotli reduces network payload by up to 70%."
+      },
+      {
+        "title": "Reduce Server Response Time (TTFB)",
+        "impact": "HIGH",
+        "savings": "Reduce 636ms latency",
+        "description": "Initial server response was 886.5ms. Implement WordPress page caching (WP Super Cache / Redis Object Cache) or MDefender Edge Caching."
+      },
+      {
+        "title": "Serve Static Assets with an Efficient Cache Policy",
+        "impact": "MEDIUM",
+        "savings": "Speed up repeat visits",
+        "description": "Add Cache-Control headers with max-age >= 31536000 for static images, CSS, and fonts."
+      }
+    ],
+    "response_time_stats": {
+      "thirty_day_avg_ms": 1183,
+      "fastest_day_ms": 213,
+      "slowest_day_ms": 4253,
+      "current_ms": 886,
+      "history": [
+        {
+          "date": "31 Oct",
+          "ms": 4253,
+          "status": "slow"
+        },
+        {
+          "date": "01 Nov",
+          "ms": 842,
+          "status": "average"
+        },
+        {
+          "date": "02 Nov",
+          "ms": 930,
+          "status": "average"
+        },
+        {
+          "date": "03 Nov",
+          "ms": 780,
+          "status": "fast"
+        },
+        {
+          "date": "04 Nov",
+          "ms": 975,
+          "status": "average"
+        },
+        {
+          "date": "05 Nov",
+          "ms": 815,
+          "status": "average"
+        },
+        {
+          "date": "06 Nov",
+          "ms": 213,
+          "status": "fast"
+        },
+        {
+          "date": "07 Nov",
+          "ms": 957,
+          "status": "average"
+        },
+        {
+          "date": "08 Nov",
+          "ms": 886,
+          "status": "average"
+        }
+      ]
+    },
+    "score": 100,
+    "screen_label": "Desktop (1920 x 1080 Full HD \u2022 Broadband)",
+    "site_id": "",
+    "url": "http://127.0.0.1/mahabub/"
+  }
+]

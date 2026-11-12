@@ -1,0 +1,122 @@
+[
+  {
+    "_id": {
+      "$oid": "6a7eb02bfcfc6f4494c5be11"
+    },
+    "type": "scan",
+    "date": "2026-08-14",
+    "user_id": "6a7eb0249c4d1dbb197275ad",
+    "count": 2,
+    "created_at": {
+      "$date": "2026-08-14T12:05:31.240Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eba19fcfc6f4494c5be22"
+    },
+    "user_id": "6a7eba194fa51a521b9ade68",
+    "date": "2026-08-14",
+    "type": "scan",
+    "count": 2,
+    "created_at": {
+      "$date": "2026-08-14T12:47:53.925Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eba3bfcfc6f4494c5be24"
+    },
+    "user_id": "6a7eba3b4fa51a521b9ade75",
+    "date": "2026-08-14",
+    "type": "scan",
+    "count": 4,
+    "created_at": {
+      "$date": "2026-08-14T12:48:27.430Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7eba72fcfc6f4494c5be26"
+    },
+    "type": "scan",
+    "date": "2026-08-14",
+    "user_id": "6a7eba714fa51a521b9ade86",
+    "count": 2,
+    "created_at": {
+      "$date": "2026-08-14T12:49:22.217Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebaa4fcfc6f4494c5be28"
+    },
+    "user_id": "6a7ebaa37a0ac36510cd50ec",
+    "date": "2026-08-14",
+    "type": "scan",
+    "count": 3,
+    "created_at": {
+      "$date": "2026-08-14T12:50:12.002Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebf5ffcfc6f4494c5be2b"
+    },
+    "type": "scan",
+    "date": "2026-08-14",
+    "user_id": "6a7ebf5f7a0ac36510cd510f",
+    "count": 2,
+    "created_at": {
+      "$date": "2026-08-14T13:10:23.407Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebf72fcfc6f4494c5be2d"
+    },
+    "user_id": "6a7ebf727a0ac36510cd511a",
+    "date": "2026-08-14",
+    "type": "scan",
+    "count": 2,
+    "created_at": {
+      "$date": "2026-08-14T13:10:42.771Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ee282fcfc6f4494c5be30"
+    },
+    "user_id": "user_ee5dbc86",
+    "date": "2026-08-14",
+    "type": "scan",
+    "count": 2,
+    "created_at": {
+      "$date": "2026-08-14T15:40:18.207Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ee953fcfc6f4494c5be32"
+    },
+    "type": "scan",
+    "date": "2026-08-14",
+    "user_id": "6a6b1911d72083319bdd09bc",
+    "count": 1,
+    "created_at": {
+      "$date": "2026-08-14T16:09:23.005Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aeb8de239ffc4b8b2d33592"
+    },
+    "type": "scan",
+    "date": "2026-11-05",
+    "user_id": "admin-user-001",
+    "count": 573,
+    "created_at": {
+      "$date": "2026-11-05T01:56:18.850Z"
+    }
+  }
+]

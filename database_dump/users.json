@@ -1,0 +1,256 @@
+[
+  {
+    "_id": {
+      "$oid": "6a7ebf0f7a0ac36510cd50f9"
+    },
+    "full_name": "EndtoEnd Onboard",
+    "email": "e2e_7a3b6178@example.com",
+    "username": null,
+    "password_hash": "$2b$12$8KUNeXl0n7WaeqrTxn7OKujKevIRZYIhw6Py8UbSsi2WfWrJzM4ve",
+    "api_key": "8a92ea6ca0055d99c0c9381475f2453b44fadb1687e3cf541da2016a812719f5",
+    "email_verified": true,
+    "mfa_enabled": false,
+    "mfa_secret": null,
+    "google_id": null,
+    "plan": "free",
+    "role": "user",
+    "is_active": true,
+    "token_version": 0,
+    "websites": [],
+    "requests_today": 0,
+    "requests_today_date": "2026-11-12",
+    "total_requests": 0,
+    "total_blocked": 0,
+    "plan_expires": null,
+    "ddos_enabled": true,
+    "created_at": {
+      "$date": "2026-08-14T07:09:03.194Z"
+    },
+    "updated_at": {
+      "$date": "2026-08-14T07:09:03.194Z"
+    },
+    "last_login": {
+      "$date": "2026-08-14T07:09:05.782Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebf287a0ac36510cd50fe"
+    },
+    "full_name": "EndtoEnd Onboard",
+    "email": "e2e_23ccf57b@example.com",
+    "username": null,
+    "password_hash": "$2b$12$npRbiTIeZl/kJ/ggUWkZ9O7XMxcnCmLoBQyo0Nn/HywEinRL3WZsu",
+    "api_key": "922d387a629010a8004e7c33c8b2a1762ee353c83dd0db5f5dcf8b3826c0dd79",
+    "email_verified": true,
+    "mfa_enabled": false,
+    "mfa_secret": null,
+    "google_id": null,
+    "plan": "free",
+    "role": "user",
+    "is_active": true,
+    "token_version": 0,
+    "websites": [],
+    "requests_today": 0,
+    "requests_today_date": null,
+    "total_requests": 0,
+    "total_blocked": 0,
+    "plan_expires": null,
+    "ddos_enabled": true,
+    "created_at": {
+      "$date": "2026-08-14T07:09:28.454Z"
+    },
+    "updated_at": {
+      "$date": "2026-08-14T07:09:28.454Z"
+    },
+    "last_login": {
+      "$date": "2026-08-14T07:09:31.048Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebf417a0ac36510cd5103"
+    },
+    "full_name": "EndtoEnd Onboard",
+    "email": "e2e_84d3d816@example.com",
+    "username": null,
+    "password_hash": "$2b$12$0B.ifcnQyjKKUII7zPHqjuqjpcfCbLtIC/2LI8onhWh4ZQa21MHBq",
+    "api_key": "482feec538a50b8af2744b60154d4dcdbb542f0aaa0f2c8c3c3ca14a5bea84d1",
+    "email_verified": true,
+    "mfa_enabled": false,
+    "mfa_secret": null,
+    "google_id": null,
+    "plan": "free",
+    "role": "user",
+    "is_active": true,
+    "token_version": 0,
+    "websites": [],
+    "requests_today": 0,
+    "requests_today_date": null,
+    "total_requests": 0,
+    "total_blocked": 0,
+    "plan_expires": null,
+    "ddos_enabled": true,
+    "created_at": {
+      "$date": "2026-08-14T07:09:53.510Z"
+    },
+    "updated_at": {
+      "$date": "2026-08-14T07:09:53.510Z"
+    },
+    "last_login": {
+      "$date": "2026-08-14T07:09:53.933Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebf4e7a0ac36510cd5108"
+    },
+    "full_name": "EndtoEnd Onboard",
+    "email": "e2e_da58fca1@example.com",
+    "username": null,
+    "password_hash": "$2b$12$Bk4kWYGQ9p4BAWuYrxvmK.HaI08X/BG//IfwULyC3go.E/MTN.F/.",
+    "api_key": "aa22695d7328651bf32aeccc25a92374e7e252d7916d7e802c8d9766924fed1f",
+    "email_verified": true,
+    "mfa_enabled": false,
+    "mfa_secret": null,
+    "google_id": null,
+    "plan": "free",
+    "role": "user",
+    "is_active": true,
+    "token_version": 0,
+    "websites": [],
+    "requests_today": 3,
+    "requests_today_date": "2026-10-27",
+    "total_requests": 3,
+    "total_blocked": 0,
+    "plan_expires": null,
+    "ddos_enabled": true,
+    "created_at": {
+      "$date": "2026-08-14T07:10:06.790Z"
+    },
+    "updated_at": {
+      "$date": "2026-10-31T19:33:16.541Z"
+    },
+    "last_login": {
+      "$date": "2026-08-14T07:10:07.181Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a7ebf5f7a0ac36510cd510f"
+    },
+    "full_name": "EndtoEnd Onboard",
+    "email": "e2e_aea78369@example.com",
+    "username": null,
+    "password_hash": "$2b$12$zr6N70d3UqD5.xpVXS8Tfe5bhJaLq9ATTwFOT0ePWYj38N08GtzNq",
+    "api_key": "1f7eb3a80ec1ece52dd622969118b589b051a887262cb0e7ee40c7a9977a0196",
+    "email_verified": true,
+    "mfa_enabled": false,
+    "mfa_secret": null,
+    "google_id": null,
+    "plan": "free",
+    "role": "user",
+    "is_active": true,
+    "token_version": 0,
+    "websites": [],
+    "requests_today": 0,
+    "requests_today_date": "2026-10-27",
+    "total_requests": 0,
+    "total_blocked": 0,
+    "plan_expires": null,
+    "ddos_enabled": true,
+    "created_at": {
+      "$date": "2026-08-14T07:10:23.060Z"
+    },
+    "updated_at": {
+      "$date": "2026-08-14T07:10:23.060Z"
+    },
+    "last_login": {
+      "$date": "2026-08-14T07:10:23.367Z"
+    }
+  },
+  {
+    "_id": "admin-user-001",
+    "id": "admin-user-001",
+    "email": "admin@mdefender-pro.io",
+    "username": "admin",
+    "name": "Mahabub (Super Admin)",
+    "password_hash": "$2b$12$PQfYEJJ1LPnEIZbTmjVgieIbSbj9jACljQi3yy0a1w6CtoTglcxMy",
+    "api_key": "6065cf04c71974794648a53d8faface811badf5e56e51860ac905d16c65afe32",
+    "role": "super_admin",
+    "is_admin": true,
+    "email_verified": true,
+    "plan": "enterprise",
+    "websites": [
+      "mahabub.shop",
+      "localhost"
+    ],
+    "created_at": {
+      "$date": "2026-10-25T17:49:51.874Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-10T23:56:25.003Z"
+    },
+    "status": "active",
+    "requests_today": 0,
+    "requests_today_date": "2026-11-11",
+    "total_blocked": 4843,
+    "total_requests": 4391,
+    "blocked_today": 21,
+    "last_login": {
+      "$date": "2026-11-08T06:09:42.669Z"
+    },
+    "failed_login_attempts": 0,
+    "is_locked": false,
+    "locked_until": null
+  },
+  {
+    "_id": {
+      "$oid": "6addfa54c2c6599343d03ed8"
+    },
+    "email": "user@gmail.com",
+    "username": "user",
+    "full_name": "SecOps Lead Operator",
+    "name": "SecOps Lead Operator",
+    "password_hash": "$2b$12$GZrXJM1OWixlx5//6rtYcuYl4QPl8aN3gRpihQKli702oqIm9BSJW",
+    "role": "user",
+    "plan": "pro",
+    "is_active": true,
+    "email_verified": true,
+    "api_key": "e442fbca37e14019b83b1d77716b0689fd6e2655bd217657c1811e613b76c570",
+    "websites": [
+      {
+        "id": "site_demo_1",
+        "domain": "mahabub.shop",
+        "url": "http://localhost/mahabub",
+        "platform": "wordpress",
+        "verified": true,
+        "status": "online"
+      },
+      "demotest123.com",
+      "mahabubur.shop",
+      "test.com"
+    ],
+    "created_at": {
+      "$date": "2026-10-25T12:47:16.444Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-12T00:38:50.937Z"
+    },
+    "total_requests": 777,
+    "total_blocked": 723,
+    "last_login": {
+      "$date": "2026-11-11T16:38:23.971Z"
+    },
+    "requests_today": 0,
+    "requests_today_date": "2026-11-12",
+    "blocked_today": 6,
+    "ddos_enabled": false,
+    "mfa_enabled": false,
+    "mfa_secret": null,
+    "company": "Enterprise Global Defense Corp",
+    "phone": "+1-800-555-0199",
+    "timezone": "UTC",
+    "token_version": 2
+  }
+]

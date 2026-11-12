@@ -1,0 +1,137 @@
+[
+  {
+    "_id": {
+      "$oid": "6ae4655418467cfc9e9a82d7"
+    },
+    "event_type": "login_failed_wrong_password",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "ip_address": "127.0.0.1",
+    "severity": "info",
+    "details": {
+      "attempts": 1
+    },
+    "timestamp": {
+      "$date": "2026-10-30T09:37:24.336Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6ae46de09af5309860d56c18"
+    },
+    "event_type": "login_failed_user_not_found",
+    "user_id": null,
+    "ip_address": "127.0.0.1",
+    "severity": "info",
+    "details": {
+      "identifier": "user@example.com"
+    },
+    "timestamp": {
+      "$date": "2026-10-30T10:13:52.247Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6ae4cd91c736ac9128f1ae3c"
+    },
+    "event_type": "login_failed_wrong_password",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "ip_address": "127.0.0.1",
+    "severity": "info",
+    "details": {
+      "attempts": 1
+    },
+    "timestamp": {
+      "$date": "2026-10-30T17:02:09.180Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6ae4cd9dc736ac9128f1ae3e"
+    },
+    "event_type": "login_failed_wrong_password",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "ip_address": "127.0.0.1",
+    "severity": "info",
+    "details": {
+      "attempts": 1
+    },
+    "timestamp": {
+      "$date": "2026-10-30T17:02:21.672Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6ae4f2a2a787e17c124ebf9d"
+    },
+    "event_type": "login_failed_wrong_password",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "ip_address": "127.0.0.1",
+    "severity": "info",
+    "details": {
+      "attempts": 1
+    },
+    "timestamp": {
+      "$date": "2026-10-30T19:40:18.854Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6ae4f2a8a787e17c124ebf9f"
+    },
+    "event_type": "login_failed_wrong_password",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "ip_address": "127.0.0.1",
+    "severity": "info",
+    "details": {
+      "attempts": 1
+    },
+    "timestamp": {
+      "$date": "2026-10-30T19:40:24.064Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af00fc2d203f36b75d32154"
+    },
+    "event_type": "login_failed_wrong_password",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "ip_address": "127.0.0.1",
+    "severity": "info",
+    "details": {
+      "attempts": 1
+    },
+    "timestamp": {
+      "$date": "2026-11-08T05:59:30.463Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0122f58604e1d18494e8f"
+    },
+    "event_type": "login_failed_wrong_password",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "ip_address": "127.0.0.1",
+    "severity": "info",
+    "details": {
+      "attempts": 1
+    },
+    "timestamp": {
+      "$date": "2026-11-08T06:09:51.276Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0bc7f456b807c06abacd1"
+    },
+    "event_type": "login_failed_wrong_password",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "ip_address": "127.0.0.1",
+    "severity": "info",
+    "details": {
+      "attempts": 1
+    },
+    "timestamp": {
+      "$date": "2026-11-08T18:16:31.582Z"
+    }
+  }
+]

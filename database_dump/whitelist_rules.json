@@ -1,0 +1,50 @@
+[
+  {
+    "_id": {
+      "$oid": "6af1a6496255192e5eeb16f8"
+    },
+    "url_pattern": "/wp-json/wc/v3/*",
+    "target_type": "url",
+    "target_key": "",
+    "scope": "global",
+    "reason": "Official WooCommerce REST API Endpoints",
+    "hits_bypassed": 12841,
+    "is_active": true,
+    "created_at": {
+      "$date": "2026-10-10T16:54:01.305Z"
+    },
+    "created_by": "system"
+  },
+  {
+    "_id": {
+      "$oid": "6af1a6496255192e5eeb16f9"
+    },
+    "url_pattern": "*wc-api=WC_Gateway_*",
+    "target_type": "query",
+    "target_key": "wc-api",
+    "scope": "global",
+    "reason": "Payment Gateway IPN & Webhook Callbacks",
+    "hits_bypassed": 6420,
+    "is_active": true,
+    "created_at": {
+      "$date": "2026-10-15T16:54:01.305Z"
+    },
+    "created_by": "system"
+  },
+  {
+    "_id": {
+      "$oid": "6af1a6496255192e5eeb16fa"
+    },
+    "url_pattern": "/wp-admin/admin-ajax.php?action=elementor*",
+    "target_type": "url",
+    "target_key": "action",
+    "scope": "global",
+    "reason": "Elementor Builder Inline Canvas Sync",
+    "hits_bypassed": 3910,
+    "is_active": true,
+    "created_at": {
+      "$date": "2026-10-26T16:54:01.305Z"
+    },
+    "created_by": "system"
+  }
+]

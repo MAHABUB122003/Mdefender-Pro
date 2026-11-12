@@ -377,19 +377,12 @@ export const api = {
   getAuditLogs: (limit = 50, skip = 0) =>
     apiCall(`/api/auth/audit-logs?limit=${limit}&skip=${skip}`),
 
-  adminGetUsers: () => apiCall('/api/auth/admin/users'),
   adminGetSessions: () => apiCall('/api/auth/admin/sessions'),
   adminForceLogout: (userId) => apiCall(`/api/auth/admin/force-logout/${userId}`, { method: 'POST' }),
   adminDisableUser: (userId) => apiCall(`/api/auth/admin/disable-user/${userId}`, { method: 'POST' }),
   adminEnableUser: (userId) => apiCall(`/api/auth/admin/enable-user/${userId}`, { method: 'POST' }),
-  adminUnlockUser: (emailOrUsername) =>
-    apiCall('/api/auth/admin/unlock-user', { method: 'POST', body: JSON.stringify({ email_or_username: emailOrUsername }) }),
   adminResetMFA: (userId) => apiCall(`/api/auth/admin/reset-mfa/${userId}`, { method: 'POST' }),
   adminGetLockedAccounts: () => apiCall('/api/auth/admin/locked-accounts'),
-  adminGetAuditLogs: (params = {}) => {
-    const qs = new URLSearchParams(params).toString()
-    return apiCall(`/api/auth/admin/audit-logs${qs ? '?' + qs : ''}`)
-  },
   adminGetSecurityEvents: (params = {}) => {
     const qs = new URLSearchParams(params).toString()
     return apiCall(`/api/auth/admin/security-events${qs ? '?' + qs : ''}`)
@@ -659,9 +652,6 @@ export const api = {
   getPaymentConfig: () => apiCall('/api/payment/config'),
   createStripeCheckoutSession: (data) => apiCall('/api/payment/create-checkout-session', { method: 'POST', body: JSON.stringify(data) }),
   verifyStripeSession: (sessionId) => apiCall('/api/payment/verify-session', { method: 'POST', body: JSON.stringify({ session_id: sessionId }) }),
-  getBkashConfig: () => apiCall('/api/payment/bkash/config'),
-  createBkashPayment: (data) => apiCall('/api/payment/bkash/create', { method: 'POST', body: JSON.stringify(data) }),
-  verifyBkashPayment: (data) => apiCall('/api/payment/bkash/verify', { method: 'POST', body: JSON.stringify(data) }),
   processCardPayment: (data) => apiCall('/api/payment/checkout', { method: 'POST', body: JSON.stringify(data) }),
   processBankTransfer: (data) => apiCall('/api/payment/bank-transfer', { method: 'POST', body: JSON.stringify(data) }),
   processWalletPayment: (data) => apiCall('/api/payment/wallet', { method: 'POST', body: JSON.stringify(data) }),
@@ -670,10 +660,6 @@ export const api = {
   userCleanLogs: (data) => apiCall('/api/user/clean-logs', { method: 'POST', body: JSON.stringify(data) }),
   getLogRecycleSettings: (websiteId) => apiCall(`/api/user/log-recycle-settings${websiteId ? '?website_id=' + encodeURIComponent(websiteId) : ''}`),
   updateLogRecycleSettings: (data) => apiCall('/api/user/log-recycle-settings', { method: 'POST', body: JSON.stringify(data) }),
-  userBlockIP: (ip, reason = 'Automated IP Quarantine via Dashboard', duration = 0, websiteId = '') => {
-    const payload = typeof ip === 'object' ? ip : { ip, reason, duration, website_id: websiteId };
-    return apiCall('/api/user/block-ip', { method: 'POST', body: JSON.stringify(payload) });
-  },
   userBlockIp: (ip, reason = 'Automated IP Quarantine via Dashboard', duration = 0, websiteId = '') => {
     const payload = typeof ip === 'object' ? ip : { ip, reason, duration, website_id: websiteId };
     return apiCall('/api/user/block-ip', { method: 'POST', body: JSON.stringify(payload) });
@@ -711,7 +697,6 @@ export const api = {
     const q = website_id && website_id !== 'all' ? `&website_id=${encodeURIComponent(website_id)}` : '';
     return apiCall(`/api/user/country-blocks?code=${encodeURIComponent(code)}${q}`, { method: 'DELETE' });
   },
-  userCleanLogs: (data = {}) => apiCall('/api/user/clean-logs', { method: 'POST', body: JSON.stringify(data) }),
   userResetStats: (data = {}) => apiCall('/api/user/reset-stats', { method: 'POST', body: JSON.stringify(data) }),
 
   // User Security Configuration & Attack Auto-Block Policies
@@ -745,8 +730,8 @@ export const api = {
     return apiCall(`/api/v1/admin/learning/samples${qs ? '?' + qs : ''}`)
   },
   adminAddLearnedSample: (data) => apiCall('/api/v1/admin/learning/samples', { method: 'POST', body: JSON.stringify(data) }),
-  adminGetWhitelists: () => apiCall('/api/v1/admin/learning/whitelists'),
-  adminDeleteWhitelist: (id) => apiCall(`/api/v1/admin/learning/whitelists/${id}`, { method: 'DELETE' }),
+  adminGetLearningWhitelists: () => apiCall('/api/v1/admin/learning/whitelists'),
+  adminDeleteLearningWhitelist: (id) => apiCall(`/api/v1/admin/learning/whitelists/${id}`, { method: 'DELETE' }),
 
   // DDoS Shield APIs
   adminGetDDoSStats: () => apiCall('/api/admin/ddos/dashboard'),
@@ -754,9 +739,6 @@ export const api = {
   adminUpdateDDoSConfig: (data) => apiCall('/api/admin/ddos/config', { method: 'POST', body: JSON.stringify(data) }),
   adminBlockDDoSIp: (ip, level = 4, duration = 3600) => apiCall('/api/admin/ddos/reputation/block', { method: 'POST', body: JSON.stringify({ ip, level, duration }) }),
   adminUnblockDDoSIp: (ip) => apiCall('/api/admin/ddos/reputation/unblock', { method: 'POST', body: JSON.stringify({ ip }) }),
-
-  // Public Pricing APIs
-  getPublicPricing: () => apiCall('/api/v1/pricing/plans', { skipAuthRedirect: true }).catch(() => ({ data: { plans: [] } })),
 
   // Notification & Alerts APIs
   getNotifications: (params = {}) => {

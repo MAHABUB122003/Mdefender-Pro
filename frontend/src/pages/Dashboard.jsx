@@ -1,902 +1,483 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
-  Users,
-  Globe,
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import { Doughnut } from 'react-chartjs-2';
+import {
+  Activity,
+  ArrowRight,
+  ArrowUpRight,
+  Bug,
+  CheckCircle2,
+  Clock3,
+  Database,
+  Fingerprint,
+  Globe2,
+  KeyRound,
+  LifeBuoy,
+  RefreshCw,
+  Server,
   ShieldAlert,
   ShieldCheck,
-  Cpu,
-  RotateCw,
-  LayoutDashboard,
-  CreditCard,
-  FileText,
-  Server,
-  Activity,
-  CheckCircle2,
-  AlertTriangle,
-  ArrowUpRight,
-  ExternalLink,
-  ChevronRight,
-  Clock,
-  Shield,
-  Compass,
-  Building2,
-  User,
-  ShoppingBag,
-  TrendingUp,
-  Share2,
-  HelpCircle,
-  Sparkles
-} from 'lucide-react'
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler } from 'chart.js'
-import { Doughnut, Line } from 'react-chartjs-2'
-import api from '../api/api'
-import adminStore from '../utils/adminStore'
-import { formatMetricNumber, formatExactNumber } from '../utils/formatters'
+  Users,
+} from 'lucide-react';
+import api from '../api/api';
+import {
+  Badge,
+  Button,
+  Card,
+  Dotline,
+  EmptyState,
+  PageHeader,
+  StatCard,
+} from '../components/ui';
 
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler)
+ChartJS.register(ArcElement, Tooltip, Legend);
 
-const doughnutColors = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
+const THREAT_COLORS = ['#C0392B', '#E8792F', '#B7791F', '#2F6F62', '#6E7F7A', '#0B2B26'];
 
-function useAnimatedNumber(target, duration = 600) {
-  const [value, setValue] = useState(0)
-  const ref = useRef(null)
-  useEffect(() => {
-    if (!target) { setValue(0); return }
-    const num = typeof target === 'number' ? target : parseInt(String(target).replace(/[^0-9]/g, ''), 10) || 0
-    const startTime = performance.now()
-    function step(now) {
-      const progress = Math.min((now - startTime) / duration, 1)
-      const eased = 1 - Math.pow(1 - progress, 3)
-      setValue(Math.floor(eased * num))
-      if (progress < 1) ref.current = requestAnimationFrame(step)
-      else setValue(num)
-    }
-    ref.current = requestAnimationFrame(step)
-    return () => { if (ref.current) cancelAnimationFrame(ref.current) }
-  }, [target, duration])
-  return value.toLocaleString()
+const fmt = (n) => Number(n || 0).toLocaleString();
+
+const ACTION_LABELS = {
+  admin_login: 'Admin signed in',
+  login: 'Tenant signed in',
+  virtual_patch_published: 'Virtual patch published',
+  whitelist_rule_created: 'Whitelist rule created',
+  fleet_notice_broadcast: 'Fleet notice broadcast',
+  user_impersonated: 'Tenant impersonated',
+  wordpress_checksums_synced: 'Checksums synced',
+};
+
+function actionLabel(action) {
+  return ACTION_LABELS[action] || String(action || 'Event').replace(/_/g, ' ');
 }
 
-function StatCard({ icon: Icon, iconClass, value, label, trend, trendDir }) {
-  const animated = useAnimatedNumber(value)
-  const isPercent = typeof value === 'string' && value.includes('%')
-  const displayNum = isPercent ? animated : formatMetricNumber(animated)
-  const exactNum = isPercent ? value : formatExactNumber(value)
-  return (
-    <div className="stat-card" title={exactNum ? `${label}: ${exactNum}` : undefined}>
-      <div className="stat-top">
-        <div className={`stat-icon-wrap ${iconClass}`}>
-          {Icon ? <Icon size={20} strokeWidth={2.2} /> : null}
-        </div>
-      </div>
-      <div className="stat-number">{displayNum}</div>
-      <div className="stat-label">{label}</div>
-      {trend && <div className={`stat-trend ${trendDir || 'up'}`}>{trend}</div>}
-    </div>
-  )
+function healthTone(ok) {
+  return ok ? 'success' : 'danger';
 }
 
 export default function Dashboard() {
-  const cachedStats = adminStore.get('stats')
-  const cachedOverview = adminStore.get('overview')
-  const cachedHealth = adminStore.get('system_health')
+  const [overview, setOverview] = useState(null);
+  const [stats, setStats] = useState(null);
+  const [health, setHealth] = useState(null);
+  const [fleet, setFleet] = useState([]);
+  const [audit, setAudit] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
 
-  const [stats, setStats] = useState(cachedStats)
-  const [overview, setOverview] = useState(cachedOverview)
-  const [health, setHealth] = useState(cachedHealth)
-  const [loading, setLoading] = useState(!cachedStats && !cachedOverview)
-  const [toastMessage, setToastMessage] = useState(null)
-  const attackChartRef = useRef(null)
-
-  const showToast = (msg, isErr = false) => {
-    setToastMessage({ text: msg, isErr })
-    setTimeout(() => setToastMessage(null), 3500)
-  }
-
-  const fetchStats = useCallback(async () => {
-    try {
-      const [statsData, overviewData, healthData] = await Promise.allSettled([
-        api.getStats(),
-        api.adminGetOverview(),
-        api.adminGetSystemHealth(),
-      ])
-      if (statsData.status === 'fulfilled' && statsData.value) {
-        setStats(statsData.value)
-        adminStore.set('stats', statsData.value)
-      }
-      if (overviewData.status === 'fulfilled') {
-        const oVal = overviewData.value?.data || overviewData.value
-        setOverview(oVal)
-        adminStore.set('overview', oVal)
-      }
-      if (healthData.status === 'fulfilled') {
-        const hVal = healthData.value?.data || healthData.value
-        setHealth(hVal)
-        adminStore.set('system_health', hVal)
-      }
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
+  const load = useCallback(async (manual = false) => {
+    if (manual) setRefreshing(true);
+    const [ov, st, he, fl, au] = await Promise.allSettled([
+      api.adminGetOverview(),
+      api.getStats(),
+      api.adminGetSystemHealth(),
+      api.adminGetTenantWebsites(),
+      api.adminGetAuditLogs({ limit: 8 }),
+    ]);
+    if (ov.status === 'fulfilled') setOverview(ov.value?.data || ov.value);
+    if (st.status === 'fulfilled') setStats(st.value);
+    if (he.status === 'fulfilled') setHealth(he.value?.data || he.value);
+    if (fl.status === 'fulfilled') {
+      const payload = fl.value?.data || fl.value;
+      setFleet(payload?.websites || []);
     }
-  }, [])
+    if (au.status === 'fulfilled') {
+      const payload = au.value?.data || au.value;
+      setAudit(payload?.logs || []);
+    }
+    setLastUpdated(new Date());
+    setLoading(false);
+    if (manual) setTimeout(() => setRefreshing(false), 250);
+  }, []);
 
   useEffect(() => {
-    fetchStats()
-    const interval = setInterval(fetchStats, 30000)
-    return () => clearInterval(interval)
-  }, [fetchStats])
+    load(false);
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') load(false);
+    }, 30000);
+    return () => clearInterval(id);
+  }, [load]);
 
-  // Threat Doughnut Chart (Real Data from database)
-  const attackTypes = stats?.attack_types?.length
-    ? stats.attack_types
-    : ['Malicious Code', 'Webshell Injection', 'Path Traversal', 'SQL Injection']
-  const attackCounts = stats?.attack_counts?.length
-    ? stats.attack_counts
-    : [4, 2, 1, 1]
+  const sites = fleet;
+  const users = Number(overview?.users || 0);
+  const usersToday = Number(overview?.users_today || 0);
+  const websites = Number(overview?.websites || 0);
+  const activeWebsites = Number(overview?.active_websites || 0);
+  const requestsToday = Number(overview?.requests_today || 0);
+  const blockedToday = Number(overview?.events_blocked_today || 0);
+  const blockRate = requestsToday > 0 ? (blockedToday / requestsToday) * 100 : 0;
+  const openTickets = Number(overview?.support_tickets_open || 0);
+  const quarantine = Number(overview?.quarantine_items || 0);
+  const unverified = Number(overview?.unverified_users || 0);
 
-  const attackChartData = {
-    labels: attackTypes,
-    datasets: [{
-      data: attackCounts,
-      backgroundColor: doughnutColors,
-      borderWidth: 0,
-      hoverOffset: 6
-    }]
-  }
+  const riskySites = useMemo(
+    () => [...sites].sort((a, b) => Number(a.security_score || 0) - Number(b.security_score || 0)).slice(0, 6),
+    [sites]
+  );
+  const lowScoreSites = sites.filter((s) => Number(s.security_score || 0) < 85).length;
 
-  const doughnutOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    cutout: '72%',
-    plugins: {
-      legend: {
-        position: 'bottom',
-        labels: {
-          padding: 14,
-          usePointStyle: true,
-          font: { family: 'Inter', size: 12 },
-          color: '#475569'
-        }
-      },
-      tooltip: {
-        backgroundColor: '#0f172a',
-        padding: 10,
-        titleFont: { size: 12 },
-        bodyFont: { size: 12 }
-      }
-    }
-  }
-
-  // 7-Day Activity Chart
-  const dailyDays = []
-  const now = new Date()
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(now)
-    d.setDate(d.getDate() - i)
-    dailyDays.push(d.toLocaleDateString(undefined, { weekday: 'short' }))
-  }
-
-  const dailyChartData = {
-    labels: dailyDays,
-    datasets: [{
-      label: 'Security Inspections',
-      data: [12, 19, 15, 24, 32, 28, 35],
-      borderColor: '#2563eb',
-      backgroundColor: 'rgba(37, 99, 235, 0.08)',
-      fill: true,
-      tension: 0.35,
-      pointRadius: 4,
-      pointBackgroundColor: '#2563eb',
-      borderWidth: 2
-    }]
-  }
-
-  const lineOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: '#0f172a',
-        padding: 10,
-        titleFont: { size: 12 },
-        bodyFont: { size: 12 }
-      }
+  const signals = [
+    {
+      id: 'quarantine',
+      label: 'Quarantined files',
+      value: quarantine,
+      hint: quarantine ? 'Review and restore or delete' : 'Nothing in quarantine',
+      icon: ShieldAlert,
+      to: '/admin/clients',
+      tone: quarantine > 0 ? 'warn' : 'ok',
     },
-    scales: {
-      x: {
-        grid: { display: false },
-        ticks: { font: { family: 'Inter', size: 11 }, color: '#64748b' }
+    {
+      id: 'tickets',
+      label: 'Open support tickets',
+      value: openTickets,
+      hint: openTickets ? 'Reply within SLA' : 'No open tickets',
+      icon: LifeBuoy,
+      to: '/admin/support',
+      tone: openTickets > 0 ? 'warn' : 'ok',
+    },
+    {
+      id: 'unverified',
+      label: 'Unverified tenants',
+      value: unverified,
+      hint: unverified ? 'Resend verification email' : 'All tenants verified',
+      icon: Fingerprint,
+      to: '/admin/users',
+      tone: unverified > 0 ? 'warn' : 'ok',
+    },
+    {
+      id: 'risk',
+      label: 'Sites below 85 score',
+      value: lowScoreSites,
+      hint: lowScoreSites ? 'Open the fleet to review' : 'Every site is healthy',
+      icon: Activity,
+      to: '/admin/clients',
+      tone: lowScoreSites > 0 ? 'warn' : 'ok',
+    },
+  ];
+
+  const attackTypes = stats?.attack_types || [];
+  const attackCounts = stats?.attack_counts || [];
+  const hasThreats = attackTypes.length > 0 && attackCounts.some((n) => Number(n) > 0);
+
+  const threatData = {
+    labels: attackTypes,
+    datasets: [
+      {
+        data: attackCounts,
+        backgroundColor: THREAT_COLORS,
+        borderWidth: 0,
+        hoverOffset: 4,
       },
-      y: {
-        grid: { color: '#f1f5f9' },
-        ticks: { font: { family: 'Inter', size: 11 }, color: '#64748b', precision: 0 }
-      }
-    }
-  }
+    ],
+  };
+
+  const checks = health?.checks || {};
+  const healthRows = Object.entries(checks).map(([key, check]) => ({
+    key,
+    label: check?.label || key,
+    ok: Boolean(check?.ok),
+    detail:
+      key === 'waf_model'
+        ? check?.version || 'Loaded'
+        : key === 'malware_model'
+          ? `v${check?.version || '1.0.0'}`
+          : key === 'signature_rules'
+            ? `${fmt(check?.patterns)} patterns · ${fmt(check?.hashes)} hashes`
+            : 'Operational',
+  }));
+
+  const healthyCount = healthRows.filter((row) => row.ok).length;
 
   return (
-    <div style={{ width: '100%', boxSizing: 'border-box' }}>
-      {/* Toast Alert */}
-      {toastMessage && (
-        <div style={{
-          position: 'fixed',
-          bottom: '24px',
-          right: '24px',
-          background: toastMessage.isErr ? '#ef4444' : '#0f172a',
-          color: '#ffffff',
-          padding: '12px 20px',
-          borderRadius: '8px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-          zIndex: 9999,
-          fontWeight: '600',
-          fontSize: '13px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px'
-        }}>
-          {toastMessage.isErr ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} color="#34d399" />}
-          <span>{toastMessage.text}</span>
-        </div>
-      )}
-
-      {/* Top Header Bar */}
-      <div style={{
-        background: '#FFFFFF',
-        borderRadius: '12px',
-        border: '1px solid #EFEFEF',
-        padding: '18px 24px',
-        marginBottom: '20px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '16px',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{
-            width: '42px',
-            height: '42px',
-            borderRadius: '10px',
-            background: '#EFF6FF',
-            color: '#2563EB',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <LayoutDashboard size={22} strokeWidth={2.2} />
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#0F172A' }}>
-                Global Overview
-              </h1>
-              <span style={{
-                fontSize: '11px',
-                fontWeight: '600',
-                padding: '2px 8px',
-                borderRadius: '9999px',
-                background: '#ECFDF5',
-                color: '#059669',
-                border: '1px solid #A7F3D0',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }}></span>
-                All Core Services Live
-              </span>
-            </div>
-            <p style={{ margin: '3px 0 0', color: '#64748B', fontSize: '13px' }}>
-              Real-time platform telemetry, multi-tenant fleet security, and core detection engine status.
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={fetchStats}
-          style={{
-            padding: '8px 16px',
-            borderRadius: '8px',
-            background: '#FFFFFF',
-            border: '1px solid #EFEFEF',
-            color: '#334155',
-            fontSize: '12.5px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-          }}
-        >
-          <RotateCw size={14} className={loading ? 'animate-spin' : ''} />
-          Refresh
-        </button>
-      </div>
-
-      {/* Support Hot-Alert Banner for Admin */}
-      {Boolean(overview?.support_tickets_open) && (
-        <div style={{
-          background: '#EFF6FF',
-          border: '1px solid #BFDBFE',
-          borderRadius: '10px',
-          padding: '12px 20px',
-          marginBottom: '20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '12px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#EF4444', animation: 'pulse 1.5s infinite' }} />
-            <span style={{ fontSize: '13.5px', fontWeight: '700', color: '#1E40AF' }}>
-              Action Required: You have {overview.support_tickets_open} customer support ticket(s) awaiting response.
-            </span>
-          </div>
-          <Link
-            to="/admin/support"
-            style={{
-              background: '#2563EB',
-              color: '#FFFFFF',
-              textDecoration: 'none',
-              padding: '6px 16px',
-              borderRadius: '6px',
-              fontSize: '12.5px',
-              fontWeight: '700',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <span>Open Support Desk</span>
-            <ChevronRight size={14} />
-          </Link>
-        </div>
-      )}
-
-      {/* 4 Primary Real-Time Metric Tiles */}
-      <div className="stats-grid">
-        <StatCard
-          icon={Activity}
-          iconClass="blue"
-          value={overview?.total_requests ?? stats?.total_requests ?? 4188}
-          label="Total Fleet Requests"
-          trend={`${overview?.requests_today ?? 0} Today`}
-          trendDir="up"
-        />
-        <StatCard
-          icon={ShieldAlert}
-          iconClass="red"
-          value={overview?.total_blocked_threats ?? stats?.total_attacks ?? 4571}
-          label="Threats Detected & Blocked"
-          trend={`${overview?.events_blocked_today ?? 0} Blocked Today`}
-          trendDir="up"
-        />
-        <StatCard
-          icon={Globe}
-          iconClass="green"
-          value={overview?.websites ?? 7}
-          label="Protected Websites"
-          trend={`${overview?.websites ?? 7} Active WP Nodes`}
-          trendDir="up"
-        />
-        <StatCard
-          icon={Users}
-          iconClass="purple"
-          value={overview?.users ?? 15}
-          label="Registered Tenants"
-          trend={`${overview?.verified_users ?? 10} Verified Accounts`}
-          trendDir="up"
-        />
-      </div>
-
-      {/* Real-Time Platform Engine Diagnostics & Microservice Health */}
-      {health?.checks && (
-        <div style={{
-          background: '#FFFFFF',
-          borderRadius: '12px',
-          border: '1px solid #EFEFEF',
-          padding: '18px 22px',
-          marginBottom: '20px',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Server size={17} color="#10B981" />
-              Platform Engine Diagnostics & Microservice Status
-            </h3>
-            <span style={{ fontSize: '12px', color: '#64748B' }}>Verified Live</span>
-          </div>
-
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: '12px'
-          }}>
-            {Object.entries(health.checks).map(([key, item]) => (
-              <div
-                key={key}
-                style={{
-                  background: '#FBFBFB',
-                  padding: '12px 16px',
-                  borderRadius: '10px',
-                  border: item.ok ? '1px solid #EFEFEF' : '1px solid #FECACA',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: '13px', fontWeight: '600', color: '#0F172A' }}>
-                    {item.label || key.replace('_', ' ').toUpperCase()}
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px', fontFamily: 'monospace' }}>
-                    {item.version ? `Version: ${item.version}` : item.hashes ? `${item.hashes.toLocaleString()} Hashes` : 'Operational'}
-                  </div>
-                </div>
-                <span style={{
-                  padding: '2px 8px',
-                  borderRadius: '9999px',
-                  fontSize: '11px',
-                  fontWeight: '600',
-                  background: item.ok ? '#ECFDF5' : '#FEF2F2',
-                  color: item.ok ? '#059669' : '#DC2626',
-                  border: item.ok ? '1px solid #A7F3D0' : '1px solid #FECACA'
-                }}>
-                  {item.ok ? 'Healthy' : 'Degraded'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Real-World Tenant Onboarding & Acquisition Analytics */}
-      {(() => {
-        const demo = overview?.demographics || {
-          personas: { agency: 0, freelance: 0, owner: 0, enterprise: 0, unassigned: 0 },
-          referrals: {},
-          fleet_sizes: {},
-          total_onboarded: 0,
-          total_users: overview?.users || 11
+    <div className="adm-ov">
+      <style>{`
+        .adm-ov { display: flex; flex-direction: column; gap: 16px; max-width: 1760px; margin: 0 auto; width: 100%; }
+        .adm-ov-signals { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+        .adm-signal {
+          display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px;
+          background: var(--md-surface); border: 1px solid var(--md-line);
+          border-radius: var(--md-radius-card); text-decoration: none; color: inherit;
+          transition: border-color .14s ease, background .14s ease;
         }
-        const totalOnboarded = demo.total_onboarded || 0
-        const totalUsers = demo.total_users || overview?.users || 11
-        const pendingOnboard = Math.max(0, totalUsers - totalOnboarded)
+        .adm-signal:hover { border-color: #d6d9cf; background: var(--md-surface-hover); }
+        .adm-signal-icon {
+          width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center;
+          flex-shrink: 0; background: var(--md-surface-sunken); color: var(--md-ink-2);
+        }
+        .adm-signal.warn .adm-signal-icon { background: var(--md-amber-soft); color: var(--md-amber-2); }
+        .adm-signal.ok .adm-signal-icon { background: var(--md-emerald-soft); color: var(--md-emerald); }
+        .adm-signal-value { font-size: 20px; font-weight: 700; letter-spacing: -.02em; color: var(--md-ink); line-height: 1.1; font-variant-numeric: tabular-nums; }
+        .adm-signal-label { font-size: 11.5px; font-weight: 600; color: var(--md-ink-2); margin-top: 1px; }
+        .adm-signal-hint { font-size: 10.5px; color: var(--md-ink-3); margin-top: 2px; }
+        .adm-health-row { display: flex; align-items: center; gap: 10px; padding: 10px 18px; border-bottom: 1px solid var(--md-line); }
+        .adm-health-row:last-child { border-bottom: 0; }
+        .adm-health-icon { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; background: var(--md-surface-sunken); color: var(--md-ink-2); flex-shrink: 0; }
+        .adm-health-main { flex: 1; min-width: 0; }
+        .adm-health-label { font-size: 12px; font-weight: 600; color: var(--md-ink); }
+        .adm-health-detail { font-size: 10.5px; color: var(--md-ink-3); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .adm-score { display: inline-flex; align-items: center; gap: 8px; }
+        .adm-score-bar { width: 54px; height: 5px; border-radius: 999px; background: var(--md-surface-sunken); overflow: hidden; }
+        .adm-score-bar i { display: block; height: 100%; border-radius: 999px; }
+        .adm-audit-row { display: flex; align-items: center; gap: 10px; padding: 9px 18px; border-bottom: 1px solid var(--md-line); }
+        .adm-audit-row:last-child { border-bottom: 0; }
+        .adm-audit-main { flex: 1; min-width: 0; }
+        .adm-audit-title { font-size: 12px; font-weight: 600; color: var(--md-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .adm-audit-meta { font-size: 10.5px; color: var(--md-ink-3); margin-top: 1px; display: flex; gap: 8px; flex-wrap: wrap; }
+        .adm-ov-strip { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 0; border-top: 1px solid var(--md-line); margin-top: 2px; }
+        .adm-ov-strip > div { padding: 12px 16px; border-right: 1px solid var(--md-line); }
+        .adm-ov-strip > div:last-child { border-right: 0; }
+        .adm-ov-strip span { display: block; font-size: 10.5px; color: var(--md-ink-3); }
+        .adm-ov-strip strong { font-size: 14px; font-weight: 650; color: var(--md-ink); font-variant-numeric: tabular-nums; }
+        @media (max-width: 1200px) {
+          .adm-ov-signals { grid-template-columns: repeat(2, minmax(0,1fr)); }
+          .adm-ov-strip { grid-template-columns: repeat(3, minmax(0,1fr)); }
+        }
+        @media (max-width: 640px) {
+          .adm-ov-signals { grid-template-columns: 1fr; }
+          .adm-ov-strip { grid-template-columns: repeat(2, minmax(0,1fr)); }
+        }
+      `}</style>
 
-        const personaCards = [
-          {
-            id: 'owner',
-            title: 'Website & Business Owner',
-            desc: 'E-commerce stores, business portals & corporate web assets',
-            count: demo.personas?.owner || 0,
-            icon: ShoppingBag,
-            color: '#10B981',
-            badgeBg: '#ECFDF5',
-            badgeBorder: '#A7F3D0'
-          },
-          {
-            id: 'agency',
-            title: 'Digital Agency',
-            desc: 'Managing client WordPress fleets & white-label incident reports',
-            count: demo.personas?.agency || 0,
-            icon: Building2,
-            color: '#2563EB',
-            badgeBg: '#EFF6FF',
-            badgeBorder: '#BFDBFE'
-          },
-          {
-            id: 'freelance',
-            title: 'Freelance Webmaster',
-            desc: 'Independent developers & maintenance contractors',
-            count: demo.personas?.freelance || 0,
-            icon: User,
-            color: '#8B5CF6',
-            badgeBg: '#F5F3FF',
-            badgeBorder: '#DDD6FE'
-          },
-          {
-            id: 'enterprise',
-            title: 'Enterprise IT & SecOps',
-            desc: 'Corporate infrastructure, mission-critical nodes & compliance',
-            count: demo.personas?.enterprise || 0,
-            icon: ShieldCheck,
-            color: '#F59E0B',
-            badgeBg: '#FFFBEB',
-            badgeBorder: '#FDE68A'
-          }
-        ]
+      <PageHeader
+        eyebrow="Platform control"
+        title="Overview"
+        description="Tenants, protection and platform health — the things that need a decision today."
+        actions={
+          <>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Badge tone={health?.status === 'healthy' ? 'success' : 'warning'} dot>
+                {health?.status === 'healthy' ? 'All systems healthy' : 'Degraded'}
+              </Badge>
+            </span>
+            <Button variant="secondary" icon={RefreshCw} onClick={() => load(true)} disabled={refreshing}>
+              {refreshing ? 'Refreshing' : 'Refresh'}
+            </Button>
+            <Button variant="primary" icon={LifeBuoy} onClick={() => (window.location.href = '/admin/support')}>
+              Support desk
+            </Button>
+          </>
+        }
+      />
 
-        const referralEntries = Object.entries(demo.referrals || {})
-        const totalReferrals = referralEntries.reduce((sum, [, val]) => sum + val, 0)
-
-        // Known standard acquisition channels
-        const standardChannels = [
-          { name: 'Search Engine (Google, Bing)', icon: Compass, color: '#2563EB' },
-          { name: 'AI Assistant (ChatGPT, Gemini, Copilot)', icon: Sparkles, color: '#8B5CF6' },
-          { name: 'YouTube', icon: Activity, color: '#EF4444' },
-          { name: 'Social Media (Facebook, LinkedIn, X)', icon: Share2, color: '#0EA5E9' },
-          { name: 'Cybersecurity Community / Forum', icon: Shield, color: '#10B981' },
-          { name: 'Friend / Colleague Referral', icon: Users, color: '#F59E0B' },
-          { name: 'Other', icon: HelpCircle, color: '#64748B' }
-        ]
-
-        return (
-          <div style={{
-            background: '#FFFFFF',
-            borderRadius: '12px',
-            border: '1px solid #EFEFEF',
-            padding: '20px 22px',
-            marginBottom: '20px',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)'
-          }}>
-            {/* Header bar */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '10px',
-                  background: '#EFF6FF',
-                  color: '#2563EB',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <Compass size={20} strokeWidth={2.2} />
-                </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <h3 style={{ margin: 0, fontSize: '14.5px', fontWeight: '700', color: '#0F172A' }}>
-                      Tenant Onboarding Demographics & Acquisition Intelligence
-                    </h3>
-                    <span style={{ fontSize: '10px', fontWeight: '700', padding: '2px 8px', borderRadius: '9999px', background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}>
-                      DATABASE LIVE
-                    </span>
-                  </div>
-                  <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#64748B' }}>
-                    Real-time registration telemetry: who your active users are and what acquisition channel brought them to MDefender.
-                  </p>
-                </div>
+      <div className="adm-ov-signals" aria-label="Needs attention">
+        {signals.map((signal) => {
+          const Icon = signal.icon;
+          return (
+            <Link key={signal.id} to={signal.to} className={`adm-signal ${signal.tone}`}>
+              <span className="adm-signal-icon"><Icon size={15} strokeWidth={1.9} /></span>
+              <div style={{ minWidth: 0 }}>
+                <div className="adm-signal-value">{fmt(signal.value)}</div>
+                <div className="adm-signal-label">{signal.label}</div>
+                <div className="adm-signal-hint">{signal.hint}</div>
               </div>
-
-              {/* Status pills */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <span style={{
-                  padding: '4px 10px',
-                  borderRadius: '9999px',
-                  fontSize: '11.5px',
-                  fontWeight: '600',
-                  background: '#F8FAFC',
-                  color: '#334155',
-                  border: '1px solid #E2E8F0'
-                }}>
-                  {totalOnboarded} / {totalUsers} Tenants Onboarded
-                </span>
-                {pendingOnboard > 0 && (
-                  <span style={{
-                    padding: '4px 10px',
-                    borderRadius: '9999px',
-                    fontSize: '11.5px',
-                    fontWeight: '600',
-                    background: '#FFFBEB',
-                    color: '#B45309',
-                    border: '1px solid #FDE68A'
-                  }}>
-                    {pendingOnboard} Pending Profile Setup
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* 2-Column Split: Personas vs Acquisition */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
-              gap: '18px'
-            }}>
-              {/* Left Column: Organization Personas */}
-              <div style={{
-                background: '#FBFBFB',
-                borderRadius: '10px',
-                border: '1px solid #EFEFEF',
-                padding: '16px 18px'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Users size={15} color="#2563EB" />
-                    Organization Persona Distribution
-                  </span>
-                  <span style={{ fontSize: '11px', color: '#64748B', fontWeight: '600' }}>
-                    {totalOnboarded} responses
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {personaCards.map(p => {
-                    const pct = totalOnboarded > 0 ? Math.round((p.count / totalOnboarded) * 100) : 0
-                    const Icon = p.icon
-                    return (
-                      <div
-                        key={p.id}
-                        style={{
-                          background: '#FFFFFF',
-                          border: '1px solid #E2E8F0',
-                          borderRadius: '8px',
-                          padding: '10px 14px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '6px'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{
-                              width: '24px',
-                              height: '24px',
-                              borderRadius: '6px',
-                              background: p.badgeBg,
-                              color: p.color,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}>
-                              <Icon size={13} strokeWidth={2.4} />
-                            </div>
-                            <span style={{ fontSize: '12.5px', fontWeight: '700', color: '#0F172A' }}>
-                              {p.title}
-                            </span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontSize: '13px', fontWeight: '800', color: '#0F172A' }}>
-                              {p.count}
-                            </span>
-                            <span style={{
-                              fontSize: '11px',
-                              fontWeight: '700',
-                              padding: '1px 6px',
-                              borderRadius: '4px',
-                              background: p.badgeBg,
-                              color: p.color,
-                              border: `1px solid ${p.badgeBorder}`
-                            }}>
-                              {pct}%
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Progress Bar */}
-                        <div style={{ width: '100%', height: '5px', background: '#F1F5F9', borderRadius: '9999px', overflow: 'hidden' }}>
-                          <div style={{
-                            width: `${pct}%`,
-                            height: '100%',
-                            background: p.color,
-                            borderRadius: '9999px',
-                            transition: 'width 0.4s ease'
-                          }} />
-                        </div>
-
-                        <div style={{ fontSize: '11px', color: '#64748B' }}>
-                          {p.desc}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Right Column: Acquisition Channels / Discovery Sources */}
-              <div style={{
-                background: '#FBFBFB',
-                borderRadius: '10px',
-                border: '1px solid #EFEFEF',
-                padding: '16px 18px'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Share2 size={15} color="#10B981" />
-                    Acquisition & Discovery Channels
-                  </span>
-                  <span style={{ fontSize: '11px', color: '#64748B', fontWeight: '600' }}>
-                    Where users discovered us
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {standardChannels.map(ch => {
-                    const count = (demo.referrals && demo.referrals[ch.name]) ? demo.referrals[ch.name] : 0
-                    const pct = totalReferrals > 0 ? Math.round((count / totalReferrals) * 100) : 0
-                    const Icon = ch.icon
-
-                    return (
-                      <div
-                        key={ch.name}
-                        style={{
-                          background: count > 0 ? '#FFFFFF' : '#FAFAFA',
-                          border: count > 0 ? '1px solid #CBD5E1' : '1px solid #EFEFEF',
-                          borderRadius: '8px',
-                          padding: '8px 12px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '10px'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
-                          <Icon size={14} color={ch.color} style={{ flexShrink: 0 }} />
-                          <span style={{
-                            fontSize: '12px',
-                            fontWeight: count > 0 ? '700' : '500',
-                            color: count > 0 ? '#0F172A' : '#64748B',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}>
-                            {ch.name}
-                          </span>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                          {/* Mini Bar */}
-                          <div style={{ width: '60px', height: '4px', background: '#E2E8F0', borderRadius: '9999px', overflow: 'hidden' }}>
-                            <div style={{ width: `${pct}%`, height: '100%', background: ch.color, borderRadius: '9999px' }} />
-                          </div>
-                          <span style={{ fontSize: '12px', fontWeight: '700', color: count > 0 ? '#0F172A' : '#94A3B8', minWidth: '16px', textAlign: 'right' }}>
-                            {count}
-                          </span>
-                          <span style={{
-                            fontSize: '10px',
-                            fontWeight: '600',
-                            padding: '1px 5px',
-                            borderRadius: '4px',
-                            background: count > 0 ? '#EFF6FF' : '#F1F5F9',
-                            color: count > 0 ? '#2563EB' : '#94A3B8'
-                          }}>
-                            {pct}%
-                          </span>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-      })()}
-
-      {/* Threat Analytics Charts Grid */}
-      <div className="charts-grid">
-        <div className="chart-card" style={{ minHeight: '300px' }}>
-          <div className="chart-header">
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '700' }}>
-              <ShieldCheck size={16} color="#2563EB" />
-              Verified Threat Distribution
-            </h3>
-            <span className="chart-action">Telemetry</span>
-          </div>
-          <div className="chart-container" style={{ height: '220px' }}>
-            <Doughnut ref={attackChartRef} data={attackChartData} options={doughnutOptions} />
-          </div>
-        </div>
-
-        <div className="chart-card" style={{ minHeight: '300px' }}>
-          <div className="chart-header">
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '700' }}>
-              <Activity size={16} color="#10B981" />
-              Security Inspection Trend (7 Days)
-            </h3>
-            <span className="chart-action">Live</span>
-          </div>
-          <div className="chart-container" style={{ height: '220px' }}>
-            <Line data={dailyChartData} options={lineOptions} />
-          </div>
-        </div>
+            </Link>
+          );
+        })}
       </div>
 
-      {/* Quick Navigation Cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '16px'
-      }}>
-        <Link
-          to="/admin/users"
-          style={{
-            background: '#FFFFFF',
-            border: '1px solid #EFEFEF',
-            borderRadius: '12px',
-            padding: '18px 20px',
-            textDecoration: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '14px',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)'
-          }}
-        >
-          <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Users size={20} />
-          </div>
-          <div>
-            <div style={{ fontSize: '14px', fontWeight: '700', color: '#0F172A' }}>Tenants & Accounts</div>
-            <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>Manage 100k+ tenant accounts</div>
-          </div>
-        </Link>
+      <div className="mdui-grid mdui-kpi-grid">
+        <StatCard
+          label="Active tenants"
+          value={fmt(users)}
+          hint={`${fmt(usersToday)} joined today`}
+          icon={Users}
+          trend={usersToday > 0 ? `+${fmt(usersToday)} today` : 'No signups today'}
+          trendDir={usersToday > 0 ? 'up' : 'neutral'}
+        />
+        <StatCard
+          label="Protected websites"
+          value={`${fmt(activeWebsites)}/${fmt(websites)}`}
+          hint={`${fmt(overview?.api_keys)} API keys issued`}
+          icon={Globe2}
+        />
+        <StatCard
+          label="Threats blocked today"
+          value={fmt(blockedToday)}
+          hint={`${fmt(requestsToday)} requests inspected`}
+          icon={ShieldAlert}
+          trend={`${blockRate.toFixed(1)}% block rate`}
+          trendDir="neutral"
+        />
+        <StatCard
+          label="Platform events today"
+          value={fmt(overview?.events_today)}
+          hint={`${fmt(overview?.total_requests)} lifetime requests`}
+          icon={Activity}
+        />
+      </div>
 
-        <Link
-          to="/admin/pricing"
-          style={{
-            background: '#FFFFFF',
-            border: '1px solid #EFEFEF',
-            borderRadius: '12px',
-            padding: '18px 20px',
-            textDecoration: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '14px',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)'
-          }}
+      <div className="mdui-grid mdui-split">
+        <Card
+          title="Threat distribution"
+          subtitle="What the WAF mitigated across the fleet"
+          action={<Link to="/admin/logs" style={{ fontSize: 11.5, color: 'var(--md-ink-3)', textDecoration: 'none' }}>View logs</Link>}
         >
-          <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: '#FFFBEB', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <CreditCard size={20} />
-          </div>
-          <div>
-            <div style={{ fontSize: '14px', fontWeight: '700', color: '#0F172A' }}>Dynamic Pricing</div>
-            <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>$4/Site billing & bulk quotas</div>
-          </div>
-        </Link>
+          {hasThreats ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '190px minmax(0,1fr)', gap: 18, alignItems: 'center' }}>
+              <div style={{ height: 180, position: 'relative' }}>
+                <Doughnut
+                  data={threatData}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '68%',
+                    plugins: { legend: { display: false } },
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                {attackTypes.slice(0, 6).map((type, i) => (
+                  <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5 }}>
+                    <i style={{ width: 7, height: 7, borderRadius: 2, background: THREAT_COLORS[i % THREAT_COLORS.length] }} />
+                    <span style={{ flex: 1, color: 'var(--md-ink-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{type}</span>
+                    <span style={{ color: 'var(--md-ink)', fontVariantNumeric: 'tabular-nums' }}>{fmt(attackCounts[i])}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <EmptyState
+              icon={ShieldCheck}
+              title="No threats recorded yet"
+              description="Once connected sites report attack telemetry, the mix will appear here."
+            />
+          )}
+        </Card>
 
-        <Link
-          to="/admin/clients"
-          style={{
-            background: '#FFFFFF',
-            border: '1px solid #EFEFEF',
-            borderRadius: '12px',
-            padding: '18px 20px',
-            textDecoration: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '14px',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)'
-          }}
+        <Card
+          title="Platform health"
+          subtitle={`${healthyCount}/${healthRows.length || 0} components healthy`}
+          action={<Badge tone={health?.status === 'healthy' ? 'success' : 'warning'}>{health?.status || 'checking'}</Badge>}
+          flush
         >
-          <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: '#ECFDF5', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Globe size={20} />
-          </div>
-          <div>
-            <div style={{ fontSize: '14px', fontWeight: '700', color: '#0F172A' }}>Protected Fleets</div>
-            <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>WordPress node diagnostics</div>
-          </div>
-        </Link>
+          {healthRows.length ? (
+            healthRows.map((row) => (
+              <div className="adm-health-row" key={row.key}>
+                <span className="adm-health-icon">
+                  {row.key === 'mongo' ? <Database size={13} /> : row.key === 'signature_rules' ? <ShieldCheck size={13} /> : row.key === 'waf_model' ? <Server size={13} /> : <Bug size={13} />}
+                </span>
+                <div className="adm-health-main">
+                  <div className="adm-health-label">{row.label}</div>
+                  <div className="adm-health-detail">{row.detail}</div>
+                </div>
+                <Badge tone={healthTone(row.ok)} dot>{row.ok ? 'Healthy' : 'Down'}</Badge>
+              </div>
+            ))
+          ) : (
+            <EmptyState icon={Server} title="Health checks unavailable" description="The system health endpoint did not return a response." />
+          )}
+        </Card>
+      </div>
 
-        <Link
-          to="/admin/rules"
-          style={{
-            background: '#FFFFFF',
-            border: '1px solid #EFEFEF',
-            borderRadius: '12px',
-            padding: '18px 20px',
-            textDecoration: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '14px',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)'
-          }}
+      <div className="mdui-grid mdui-split">
+        <Card
+          title="Fleet at risk"
+          subtitle="Lowest security scores first — open a site to inspect or remediate"
+          action={<Link to="/admin/clients" style={{ fontSize: 11.5, color: 'var(--md-ink-3)', textDecoration: 'none' }}>All websites</Link>}
+          flush
         >
-          <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: '#F5F3FF', color: '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <ShieldCheck size={20} />
-          </div>
-          <div>
-            <div style={{ fontSize: '14px', fontWeight: '700', color: '#0F172A' }}>Virtual Patches</div>
-            <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>Hot CVEs & DFA Evasion Lab</div>
-          </div>
-        </Link>
+          {riskySites.length ? (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="mdui-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Site</th>
+                    <th scope="col">Tenant</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Security score</th>
+                    <th scope="col">Threats</th>
+                    <th scope="col">Plugin</th>
+                    <th scope="col" aria-label="Open" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {riskySites.map((site) => {
+                    const score = Number(site.security_score || 0);
+                    const tone = score >= 85 ? '#12805C' : score >= 70 ? '#B7791F' : '#C0392B';
+                    return (
+                      <tr key={site.id || site.domain}>
+                        <td>
+                          <span className="strong">{site.domain || site.name || site.id}</span>
+                          <div style={{ fontSize: 10.5, color: 'var(--md-ink-3)', marginTop: 2 }}>{site.url || site.origin_server || '—'}</div>
+                        </td>
+                        <td style={{ fontSize: 11.5 }}>{site.user_email || '—'}</td>
+                        <td>
+                          <Badge tone={site.status === 'active' ? 'success' : 'warning'} dot>{site.status || 'unknown'}</Badge>
+                        </td>
+                        <td>
+                          <span className="adm-score">
+                            <span className="adm-score-bar"><i style={{ width: `${Math.min(100, score)}%`, background: tone }} /></span>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--md-ink)' }}>{score}</span>
+                          </span>
+                        </td>
+                        <td style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(site.threats_blocked)}</td>
+                        <td style={{ fontSize: 11.5 }}>{site.plugin_version ? `v${site.plugin_version}` : '—'}</td>
+                        <td>
+                          <Link to="/admin/clients" style={{ fontSize: 11.5, color: 'var(--md-ink-2)', textDecoration: 'none' }}>
+                            Open <ArrowUpRight size={11} style={{ verticalAlign: -1 }} />
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <EmptyState icon={Globe2} title="No websites connected" description="Tenant sites will appear here as soon as they connect." />
+          )}
+        </Card>
+
+        <Card
+          title="Admin activity"
+          subtitle="Latest privileged actions"
+          action={<Link to="/admin/settings" style={{ fontSize: 11.5, color: 'var(--md-ink-3)', textDecoration: 'none' }}>Audit log</Link>}
+          flush
+        >
+          {audit.length ? (
+            audit.slice(0, 7).map((entry) => (
+              <div className="adm-audit-row" key={entry.id}>
+                <span className="adm-health-icon"><KeyRound size={13} /></span>
+                <div className="adm-audit-main">
+                  <div className="adm-audit-title">{actionLabel(entry.action)}</div>
+                  <div className="adm-audit-meta">
+                    <span>{entry.admin_user || 'system'}</span>
+                    <span>{entry.ip_address || '—'}</span>
+                  </div>
+                </div>
+                <span style={{ fontSize: 10.5, color: 'var(--md-ink-3)', whiteSpace: 'nowrap' }}>
+                  {String(entry.timestamp || '').slice(11, 16)}
+                </span>
+              </div>
+            ))
+          ) : (
+            <EmptyState icon={Clock3} title="No admin activity yet" description="Audit events will show up here after the first privileged action." />
+          )}
+        </Card>
+      </div>
+
+      <Card title="Tenant & data footprint" subtitle="Current platform counters">
+        <div className="adm-ov-strip">
+          <div><span>Total tenants</span><strong>{fmt(users)}</strong></div>
+          <div><span>Verified</span><strong>{fmt(overview?.verified_users)}</strong></div>
+          <div><span>Paid subscriptions</span><strong>{fmt(overview?.pro_subscribers)}</strong></div>
+          <div><span>Malware scans</span><strong>{fmt(overview?.malware_scans)}</strong></div>
+          <div><span>API keys</span><strong>{fmt(overview?.api_keys)}</strong></div>
+          <div><span>Blocked IPs</span><strong>{fmt(overview?.blacklisted_ips)}</strong></div>
+        </div>
+      </Card>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: 'var(--md-ink-3)' }}>
+        <span>Updated {lastUpdated.toLocaleTimeString()}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <Dotline tone={health?.status === 'healthy' ? 'ok' : 'warn'}>{health?.status === 'healthy' ? 'All dependencies responding' : 'Degraded dependency'}</Dotline>
+        </span>
       </div>
     </div>
-  )
+  );
 }

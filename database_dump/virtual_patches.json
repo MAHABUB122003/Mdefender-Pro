@@ -1,0 +1,56 @@
+[
+  {
+    "_id": {
+      "$oid": "6af1a6496255192e5eeb16f5"
+    },
+    "cve_id": "CVE-2024-27956",
+    "name": "Automatic SQL Injection in WP-Automatic Plugin",
+    "component": "wp-automatic",
+    "target_scope": "all",
+    "pattern": "(?i)(wp-automatic.*csv-import|csv_upload_action.*union\\s+select)",
+    "action": "block",
+    "severity": "critical",
+    "hits_count": 1421,
+    "is_active": true,
+    "created_at": {
+      "$date": "2026-10-20T16:54:01.305Z"
+    },
+    "created_by": "system"
+  },
+  {
+    "_id": {
+      "$oid": "6af1a6496255192e5eeb16f6"
+    },
+    "cve_id": "CVE-2024-31210",
+    "name": "WordPress Core REST API Privilege Escalation Bypass",
+    "component": "core",
+    "target_scope": "url",
+    "pattern": "(?i)(/wp-json/wp/v2/users/me.*_wpnonce=none)",
+    "action": "block",
+    "severity": "critical",
+    "hits_count": 892,
+    "is_active": true,
+    "created_at": {
+      "$date": "2026-10-28T16:54:01.305Z"
+    },
+    "created_by": "system"
+  },
+  {
+    "_id": {
+      "$oid": "6af1a6496255192e5eeb16f7"
+    },
+    "cve_id": "CVE-2024-25600",
+    "name": "Bricks Builder Unauthenticated Remote Code Execution",
+    "component": "bricks",
+    "target_scope": "post_body",
+    "pattern": "(?i)(bricks/v1/render_element.*throw\\s+new\\s+\\\\Exception)",
+    "action": "block",
+    "severity": "critical",
+    "hits_count": 3105,
+    "is_active": true,
+    "created_at": {
+      "$date": "2026-11-04T16:54:01.305Z"
+    },
+    "created_by": "system"
+  }
+]

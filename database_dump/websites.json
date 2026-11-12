@@ -1,0 +1,865 @@
+[
+  {
+    "_id": "site_d9caceb5",
+    "user_id": "user_6acdcad0",
+    "url": "https://my-wordpress-site.local",
+    "domain": "my-wordpress-site.local",
+    "name": "My WordPress Site",
+    "platform": "wordpress",
+    "waf_mode": "protect",
+    "protection_enabled": true,
+    "created_at": {
+      "$date": "2026-08-14T15:39:10.602Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-11T09:57:34.554Z"
+    },
+    "verified": true,
+    "wordpress_connection": {
+      "connected": true,
+      "connected_at": {
+        "$date": "2026-08-14T15:39:10.622Z"
+      },
+      "site_token": "3b40bf82484f594c3164ac4394003529bdfdb1f4079d1da9acd732193ce9ec15",
+      "plugin_version": "4.0.0",
+      "php_version": "8.2.0",
+      "wp_version": "6.4.2",
+      "api_key": "8462c6f7ffbb74bad741be02e3dfd41d307d6be019e5043d88a85a6e6fab9669"
+    },
+    "last_activity": {
+      "$date": "2026-08-14T15:39:10.681Z"
+    },
+    "threat_level": "LOW",
+    "api_key": "8462c6f7ffbb74bad741be02e3dfd41d307d6be019e5043d88a85a6e6fab9669",
+    "hold_press_enabled": false,
+    "login_two_factor": false,
+    "turnstile_enabled": false,
+    "cdn_detected": "Active Edge Proxy",
+    "last_ping_at": {
+      "$date": "2026-11-11T15:58:03.452Z"
+    },
+    "last_ping_latency_ms": 38.4,
+    "ping_status": "online",
+    "resolved_ip": "104.21.55.2"
+  },
+  {
+    "_id": "site_0addf739",
+    "user_id": "user_ee5dbc86",
+    "url": "https://my-site-15fe86.local",
+    "domain": "my-site-15fe86.local",
+    "name": "My WordPress Site",
+    "platform": "wordpress",
+    "waf_mode": "protect",
+    "protection_enabled": true,
+    "created_at": {
+      "$date": "2026-08-14T15:40:18.031Z"
+    },
+    "updated_at": {
+      "$date": "2026-08-14T15:40:18.046Z"
+    },
+    "verified": true,
+    "wordpress_connection": {
+      "connected": true,
+      "connected_at": {
+        "$date": "2026-08-14T15:40:18.046Z"
+      },
+      "site_token": "7695742be68846dd340afd495c4a63023764753e95f2165f181238aa48d89d0d",
+      "plugin_version": "4.0.0",
+      "php_version": "8.2.0",
+      "wp_version": "6.4.2",
+      "api_key": "f195740875ce5b87b434dd84f6928a69a28812e28bf17a4c1a1b033bb1d6e90a"
+    },
+    "last_activity": {
+      "$date": "2026-08-14T15:40:18.192Z"
+    },
+    "threat_level": "CRITICAL",
+    "api_key": "f195740875ce5b87b434dd84f6928a69a28812e28bf17a4c1a1b033bb1d6e90a",
+    "hold_press_enabled": false,
+    "login_two_factor": false,
+    "turnstile_enabled": false
+  },
+  {
+    "_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "name": "Mahabub Shop",
+    "url": "http://localhost/mahabub",
+    "domain": "localhost/mahabub",
+    "platform": "wordpress",
+    "status": "active",
+    "protection_enabled": true,
+    "waf_mode": "protect",
+    "malware_scanner": true,
+    "threat_level": "MEDIUM",
+    "verified": true,
+    "connected_at": {
+      "$date": "2026-11-08T11:29:27.745Z"
+    },
+    "last_activity": {
+      "$date": "2026-11-12T00:38:49.983Z"
+    },
+    "created_at": {
+      "$date": "2026-08-14T16:01:50.134Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-12T02:00:23Z"
+    },
+    "wordpress_connection": {
+      "connected": true,
+      "connected_at": {
+        "$date": "2026-11-08T11:29:27.745Z"
+      },
+      "api_key": "e442fbca37e14019b83b1d77716b0689fd6e2655bd217657c1811e613b76c570",
+      "site_token": "653966b522914b139f89b572cd3babdce481e3ca043a458b995ce83508459c7d",
+      "plugin_version": "4.2.3",
+      "url": "http://localhost/mahabub",
+      "raw_site_token": "653966b522914b139f89b572cd3babdce481e3ca043a458b995ce83508459c7d"
+    },
+    "api_key": "e442fbca37e14019b83b1d77716b0689fd6e2655bd217657c1811e613b76c570",
+    "id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+    "plan": "enterprise",
+    "site_token": "653966b522914b139f89b572cd3babdce481e3ca043a458b995ce83508459c7d",
+    "ssl_mode": "flexible",
+    "blocked_today": 6,
+    "requests_today": 60,
+    "requests_today_date": "2026-11-12",
+    "total_blocked": 723,
+    "total_requests": 777,
+    "hold_press_enabled": true,
+    "login_two_factor": false,
+    "turnstile_enabled": false,
+    "last_scan_id": "f59a3397-23c3-4276-8f19-b66c009b9707",
+    "last_scan_status": "completed",
+    "last_scan": "2026-11-11T19:15:02.170548",
+    "security_score": 85,
+    "backups": [
+      {
+        "id": "localhost-mahabub",
+        "filename": "localhost-mahabub.zip",
+        "name": "Localhost-Mahabub",
+        "site_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+        "domain": "localhost/mahabub",
+        "type": "full",
+        "components": [
+          "Database",
+          "Plugins",
+          "Themes",
+          "Uploads",
+          "Core"
+        ],
+        "size_bytes": 39950199,
+        "size": "38.10 MB",
+        "created_at": "2026-11-10 00:09:31",
+        "status": "verified",
+        "note": "Local Recovery Snapshot",
+        "storage_path": "C:\\xampp\\htdocs\\mdefender-backups\\localhost-mahabub.zip",
+        "is_remote": false
+      },
+      {
+        "id": "mdf_database_localhost_20261108_063345",
+        "filename": "mdf_database_localhost_20261108_063345.zip",
+        "name": "Mdf Database Localhost 20261108 063345",
+        "site_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+        "domain": "localhost/mahabub",
+        "type": "database",
+        "components": [
+          "Database (SQL Dump)"
+        ],
+        "size_bytes": 549932,
+        "size": "537.0 KB",
+        "created_at": "2026-11-08 12:33:45",
+        "status": "verified",
+        "note": "Local Recovery Snapshot",
+        "storage_path": "C:\\xampp\\htdocs\\mdefender-backups\\mdf_database_localhost_20261108_063345.zip",
+        "is_remote": false
+      }
+    ],
+    "block_uploads_php": true,
+    "disable_directory_listing": true,
+    "disable_file_editing": true,
+    "disable_xmlrpc": true,
+    "file_permissions_check": true,
+    "hardening": {
+      "disable_file_editing": true,
+      "disable_xmlrpc": true,
+      "hide_wp_version": true,
+      "prevent_user_enumeration": true,
+      "block_uploads_php": true,
+      "security_headers": true,
+      "file_permissions_check": true,
+      "login_two_factor": false,
+      "disable_directory_listing": true,
+      "custom_login_slug": "",
+      "hide_login_url": false,
+      "login_redirect_type": "404",
+      "admin_ip_whitelist": [],
+      "admin_ip_whitelist_enabled": false
+    },
+    "hide_wp_version": true,
+    "plugins": [
+      {
+        "id": "akismet-anti-spam-spam-protection",
+        "file": "akismet/akismet.php",
+        "slug": "akismet",
+        "name": "Akismet Anti-spam: Spam Protection",
+        "version": "5.7.2",
+        "author": "Automattic - Anti-spam Team",
+        "status": "inactive",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      },
+      {
+        "id": "hello-dolly",
+        "file": "hello.php",
+        "slug": "hello-dolly",
+        "name": "Hello Dolly",
+        "version": "1.7.2",
+        "author": "Matt Mullenweg",
+        "status": "inactive",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      },
+      {
+        "id": "mdefender-pro",
+        "file": "mdefender-pro/mdefender-pro.php",
+        "slug": "mdefender-pro",
+        "name": "MDefender-Pro",
+        "version": "4.3.0",
+        "author": "MDefender-Pro Team",
+        "status": "active",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      }
+    ],
+    "prevent_user_enumeration": true,
+    "security_headers": true,
+    "theme": "Twenty Twenty-Five",
+    "themes": [
+      {
+        "id": "twentytwentyfive",
+        "slug": "twentytwentyfive",
+        "name": "Twenty Twenty-Five",
+        "version": "1.5",
+        "author": "the WordPress team",
+        "active": true,
+        "is_active": true,
+        "status": "active",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      },
+      {
+        "id": "twentytwentyfour",
+        "slug": "twentytwentyfour",
+        "name": "Twenty Twenty-Four",
+        "version": "1.6",
+        "author": "the WordPress team",
+        "active": false,
+        "is_active": false,
+        "status": "standby",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      },
+      {
+        "id": "twentytwentythree",
+        "slug": "twentytwentythree",
+        "name": "Twenty Twenty-Three",
+        "version": "1.7",
+        "author": "the WordPress team",
+        "active": false,
+        "is_active": false,
+        "status": "standby",
+        "update_available": false,
+        "new_version": "",
+        "auto_update": false
+      }
+    ],
+    "under_attack_mode": false,
+    "backups_count": 2,
+    "backups_total_bytes": 40500131,
+    "backups_total_size": "38.62 MB",
+    "checksum_files_count": 3782,
+    "checksum_modified_count": 0,
+    "checksum_result": {
+      "website_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+      "domain": "localhost/mahabub",
+      "version": "7.1.4",
+      "status": "verified",
+      "total_official_files": 3782,
+      "total_files_checked": 3782,
+      "modified_files_count": 0,
+      "modified_files": [],
+      "missing_files_count": 1,
+      "integrity_percentage": "100.0",
+      "official_api_source": "https://api.wordpress.org/core/checksums/1.0/",
+      "verified_at": "2026-11-11T10:59:08.244586"
+    },
+    "checksum_status": "verified",
+    "checksum_verified_at": {
+      "$date": "2026-11-11T10:59:08.244Z"
+    },
+    "admin_bruteforce_protection": true,
+    "auto_block_duration_hours": 12,
+    "auto_block_enabled": true,
+    "auto_block_permanent": false,
+    "auto_block_threshold": 5,
+    "auto_block_window_hours": 24,
+    "ddos_mitigation_enabled": true,
+    "hold_press_duration_ms": 2000,
+    "login_lockout_duration_minutes": 30,
+    "login_lockout_scope": "gateway_only",
+    "login_lockout_threshold": 4,
+    "rate_limit_action": "throttle_429",
+    "rate_limit_per_minute": 50,
+    "turnstile_mode": "forms",
+    "turnstile_theme": "auto",
+    "two_factor_enabled": false,
+    "two_factor_roles": "admins",
+    "custom_login_slug": "",
+    "hide_login_url": false,
+    "login_redirect_type": "404",
+    "admin_ip_whitelist": [
+      "127.0.0.1"
+    ],
+    "admin_ip_whitelist_enabled": true,
+    "hardening_overview": {
+      "success": true,
+      "profile": "hardened",
+      "score": 100,
+      "grade": "A",
+      "message": "Hardened Enterprise Security Profile successfully enforced across WordPress origin.",
+      "report": {
+        "score": 100,
+        "grade": "A",
+        "status": "Active & Protected",
+        "total_features": 16,
+        "enabled_count": 16,
+        "failed_count": 0,
+        "last_audit": "2026-11-11 19:39:15",
+        "last_change": "2026-11-11 19:39:15",
+        "category_scores": {
+          "core": {
+            "title": "Core Security",
+            "score": 100,
+            "passed": 3,
+            "failed": 0,
+            "status": "Optimal"
+          },
+          "auth": {
+            "title": "Authentication",
+            "score": 100,
+            "passed": 3,
+            "failed": 0,
+            "status": "Optimal"
+          },
+          "files": {
+            "title": "File Security",
+            "score": 100,
+            "passed": 5,
+            "failed": 0,
+            "status": "Optimal"
+          },
+          "network": {
+            "title": "Network Security",
+            "score": 100,
+            "passed": 3,
+            "failed": 0,
+            "status": "Optimal"
+          },
+          "headers": {
+            "title": "Security Headers",
+            "score": 100,
+            "passed": 1,
+            "failed": 0,
+            "status": "Optimal"
+          },
+          "database": {
+            "title": "Database Security",
+            "score": 100,
+            "passed": 1,
+            "failed": 0,
+            "status": "Optimal"
+          },
+          "backup": {
+            "title": "Backup & Recovery",
+            "score": 100,
+            "passed": 1,
+            "failed": 0,
+            "status": "Optimal"
+          },
+          "monitoring": {
+            "title": "Continuous Security",
+            "score": 100,
+            "passed": 3,
+            "failed": 0,
+            "status": "Optimal"
+          }
+        },
+        "details": [
+          {
+            "feature": "admin_protect",
+            "label": "Protect wp-admin",
+            "status": "enabled",
+            "score": 100,
+            "recommendation": null
+          },
+          {
+            "feature": "login_protect",
+            "label": "Protect wp-login.php",
+            "status": "enabled",
+            "score": 100,
+            "recommendation": null
+          },
+          {
+            "feature": "wp_config",
+            "label": "Protect wp-config.php",
+            "status": "enabled",
+            "score": 100,
+            "recommendation": null
+          },
+          {
+            "feature": "htaccess",
+            "label": "Protect .htaccess",
+            "status": "enabled",
+            "score": 100,
+            "recommendation": null
+          },
+          {
+            "feature": "uploads",
+            "label": "Protect Uploads Folder",
+            "status": "enabled",
+            "score": 100,
+            "recommendation": null
+          },
+          {
+            "feature": "sensitive_files",
+            "label": "Protect Sensitive Files",
+            "status": "enabled",
+            "score": 100,
+            "recommendation": null
+          },
+          {
+            "feature": "rest_api",
+            "label": "Protect REST API",
+            "status": "enabled",
+            "score": 100,
+            "recommendation": null
+          },
+          {
+            "feature": "xmlrpc",
+            "label": "Protect XML-RPC",
+            "status": "enabled",
+            "score": 100,
+            "recommendation": null
+          },
+          {
+            "feature": "php_files",
+            "label": "Protect PHP Files",
+            "status": "enabled",
+            "score": 100,
+            "recommendation": null
+          },
+          {
+            "feature": "file_perms",
+            "label": "File Permissions",
+            "status": "enabled",
+            "score": 100,
+            "recommendation": null
+          },
+          {
+            "feature": "security_headers",
+            "label": "Security Headers",
+            "status": "enabled",
+            "score": 100,
+            "recommendation": null
+          },
+          {
+            "feature": "user_accounts",
+            "label": "User Account Protection",
+            "status": "enabled",
+            "score": 100,
+            "recommendation": null
+          },
+          {
+            "feature": "backup",
+            "label": "Backup Protection",
+            "status": "enabled",
+            "score": 100,
+            "recommendation": null
+          },
+          {
+            "feature": "plugin_theme",
+            "label": "Plugin & Theme Protection",
+            "status": "enabled",
+            "score": 100,
+            "recommendation": null
+          },
+          {
+            "feature": "directory_browsing",
+            "label": "Directory Browsing",
+            "status": "enabled",
+            "score": 100,
+            "recommendation": null
+          },
+          {
+            "feature": "version_hiding",
+            "label": "WordPress Version Hiding",
+            "status": "enabled",
+            "score": 100,
+            "recommendation": null
+          }
+        ]
+      },
+      "master_shields": {
+        "virtual_patching_shield": true,
+        "filesystem_lockdown": true,
+        "attack_surface_guard": true,
+        "identity_login_shield": true,
+        "security_headers_shield": true,
+        "database_secrets_shield": true,
+        "environment_debug_shield": false,
+        "fim_persistence_shield": false,
+        "debug_log_protect": true
+      }
+    },
+    "blocked_countries": [
+      "KP"
+    ],
+    "cdn_detected": "Apache/2.4.58 (Win64) OpenSSL/3.1.3 PHP/8.0.30",
+    "last_ping_at": {
+      "$date": "2026-11-11T18:09:39.064Z"
+    },
+    "last_ping_latency_ms": 68.12,
+    "ping_status": "online",
+    "resolved_ip": "127.0.0.1",
+    "backup_schedule": {
+      "enabled": true,
+      "frequency": "daily",
+      "type": "full",
+      "retention": 5,
+      "updated_at": "2026-11-11T22:53:25.061728"
+    },
+    "bot_challenge_mode": "hold_press"
+  },
+  {
+    "_id": "sdk_a6219fc37355712333458421",
+    "id": "sdk_a6219fc37355712333458421",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "name": "mahabub",
+    "domain": "mahabubur.shop",
+    "url": "https://mahabubur.shop",
+    "platform": "custom_sdk",
+    "framework": "python_fastapi",
+    "environment": "production",
+    "api_key": "e442fbca37e14019b83b1d77716b0689fd6e2655bd217657c1811e613b76c570",
+    "site_token": "mdf_stk_d5bda222ece04403f1e8435aac8f36c6",
+    "status": "active",
+    "protection_enabled": true,
+    "verified": true,
+    "waf_mode": "protect",
+    "threat_level": "LOW",
+    "connected_at": {
+      "$date": "2026-11-08T10:05:34.936Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-11T19:15:03.175Z"
+    },
+    "last_heartbeat": null,
+    "settings": {
+      "waf_mode": "protect",
+      "bot_shield": true,
+      "bot_sensitivity": "medium",
+      "rate_limit_rpm": 120,
+      "burst_limit_rps": 30,
+      "block_tor_vpn": false,
+      "country_blacklist": [],
+      "ip_blacklist": [],
+      "ip_whitelist": []
+    },
+    "metrics": {
+      "requests_today": 0,
+      "total_requests": 0,
+      "blocked_today": 0,
+      "total_blocked": 0,
+      "uptime_percentage": 100.0
+    },
+    "sdk_meta": {
+      "version": null,
+      "node_version": null,
+      "hostname": null,
+      "runtime": "python_fastapi"
+    },
+    "last_handshake": {
+      "$date": "2026-11-08T12:29:38.903Z"
+    },
+    "backups": [],
+    "backups_count": 0,
+    "backups_total_bytes": 0,
+    "backups_total_size": "0 B",
+    "admin_bruteforce_protection": true,
+    "auto_block_duration_hours": 12,
+    "auto_block_enabled": true,
+    "auto_block_permanent": false,
+    "auto_block_threshold": 5,
+    "auto_block_window_hours": 24,
+    "ddos_mitigation_enabled": true,
+    "hold_press_duration_ms": 2000,
+    "hold_press_enabled": true,
+    "login_lockout_duration_minutes": 30,
+    "login_lockout_scope": "gateway_only",
+    "login_lockout_threshold": 4,
+    "login_two_factor": false,
+    "rate_limit_action": "throttle_429",
+    "rate_limit_per_minute": 50,
+    "turnstile_enabled": false,
+    "turnstile_mode": "forms",
+    "turnstile_theme": "auto",
+    "two_factor_enabled": false,
+    "two_factor_roles": "admins",
+    "current_nameservers": [
+      "ns2.procloudify.com",
+      "ns1.procloudify.com"
+    ],
+    "admin_ip_whitelist": [
+      "127.0.0.1"
+    ],
+    "admin_ip_whitelist_enabled": true,
+    "hardening": {
+      "admin_ip_whitelist": [
+        "127.0.0.1"
+      ],
+      "admin_ip_whitelist_enabled": true
+    },
+    "blocked_today": 51,
+    "last_activity": {
+      "$date": "2026-11-10T23:43:42.317Z"
+    },
+    "requests_today": 51,
+    "requests_today_date": "2026-11-10",
+    "total_blocked": 116,
+    "total_requests": 116,
+    "wordpress_connection": {
+      "api_key": "e442fbca37e14019b83b1d77716b0689fd6e2655bd217657c1811e613b76c570"
+    },
+    "last_scan_id": "73b16adc-5f2d-473d-9d66-29fc5fc72434",
+    "last_scan_status": "running",
+    "hardening_overview": {
+      "master_shields": {
+        "virtual_patching_shield": true,
+        "filesystem_lockdown": true,
+        "attack_surface_guard": true,
+        "identity_login_shield": true,
+        "security_headers_shield": true,
+        "database_secrets_shield": true,
+        "environment_debug_shield": true,
+        "fim_persistence_shield": true
+      },
+      "profile": "strict",
+      "score": 100,
+      "grade": "A",
+      "status": "active"
+    }
+  },
+  {
+    "_id": "sdk_c9fc000d1010f567bd2cf039",
+    "id": "sdk_c9fc000d1010f567bd2cf039",
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "name": "FastShop Live E-Commerce",
+    "domain": "fastshop-live.internal",
+    "url": "https://fastshop-live.internal",
+    "platform": "custom_sdk",
+    "framework": "node_express",
+    "environment": "production",
+    "api_key": "e442fbca37e14019b83b1d77716b0689fd6e2655bd217657c1811e613b76c570",
+    "site_token": "mdf_stk_296846cd8d5d268e67685185b18d9e50",
+    "status": "active",
+    "protection_enabled": true,
+    "verified": true,
+    "waf_mode": "protect",
+    "threat_level": "LOW",
+    "connected_at": {
+      "$date": "2026-11-08T10:13:19.526Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-11T00:16:34.128Z"
+    },
+    "last_heartbeat": {
+      "$date": "2026-11-08T10:46:23.637Z"
+    },
+    "settings": {
+      "waf_mode": "protect",
+      "bot_shield": false,
+      "bot_sensitivity": "medium",
+      "rate_limit_rpm": 60,
+      "burst_limit_rps": 30,
+      "block_tor_vpn": false,
+      "country_blacklist": [],
+      "ip_blacklist": [],
+      "ip_whitelist": []
+    },
+    "metrics": {
+      "requests_today": 345,
+      "total_requests": 345,
+      "blocked_today": 171,
+      "total_blocked": 171,
+      "uptime_percentage": 100.0
+    },
+    "sdk_meta": {
+      "version": "2.0.0",
+      "node_version": "v24.14.1",
+      "hostname": "DESKTOP-D349KC9",
+      "runtime": "node_express",
+      "os": "Windows_NT 10.0.26200",
+      "cpu_pct": null,
+      "memory_mb": 63.0,
+      "uptime_sec": 60
+    },
+    "last_handshake": {
+      "$date": "2026-11-08T10:45:23.626Z"
+    },
+    "blocked_today": 171,
+    "requests_today": 345,
+    "total_blocked": 171,
+    "total_requests": 345,
+    "backups": [],
+    "backups_count": 0,
+    "backups_total_bytes": 0,
+    "backups_total_size": "0 B",
+    "admin_bruteforce_protection": true,
+    "auto_block_duration_hours": 12,
+    "auto_block_enabled": true,
+    "auto_block_permanent": false,
+    "auto_block_threshold": 5,
+    "auto_block_window_hours": 24,
+    "ddos_mitigation_enabled": true,
+    "hold_press_duration_ms": 2000,
+    "hold_press_enabled": true,
+    "login_lockout_duration_minutes": 30,
+    "login_lockout_scope": "gateway_only",
+    "login_lockout_threshold": 4,
+    "login_two_factor": false,
+    "rate_limit_action": "throttle_429",
+    "rate_limit_per_minute": 50,
+    "turnstile_enabled": false,
+    "turnstile_mode": "forms",
+    "turnstile_theme": "auto",
+    "two_factor_enabled": false,
+    "two_factor_roles": "admins",
+    "admin_ip_whitelist": [
+      "127.0.0.1"
+    ],
+    "admin_ip_whitelist_enabled": true,
+    "hardening": {
+      "admin_ip_whitelist": [
+        "127.0.0.1"
+      ],
+      "admin_ip_whitelist_enabled": true
+    },
+    "wordpress_connection": {
+      "api_key": "e442fbca37e14019b83b1d77716b0689fd6e2655bd217657c1811e613b76c570"
+    }
+  },
+  {
+    "_id": "sdk_c7074d36a9b3aa67e02eb44e",
+    "id": "sdk_c7074d36a9b3aa67e02eb44e",
+    "user_id": "admin-user-001",
+    "name": "Book Store App",
+    "domain": "bookstore.local",
+    "url": "https://bookstore.local",
+    "platform": "custom_sdk",
+    "framework": "node",
+    "environment": "development",
+    "api_key": "6065cf04c71974794648a53d8faface811badf5e56e51860ac905d16c65afe32",
+    "site_token": "mdf_stk_e5d1c0836fb162182ba46feb5c4ee9b5",
+    "status": "active",
+    "protection_enabled": true,
+    "verified": true,
+    "waf_mode": "protect",
+    "threat_level": "LOW",
+    "connected_at": {
+      "$date": "2026-11-08T12:30:37.281Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-08T15:39:25.728Z"
+    },
+    "last_heartbeat": {
+      "$date": "2026-11-08T15:39:25.728Z"
+    },
+    "settings": {
+      "waf_mode": "protect",
+      "bot_shield": true,
+      "bot_sensitivity": "medium",
+      "rate_limit_rpm": 120,
+      "burst_limit_rps": 30,
+      "block_tor_vpn": false,
+      "country_blacklist": [],
+      "ip_blacklist": [],
+      "ip_whitelist": []
+    },
+    "metrics": {
+      "requests_today": 3329,
+      "total_requests": 3329,
+      "blocked_today": 4091,
+      "total_blocked": 4091,
+      "uptime_percentage": 100.0
+    },
+    "sdk_meta": {
+      "version": "2.1.0",
+      "node_version": "v24.14.1",
+      "hostname": "DESKTOP-D349KC9",
+      "runtime": "node",
+      "os": "Windows_NT 10.0.26200",
+      "cpu_pct": null,
+      "memory_mb": 68.6,
+      "uptime_sec": 4620
+    },
+    "last_handshake": {
+      "$date": "2026-11-08T15:00:14.598Z"
+    },
+    "requests_today": 3329,
+    "total_requests": 3329,
+    "blocked_today": 4091,
+    "total_blocked": 4091,
+    "wordpress_connection": {
+      "api_key": "6065cf04c71974794648a53d8faface811badf5e56e51860ac905d16c65afe32"
+    }
+  },
+  {
+    "_id": "56af1d88-657b-4e28-be92-6942fa82b1fe",
+    "id": "56af1d88-657b-4e28-be92-6942fa82b1fe",
+    "user_id": "admin-user-001",
+    "domain": "localhost",
+    "name": "Mahabub Shop",
+    "url": "http://localhost/mahabub",
+    "platform": "wordpress",
+    "plan": "enterprise",
+    "ssl_mode": "flexible",
+    "api_key": "6065cf04c71974794648a53d8faface811badf5e56e51860ac905d16c65afe32",
+    "site_token": "mdf_stk_local_mahabub",
+    "status": "active",
+    "verified": true,
+    "protection_enabled": true,
+    "waf_mode": "protect",
+    "malware_scanner": true,
+    "threat_level": "LOW",
+    "connected_at": {
+      "$date": "2026-11-12T02:14:49.169Z"
+    },
+    "updated_at": {
+      "$date": "2026-11-12T02:14:49.169Z"
+    },
+    "wordpress_connection": {
+      "connected": true,
+      "connected_at": {
+        "$date": "2026-11-12T02:14:49.169Z"
+      },
+      "api_key": "6065cf04c71974794648a53d8faface811badf5e56e51860ac905d16c65afe32",
+      "site_token": "mdf_stk_local_mahabub",
+      "plugin_version": "4.2.3",
+      "url": "http://localhost/mahabub"
+    }
+  }
+]

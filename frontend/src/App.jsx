@@ -340,7 +340,6 @@ function App() {
           <Route path="monitoring/performance" element={<BulkPerformance />} />
           <Route path="monitoring/broken-links" element={<BulkBrokenLinks />} />
           <Route path="monitoring/blacklist" element={<BulkBlacklist />} />
-          <Route path="blacklist" element={<Navigate to="/user/monitoring/blacklist" replace />} />
           <Route path="security/bot-shield" element={<UserTools activeMode="bot_shield" isBulk={true} />} />
           <Route path="security/bot-defense" element={<UserTools activeMode="bot_shield" isBulk={true} />} />
           <Route path="security/login-gateway" element={<BulkLoginGateway />} />

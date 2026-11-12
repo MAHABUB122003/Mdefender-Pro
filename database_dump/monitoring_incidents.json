@@ -1,0 +1,215 @@
+[
+  {
+    "_id": {
+      "$oid": "6ae95d9f42449003d955bfef"
+    },
+    "site_id": "",
+    "domain": "mahabubur.shop",
+    "status_code": 0,
+    "error_message": "The read operation timed out",
+    "started_at": {
+      "$date": "2026-11-03T10:05:44.087Z"
+    },
+    "resolved_at": {
+      "$date": "2026-11-12T00:43:29.666Z"
+    },
+    "duration_seconds": 743865,
+    "status": "resolved"
+  },
+  {
+    "_id": {
+      "$oid": "6ae95dd696bd14c08652f2da"
+    },
+    "site_id": "",
+    "domain": "localhost",
+    "status_code": 0,
+    "error_message": "Socket connection failed: [WinError 10061] No connection could be made because the target machine actively refused it",
+    "started_at": {
+      "$date": "2026-11-03T10:06:40.727Z"
+    },
+    "resolved_at": {
+      "$date": "2026-11-10T19:44:01.720Z"
+    },
+    "duration_seconds": 639440,
+    "status": "resolved"
+  },
+  {
+    "_id": {
+      "$oid": "6aec8d0cda26837266a83309"
+    },
+    "site_id": "6678a1ee-4372-4cd8-bb1a-fb026779cc92",
+    "domain": "demotest123.com",
+    "status_code": 0,
+    "error_message": "DNS lookup failed: [Errno 11001] getaddrinfo failed",
+    "started_at": {
+      "$date": "2026-11-05T20:05:00.718Z"
+    },
+    "resolved_at": null,
+    "duration_seconds": 0,
+    "status": "ongoing"
+  },
+  {
+    "_id": {
+      "$oid": "6af32caef981982cd11de13f"
+    },
+    "site_id": "site_e6972fbd7efa",
+    "domain": "localhost",
+    "status_code": 0,
+    "error_message": "timed out",
+    "started_at": {
+      "$date": "2026-11-10T20:39:37.226Z"
+    },
+    "resolved_at": {
+      "$date": "2026-11-10T20:44:42.281Z"
+    },
+    "duration_seconds": 305,
+    "status": "resolved"
+  },
+  {
+    "_id": {
+      "$oid": "6af3e92823f7cd9dd67368fd"
+    },
+    "site_id": "site_e6972fbd7efa",
+    "domain": "localhost",
+    "status_code": 0,
+    "error_message": "Socket connection failed: [WinError 10061] No connection could be made because the target machine actively refused it",
+    "started_at": {
+      "$date": "2026-11-11T10:03:46.105Z"
+    },
+    "resolved_at": {
+      "$date": "2026-11-11T10:19:04.824Z"
+    },
+    "duration_seconds": 918,
+    "status": "resolved"
+  },
+  {
+    "_id": {
+      "$oid": "6af3e92823f7cd9dd67368fe"
+    },
+    "site_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+    "domain": "localhost",
+    "status_code": 0,
+    "error_message": "Socket connection failed: [WinError 10061] No connection could be made because the target machine actively refused it",
+    "started_at": {
+      "$date": "2026-11-11T10:03:46.105Z"
+    },
+    "resolved_at": {
+      "$date": "2026-11-11T10:19:04.824Z"
+    },
+    "duration_seconds": 918,
+    "status": "resolved"
+  },
+  {
+    "_id": {
+      "$oid": "6af40282790f25a83fb98f20"
+    },
+    "site_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+    "domain": "localhost",
+    "status_code": 0,
+    "error_message": "timed out",
+    "started_at": {
+      "$date": "2026-11-11T11:51:57.059Z"
+    },
+    "resolved_at": {
+      "$date": "2026-11-11T11:57:03.127Z"
+    },
+    "duration_seconds": 306,
+    "status": "resolved"
+  },
+  {
+    "_id": {
+      "$oid": "6af46b1d10c78a5cc9eb2628"
+    },
+    "site_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+    "domain": "localhost",
+    "status_code": 0,
+    "error_message": "timed out",
+    "started_at": {
+      "$date": "2026-11-11T19:18:15.923Z"
+    },
+    "resolved_at": {
+      "$date": "2026-11-11T19:18:16.030Z"
+    },
+    "duration_seconds": 0,
+    "status": "resolved"
+  },
+  {
+    "_id": {
+      "$oid": "6af47d73208f73c78d4ffbac"
+    },
+    "site_id": "56af1d88-657b-4e28-be92-6942fa82b1fe",
+    "domain": "localhost",
+    "status_code": 0,
+    "error_message": "timed out",
+    "started_at": {
+      "$date": "2026-11-11T20:36:30.479Z"
+    },
+    "resolved_at": {
+      "$date": "2026-11-11T20:41:35.553Z"
+    },
+    "duration_seconds": 305,
+    "status": "resolved"
+  },
+  {
+    "_id": {
+      "$oid": "6af4b7210ca7fd2f0ac6fc11"
+    },
+    "site_id": "",
+    "domain": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+    "status_code": 0,
+    "error_message": "DNS lookup failed: [Errno 11001] getaddrinfo failed",
+    "started_at": {
+      "$date": "2026-11-12T00:42:39.258Z"
+    },
+    "resolved_at": null,
+    "duration_seconds": 0,
+    "status": "ongoing"
+  },
+  {
+    "_id": {
+      "$oid": "6af4b7250ca7fd2f0ac6fc13"
+    },
+    "site_id": "",
+    "domain": "sdk_a6219fc37355712333458421",
+    "status_code": 0,
+    "error_message": "DNS lookup failed: [Errno 11001] getaddrinfo failed",
+    "started_at": {
+      "$date": "2026-11-12T00:42:43.110Z"
+    },
+    "resolved_at": null,
+    "duration_seconds": 0,
+    "status": "ongoing"
+  },
+  {
+    "_id": {
+      "$oid": "6af4b7290ca7fd2f0ac6fc15"
+    },
+    "site_id": "",
+    "domain": "sdk_c9fc000d1010f567bd2cf039",
+    "status_code": 0,
+    "error_message": "DNS lookup failed: [Errno 11001] getaddrinfo failed",
+    "started_at": {
+      "$date": "2026-11-12T00:42:46.905Z"
+    },
+    "resolved_at": null,
+    "duration_seconds": 0,
+    "status": "ongoing"
+  },
+  {
+    "_id": {
+      "$oid": "6af4c3336c2f943b94106644"
+    },
+    "site_id": "56af1d88-657b-4e28-be92-6942fa82b1fe",
+    "domain": "localhost",
+    "status_code": 0,
+    "error_message": "timed out",
+    "started_at": {
+      "$date": "2026-11-12T01:34:05.826Z"
+    },
+    "resolved_at": {
+      "$date": "2026-11-12T01:39:56.342Z"
+    },
+    "duration_seconds": 350,
+    "status": "resolved"
+  }
+]

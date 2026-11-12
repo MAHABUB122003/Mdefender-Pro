@@ -1,0 +1,116 @@
+[
+  {
+    "_id": {
+      "$oid": "6ae8f498c094d43d8ebc0461"
+    },
+    "all_links": [
+      {
+        "target_url": "http://localhost/mahabub",
+        "source_url": "http://localhost/mahabub",
+        "anchor_text": "mahabub",
+        "status_code": 301,
+        "status_text": "Moved Permanently",
+        "link_type": "internal",
+        "latency_ms": 7.4,
+        "first_detected": "2026-11-12T01:28:24.156472"
+      },
+      {
+        "target_url": "http://localhost/mahabub/sample-page/",
+        "source_url": "http://localhost/mahabub",
+        "anchor_text": "Sample Page",
+        "status_code": 200,
+        "status_text": "OK",
+        "link_type": "internal",
+        "latency_ms": 694.9,
+        "first_detected": "2026-11-12T01:28:24.156472"
+      },
+      {
+        "target_url": "http://localhost/mahabub/2026/11/07/hello-world/",
+        "source_url": "http://localhost/mahabub",
+        "anchor_text": "Hello world!",
+        "status_code": 200,
+        "status_text": "OK",
+        "link_type": "internal",
+        "latency_ms": 759.6,
+        "first_detected": "2026-11-12T01:28:24.156472"
+      },
+      {
+        "target_url": "https://wordpress.org",
+        "source_url": "http://localhost/mahabub",
+        "anchor_text": "WordPress",
+        "status_code": 200,
+        "status_text": "OK",
+        "link_type": "external",
+        "latency_ms": 958.4,
+        "first_detected": "2026-11-12T01:28:24.156472"
+      }
+    ],
+    "broken_count": 0,
+    "broken_links": [],
+    "domain": "localhost",
+    "has_scanned": true,
+    "healthy_count": 3,
+    "redirect_count": 1,
+    "scanned_at": "2026-11-12T01:28:24.156472",
+    "server_error_count": 0,
+    "site_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba",
+    "total_scanned": 4
+  },
+  {
+    "_id": {
+      "$oid": "6af001330eb7ab96d961f1fd"
+    },
+    "all_links": [
+      {
+        "target_url": "https://mahabubur.shop/2026/11/07/hello-world/",
+        "source_url": "https://mahabubur.shop",
+        "anchor_text": "Hello world!",
+        "status_code": 200,
+        "status_text": "OK",
+        "link_type": "internal",
+        "latency_ms": 1242.5,
+        "first_detected": "2026-11-08T10:57:20.234311"
+      },
+      {
+        "target_url": "https://mahabubur.shop/sample-page/",
+        "source_url": "https://mahabubur.shop",
+        "anchor_text": "Sample Page",
+        "status_code": 200,
+        "status_text": "OK",
+        "link_type": "internal",
+        "latency_ms": 1253.6,
+        "first_detected": "2026-11-08T10:57:20.234311"
+      },
+      {
+        "target_url": "https://mahabubur.shop",
+        "source_url": "https://mahabubur.shop",
+        "anchor_text": "My Blog",
+        "status_code": 200,
+        "status_text": "OK",
+        "link_type": "internal",
+        "latency_ms": 1259.1,
+        "first_detected": "2026-11-08T10:57:20.234311"
+      },
+      {
+        "target_url": "https://wordpress.org",
+        "source_url": "https://mahabubur.shop",
+        "anchor_text": "WordPress",
+        "status_code": 200,
+        "status_text": "OK",
+        "link_type": "external",
+        "latency_ms": 1261.9,
+        "first_detected": "2026-11-08T10:57:20.234311"
+      }
+    ],
+    "broken_count": 0,
+    "broken_links": [],
+    "domain": "mahabubur.shop",
+    "has_scanned": true,
+    "healthy_count": 4,
+    "redirect_count": 0,
+    "scanned_at": "2026-11-08T10:57:20.234311",
+    "server_error_count": 0,
+    "site_id": "9e992173-ff7b-4f1e-a1b5-b8e5ad670058",
+    "total_scanned": 4
+  }
+]

@@ -1,0 +1,3441 @@
+[
+  {
+    "_id": {
+      "$oid": "6aec5ae8dc70dd4db621367b"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "6C0RoMoFYrJY56gmUlHo7wZQjHikDHtJou3pCe7lKiOXm1hAf3qCExe4DHYcmZAN",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-05T10:31:04.962Z"
+    },
+    "last_active": {
+      "$date": "2026-11-05T10:31:04.962Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-12T10:31:04.962Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-05T13:12:05.196Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aec60a1dc70dd4db621367d"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "XGvb_dz2O7SN3b6TWRIsn8NZ18ZRZUDvaSt2Sqm56QVZI1AzlIf-a3oy_FUhBSg1",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-05T10:55:29.543Z"
+    },
+    "last_active": {
+      "$date": "2026-11-05T10:55:29.543Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-12T10:55:29.543Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-05T13:30:59.690Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aec6e94dc70dd4db621367f"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "9A5BzxHWeeABKOIZAhD9-OFTofhmUqFgaD6mLVM1tc_iGPE62MN2QJgZ3Vnzgi6r",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-05T11:55:00.731Z"
+    },
+    "last_active": {
+      "$date": "2026-11-05T11:55:00.731Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-12T11:55:00.731Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-05T14:04:52.356Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aec74ebe8308276a0abfbba"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "k4oaj396Zq78PEqmg_JTJI1yP3BA1mDJRlfqX6jO6jJnbieLgEVpU6K8C2e9huoy",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-05T12:22:03.795Z"
+    },
+    "last_active": {
+      "$date": "2026-11-05T12:22:03.795Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-12T12:22:03.795Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-05T14:05:09.067Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aec750be8308276a0abfbbd"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "42gZ6N0lePS46AaxjP6wfEWkbIvNoGcIj22IRHgqRNBx57yyabTuQf2hcglMK7pU",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-05T12:22:35.289Z"
+    },
+    "last_active": {
+      "$date": "2026-11-05T12:22:35.289Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-12T12:22:35.289Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-06T06:41:31.969Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aec80a58986038d502b1adf"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "zP_CBhkeYM0XIFPGk1qxMYbP8ZfkTmfvvJqPxeiGBNPk_rqK7dZpMtE2Uu7wVD8m",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-05T13:12:05.197Z"
+    },
+    "last_active": {
+      "$date": "2026-11-05T13:12:05.197Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-12T13:12:05.197Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-06T06:58:27.352Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aec85138986038d502b1ae3"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "nNCovRC-EQGPO9Qeky3iXnQzj6NZc54Bk36kC1HTm7UYeTdH55G6NHvfSpKgEkPQ",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-05T13:30:59.691Z"
+    },
+    "last_active": {
+      "$date": "2026-11-05T13:30:59.691Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-12T13:30:59.691Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-06T08:05:46.548Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aec8d04da26837266a83306"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "7ww-NxE5pApfDTOWoOakFQ5IgzrXIVRT2L9n9vu8GHuLJCnjk_JMCKsUFxQ4sPA3",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-05T14:04:52.358Z"
+    },
+    "last_active": {
+      "$date": "2026-11-05T14:04:52.358Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-12T14:04:52.358Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-06T08:38:54.486Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aec8d15da26837266a8330b"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "8fDFOJ0xZrqpOmMgYkbjDPuAzW2LHZVBkPG1I_-Y0tOv8ixmSoiXl4dZj5_6d0Jy",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-05T14:05:09.068Z"
+    },
+    "last_active": {
+      "$date": "2026-11-05T14:05:09.068Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-12T14:05:09.068Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-06T08:54:33.293Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aed769bd74f8918f050c199"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "HQaS7e7x56ps1f0a7zNmRQKLrQFppnajOm1BpriFPLoit9Q3mmyX32ruX6LLbAgO",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-06T06:41:31.971Z"
+    },
+    "last_active": {
+      "$date": "2026-11-06T06:41:31.971Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-13T06:41:31.971Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-06T09:10:09.358Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aed7a933ddc3bfc9acdef19"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "7s1wfe0xJq12fJVngzsZs3wgH0bwD2CvJyFmAI_uYGjU8yuJikUPMHrHnclmSK5C",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-06T06:58:27.353Z"
+    },
+    "last_active": {
+      "$date": "2026-11-06T06:58:27.353Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-13T06:58:27.353Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-06T09:33:54.434Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aed8a5acdc7a1cbb1776d16"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "tgoqv5Wtk5uQ4TO0Ig7wKsPFkqPjH4EjGnnPC4xY_s-gHiKQRS1Bj-4GkaMcZId9",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-06T08:05:46.560Z"
+    },
+    "last_active": {
+      "$date": "2026-11-06T08:05:46.560Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-13T08:05:46.560Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-06T12:27:42.359Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aed921ee4dbe500ae8da916"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "4Lga0eu03M7FSTaqqYXRng7NfPeT0bPVcNmmuOh9JvFq0kBniOGSjf8Et4-IS00h",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-06T08:38:54.487Z"
+    },
+    "last_active": {
+      "$date": "2026-11-06T08:38:54.487Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-13T08:38:54.487Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-06T16:18:18.264Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aed95c9b144a625177f0e7d"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "V8RmendcKoBPcFxekl-jmunv0wPDjz5Fr3T0MIuwFD4Q-4nJWJEBHNulQApjIYwL",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-06T08:54:33.294Z"
+    },
+    "last_active": {
+      "$date": "2026-11-06T08:54:33.294Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-13T08:54:33.294Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-06T18:59:43.334Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aed99710c94515b396f7641"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "Bzy_V_EE2_p4N7TJ7OxTTKAWo_AJ3WXRP1HcCufbQ_jv2l_nj3y4aql5aqj0rJxr",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-06T09:10:09.359Z"
+    },
+    "last_active": {
+      "$date": "2026-11-06T09:10:09.359Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-13T09:10:09.359Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-07T05:01:42.717Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aed9f02cc4f51e58fef1f70"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "m8YZxcvQy-p_opUWihmsh0L6dutI30FkQVKwUGb5IbA-5AUnZWW_iUefpJvAY1un",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-06T09:33:54.434Z"
+    },
+    "last_active": {
+      "$date": "2026-11-06T09:33:54.434Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-13T09:33:54.434Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-07T05:33:19.757Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aedc7bef81db55a18845fd4"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "HFKtqNgZ684ttSp_Yfo2SxHQoyZGfwJ3aWXGOK8U_fIogODEvfMeVL1ahSh7lgEU",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-06T12:27:42.360Z"
+    },
+    "last_active": {
+      "$date": "2026-11-06T12:27:42.360Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-13T12:27:42.360Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-07T06:03:21.317Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aedfdca74d3900c8080fe71"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "Upt7EI4N9C_R9srrXwFCIsjhAWh1j1V2IwN1D6CFwEBUYj6oqw4MtAe7vwVzqZ0b",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-06T16:18:18.266Z"
+    },
+    "last_active": {
+      "$date": "2026-11-06T16:18:18.266Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-13T16:18:18.266Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-07T16:42:05.688Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aee239fb4a139c7c0e6bf30"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "uLWI45qzO4yiMCjMAr1e_OzNroFPiUDZJL6FtrFpPGTsvbsAYaqDJyuXIjRVciv-",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-06T18:59:43.335Z"
+    },
+    "last_active": {
+      "$date": "2026-11-06T18:59:43.335Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-13T18:59:43.335Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-07T17:33:52.959Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aeeb0b64d599e32215eeaa6"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "9eP-cwgezwXZ2SwTI_Jjqb9zuPxhwnke74UVa0-xvQONB1K4sJlZ-3jnKybcGuz3",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-07T05:01:42.730Z"
+    },
+    "last_active": {
+      "$date": "2026-11-07T05:01:42.730Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-14T05:01:42.730Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T04:47:00.172Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aeeb81f4d599e32215eeaa8"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "FAR11OkDxanuA4gUda1WL0kK_QPaEioIAN5uoFHvzZ8p-yGEVsPf5qtotxwBUc3l",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-07T05:33:19.758Z"
+    },
+    "last_active": {
+      "$date": "2026-11-07T05:33:19.758Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-14T05:33:19.758Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T04:53:15.897Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aeebf29adb6756737ea3308"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "YMQKT-jHjva5pPhqoAZk-uoSzRx2a0HOMfPa3EM1AoRlZNUZQc91P9A3tOxlEa8l",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-07T06:03:21.318Z"
+    },
+    "last_active": {
+      "$date": "2026-11-07T06:03:21.318Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-14T06:03:21.318Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T05:13:47.905Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aef54dda4572870d26831be"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "u7kwL3wr2OclzFBi9K8kl0wBc8gg8oCnGNRHPDGtywPcYgd2qmEZ2rsj0_nCbwgD",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-07T16:42:05.700Z"
+    },
+    "last_active": {
+      "$date": "2026-11-07T16:42:05.700Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-14T16:42:05.700Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T05:27:05.938Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aef61004084abb2d035488f"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "j7RY9rTtxt6-D60A7_WqBF6OweyewPWHzQagg7On9JteEk9MqAM5e64TPUucw3tp",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-07T17:33:52.959Z"
+    },
+    "last_active": {
+      "$date": "2026-11-07T17:33:52.959Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-14T17:33:52.959Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T05:30:01.052Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6aeffec4ea203cc32a7a92cd"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "HQzaSvAhVcJNwKDDsCM2S8fwztho0N-BgnN8qIt_nuEjd3yzbwChUnu-mvrsZ7_R",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T04:47:00.187Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T04:47:00.187Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-15T04:47:00.187Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T05:46:50.526Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0003bea203cc32a7a92d2"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "q3PNarSCHdc6vxuSZNs3AmAwNYrwfh6RCBo2RUS0k4Pa_xMwM1KdxxAzE9b_2XGz",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T04:53:15.899Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T04:53:15.899Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-15T04:53:15.899Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T05:47:42.459Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0050bea203cc32a7a92da"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "3ELJ1-dI0zRYvoMuCruJSol81yKTkc7Ln9Fy8lu6DVxEvemybDwfxKHBOKTHCMbM",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T05:13:47.907Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T05:13:47.907Z"
+    },
+    "expires_at": {
+      "$date": "2026-11-15T05:13:47.907Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T05:50:50.667Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af00829f63e1317566c02b5"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "rLihebtV5GvUUiiykhi0sNsAXRgySHqbIlgrXXPhKJO9dmdJqdv8hpenqRbZN0Na",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T05:27:05.939Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T05:27:05.939Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T05:27:05.939Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T05:51:23.410Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af008d96bcf42ad69c14bc1"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "z-qq-KHqviQn8WRC9Lv5udrkJDVUQer5eKS9d_7WLWg-_fUMzfe5wn8my8kNC1aK",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T05:30:01.053Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T05:30:01.053Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T05:30:01.053Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T05:52:32.410Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af00cca6bcf42ad69c14bc5"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "bGbwz0278l9qwawW5vbNC4aALJ6QLvxm-r3nbCBgmXnxr90LbnFrDXDspvHzfaEh",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T05:46:50.527Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T05:46:50.527Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T05:46:50.527Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T05:53:04.779Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af00cfe6bcf42ad69c14bc7"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "atCQ-xUmpxTiTFQ2luD2fgjziqfz_bwSjEMQHveOZUK_tbIFd8TE8shq6cNgMjvL",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T05:47:42.460Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T05:47:42.460Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T05:47:42.460Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T05:54:12.894Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af00dbad203f36b75d32146"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "7X4m7PVHBdOfXqESoRZgo7M2AZi5uLak4vbgY8MoOEh5ZBC_RRNlFjOA2T9xY1ps",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T05:50:50.667Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T05:50:50.667Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T05:50:50.667Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T05:59:34.929Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af00ddbd203f36b75d32148"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "WhgtLTbyKFA5gstRzUCSILm59_iXFVTuwKL00kMfQlCxDkZPBZFFvLYxers_3bz3",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T05:51:23.411Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T05:51:23.411Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T05:51:23.411Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:09:51.947Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af00e20d203f36b75d3214a"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "NctwOhN8Hc2pdQ0U1f8-bfDlUtfFWRJgeG3eoSs4Vjcc6_ry8IYs_QiJYA66ueDd",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T05:52:32.411Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T05:52:32.411Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T05:52:32.411Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:10:09.310Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af00e40d203f36b75d3214e"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "-THxsMoQw4vzYACZAgYAWsCsR4GN7Vk83LlewZ7YPjjOWXhV8oMleidZ9z0C3gZn",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T05:53:04.780Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T05:53:04.780Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T05:53:04.780Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:10:46.794Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af00e84d203f36b75d32150"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "WWFT4xbdoH06Mxvz0-cKAHKvSXyct4IYBNql3e8cmE6PtETf4qQUdKIv_rCWtgTW",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T05:54:12.896Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T05:54:12.896Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T05:54:12.896Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:11:14.364Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af00fc6d203f36b75d32155"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "c2OLMK9IE03Lhbki1kf0kXcdOsh2hle3-vefdwNz6D625udOCdca8--Dq2XrFtfA",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T05:59:34.930Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T05:59:34.930Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T05:59:34.930Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:12:24.010Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af011fb58604e1d18494e86"
+    },
+    "user_id": "admin-user-001",
+    "session_token": "iOqtGC3AsiXwVx8-RnQktVFwLwPeyeX_9rguA_J67FW-8ukFUhLTajOhiXlNMu9j",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:08:59.448Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:08:59.448Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:08:59.448Z"
+    },
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6af0120458604e1d18494e88"
+    },
+    "user_id": "admin-user-001",
+    "session_token": "wUbt54c6Oq3cmw4D7mhDZ4Q6EdQ-T5g51LszC9cZRfMg7dlqFiZ1QErM6Eo1f5ZZ",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:09:08.107Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:09:08.107Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:09:08.107Z"
+    },
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6af0120958604e1d18494e8a"
+    },
+    "user_id": "admin-user-001",
+    "session_token": "LN5BWt4Pj5KTNByTA0LsG6_d3d3BRfCgSpl-s7aHQz9pDVvsMmhBuJKGd26GYJ_N",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:09:13.538Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:09:13.538Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:09:13.538Z"
+    },
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6af0122658604e1d18494e8c"
+    },
+    "user_id": "admin-user-001",
+    "session_token": "bvJNeloXodncM57Lic0MyFK65HOuJZDRYk1oWwjtLUf_U9pWHu6wDKaVDQp9Dk7V",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:09:42.668Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:09:42.668Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:09:42.668Z"
+    },
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6af0122f58604e1d18494e90"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "b_PHu7iZhY5M-rO3-BZ3vqIEIig2v6IsyIzvvAxZX8zrrHL9Jn9aUCTehOjeg15E",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:09:51.948Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:09:51.948Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:09:51.948Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:13:18.720Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0124158604e1d18494e92"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "dYjLqMD_W-Fy-dFKWreRT5eFuvRI6hPQM4f-pEup2dT8uQHnn4kVlmAgFm7VGXky",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:10:09.311Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:10:09.311Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:10:09.311Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:13:43.508Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0126658604e1d18494e94"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "Kq0ukALM0JX3JVG758ooXMFrPWhZXs_O7k5dBhKfGaH1s3JgtAV_LSuofvJ_sXvU",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:10:46.794Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:10:46.794Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:10:46.794Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:14:37.313Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0128258604e1d18494e96"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "IWC5DtWtLlDGcK3GenSrLvJGTrfNWo7d_ZAdtEWcHoI_-wKh3M44QphTjbzlK_oq",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:11:14.365Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:11:14.365Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:11:14.365Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:15:51.481Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af012c858604e1d18494e98"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "3H38NREz58IKwbFfyaR6huQetbOvDol6npbKyZtjQlvsEl1-wZLZUoHR2K36OVtE",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:12:24.011Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:12:24.011Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:12:24.011Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:17:02.588Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af012fe58604e1d18494e9a"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "XbopQoJ75QGsHvhOXjIGZ0kKJuLJhlSkdiV7hZh0axWsGj2g6PRZH3li1OiLdhfa",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:13:18.721Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:13:18.721Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:13:18.721Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:18:24.497Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0131758604e1d18494e9c"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "Zmn24jvNJGqfyJtBsLQ6lleDMzxSRGcbyM5V3TXEs5DLRMDpvbsSeDmt_DCSNNIy",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:13:43.508Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:13:43.508Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:13:43.508Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:19:02.562Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0134d58604e1d18494ea0"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "ac__2wly__O8wa-DqLI5PsY5gM3UswaL3JXZ-ZJpNctII0bm6k1Tv3t8haL-fy1G",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:14:37.315Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:14:37.315Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:14:37.315Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:19:24.499Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0139758604e1d18494ea6"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "RQ4k44ISAplLTn48o6z7RYREAYiZflHIlpzeCNuSAPe2OSztzCaCnXh7nI3FWIWu",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:15:51.481Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:15:51.481Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:15:51.481Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:19:54.259Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af013de58604e1d18494ea9"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "-jI3yeq77WhbNEsN2EFj3G6v9u6rTYDBr89JjHyyLocKoUJejtLmvR9Z5sAvY32y",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:17:02.589Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:17:02.589Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:17:02.589Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:20:34.288Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0143058604e1d18494eab"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "3abWKThPh_p5bKlDs4aYnU2NHjmUrdVnaWPS8VqEe-ibG0yHkqOJTfcxmMf4u130",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:18:24.498Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:18:24.498Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:18:24.498Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:21:14.876Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0145658604e1d18494ead"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "M6c1xwC7uZNoNxMQCk6wT2Xal6V4u3QiXMZalGlNcVMEPQhzT2NClWqLooSXPbKL",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:19:02.562Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:19:02.562Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:19:02.562Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:24:32.702Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0146c58604e1d18494eaf"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "0Q6N6ECg3u-NE6BK7emy4DZMPUDNEujjXqmsAskPA3Gni8tZ_UoHqOZwE0oZGawX",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:19:24.501Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:19:24.501Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:19:24.501Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:24:39.130Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0148a58604e1d18494eb1"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "kuvSooFyTswYfdd16KWSKwriluzR3JAwribnvvAPnCNwzYjSr5uSrDn3G41TF60U",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:19:54.259Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:19:54.259Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:19:54.259Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:24:46.646Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af014b258604e1d18494eb5"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "L0Zk9pwBUZJT7VYnWYEDV_9WojJWkyEE8nVTxpwza7pLKz7wrCfMh1FrCKEfhRIg",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:20:34.289Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:20:34.289Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:20:34.289Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:25:14.456Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af014da58604e1d18494eb9"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "LahtxvvWJsw88F7SUsyklNi2lry-FM_LOlCrpYLCYFCG_2WzzRt9JrbKtmBnYwaY",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:21:14.877Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:21:14.877Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:21:14.877Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:25:53.763Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af015a0fb66e61a17f3d86f"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "xlP0h_4vbu8_t1M-NhyJhOxC6W4NpyV3ddQupCWDLV1pVDLRDjjCGLYIXdyL9SQq",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:24:32.703Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:24:32.703Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:24:32.703Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:31:00.732Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af015a7fb66e61a17f3d871"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "feJCxyC0JDOszdfv-wowh0q_mUBUcUqTAtfk2bXgExyrU52TaqITHvMwctaLOVgu",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:24:39.131Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:24:39.131Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:24:39.131Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:31:48.729Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af015ae59dd7b2937d69f6a"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "ZF0Q2_y_EXAHucyRn-MNMc-0yf4UWot4nK-9v9BkKxqXUPJey1_0mVzNdjCCS1BL",
+    "ip_address": "127.0.0.1",
+    "user_agent": "test",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:24:46.647Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:24:46.647Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:24:46.647Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:32:44.194Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af015caa775aaa84dd9eb7d"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "LW9W-1DA31dIL8bjPe7CL_hT0_8tDvG5ImZCWljo4WvF-8NIO5w-mB4n_AjEcEuI",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:25:14.457Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:25:14.457Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:25:14.457Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:32:52.436Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af015f1da7d4d19ccfb5884"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "s8-23jE4763UF9EBroZsPkmr-mWDXgorTFB-Viwz68_GPz5-5-XuT2wB0BJKgz9J",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:25:53.764Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:25:53.764Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:25:53.764Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:33:10.448Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af017240eb6840ce1b1902a"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "QTRd0KmTzO3r28x-GG5CmH0KVxSfaU0NPTcgfC4h1_QJC_eeNhEe75l20TdxUdnf",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:31:00.733Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:31:00.733Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:31:00.733Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:43:17.454Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af017540eb6840ce1b1902d"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "uaAfSC0ZOVyBsldbtXCr7dzggSwQqg_fDJpMy3QFcDUsyk-QXr28gLr1N6NeTneK",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:31:48.729Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:31:48.729Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:31:48.729Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:44:54.333Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0178c0eb6840ce1b1903b"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "a4qivku6ioH6T7OqnnGPJ1qlDsxxqvZsWfCv8mtfXVeHQGSxF79fnkbG0EjTXD_F",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:32:44.195Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:32:44.195Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:32:44.195Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:45:21.349Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af017940eb6840ce1b1903d"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "4qQPG2g0QZ45GdfB02AODG6WMMiYzIY53dWfB7KXWTODeStSpOwd7Ufq01okgzXK",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:32:52.437Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:32:52.437Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:32:52.437Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:45:51.799Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af017a60eb6840ce1b1903f"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "01duP--6ZWG3BQlbrD5l0s8QzwUnObhOR4z0CCXyrdu0Qsp_lHB5Ahh7CWJqeA5B",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:33:10.449Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:33:10.449Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:33:10.449Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T06:56:01.600Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af01a050eb6840ce1b1904d"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "Xc0sJfTnRu7Ucmn0QZOBHzB4ov49hFtmqpggSx192de2d669vfwvNo6Xb1-lEsOQ",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:43:17.456Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:43:17.456Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:43:17.456Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T07:54:27.224Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af01a660eb6840ce1b19050"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "uHNPIO3LLX46kb8dbd8m090ltoGdcZ1MVbiHxxeutXzsaMBcsLUo3BCyW1wtYhOZ",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:44:54.334Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:44:54.334Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:44:54.334Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T07:54:34.730Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af01a810eb6840ce1b19052"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "4obVa921LpbnhsIUpVyreJdMsj6fiap-nx0_AnU-IP1IRd-qdJbZc06ZDdUpGzSq",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:45:21.350Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:45:21.350Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:45:21.350Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T07:55:23.433Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af01a9f0eb6840ce1b19054"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "N8mBNfmx9jA1xLjJOIAZdhO1_uv41QozQBG9G2uIVvdgme6hBUYdGTA5eT3zrH4Q",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:45:51.799Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:45:51.799Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:45:51.799Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T07:56:31.849Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af01d010eb6840ce1b19057"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "pEoxPbe-qnra_HpUCJlAW8KjaEKSfzxD1jSHuzFHehHJv_Pmzd5vjrk0LdU1AWIr",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T06:56:01.600Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T06:56:01.600Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T06:56:01.600Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T07:56:31.865Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af02ab370a5704eb875d05e"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "KjUfDg0R8cZuOM9VAXtN9C7WbT8uPSehOe3ce2xpfmTSIrAbIO4ooyQ58idBHnkc",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Python-urllib/3.12",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T07:54:27.225Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T07:54:27.225Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T07:54:27.225Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T07:56:31.865Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af02aba70a5704eb875d060"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "tmuCbWUnLxuFOM32DDxCXF2H54s7wIDLzYADVGGORJjZmFPXUIPG_xtuBfx2vSDK",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Python-urllib/3.12",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T07:54:34.731Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T07:54:34.731Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T07:54:34.731Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T07:56:31.865Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af02aeb70a5704eb875d062"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "w76fULvcQpJq0Tq3E8g-lY1XJEo1TIum2IiBrVZvLuDzICh3NKtw-QDC3RzWcSIN",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Python-urllib/3.12",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T07:55:23.434Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T07:55:23.434Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T07:55:23.434Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T07:56:31.865Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af02b2f70a5704eb875d065"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "8HYIR8l9bF5Z7ftS9p8ZuWCDclcoEMZwDkVBoxpe4VO9JVp4zR1jahm_vHJPni1k",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Python-urllib/3.12",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T07:56:31.850Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T07:56:31.850Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T07:56:31.850Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T07:56:31.865Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af02b3570a5704eb875d068"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "hP4JYNOge9wWE7u5Z22DIGulyRumnJ5eBjA0aN_Eh4g-SobrGDFrwDzeFqPpi6PG",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Python-urllib/3.12",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T07:56:37.758Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T07:56:37.758Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T07:56:37.758Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T16:27:41.457Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af02bc270a5704eb875d06a"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "35xEuQLwXju58uB_gOCn6n3oJrT71tEUiVq3XL_vRuQMVZCS_snUNOPkcAd-oin7",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T07:58:58.783Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T07:58:58.783Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T07:58:58.783Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T16:28:14.098Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0981b73e9c1cdb93a73b0"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "wj8i9bGYPe1tFO6YJmONzddmHLpIR7g4FKUpRwpyzIg-giqJFgHemSxrRV97Epav",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T15:41:15.685Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T15:41:15.685Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T15:41:15.685Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T16:28:33.995Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a29da2b5039e27dd57c9"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "OfJZkr6-OVroVhXEOuum-7Ij5e_j3oxh3MjtD01hmshclzb7LQW0rlywT7y4PiLq",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:26:05.762Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:26:05.762Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:26:05.762Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T16:30:23.071Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a2a8a2b5039e27dd57cb"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "DpiyyRE9lQm1YQUCoLzgs1TuByj7WYzQCYgP--WyrA-aExb-7GTtSb2l9ReAYWOp",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:26:16.202Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:26:16.202Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:26:16.202Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T16:30:49.950Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a2fda2b5039e27dd57cd"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "9qE-lv-MwabEmHn1KJ1-QdkKBMFGViFFQlqxO3vmPVXtG4yxQV6NjchZUGI2TSM9",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:27:41.458Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:27:41.458Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:27:41.458Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T16:31:13.019Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a31ea2b5039e27dd57cf"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "ROllMdLfq7lTAS44hsQyFsgmQDpN86yaP27KVI6EV3ZfyH2WAIGP4hd-Ahu_OcZK",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:28:14.099Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:28:14.099Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:28:14.099Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T16:31:38.131Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a331a2b5039e27dd57d1"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "mst-aKjWSr7rL0UV2l4JxZBE6eia6zlCC3aMKDbzFBMrg42ejWy1GNK4vEAD2Dnq",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:28:33.997Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:28:33.997Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:28:33.997Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T16:32:00.385Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a39fa2b5039e27dd57d3"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "xhkMkMqadflAOit3UV3X8bnaSBbvjT2jHM5sQG88rXOooFBO_hsNoZu8KOMxgUQf",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:30:23.072Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:30:23.072Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:30:23.072Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T16:32:22.191Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a3b9a2b5039e27dd57d5"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "pb-2mUlwLeN0-MkfngmLu55HM85vyIwTNPezKggVwLJcVwlw8vbCqAkSHvXh2LVK",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:30:49.950Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:30:49.950Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:30:49.950Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T16:32:38.138Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a3d1a2b5039e27dd57d8"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "7JoSEocbULl--kYsQnpxm4SfQqGr9YkJz23smogMz4zRGQPuJ_Utr_9f8DxbdQia",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:31:13.020Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:31:13.020Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:31:13.020Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T16:32:52.774Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a3eaa2b5039e27dd57db"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "gHv_S02nZ4AtjCXXLnKDPHd_W6b8AxFeYU9vcT7nLnrqBtvKT86RBef4-QHPbZ_V",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:31:38.131Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:31:38.131Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:31:38.131Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T16:33:06.899Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a400a2b5039e27dd57de"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "MWgmg0_1PZLUpTJV81q0Ii_WTgp5MKkBsaWgirxAyb3JeJfzo0HjtkJv1jEfhklc",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:32:00.385Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:32:00.385Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:32:00.385Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T16:33:21.986Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a416a2b5039e27dd57e1"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "KKzMfwdcKwSl8oM01kBaLKpdfYLKNvfKECsvDN5R3gPrlNZKUwWGwNbuhfOgy4uj",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:32:22.192Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:32:22.192Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:32:22.192Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T16:33:35.950Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a426a2b5039e27dd57e6"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "yPU53QoYDHsdUxvl8yzn9eHjcPDWbyrcAv4cJGihzhxZdqzIKEo_Vl5tfIW8Sqzu",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:32:38.138Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:32:38.138Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:32:38.138Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T16:33:56.712Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a434a2b5039e27dd57e9"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "VxpcNuKA9o14tv1Jgg-CAknImgNsQHZmPyUavN4dGE9sMDdHjt6ehGi4kj1og3-W",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:32:52.775Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:32:52.775Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:32:52.775Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T16:35:42.587Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a442a2b5039e27dd57ec"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "_lf1b71XNiwFJVzCFAMENL7ILxXxPu_tGNsaerQiQqNcXwc5eeav2tB22DgGGogC",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:33:06.900Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:33:06.900Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:33:06.900Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T16:36:01.201Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a451a2b5039e27dd57ee"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "w4sfdzmZIZsfFO_dKahEbknNTWDfRZ1TlbAEg_pO9h86NOwtb-bTVW7S3BKBKDO0",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:33:21.986Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:33:21.986Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:33:21.986Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T16:36:21.121Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a45fa2b5039e27dd57f0"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "zVrMLvp7Bu6XkapxGbjxaPmT718gyuUDt89ogr8IQeaRYBn_-T-gMENp0eHdMNmS",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:33:35.951Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:33:35.951Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:33:35.951Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T16:36:40.910Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a474a2b5039e27dd57f2"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "FgZz8dnj_1TSR6roOCpAf4YAwsPVhWcGy1r7ZZo8jbJRo-jQQUZWoeFCeJRfSSUi",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:33:56.713Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:33:56.713Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:33:56.713Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T16:37:26.720Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a4dea2b5039e27dd57f4"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "0Yov_Jy98u897x6156yOW8RgEIEjde_YDYp4nQrGn-JmzrZ3s2LHbeAZXWhI6hQU",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:35:42.587Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:35:42.587Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:35:42.587Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T16:37:42.949Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a4f1a2b5039e27dd57f6"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "n7deJFHOkiUfDx9hhzWfKZ77QSsb0_02dQNhjFtemJPpapQd76NEzckAyDlWus40",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:36:01.202Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:36:01.202Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:36:01.202Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-08T18:18:23.813Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a505a2b5039e27dd57f8"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "5MhXzxT8-vN2H3rvTsYtrGCBVmXfhRYrdA612vCp77p69WEGR97r8Jp8jhhIKo3R",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:36:21.121Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:36:21.121Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:36:21.121Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-09T16:52:04.944Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a518a2b5039e27dd57fa"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "gSM5JkjTqXzpEsIlowI6KAgmSL3WhM6Z5PM4E869w3p5l0qNOAtn1KThqa4x4u7l",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:36:40.912Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:36:40.912Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:36:40.912Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-09T18:15:35.458Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a546a2b5039e27dd57fc"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "Cnr-Dx5wpHun5bNSeuBwo2WcEFh8_Gw9_R2y64t-DLjABsAsaQ-v_4FZQQnyv_8i",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:37:26.721Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:37:26.721Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:37:26.721Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-09T18:48:56.173Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0a556a2b5039e27dd57fe"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "gIWBketpXRABi4MuuRH4IMUEjMin05NEdUdEyMPAXRgaSQ-HAItm6Vw8UWJ12SuE",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T16:37:42.950Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T16:37:42.950Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T16:37:42.950Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-10T12:53:41.739Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af0bcef456b807c06abacd5"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "q8jyY5Ap3LCXP2kQs_8dhDh2mLd7PhV1jKLpus1NmCZZlqHFPjfbLUOVw_fKYKZC",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-08T18:18:23.813Z"
+    },
+    "last_active": {
+      "$date": "2026-11-08T18:18:23.813Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-08T18:18:23.813Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-10T14:23:50.008Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af1fa340924e43a6742cf4d"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "BGQ8_ltzVPxyP68tbau1UBAukOKrKoD5Em0zhEhOP5dBQrkRug2CPY9JqhewoiPB",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-09T16:52:04.957Z"
+    },
+    "last_active": {
+      "$date": "2026-11-09T16:52:04.957Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-09T16:52:04.957Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-10T17:19:10.166Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af20dc75b73300a74157c83"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "JTKhyMbLYGXqukwIJIlNR9wuTODhVAaCNzmw8U1ti9ZMaFhWCHfe-2KTbfpFDqLU",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-09T18:15:35.461Z"
+    },
+    "last_active": {
+      "$date": "2026-11-09T18:15:35.461Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-09T18:15:35.461Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-10T17:26:04.420Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af21598f6b78805b41567e1"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "uRlM-EZEE6zZS0KosPPjwvxqr8sFXCmu2kptbKIsUfOV2yVTTR5VSTkhYw1HMkH4",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-09T18:48:56.174Z"
+    },
+    "last_active": {
+      "$date": "2026-11-09T18:48:56.174Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-09T18:48:56.174Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-10T17:26:03.032Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af313d5baef0cfe08f8e0dc"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "VLrwRAcnIKIomO9F8LQvLtVfLC5r_i2iQkp292TN5ohnM-6eW6tcswdX8WtUxHWk",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-10T12:53:41.750Z"
+    },
+    "last_active": {
+      "$date": "2026-11-10T12:53:41.750Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-10T12:53:41.750Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-10T13:22:26.563Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3207e1e9448680debb83e"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "wvqyaH-VbDxDPo30sZp6Arvb_nRAqvCBY0xRcYh2yfnomzPN10CuAn_aNcYf0KoJ",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-10T13:47:42.424Z"
+    },
+    "last_active": {
+      "$date": "2026-11-10T13:47:42.424Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-10T13:47:42.424Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-10T17:26:01.894Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af328f6f981982cd11de135"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "Dg_sDr7K6DwtcFC9d9mRJwyHSiq9xU5FuDWloIfwXlBHYOzt0VINFC3vw8e5BLYS",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-10T14:23:50.009Z"
+    },
+    "last_active": {
+      "$date": "2026-11-10T14:23:50.009Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-10T14:23:50.009Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-10T17:26:00.423Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3520e9137a70e0062d9fc"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "xpZQqsQEC3wAR2nxJC_bva3AAa2o2rax47tSBXJ_ZCUS3xgeJrKLsWNxH_l12TW5",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-10T17:19:10.167Z"
+    },
+    "last_active": {
+      "$date": "2026-11-10T17:19:10.167Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-10T17:19:10.167Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-10T17:50:46.060Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af359585e4aa5f015bb6b9e"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "Q__ZkT3bZPYCOCX46K92K3-0Kem0ATnwCOMgtAWiymA6WbP6EG-xERQ_cRsfKy9H",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-10T17:50:16.946Z"
+    },
+    "last_active": {
+      "$date": "2026-11-10T17:50:16.946Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-10T17:50:16.946Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-10T18:13:51.508Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3597c5e4aa5f015bb6ba1"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "nN-AeCbZPnXurNdXCvC4lHDtJOQZaiK1pnDzDS5oZ73UlH138PNI3jVae3M6NYqN",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-10T17:50:52.455Z"
+    },
+    "last_active": {
+      "$date": "2026-11-10T17:50:52.455Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-10T17:50:52.455Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-10T18:13:56.016Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af35dcb5e4aa5f015bb6bb5"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "_ZRpYzw-oAK2mq1S9jmzgmMY2WaohxRxPwmB9Tliki0gYIzY8blArg0yuh0ODB79",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-10T18:09:15.589Z"
+    },
+    "last_active": {
+      "$date": "2026-11-10T18:09:15.589Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-10T18:09:15.589Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-10T18:16:27.071Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af35dec5e4aa5f015bb6bb7"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "18KF4hngBGBVt-NkX15vCV9jTDhKcorG9Uc6KoFp03KjVwJcjH9zgSn1b2l3pfeY",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-10T18:09:48.505Z"
+    },
+    "last_active": {
+      "$date": "2026-11-10T18:09:48.505Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-10T18:09:48.505Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-11T04:04:00.508Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af35df05e4aa5f015bb6bba"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "b7_aMbQmavMuhm6y8asdyf-TWmxZKtT9CLsZ-U0TLj6zlH4SKQyWiHd698YuLSFC",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-10T18:09:52.904Z"
+    },
+    "last_active": {
+      "$date": "2026-11-10T18:09:52.904Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-10T18:09:52.904Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-11T08:32:54.763Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af35edf5b8774d55f2a7b24"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "FeKYE-htlWLR_0QOEkcAcvvDE6YzCK5YGHFf_ptkIgTWInhvRGCKKR34chF4R_dc",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-10T18:13:51.509Z"
+    },
+    "last_active": {
+      "$date": "2026-11-10T18:13:51.509Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-10T18:13:51.509Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-11T08:44:32.805Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af35ee45b8774d55f2a7b28"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "yMq4jX_fDMxt6A-ha8k87bG03T2E7sBraYWLxc7xE8r18oYIjX6xhGT0I8NGvq1N",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-10T18:13:56.016Z"
+    },
+    "last_active": {
+      "$date": "2026-11-10T18:13:56.016Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-10T18:13:56.016Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-11T08:47:03.137Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af35f7b5099016f2373e3cc"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "aPE0DQofRgGG6ruBqcL0A5YZnN6uEVIrltKvcQ4kDz36VtZWzctPMXAavh-x57Zf",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-10T18:16:27.072Z"
+    },
+    "last_active": {
+      "$date": "2026-11-10T18:16:27.072Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-10T18:16:27.072Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-10T18:41:56.711Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36b9c0346b043adaf3e3f"
+    },
+    "user_id": "6af36b990346b043adaf3e3d",
+    "session_token": "NmGWquhjJzjgES-9VLkVqH0OEaoc65SB39fZGaa4EpQLguIvHzTeZKjGeWBypb-d",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-10T19:08:12.079Z"
+    },
+    "last_active": {
+      "$date": "2026-11-10T19:08:12.079Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-10T19:08:12.079Z"
+    },
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6af36d8e25d77c10e3e3442e"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "y4Oxl8Kj6aznQApr3nW6iLQ_pf7ERbwSSE6Ip5rtVZ_KomWkNUqHtrQ619q3_MAC",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-10T19:16:30.628Z"
+    },
+    "last_active": {
+      "$date": "2026-11-10T19:16:30.628Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-10T19:16:30.628Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-10T19:17:33.417Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af36eba25d77c10e3e3443f"
+    },
+    "user_id": "6af36eb825d77c10e3e3443d",
+    "session_token": "zaDODGf88rc0Xj7F8DFoz6KJfvLkBmwK9qvZY14q0zvKwbI_jQJ6SdyhAOHkTKOx",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-10T19:21:30.499Z"
+    },
+    "last_active": {
+      "$date": "2026-11-10T19:21:30.499Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-10T19:21:30.499Z"
+    },
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6af36fa225d77c10e3e3444b"
+    },
+    "user_id": "6af36f9f25d77c10e3e34449",
+    "session_token": "FZu_aopfoC0fXSM68edYoNgFk9begPhqPu9iNKJOzvLj0i2FpoiZ_EoYeRDGNa7X",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-10T19:25:22.384Z"
+    },
+    "last_active": {
+      "$date": "2026-11-10T19:25:22.384Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-10T19:25:22.384Z"
+    },
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6af3704625d77c10e3e3445c"
+    },
+    "user_id": "6af3704425d77c10e3e3445a",
+    "session_token": "KEWXfcuEaL8pMjgn4BNijEdBkv0ST9iOlMNKEAVIwqtI2ajlA3R7FiVxNHbPDSdv",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-10T19:28:06.807Z"
+    },
+    "last_active": {
+      "$date": "2026-11-10T19:28:06.807Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-10T19:28:06.807Z"
+    },
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6af370c2f4d4e9c13f552e0b"
+    },
+    "user_id": "6af370bff4d4e9c13f552e09",
+    "session_token": "WxddQEKFZbbZ57C67ImswrYC12SqzbrErkZ6daBoONWUem7csYJI7BEJl_zUaTF7",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-10T19:30:10.059Z"
+    },
+    "last_active": {
+      "$date": "2026-11-10T19:30:10.059Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-10T19:30:10.059Z"
+    },
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6af37190ecd11df797f7c1c5"
+    },
+    "user_id": "6af3718eecd11df797f7c1c3",
+    "session_token": "G4UpFaFO665d10UlTS61Bm0yZPUjQ0nvl4OJN9mtHoBEBrWIMcraepCGP4Hf_0EV",
+    "ip_address": "127.0.0.1",
+    "user_agent": "python-requests/2.32.4",
+    "device": "Desktop",
+    "browser": "Unknown",
+    "os": "Unknown",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-10T19:33:36.820Z"
+    },
+    "last_active": {
+      "$date": "2026-11-10T19:33:36.820Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-10T19:33:36.820Z"
+    },
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6af375bec06131e5318607c3"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "_EtYktZAA1Vwz0HPnzbxpw1yqGwGDr1nFw5Vn_Vp46LCc8vrOEpxr_iqn4b8cMn6",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-10T19:51:26.627Z"
+    },
+    "last_active": {
+      "$date": "2026-11-10T19:51:26.627Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-10T19:51:26.627Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-10T20:49:19.763Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af383727effb2a08f105745"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "pjb1sSiS5xQlIuxy2OQCYJM7v62BKeqnceF3TSXs33dVFcGPCo25S2xl_Pk4ZJL5",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-10T20:49:54.980Z"
+    },
+    "last_active": {
+      "$date": "2026-11-10T20:49:54.980Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-10T20:49:54.980Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-11T12:09:58.125Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af3e93023f7cd9dd6736901"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "oGtdTC4_ilL06b28Lv1-s7oUpZXrjUBCMesL0xLXXNDHdTxdx9BdIgOKUhyLx2hl",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-11T04:04:00.508Z"
+    },
+    "last_active": {
+      "$date": "2026-11-11T04:04:00.508Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-11T04:04:00.508Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-11T16:38:23.916Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af428368537d81931c8e546"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "4wfv9Jj9V1NakGrD0F5sPEfhJKnMA1va8GdLeORD9x8TIWHstDYnlYdQiyuWShvR",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-11T08:32:54.764Z"
+    },
+    "last_active": {
+      "$date": "2026-11-11T08:32:54.764Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-11T08:32:54.764Z"
+    },
+    "is_active": false,
+    "invalidated_at": {
+      "$date": "2026-11-11T08:33:44.939Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6af429aca16905179ea96625"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "vGQ4K9eMnRDY3sgfFBEnRgpLRAvDDxtuoXmv3UKNGpNUdIspKLvIDrW7G0JMuuDd",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-11T08:39:08.670Z"
+    },
+    "last_active": {
+      "$date": "2026-11-11T08:39:08.670Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-11T08:39:08.670Z"
+    },
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6af42af0a16905179ea96629"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "W3ItaZ0JmK24GCT5ofYGwhMrZp7E9xrwY401JJWd8PE2iKB4zVJ4crdSl8kWZKf3",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-11T08:44:32.805Z"
+    },
+    "last_active": {
+      "$date": "2026-11-11T08:44:32.805Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-11T08:44:32.805Z"
+    },
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6af42b87f0ed90d0b61289f2"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "gZCJVMOI_JBVyrrGBAo8ZlUjkS52zndbh5jwMD3FMTUi3qtm4etwbtf11LOJhQDD",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-11T08:47:03.138Z"
+    },
+    "last_active": {
+      "$date": "2026-11-11T08:47:03.138Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-11T08:47:03.138Z"
+    },
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6af45b16926372d3257af73c"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "lp_WyidYVptsu49K-i9Kxi-BiAEJ5z6J8Hz5DrVDLbMpHMsbgla4l6J-hMFCei1B",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-11T12:09:58.126Z"
+    },
+    "last_active": {
+      "$date": "2026-11-11T12:09:58.126Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-11T12:09:58.126Z"
+    },
+    "is_active": true
+  },
+  {
+    "_id": {
+      "$oid": "6af499ffd0b203df253f043b"
+    },
+    "user_id": "6addfa54c2c6599343d03ed8",
+    "session_token": "07hfIsX-nByPMoqk9I3I2rdgzM9SYM1DS1yJ_E_wgsqtxHfIcEYZebAG7ZlksmC-",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+    "device": "Desktop",
+    "browser": "Chrome",
+    "os": "Windows",
+    "location": null,
+    "created_at": {
+      "$date": "2026-11-11T16:38:23.917Z"
+    },
+    "last_active": {
+      "$date": "2026-11-11T16:38:23.917Z"
+    },
+    "expires_at": {
+      "$date": "2026-12-11T16:38:23.917Z"
+    },
+    "is_active": true
+  }
+]
