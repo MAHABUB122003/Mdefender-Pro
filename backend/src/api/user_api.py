@@ -1708,14 +1708,14 @@ class UserAPI:
                         'Authorization': f'Bearer {site_key}',
                         'X-API-Key': site_key,
                         'X-Site-Token': site_token,
-                        'User-Agent': 'MDefender-Cloud/2.0'
+                        'User-Agent': 'MDefender-Pro-CloudAction/1.0'
                     }
                     resp = None
                     for attempt_proto in (['https://', 'http://'] if not raw_url.startswith(('http://', 'https://')) else ([site_url.split('://')[0] + '://', 'http://' if site_url.startswith('https://') else 'https://'])):
                         try:
                             clean_base = raw_url.replace('https://', '').replace('http://', '').strip('/')
                             test_url = f"{attempt_proto}{clean_base}/?waf_cloud_sync=1&action=get_logs&api_key={site_key}&site_token={site_token}"
-                            resp = requests.get(test_url, params=req_params, headers=headers, timeout=(4.0, 7.0), verify=False)
+                            resp = requests.get(test_url, params=req_params, headers=headers, timeout=(6.0, 15.0), verify=False)
                             if resp and resp.status_code == 200:
                                 break
                         except Exception:
@@ -1814,14 +1814,14 @@ class UserAPI:
                         headers = {
                             'Authorization': f'Bearer {site_key}',
                             'X-API-Key': site_key,
-                            'User-Agent': 'MDefender-Cloud/2.0'
+                            'User-Agent': 'MDefender-Pro-CloudAction/1.0'
                         }
                         resp = None
                         for attempt_proto in (['https://', 'http://'] if not raw_url.startswith(('http://', 'https://')) else ([site_url.split('://')[0] + '://', 'http://' if site_url.startswith('https://') else 'https://'])):
                             try:
                                 clean_base = raw_url.replace('https://', '').replace('http://', '').strip('/')
                                 test_url = f"{attempt_proto}{clean_base}/?waf_cloud_sync=1&action=get_logs&api_key={site_key}&site_token={site_key}"
-                                resp = requests.get(test_url, params=req_params, headers=headers, timeout=(4.0, 7.0), verify=False)
+                                resp = requests.get(test_url, params=req_params, headers=headers, timeout=(6.0, 15.0), verify=False)
                                 if resp and resp.status_code == 200:
                                     break
                             except Exception:

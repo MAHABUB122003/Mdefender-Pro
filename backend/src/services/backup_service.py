@@ -33,8 +33,21 @@ logger = logging.getLogger("mdefender.backup")
 
 
 class BackupService:
+    _working_endpoints: Dict[str, str] = {}
+    _session = None
+
     def __init__(self):
         self.db = MongoDB()
+
+    @classmethod
+    def get_http_session(cls) -> requests.Session:
+        if cls._session is None:
+            s = requests.Session()
+            adapter = requests.adapters.HTTPAdapter(pool_connections=50, pool_maxsize=100, max_retries=1)
+            s.mount("https://", adapter)
+            s.mount("http://", adapter)
+            cls._session = s
+        return cls._session
 
     def get_clean_domain_slug(self, website: Dict[str, Any]) -> str:
         url = website.get("url") or ""
@@ -196,9 +209,15 @@ class BackupService:
             f"{target_url}{sep}{url_params}",
             f"{target_url}/index.php?{url_params}",
         ]
+        # Prioritize known working endpoint if cached
+        if target_url in self._working_endpoints and self._working_endpoints[target_url] in candidates:
+            cached_ep = self._working_endpoints[target_url]
+            candidates.remove(cached_ep)
+            candidates.insert(0, cached_ep)
 
         raw_body = json.dumps(action_payload, separators=(',', ':')) if action_payload else ""
         last_error_msg = None
+        session = self.get_http_session()
 
         for ep in candidates:
             for active_key in candidate_keys:
@@ -222,16 +241,18 @@ class BackupService:
                     headers["X-Site-Token"] = primary_site_token
 
                 try:
-                    resp = requests.post(ep, data=raw_body, headers=headers, timeout=timeout, verify=False)
+                    resp = session.post(ep, data=raw_body, headers=headers, timeout=timeout, verify=False)
                     if resp.status_code == 200:
                         try:
                             data = resp.json()
                             if isinstance(data, dict):
                                 if data.get("action_result") or data.get("status") in ("success", "ok") or data.get("success"):
+                                    self._working_endpoints[target_url] = ep
                                     return data
                                 if data.get("status") == "error":
                                     last_error_msg = data.get("message")
                         except Exception:
+                            self._working_endpoints[target_url] = ep
                             return {"status": "success", "action_result": {"success": True}}
                     elif resp.status_code in (400, 401, 403, 500, 502, 503):
                         try:
@@ -750,9 +771,10 @@ class BackupService:
         if site_token:
             headers["X-Site-Token"] = site_token
 
+        session = self.get_http_session()
         for ep in candidates:
             try:
-                resp = requests.get(ep, headers=headers, stream=True, timeout=60, verify=False)
+                resp = session.get(ep, headers=headers, stream=True, timeout=60, verify=False)
                 if resp.status_code == 200:
                     cl = resp.headers.get("Content-Length")
                     res_headers = {
