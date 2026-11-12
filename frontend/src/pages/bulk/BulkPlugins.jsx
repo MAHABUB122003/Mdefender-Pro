@@ -312,8 +312,6 @@ export default function BulkPlugins() {
       showToast(`${plugin.name} successfully updated to ${nextStatus.toUpperCase()}!`)
       if (res?.data?.websites) {
         updateFleetWebsites(res.data.websites)
-      } else {
-        fetchFleet(true)
       }
     } catch {
       showToast(`${plugin.name} status updated locally; remote sync queued.`)

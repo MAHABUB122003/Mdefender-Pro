@@ -10283,8 +10283,8 @@ async def execute_remote_action(website_id: str, body: RemoteActionRequest, user
             candidates = [f"{clean_target}?{url_params}"]
         else:
             candidates = [
-                f"{clean_target}/index.php?{url_params}",
                 f"{clean_target}/?{url_params}",
+                f"{clean_target}/index.php?{url_params}",
                 f"{clean_target}/wp-json/waf-fw/v1/sync?{url_params}",
             ]
         headers = {
@@ -10299,7 +10299,7 @@ async def execute_remote_action(website_id: str, body: RemoteActionRequest, user
 
         for ep in candidates:
             try:
-                act_timeout = 25.0 if ("install" in body.action or "update" in body.action) else 6.0
+                act_timeout = 25.0 if ("install" in body.action or "update" in body.action) else 3.5
                 resp = requests.post(ep, json=action_payload, headers=headers, timeout=act_timeout, verify=False)
                 if resp.status_code == 200:
                     try:

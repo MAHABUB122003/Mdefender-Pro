@@ -32,9 +32,7 @@ export default function UserLogin({ onLoginSuccess }) {
   const getPostLoginUrl = (user) => {
     if (planParam) return `/user/pricing?plan=${planParam}&cycle=${cycleParam}`;
     if (user?.role === 'super_admin' || user?.is_admin) return '/admin';
-    const hasSites = (typeof user?.websites_count === 'number' && user?.websites_count > 0) ||
-                     (Array.isArray(user?.websites) && user.websites.length > 0);
-    if (!user?.onboarded || !hasSites) {
+    if (!user?.onboarded) {
       return '/onboarding';
     }
     return '/user/dashboard';

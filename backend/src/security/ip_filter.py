@@ -325,25 +325,5 @@ class IPFilter:
 
     def invalidate_country_cache(self, user_id=None, country_code=None):
         """Immediately purge in-memory country blocking cache when rules change."""
-        if not hasattr(self, '_cb_res_cache'):
-            self._cb_res_cache = {}
-        if not hasattr(self, '_cb_has_cache'):
-            self._cb_has_cache = {}
-
-        if country_code:
-            cc = str(country_code).upper().strip()
-            keys_to_del = [k for k in list(self._cb_res_cache.keys()) if k.endswith(f":{cc}") or f":{cc.lower()}" in k]
-            for k in keys_to_del:
-                self._cb_res_cache.pop(k, None)
-        else:
-            self._cb_res_cache.clear()
-
-        if user_id:
-            u_str = str(user_id)
-            self._cb_has_cache.pop(u_str, None)
-            keys_to_del = [k for k in list(self._cb_res_cache.keys()) if k.startswith(f"{u_str}:")]
-            for k in keys_to_del:
-                self._cb_res_cache.pop(k, None)
-        else:
-            self._cb_has_cache.clear()
-            self._cb_res_cache.clear()
+        self._cb_res_cache = {}
+        self._cb_has_cache = {}

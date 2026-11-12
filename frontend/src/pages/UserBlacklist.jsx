@@ -267,19 +267,19 @@ export default function UserBlacklist({ activeMode }) {
   }
 
   const handleRemoveWhitelist = async (ip) => {
-    if (!confirm(`Remove IP ${ip} from whitelist?`)) return
+    setWhitelistEntries(prev => prev.filter(item => (typeof item === 'string' ? item : item.ip) !== ip))
     try {
       await api.removeUserWhitelist(ip)
       showToast(`IP ${ip} removed from whitelist.`)
       fetchWhitelist(true)
     } catch (err) {
       showToast(err.message || 'Failed to remove IP from whitelist', 'error')
+      fetchWhitelist(true)
     }
   }
 
   // ── IP Handlers ─────────────────────────────────────────────────────────────
   const handleUnblock = async (ip, siteId) => {
-    if (!confirm(`Unblock IP ${ip}?`)) return
     setEntries(prev => prev.filter(item => item.ip !== ip))
     setSelectedIps(prev => prev.filter(i => i !== ip))
     userStore.invalidate('blacklist')
@@ -295,7 +295,6 @@ export default function UserBlacklist({ activeMode }) {
 
   const handleFlushExpired = async () => {
     if (expiredEntries.length === 0) { showToast('No expired entries to purge.', 'info'); return }
-    if (!confirm(`Purge all ${expiredEntries.length} expired IP bans?`)) return
     setFlushingExpired(true)
     try {
       const res = await api.unblockExpiredBlacklist()
@@ -310,11 +309,11 @@ export default function UserBlacklist({ activeMode }) {
 
   const handleBulkUnblock = async () => {
     if (!selectedIps.length) return
-    if (!confirm(`Unblock ${selectedIps.length} selected IPs?`)) return
+    const count = selectedIps.length
     setBulkUnblocking(true)
     try {
       const res = await api.unblockBatchBlacklist(selectedIps, selectedWebsite)
-      showToast(res?.message || `Unblocked ${selectedIps.length} IP(s).`)
+      showToast(res?.message || `Unblocked ${count} IP(s).`)
       setSelectedIps([])
       userStore.invalidate('blacklist')
       await fetchBlacklist(true, selectedWebsite)
@@ -410,11 +409,10 @@ export default function UserBlacklist({ activeMode }) {
   }
 
   const handleRemoveCountryBlock = async (code, name, siteId) => {
-    if (!confirm(`Unblock traffic from ${name || code}?`)) return
     setCountryBlocks(prev => prev.filter(b => b.country_code !== code))
     try {
       await api.removeUserCountryBlock(code, siteId || selectedWebsite)
-      showToast(`${name || code} unblocked.`)
+      showToast(`${name || code} unblocked successfully.`)
       fetchCountryBlocks(true, selectedWebsite)
     } catch (err) {
       showToast(err.message || 'Failed to unblock country.', 'error')
@@ -763,9 +761,11 @@ export default function UserBlacklist({ activeMode }) {
                       display: 'inline-flex', alignItems: 'center', gap: '7px', transition: 'all 0.15s ease'
                     }}
                   >
-                    <img src={getFlagUrl(preset.code, '20x15')} alt={preset.code}
-                      onError={e => { e.target.style.display = 'none' }}
-                      style={{ width: '16px', height: '11px', borderRadius: '2px', objectFit: 'cover' }} />
+                    <span style={{ width: '16px', height: '11px', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#F1F5F9', borderRadius: '2px', overflow: 'hidden' }}>
+                      <img src={getFlagUrl(preset.code, '20x15')} alt={preset.code}
+                        onError={e => { e.target.style.display = 'none' }}
+                        style={{ width: '16px', height: '11px', objectFit: 'cover' }} />
+                    </span>
                     <span>{preset.name}</span>
                     {isBlocked && <span style={{ fontSize: '10px', background: '#0B2522', color: '#FFFFFF', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>Blocked</span>}
                   </button>
@@ -902,7 +902,7 @@ export default function UserBlacklist({ activeMode }) {
               )}
             </div>
 
-            {countryLoading ? (
+            {(countryLoading && countryBlocks.length === 0) ? (
               <div style={{ textAlign: 'center', padding: '50px 20px', color: '#94A3B8' }}>
                 <RotateCw size={22} style={{ animation: 'spin 1s linear infinite', display: 'block', margin: '0 auto 10px' }} />
                 Loading...
@@ -914,7 +914,7 @@ export default function UserBlacklist({ activeMode }) {
                 <div style={{ fontSize: '12px' }}>Use the form above or click a preset to block a country.</div>
               </div>
             ) : (
-              <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid #D9E1DC' }}>
+              <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid #D9E1DC', minHeight: '120px' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead>
                     <tr>
@@ -937,9 +937,11 @@ export default function UserBlacklist({ activeMode }) {
                         <tr key={block._id || code} style={{ background: '#FFFFFF' }}>
                           <td style={S.td}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <img src={flagUrl} alt={code}
-                                onError={e => { e.target.style.display = 'none' }}
-                                style={{ width: '20px', height: '14px', borderRadius: '2px', objectFit: 'cover' }} />
+                              <span style={{ width: '20px', height: '14px', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#F1F5F9', borderRadius: '2px', overflow: 'hidden' }}>
+                                <img src={flagUrl} alt={code}
+                                  onError={e => { e.target.style.display = 'none' }}
+                                  style={{ width: '20px', height: '14px', objectFit: 'cover' }} />
+                              </span>
                               <span style={{ fontWeight: '700', color: '#10201E' }}>{displayName}</span>
                             </div>
                           </td>

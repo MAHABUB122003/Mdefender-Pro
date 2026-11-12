@@ -1166,14 +1166,8 @@ class UserAPI:
             if now_ts - cached_at < self._stats_cache_ttl:
                 return cached_data
 
+        # Today's reference date
         today = datetime.now().strftime('%Y-%m-%d')
-
-        if user.get('requests_today_date') != today:
-            self.db.users.update_one(
-                {'_id': user['_id']},
-                {'$set': {'requests_today': 0, 'requests_today_date': today}}
-            )
-            user['requests_today'] = 0
 
         # Query websites from the websites collection scoped to the user
         websites_query = {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}
@@ -1450,10 +1444,16 @@ class UserAPI:
                     }}
                 )
             else:
-                tot_req = sum(w.get('total_requests', 0) for w in websites)
-                tot_block = sum(w.get('total_blocked', 0) for w in websites)
-                req_today = sum(w.get('requests_today', 0) for w in websites)
-                block_today = sum(w.get('blocked_today', 0) for w in websites)
+                sites_tot_req = sum(w.get('total_requests', 0) for w in websites)
+                sites_tot_block = sum(w.get('total_blocked', 0) for w in websites)
+                sites_req_today = sum(w.get('requests_today', 0) for w in websites)
+                sites_block_today = sum(w.get('blocked_today', 0) for w in websites)
+
+                tot_req = max(sites_tot_req, int(user.get('total_requests', 0) or 0))
+                tot_block = max(sites_tot_block, int(user.get('total_blocked', 0) or 0))
+                req_today = max(sites_req_today, int(user.get('requests_today', 0) or 0))
+                block_today = max(sites_block_today, int(user.get('blocked_today', 0) or 0))
+
                 all_site_ids = [w['id'] for w in websites]
                 all_site_domains = [w.get('domain') for w in websites if w.get('domain')]
                 fb = self._get_fallback_dashboard_metrics(user_id_str, all_site_ids, all_site_domains)

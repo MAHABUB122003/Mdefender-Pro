@@ -2242,9 +2242,9 @@ async def generate_wordpress_sso_token(website_id: str, user=Depends(get_current
     clean_host = (parsed_target.hostname or raw_domain.split("/")[0]).strip()
     clean_host = re.sub(r"^www\.", "", clean_host, flags=re.IGNORECASE).strip()
 
-    # 2. Resolve secret token (from site_token, raw_site_token, or website api_key)
+    # 2. Resolve secret token (prefer shared api_key which WordPress stores)
     conn = website.get("wordpress_connection", {})
-    site_token = conn.get("raw_site_token") or website.get("site_token") or website.get("api_key") or ""
+    site_token = conn.get("api_key") or website.get("api_key") or (user.get("api_key") if user else None) or conn.get("raw_site_token") or website.get("site_token") or ""
 
     if not site_token:
         wp_site = db.wordpress_sites.find_one({"$or": [{"website_id": website_id}, {"domain": clean_host}]})

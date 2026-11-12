@@ -121,11 +121,8 @@ function PageFallback() {
 function isUserOnboarded(u) {
   if (!u) return false;
   if (u.role === 'super_admin' || u.is_admin) return true;
-  // Strict Zero-Trust Onboarding Guard:
-  // User must have completed onboarding and have at least one active connected website
-  const hasSites = (typeof u.websites_count === 'number' && u.websites_count > 0) ||
-                   (Array.isArray(u.websites) && u.websites.length > 0);
-  return Boolean(u.onboarded && hasSites);
+  // Once onboarded, ALWAYS enter dashboard - even if all connected sites are later deleted
+  return Boolean(u.onboarded);
 }
 
 function getPostLoginTarget(u) {

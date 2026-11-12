@@ -1393,8 +1393,8 @@ async def user_onboarding_status(user: dict = Depends(verify_user_token_compat))
         s['id'] = str(s['_id'])
         s['_id'] = str(s['_id'])
     
-    # Strict Zero-Trust Isolation: A user is only onboarded if their account is marked onboarded AND they own at least 1 verified website
-    is_onboarded = bool(user.get('onboarded') and len(sites) > 0)
+    # Once onboarded, user remains onboarded even if all websites are removed
+    is_onboarded = bool(user.get('onboarded', False))
     return {
         'status': 'success',
         'onboarded': is_onboarded,
@@ -1763,42 +1763,50 @@ def push_to_fleet_async(target_sites, payload, full_sync=True):
         action_name = payload.get('action', '')
         del_c_code = (payload.get('country_code') or '').strip().upper()
 
-        if full_sync:
-            try:
-                for item in db.country_blocks.find():
-                    cc = (item.get('country_code') or '').strip().upper()
-                    if cc and len(cc) == 2 and cc not in active_countries:
-                        if action_name == 'delete_country_block' and cc == del_c_code:
-                            continue
-                        active_countries.append(cc)
-
-                if action_name == 'delete_country_block' and del_c_code in active_countries:
-                    active_countries = [c for c in active_countries if c != del_c_code]
-
-                now_dt = datetime.now()
-                for item in db.blacklist.find():
-                    ip_v = (item.get('ip') or '').strip()
-                    if not ip_v:
-                        continue
-                    exp = item.get('expires_at')
-                    if exp and isinstance(exp, datetime) and exp <= now_dt:
-                        continue
-                    if ip_v not in active_ips:
-                        active_ips.append(ip_v)
-
-                for item in db.whitelist.find():
-                    w_ip = (item.get('ip') or '').strip()
-                    if w_ip and w_ip not in active_whitelists:
-                        active_whitelists.append(w_ip)
-            except Exception:
-                active_countries = []
-                active_ips = []
-                active_whitelists = []
-
         for s in target_sites:
             raw_url = str(s.get('url') or s.get('domain') or '').strip().rstrip('/')
             site_url = ('https://' + raw_url) if not raw_url.startswith(('http://', 'https://')) else raw_url
             site_key = s.get('api_key') or ''
+            s_id = str(s.get('_id') or s.get('id') or '')
+            s_uid = str(s.get('user_id') or '')
+
+            site_countries = []
+            site_ips = []
+            site_whitelists = []
+
+            if full_sync:
+                try:
+                    c_query = {'$or': [{'website_id': s_id}, {'website_id': 'all'}, {'user_id': s_uid}, {'added_by_user_id': s_uid}]}
+                    for item in db.country_blocks.find(c_query):
+                        cc = (item.get('country_code') or '').strip().upper()
+                        if cc and len(cc) == 2 and cc not in site_countries:
+                            if action_name in ('delete_country_block', 'remove_country_block') and cc == del_c_code:
+                                continue
+                            site_countries.append(cc)
+                    if action_name in ('delete_country_block', 'remove_country_block') and del_c_code in site_countries:
+                        site_countries = [c for c in site_countries if c != del_c_code]
+
+                    now_dt = datetime.now()
+                    ip_query = {'$or': [{'website_id': s_id}, {'website_id': 'all'}, {'user_id': s_uid}, {'added_by_user_id': s_uid}]}
+                    for item in db.blacklist.find(ip_query):
+                        ip_v = (item.get('ip') or '').strip()
+                        if not ip_v:
+                            continue
+                        exp = item.get('expires_at')
+                        if exp and isinstance(exp, datetime) and exp <= now_dt:
+                            continue
+                        if ip_v not in site_ips:
+                            site_ips.append(ip_v)
+
+                    for item in db.whitelist.find(ip_query):
+                        w_ip = (item.get('ip') or '').strip()
+                        if w_ip and w_ip not in site_whitelists:
+                            site_whitelists.append(w_ip)
+                except Exception:
+                    site_countries = []
+                    site_ips = []
+                    site_whitelists = []
+
             headers = {
                 'Authorization': f'Bearer {site_key}',
                 'X-API-Key': site_key,
@@ -1812,9 +1820,9 @@ def push_to_fleet_async(target_sites, payload, full_sync=True):
             send_payload['api_key'] = site_key
             send_payload['site_token'] = site_key
             if full_sync:
-                send_payload['blocked_countries'] = active_countries
-                send_payload['blacklist'] = active_ips
-                send_payload['whitelist'] = active_whitelists
+                send_payload['blocked_countries'] = site_countries
+                send_payload['blacklist'] = site_ips
+                send_payload['whitelist'] = site_whitelists
 
             try:
                 requests.post(remote_url, json=send_payload, headers=headers, timeout=8.0, verify=False)

@@ -314,8 +314,6 @@ export default function BulkThemes() {
       showToast(`"${theme.name}" is now the ACTIVE frontend theme!`)
       if (res?.data?.websites) {
         updateFleetWebsites(res.data.websites)
-      } else {
-        fetchFleet(true)
       }
     } catch {
       showToast(`"${theme.name}" set as active theme locally; remote sync queued.`)

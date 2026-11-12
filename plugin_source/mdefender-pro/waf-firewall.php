@@ -130,6 +130,9 @@ if (class_exists('WAF_FW_Login_Protector')) {
 // Instant Bidirectional Cloud Inventory Synchronization Hooks
 if (!function_exists('waf_fw_sync_inventory_to_cloud')) {
     function waf_fw_sync_inventory_to_cloud() {
+        if (isset($_GET['waf_cloud_sync']) || isset($_POST['waf_cloud_sync']) || (defined('WAF_FW_IN_WEBHOOK') && WAF_FW_IN_WEBHOOK)) {
+            return; // Prevent blocking round-trip loop during incoming cloud actions
+        }
         if (get_option('waf_fw_connected', 'no') !== 'yes') {
             return;
         }
@@ -625,6 +628,26 @@ function waf_fw_handle_cloud_sync_webhook() {
                         $countries = array_values(array_diff($countries, [$del_c]));
                     }
                     update_option('waf_fw_blocked_countries', implode(',', $countries));
+                    if (class_exists('WAF_FW_Engine')) {
+                        WAF_FW_Engine::instance()->export_fast_cache();
+                    }
+                    if (function_exists('apcu_delete')) {
+                        apcu_delete('mdefender_waf_fast_cache');
+                    }
+                }
+                $del_c_early = strtoupper(trim(sanitize_text_field($pushed_data['country_code'] ?? $pushed_data['code'] ?? $_REQUEST['country_code'] ?? $_REQUEST['code'] ?? '')));
+                $act_early = sanitize_text_field($pushed_data['action'] ?? $_REQUEST['action'] ?? '');
+                if (($act_early === 'delete_country_block' || $act_early === 'remove_country_block') && !empty($del_c_early)) {
+                    $raw_curr = (string) get_option('waf_fw_blocked_countries', '');
+                    $curr_list = array_values(array_filter(array_map('trim', explode(',', strtoupper($raw_curr)))));
+                    $curr_list = array_values(array_diff($curr_list, [$del_c_early]));
+                    update_option('waf_fw_blocked_countries', implode(',', $curr_list));
+                    if (class_exists('WAF_FW_Engine')) {
+                        WAF_FW_Engine::instance()->export_fast_cache();
+                    }
+                    if (function_exists('apcu_delete')) {
+                        apcu_delete('mdefender_waf_fast_cache');
+                    }
                 }
                 if (isset($pushed_data['user_rules']) && is_array($pushed_data['user_rules'])) {
                     update_option('waf_fw_cloud_rules_cache', $pushed_data['user_rules']);
@@ -871,7 +894,39 @@ function waf_fw_handle_cloud_sync_webhook() {
             $action = sanitize_text_field($_REQUEST['cloud_action'] ?? $_REQUEST['action'] ?? $pushed_data['action'] ?? '');
             $action_result = null;
 
-            if ($action === 'trigger_scan' || $action === 'remote_scan' || $action === 'scan') {
+            if ($action === 'delete_country_block' || $action === 'remove_country_block') {
+                $c_code = strtoupper(trim(sanitize_text_field($_REQUEST['country_code'] ?? $pushed_data['country_code'] ?? $_REQUEST['code'] ?? $pushed_data['code'] ?? '')));
+                if (!empty($c_code)) {
+                    $raw_c = (string) get_option('waf_fw_blocked_countries', '');
+                    $c_codes = array_values(array_filter(array_map('trim', explode(',', strtoupper($raw_c)))));
+                    $c_codes = array_values(array_diff($c_codes, [$c_code]));
+                    update_option('waf_fw_blocked_countries', implode(',', $c_codes));
+                    if (class_exists('WAF_FW_Engine')) {
+                        WAF_FW_Engine::instance()->export_fast_cache();
+                    }
+                    if (function_exists('apcu_delete')) {
+                        apcu_delete('mdefender_waf_fast_cache');
+                    }
+                    $action_result = ['success' => true, 'country' => $c_code, 'message' => "Country {$c_code} unblocked successfully"];
+                }
+            } elseif ($action === 'add_country_block') {
+                $c_code = strtoupper(trim(sanitize_text_field($_REQUEST['country_code'] ?? $pushed_data['country_code'] ?? $_REQUEST['code'] ?? $pushed_data['code'] ?? '')));
+                if (!empty($c_code)) {
+                    $raw_c = (string) get_option('waf_fw_blocked_countries', '');
+                    $c_codes = array_values(array_filter(array_map('trim', explode(',', strtoupper($raw_c)))));
+                    if (!in_array($c_code, $c_codes, true)) {
+                        $c_codes[] = $c_code;
+                    }
+                    update_option('waf_fw_blocked_countries', implode(',', $c_codes));
+                    if (class_exists('WAF_FW_Engine')) {
+                        WAF_FW_Engine::instance()->export_fast_cache();
+                    }
+                    if (function_exists('apcu_delete')) {
+                        apcu_delete('mdefender_waf_fast_cache');
+                    }
+                    $action_result = ['success' => true, 'country' => $c_code, 'message' => "Country {$c_code} blocked successfully"];
+                }
+            } elseif ($action === 'trigger_scan' || $action === 'remote_scan' || $action === 'scan') {
                 @set_time_limit(300);
                 @ini_set('memory_limit', '512M');
                 $scan_type = sanitize_text_field($_REQUEST['scan_type'] ?? $pushed_data['scan_type'] ?? 'full');
@@ -3424,10 +3479,10 @@ function waf_fw_handle_cloud_sso_login() {
         );
     }
 
-    // 2. Strict 90-second timestamp drift window
-    if (abs(time() - $ts) > 90) {
+    // 2. Cryptographic timestamp drift window (300 seconds to allow for server clock drift)
+    if (abs(time() - $ts) > 300) {
         wp_die(
-            esc_html__('This MDefender 1-Click SSO link has expired (tokens are valid for 90 seconds only for security). Please launch a fresh link from your MDefender Cloud Dashboard.', 'mdefender-pro'),
+            esc_html__('This MDefender 1-Click SSO link has expired. Please launch a fresh link from your MDefender Cloud Dashboard.', 'mdefender-pro'),
             esc_html__('SSO Token Expired', 'mdefender-pro'),
             ['response' => 403]
         );
@@ -3450,35 +3505,38 @@ function waf_fw_handle_cloud_sso_login() {
     $path_part = trim(strval(parse_url(home_url(), PHP_URL_PATH) ?? ''), '/');
     $domain_with_path = $path_part ? ($clean_domain . '/' . $path_part) : $clean_domain;
 
-    $candidate_secrets = array_filter([
-        get_option('waf_fw_site_token'),
-        get_option('waf_fw_api_key'),
-        get_option('waf_fw_ml_api_key')
-    ]);
+    $candidate_secrets = array_filter(array_map('trim', [
+        strval(get_option('waf_fw_site_token', '')),
+        strval(get_option('waf_fw_api_key', '')),
+        strval(get_option('waf_fw_ml_api_key', ''))
+    ]));
+
+    $domain_candidates = array_unique(array_filter([
+        $clean_domain,
+        $domain,
+        $domain_with_path,
+        $_SERVER['HTTP_HOST'] ?? '',
+        strval(parse_url(home_url(), PHP_URL_HOST) ?? '')
+    ]));
+
+    $email_candidates = array_unique(array_filter([
+        $email,
+        strtolower($email),
+        sanitize_email($_GET['email'] ?? '')
+    ]));
 
     $verified = false;
     foreach ($candidate_secrets as $secret) {
         if (empty($secret) || strlen($secret) < 16) continue;
 
-        // Payload matching: f"{website_id}:{clean_domain}:{user_email}:{ts}:{nonce}"
-        $payload = "{$sid}:{$clean_domain}:{$email}:{$ts}:{$nonce}";
-        if (hash_equals(hash_hmac('sha256', $payload, $secret), $token)) {
-            $verified = true;
-            break;
-        }
-
-        // Check with domain path (for subdirectory installs e.g. localhost/mahabub)
-        $payload_path = "{$sid}:{$domain_with_path}:{$email}:{$ts}:{$nonce}";
-        if (hash_equals(hash_hmac('sha256', $payload_path, $secret), $token)) {
-            $verified = true;
-            break;
-        }
-
-        // Also check with raw domain
-        $payload_raw = "{$sid}:{$domain}:{$email}:{$ts}:{$nonce}";
-        if (hash_equals(hash_hmac('sha256', $payload_raw, $secret), $token)) {
-            $verified = true;
-            break;
+        foreach ($domain_candidates as $dom) {
+            foreach ($email_candidates as $em) {
+                $payload = "{$sid}:{$dom}:{$em}:{$ts}:{$nonce}";
+                if (hash_equals(hash_hmac('sha256', $payload, $secret), $token)) {
+                    $verified = true;
+                    break 3;
+                }
+            }
         }
     }
 
@@ -3589,6 +3647,26 @@ add_action('rest_api_init', function() {
                         $countries = array_values(array_diff($countries, [$del_c]));
                     }
                     update_option('waf_fw_blocked_countries', implode(',', $countries));
+                    if (class_exists('WAF_FW_Engine')) {
+                        WAF_FW_Engine::instance()->export_fast_cache();
+                    }
+                    if (function_exists('apcu_delete')) {
+                        apcu_delete('mdefender_waf_fast_cache');
+                    }
+                }
+                $del_c_early = strtoupper(trim(sanitize_text_field($pushed_data['country_code'] ?? $pushed_data['code'] ?? $_REQUEST['country_code'] ?? $_REQUEST['code'] ?? '')));
+                $act_early = sanitize_text_field($pushed_data['action'] ?? $_REQUEST['action'] ?? '');
+                if (($act_early === 'delete_country_block' || $act_early === 'remove_country_block') && !empty($del_c_early)) {
+                    $raw_curr = (string) get_option('waf_fw_blocked_countries', '');
+                    $curr_list = array_values(array_filter(array_map('trim', explode(',', strtoupper($raw_curr)))));
+                    $curr_list = array_values(array_diff($curr_list, [$del_c_early]));
+                    update_option('waf_fw_blocked_countries', implode(',', $curr_list));
+                    if (class_exists('WAF_FW_Engine')) {
+                        WAF_FW_Engine::instance()->export_fast_cache();
+                    }
+                    if (function_exists('apcu_delete')) {
+                        apcu_delete('mdefender_waf_fast_cache');
+                    }
                 }
                 if (isset($pushed_data['user_rules']) && is_array($pushed_data['user_rules'])) {
                     update_option('waf_fw_cloud_rules_cache', $pushed_data['user_rules']);

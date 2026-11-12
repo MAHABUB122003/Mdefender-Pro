@@ -33,13 +33,11 @@ export default function UserLayout({ children, onLogout }) {
   const location = useLocation()
   const navigate = useNavigate()
 
-  // Strict Zero-Trust Onboarding Guard: Prevent un-onboarded accounts from accessing internal dashboard
+  // Strict Onboarding Route Guard: Only un-onboarded accounts are redirected to onboarding
   useEffect(() => {
     const cachedProfile = userStore.get('profile')
     if (cachedProfile && cachedProfile.role !== 'super_admin' && !cachedProfile.is_admin) {
-      const hasSites = (typeof cachedProfile.websites_count === 'number' && cachedProfile.websites_count > 0) ||
-                       (Array.isArray(cachedProfile.websites) && cachedProfile.websites.length > 0);
-      if (!cachedProfile.onboarded || !hasSites) {
+      if (!cachedProfile.onboarded) {
         navigate('/onboarding', { replace: true })
       }
     }
