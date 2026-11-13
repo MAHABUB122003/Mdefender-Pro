@@ -10698,20 +10698,6 @@ async def execute_posthack_action(website_id: str, body: PostHackActionRequest, 
         "message": resp_msg,
         "results": results
     })
-            user_id=str(user["id"]),
-            title=f"Website Connected: {clean_domain}",
-            message=f"Website {clean_domain} has been successfully connected to MDefender Pro Enterprise protection.",
-            category="website_connected",
-            website_id=website_id,
-            data={"domain": clean_domain, "plan": selected_plan}
-        )
-    except Exception:
-        pass
-
-    return success({
-        "action": body.action,
-        "results": results
-    })
 
 
 # -----------------------------------------------------------------------------
