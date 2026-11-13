@@ -8,9 +8,11 @@ This folder contains operational utilities and machine learning pipelines for MD
 
 | Script | Purpose | Usage |
 | :--- | :--- | :--- |
-| `build_plugin_zip.py` | Compiles the WordPress plugin from `plugin_source/` into `backend/downloads/mdefender-pro.zip` and syncs to frontend distribution directories. | `python scripts/build_plugin_zip.py` |
+| `build_plugin_zip.py` | Packages the WordPress plugin from `plugin_source/` into the backend and frontend download targets. It does not replace the locally installed plugin unless explicitly requested. | `python scripts/build_plugin_zip.py` |
 | `create_user.py` | Seeds default administrator and standard user accounts into MongoDB. | `python scripts/create_user.py` |
 | `sync_xampp_plugin.py` | Synchronizes plugin changes to local XAMPP environment for real-time WordPress testing. | `python scripts/sync_xampp_plugin.py` |
+
+Use `python scripts/build_plugin_zip.py --sync-xampp` only when intentionally replacing the locally installed plugin; review local plugin changes first.
 
 ---
 

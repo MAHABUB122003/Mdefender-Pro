@@ -46,6 +46,28 @@ class TestStep5WordPressPlugin(unittest.TestCase):
         self.assertGreater(info["files"], 10)
         self.assertGreater(info["size"], 100_000)
 
+    def test_remote_plugin_operations_require_credentials(self):
+        """Verify packaged remote operations are protected and log clearing is POST-only."""
+        with zipfile.ZipFile(PLUGIN_ZIP_PATH, 'r') as zf:
+            firewall_path = next(name for name in zf.namelist() if name.endswith('/waf-firewall.php'))
+            firewall = zf.read(firewall_path).decode('utf-8').replace('\r\n', '\n')
+
+        self.assertIn("function waf_fw_remote_rest_permission_callback($request)", firewall)
+        self.assertIn("hash_equals($stored_key, $req_key)", firewall)
+        self.assertIn("hash_equals($stored_token, $req_token)", firewall)
+
+        remote_routes = firewall.split("// Remote Live Logs Fetch Endpoint", 1)[1]
+        remote_routes = remote_routes.split("\n});\n\n/**\n * Hourly cloud heartbeat", 1)[0]
+        self.assertEqual(
+            remote_routes.count("'permission_callback' => 'waf_fw_remote_rest_permission_callback'"),
+            8,
+        )
+        self.assertNotIn("'permission_callback' => '__return_true'", remote_routes)
+
+        clear_route = remote_routes.split("register_rest_route('waf-fw/v1', '/remote-clear-logs',", 1)[1]
+        clear_route = clear_route.split("// Remote Auto-Recycle Settings Endpoint", 1)[0]
+        self.assertIn("'methods' => ['POST']", clear_route)
+
 
 if __name__ == "__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(TestStep5WordPressPlugin)

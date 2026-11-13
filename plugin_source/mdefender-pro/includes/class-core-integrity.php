@@ -48,7 +48,7 @@ class WAF_FW_Core_Integrity {
         $api_url = sprintf('https://api.wordpress.org/core/checksums/1.0/?version=%s&locale=%s', urlencode($wp_version), urlencode($locale));
         $response = wp_remote_get($api_url, [
             'timeout' => 10,
-            'sslverify' => false,
+            'sslverify' => true,
             'user-agent' => 'MDefender-Pro/' . (defined('WAF_FW_VERSION') ? WAF_FW_VERSION : '2.8.0'),
         ]);
 
@@ -99,6 +99,7 @@ class WAF_FW_Core_Integrity {
         $modified = [];
         $missing = [];
         $intact_count = 0;
+        $skipped_count = 0;
         $total_official = count($checksums);
 
         // 1. Verify all official core files
@@ -108,7 +109,10 @@ class WAF_FW_Core_Integrity {
 
             if (!file_exists($full_path)) {
                 // Ignore missing translation-only files in non-en setups if negligible
-                if (strpos($rel_path, 'wp-content/languages/') === 0) continue;
+                if (strpos($rel_path, 'wp-content/languages/') === 0) {
+                    $skipped_count++;
+                    continue;
+                }
                 $missing[] = [
                     'path' => $rel_path,
                     'full_path' => $full_path,
@@ -182,6 +186,8 @@ class WAF_FW_Core_Integrity {
             'success' => true,
             'wp_version' => $wp_version,
             'total_official_files' => $total_official,
+            'checked_count' => $intact_count + count($modified) + count($missing),
+            'skipped_count' => $skipped_count,
             'intact_count' => $intact_count,
             'modified_count' => count($modified),
             'missing_count' => count($missing),
@@ -218,28 +224,38 @@ class WAF_FW_Core_Integrity {
         }
 
         $target_file = ABSPATH . $rel_path;
+        if (is_link($target_file)) {
+            return ['success' => false, 'message' => 'Refusing to overwrite a symbolic link.'];
+        }
+
+        $root_real = realpath(ABSPATH);
+        $parent_dir = dirname($target_file);
+        if (!is_dir($parent_dir) && !wp_mkdir_p($parent_dir)) {
+            return ['success' => false, 'message' => 'Unable to create the core file directory.'];
+        }
+        $parent_real = realpath($parent_dir);
+        $root_prefix = $root_real ? strtolower(wp_normalize_path(trailingslashit($root_real))) : '';
+        $parent_path = $parent_real ? strtolower(wp_normalize_path(trailingslashit($parent_real))) : '';
+        if (!$root_prefix || !$parent_path || strpos($parent_path, $root_prefix) !== 0) {
+            return ['success' => false, 'message' => 'Core file path resolves outside the WordPress installation.'];
+        }
 
         // 1. Create a safety backup if target file exists
+        $backup_file = '';
         if (file_exists($target_file)) {
             $backup_dir = wp_normalize_path(WP_CONTENT_DIR . '/mdefender-backups/core_restores/');
-            if (!is_dir($backup_dir)) {
-                wp_mkdir_p($backup_dir);
-                @file_put_contents($backup_dir . '/.htaccess', "Order Deny,Allow\nDeny from all\n");
-                @file_put_contents($backup_dir . '/index.php', '<?php // Silence is golden');
+            if (!is_dir($backup_dir) && !wp_mkdir_p($backup_dir)) {
+                return ['success' => false, 'message' => 'Unable to create a safety backup directory.'];
             }
-            $backup_file = $backup_dir . '/' . sanitize_file_name(basename($rel_path)) . '.' . time() . '.bak';
-            @copy($target_file, $backup_file);
+            $backup_file = $backup_dir . '/' . md5($rel_path) . '.' . time() . '.bak';
+            if (!@copy($target_file, $backup_file)) {
+                return ['success' => false, 'message' => 'Unable to create a safety backup of the existing core file.'];
+            }
         }
 
-        // 2. Fetch original from official WordPress Core SVN repository
+        // 2. Fetch and verify the exact installed-version file from official WordPress Core SVN.
         $source_url = sprintf('https://core.svn.wordpress.org/tags/%s/%s', $wp_version, $rel_path);
-        $response = wp_remote_get($source_url, ['timeout' => 15, 'sslverify' => false]);
-
-        if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
-            // Fallback to trunk if version tag is minor
-            $source_url_trunk = sprintf('https://core.svn.wordpress.org/trunk/%s', $rel_path);
-            $response = wp_remote_get($source_url_trunk, ['timeout' => 15, 'sslverify' => false]);
-        }
+        $response = wp_remote_get($source_url, ['timeout' => 15, 'sslverify' => true]);
 
         if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
             return ['success' => false, 'message' => 'Failed to download original core file from WordPress.org.'];
@@ -248,22 +264,18 @@ class WAF_FW_Core_Integrity {
         $clean_code = wp_remote_retrieve_body($response);
         $expected_md5 = $checksums[$rel_path];
 
-        if (md5($clean_code) !== $expected_md5) {
-            // Allow slight line-ending variation if hash doesn't match exactly on CRLF
-            $normalized_code = str_replace("\r\n", "\n", $clean_code);
-            if (md5($normalized_code) !== $expected_md5 && md5($clean_code) !== $expected_md5) {
-                // Warning only, continue write if content is genuine
-            }
-        }
-
-        // Ensure parent directory exists
-        $parent_dir = dirname($target_file);
-        if (!is_dir($parent_dir)) {
-            wp_mkdir_p($parent_dir);
+        if (!is_string($clean_code) || md5($clean_code) !== $expected_md5) {
+            return ['success' => false, 'message' => 'Downloaded core file did not match the official checksum.'];
         }
 
         $written = @file_put_contents($target_file, $clean_code, LOCK_EX);
-        if ($written === false) {
+        if ($written !== strlen($clean_code) || !is_file($target_file) || md5_file($target_file) !== $expected_md5) {
+            if ($backup_file && !@copy($backup_file, $target_file)) {
+                return ['success' => false, 'message' => 'Restored file failed checksum validation and the safety backup could not be put back.'];
+            }
+            if (!$backup_file && file_exists($target_file)) {
+                @unlink($target_file);
+            }
             return ['success' => false, 'message' => 'Unable to write restored file. Please verify disk write permissions.'];
         }
 

@@ -9,8 +9,8 @@ Usage:
 """
 
 import os
-import sys
 import zipfile
+import argparse
 from datetime import datetime
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -43,15 +43,15 @@ def _should_skip(name: str) -> bool:
     return False
 
 
-def build(src_dir: str | None = None) -> str:
+def build(src_dir: str | None = None, sync_xampp: bool = False) -> str:
     src_dir = src_dir or DEFAULT_SRC
     if not os.path.isdir(src_dir):
         raise SystemExit(f"Plugin source not found: {src_dir}")
     if not os.path.isfile(os.path.join(src_dir, "waf-firewall.php")):
         raise SystemExit(f"Not a plugin folder (waf-firewall.php missing): {src_dir}")
 
-    # Sync to XAMPP
-    if os.path.isdir(os.path.dirname(XAMPP_SRC)):
+    # Syncing replaces the installed plugin and must be requested explicitly.
+    if sync_xampp and os.path.isdir(os.path.dirname(XAMPP_SRC)):
         import shutil
         print(f"Syncing to {XAMPP_SRC}...")
         if os.path.exists(XAMPP_SRC):
@@ -100,4 +100,12 @@ def build(src_dir: str | None = None) -> str:
 
 
 if __name__ == "__main__":
-    build(sys.argv[1] if len(sys.argv) > 1 else None)
+    parser = argparse.ArgumentParser(description="Build the MDefender Pro WordPress plugin archive.")
+    parser.add_argument("src_dir", nargs="?", help="Override the plugin source directory")
+    parser.add_argument(
+        "--sync-xampp",
+        action="store_true",
+        help="Replace the plugin installed in the local XAMPP WordPress site",
+    )
+    args = parser.parse_args()
+    build(args.src_dir, sync_xampp=args.sync_xampp)

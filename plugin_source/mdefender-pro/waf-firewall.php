@@ -36,6 +36,254 @@ if (!defined('WAF_FW_TABLE_SCAN_FILES_QUEUE')) define('WAF_FW_TABLE_SCAN_FILES_Q
 if (!defined('WAF_FW_TABLE_CLEANED_BACKUPS')) define('WAF_FW_TABLE_CLEANED_BACKUPS', 'waf_cleaned_backups');
 if (!defined('WAF_FW_TABLE_SECURITY_EVENTS')) define('WAF_FW_TABLE_SECURITY_EVENTS', 'waf_security_events');
 
+if (!function_exists('waf_fw_update_result')) {
+    function waf_fw_update_result($success, $status, $message, $details = []) {
+        return array_merge([
+            'success' => (bool) $success,
+            'status' => sanitize_key($status),
+            'message' => (string) $message,
+        ], is_array($details) ? $details : []);
+    }
+}
+
+if (!function_exists('waf_fw_get_upgrader_skin')) {
+    function waf_fw_get_upgrader_skin() {
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+        return class_exists('WP_Ajax_Upgrader_Skin')
+            ? new WP_Ajax_Upgrader_Skin()
+            : new Automatic_Upgrader_Skin();
+    }
+}
+
+if (!function_exists('waf_fw_update_plugins')) {
+    function waf_fw_update_plugins($plugin_file = '') {
+        require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        require_once ABSPATH . 'wp-admin/includes/update.php';
+        $plugins = get_plugins();
+
+        if ($plugin_file !== '' && !isset($plugins[$plugin_file])) {
+            return waf_fw_update_result(false, 'failed', 'The requested plugin is not installed.');
+        }
+
+        wp_update_plugins();
+        $updates = get_site_transient('update_plugins');
+        $targets = $plugin_file !== ''
+            ? (isset($updates->response[$plugin_file]) ? [$plugin_file] : [])
+            : array_keys((array) ($updates->response ?? []));
+        if (!$targets) {
+            $versions = [];
+            foreach ($plugin_file !== '' ? [$plugin_file] : array_keys($plugins) as $file) {
+                if (isset($plugins[$file])) {
+                    $versions[$file] = $plugins[$file]['Version'] ?? '';
+                }
+            }
+            return waf_fw_update_result(true, 'no_update', 'No plugin updates are available.', ['versions' => $versions]);
+        }
+
+        $upgrader = new Plugin_Upgrader(waf_fw_get_upgrader_skin());
+        $results = $plugin_file !== ''
+            ? [$plugin_file => $upgrader->upgrade($plugin_file)]
+            : $upgrader->bulk_upgrade($targets);
+        $installed = get_plugins();
+        $updated = [];
+        $failed = [];
+        foreach ($targets as $target) {
+            $result = $results[$target] ?? false;
+            if (is_wp_error($result) || $result !== true) {
+                $failed[$target] = is_wp_error($result) ? $result->get_error_message() : 'WordPress did not confirm the update.';
+                continue;
+            }
+            $updated[$target] = $installed[$target]['Version'] ?? '';
+        }
+
+        return waf_fw_update_result(
+            empty($failed),
+            empty($failed) ? 'updated' : (empty($updated) ? 'failed' : 'partial'),
+            empty($failed) ? 'Plugin update completed.' : 'One or more plugin updates failed.',
+            ['updated' => $updated, 'failed' => $failed]
+        );
+    }
+}
+
+if (!function_exists('waf_fw_update_themes')) {
+    function waf_fw_update_themes($theme_slug = '') {
+        require_once ABSPATH . 'wp-admin/includes/theme.php';
+        require_once ABSPATH . 'wp-admin/includes/update.php';
+        $themes = wp_get_themes();
+        if ($theme_slug !== '' && !isset($themes[$theme_slug])) {
+            return waf_fw_update_result(false, 'failed', 'The requested theme is not installed.');
+        }
+
+        wp_update_themes();
+        $updates = get_site_transient('update_themes');
+        $targets = $theme_slug !== ''
+            ? (isset($updates->response[$theme_slug]) ? [$theme_slug] : [])
+            : array_keys((array) ($updates->response ?? []));
+        if (!$targets) {
+            $versions = [];
+            foreach ($theme_slug !== '' ? [$theme_slug] : array_keys($themes) as $slug) {
+                if (isset($themes[$slug])) {
+                    $versions[$slug] = $themes[$slug]->get('Version');
+                }
+            }
+            return waf_fw_update_result(true, 'no_update', 'No theme updates are available.', ['versions' => $versions]);
+        }
+
+        $upgrader = new Theme_Upgrader(waf_fw_get_upgrader_skin());
+        $results = $theme_slug !== ''
+            ? [$theme_slug => $upgrader->upgrade($theme_slug)]
+            : $upgrader->bulk_upgrade($targets);
+        $installed = wp_get_themes();
+        $updated = [];
+        $failed = [];
+        foreach ($targets as $target) {
+            $result = $results[$target] ?? false;
+            if (is_wp_error($result) || $result !== true) {
+                $failed[$target] = is_wp_error($result) ? $result->get_error_message() : 'WordPress did not confirm the update.';
+                continue;
+            }
+            $updated[$target] = isset($installed[$target]) ? $installed[$target]->get('Version') : '';
+        }
+
+        return waf_fw_update_result(
+            empty($failed),
+            empty($failed) ? 'updated' : (empty($updated) ? 'failed' : 'partial'),
+            empty($failed) ? 'Theme update completed.' : 'One or more theme updates failed.',
+            ['updated' => $updated, 'failed' => $failed]
+        );
+    }
+}
+
+if (!function_exists('waf_fw_get_installed_wp_version')) {
+    function waf_fw_get_installed_wp_version() {
+        $version_file = ABSPATH . WPINC . '/version.php';
+        if (is_readable($version_file)) {
+            $wp_version = '';
+            include $version_file;
+            if (is_string($wp_version) && $wp_version !== '') {
+                return $wp_version;
+            }
+        }
+        return (string) get_bloginfo('version');
+    }
+}
+
+if (!function_exists('waf_fw_update_core')) {
+    function waf_fw_update_core($target_version = '') {
+        require_once ABSPATH . 'wp-admin/includes/update.php';
+        require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+
+        $current_version = waf_fw_get_installed_wp_version();
+        wp_version_check(true);
+        $offers = get_core_updates();
+        $offer = null;
+        foreach ((array) $offers as $candidate) {
+            if (($candidate->response ?? '') !== 'upgrade') {
+                continue;
+            }
+            if ($target_version === '' || ($candidate->current ?? '') === $target_version) {
+                $offer = $candidate;
+                break;
+            }
+        }
+        if (!$offer) {
+            if ($target_version === '' || version_compare($current_version, $target_version, '>=')) {
+                return waf_fw_update_result(true, 'no_update', 'WordPress core is already up to date.', ['updated_version' => $current_version]);
+            }
+            return waf_fw_update_result(false, 'failed', 'WordPress.org did not provide the requested core update.', ['installed_version' => $current_version]);
+        }
+
+        $upgrader = new Core_Upgrader(waf_fw_get_upgrader_skin());
+        $result = $upgrader->upgrade($offer);
+        if (is_wp_error($result)) {
+            return waf_fw_update_result(false, 'failed', $result->get_error_message(), ['installed_version' => $current_version]);
+        }
+
+        $installed_version = waf_fw_get_installed_wp_version();
+        if (!version_compare($installed_version, (string) ($offer->current ?? ''), '>=')) {
+            return waf_fw_update_result(false, 'failed', 'WordPress core update was not verified on disk.', ['installed_version' => $installed_version]);
+        }
+
+        delete_site_transient('update_core');
+        update_option('waf_fw_core_last_updated', current_time('mysql'));
+        return waf_fw_update_result(true, 'updated', 'WordPress core update completed and was verified on disk.', ['updated_version' => $installed_version]);
+    }
+}
+
+if (!function_exists('waf_fw_remove_directory_tree')) {
+    function waf_fw_remove_directory_tree($path) {
+        if (!is_dir($path) || is_link($path)) {
+            return is_file($path) || is_link($path) ? @unlink($path) : false;
+        }
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($path, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($iterator as $item) {
+            if ($item->isLink() || !$item->isDir()) {
+                if (!@unlink($item->getPathname())) {
+                    return false;
+                }
+            } elseif (!@rmdir($item->getPathname())) {
+                return false;
+            }
+        }
+        return @rmdir($path);
+    }
+}
+
+if (!function_exists('waf_fw_restore_safe_update_snapshot')) {
+    function waf_fw_restore_safe_update_snapshot($archive, $target_path, $target_is_file, $root_path) {
+        $real_root = realpath($root_path);
+        $real_target = realpath($target_path);
+        if (!$real_root || !$real_target || strpos($real_target, $real_root . DIRECTORY_SEPARATOR) !== 0 || is_link($target_path)) {
+            return false;
+        }
+
+        $zip = new ZipArchive();
+        if ($zip->open($archive) !== true) {
+            return false;
+        }
+        for ($index = 0; $index < $zip->numFiles; $index++) {
+            $entry = str_replace('\\', '/', (string) $zip->getNameIndex($index));
+            if ($entry === '' || $entry[0] === '/' || preg_match('#(^|/)\.\.(/|$)#', $entry)) {
+                $zip->close();
+                return false;
+            }
+        }
+
+        $parent = dirname($real_target);
+        $restore_dir = $parent . DIRECTORY_SEPARATOR . '.mdf-restore-' . wp_generate_uuid4();
+        if (!wp_mkdir_p($restore_dir) || !$zip->extractTo($restore_dir)) {
+            $zip->close();
+            waf_fw_remove_directory_tree($restore_dir);
+            return false;
+        }
+        $zip->close();
+
+        $backup_path = $real_target . '.mdf-backup-' . wp_generate_uuid4();
+        if (!@rename($real_target, $backup_path)) {
+            waf_fw_remove_directory_tree($restore_dir);
+            return false;
+        }
+
+        if ($target_is_file) {
+            $restored_file = $restore_dir . DIRECTORY_SEPARATOR . basename($real_target);
+            $restored = is_file($restored_file) && @rename($restored_file, $real_target);
+        } else {
+            $restored = @rename($restore_dir, $real_target);
+        }
+        if (!$restored) {
+            @rename($backup_path, $real_target);
+            waf_fw_remove_directory_tree($restore_dir);
+            return false;
+        }
+
+        return waf_fw_remove_directory_tree($backup_path);
+    }
+}
+
 if (defined('WAF_FW_MAIN_FILE')) {
     register_activation_hook(WAF_FW_MAIN_FILE, 'waf_fw_activate');
     register_deactivation_hook(WAF_FW_MAIN_FILE, 'waf_fw_deactivate');
@@ -1671,13 +1919,11 @@ function waf_fw_handle_cloud_sync_webhook() {
             } elseif ($action === 'sync_inventory' || $action === 'get_inventory' || $action === 'refresh_plugins' || $action === 'refresh_themes') {
                 $action_result = ['success' => true, 'status' => 'synced', 'message' => 'Full site inventory synchronized successfully'];
             } elseif ($action === 'update_plugin') {
-                if (!function_exists('get_plugins')) {
-                    require_once ABSPATH . 'wp-admin/includes/plugin.php';
-                }
                 $plugin_file = sanitize_text_field($_REQUEST['plugin_file'] ?? $pushed_data['plugin_file'] ?? $_REQUEST['plugin'] ?? $pushed_data['plugin'] ?? '');
                 if (!$plugin_file) {
                     $pid = sanitize_text_field($_REQUEST['plugin_id'] ?? $pushed_data['plugin_id'] ?? '');
-                    if ($pid && function_exists('get_plugins')) {
+                    if ($pid) {
+                        require_once ABSPATH . 'wp-admin/includes/plugin.php';
                         foreach (get_plugins() as $pfile => $pdata) {
                             if (sanitize_title($pdata['Name']) === $pid || strpos($pfile, $pid) !== false) {
                                 $plugin_file = $pfile;
@@ -1686,21 +1932,11 @@ function waf_fw_handle_cloud_sync_webhook() {
                         }
                     }
                 }
-                if ($plugin_file) {
-                    $trans = get_site_transient('update_plugins');
-                    if ($trans && isset($trans->response[$plugin_file])) {
-                        unset($trans->response[$plugin_file]);
-                        set_site_transient('update_plugins', $trans);
-                    }
-                    $action_result = ['success' => true, 'plugin' => $plugin_file, 'status' => 'updated', 'message' => "Plugin {$plugin_file} updated to latest release"];
-                }
+                $action_result = $plugin_file
+                    ? waf_fw_update_plugins($plugin_file)
+                    : waf_fw_update_result(false, 'failed', 'A plugin file or ID is required.');
             } elseif ($action === 'update_all_plugins') {
-                $trans = get_site_transient('update_plugins');
-                if ($trans) {
-                    $trans->response = [];
-                    set_site_transient('update_plugins', $trans);
-                }
-                $action_result = ['success' => true, 'status' => 'updated', 'message' => 'All fleet plugins updated to latest releases'];
+                $action_result = waf_fw_update_plugins();
             } elseif ($action === 'activate_theme' || $action === 'switch_theme') {
                 $theme_slug = sanitize_text_field($_REQUEST['theme_slug'] ?? $pushed_data['theme_slug'] ?? $_REQUEST['theme'] ?? $pushed_data['theme'] ?? $_REQUEST['id'] ?? $pushed_data['id'] ?? $_REQUEST['slug'] ?? $pushed_data['slug'] ?? '');
                 if ($theme_slug) {
@@ -1709,26 +1945,14 @@ function waf_fw_handle_cloud_sync_webhook() {
                 }
             } elseif ($action === 'update_theme') {
                 $theme_slug = sanitize_text_field($_REQUEST['theme_slug'] ?? $pushed_data['theme_slug'] ?? $_REQUEST['theme'] ?? $pushed_data['theme'] ?? $_REQUEST['id'] ?? $pushed_data['id'] ?? $_REQUEST['slug'] ?? $pushed_data['slug'] ?? '');
-                if ($theme_slug) {
-                    $trans = get_site_transient('update_themes');
-                    if ($trans && isset($trans->response[$theme_slug])) {
-                        unset($trans->response[$theme_slug]);
-                        set_site_transient('update_themes', $trans);
-                    }
-                    $action_result = ['success' => true, 'theme' => $theme_slug, 'status' => 'updated', 'message' => "Theme {$theme_slug} successfully updated to latest verified release"];
-                }
+                $action_result = $theme_slug
+                    ? waf_fw_update_themes($theme_slug)
+                    : waf_fw_update_result(false, 'failed', 'A theme slug is required.');
             } elseif ($action === 'update_all_themes') {
-                $trans = get_site_transient('update_themes');
-                if ($trans) {
-                    $trans->response = [];
-                    set_site_transient('update_themes', $trans);
-                }
-                $action_result = ['success' => true, 'status' => 'updated', 'message' => 'All fleet themes updated to latest releases'];
+                $action_result = waf_fw_update_themes();
             } elseif ($action === 'update_core' || $action === 'upgrade_core') {
-                $target_ver = sanitize_text_field($_REQUEST['version'] ?? $pushed_data['version'] ?? '7.1.4');
-                delete_site_transient('update_core');
-                update_option('waf_fw_core_last_updated', current_time('mysql'));
-                $action_result = ['success' => true, 'status' => 'updated', 'updated_version' => $target_ver, 'message' => "WordPress Core updated to {$target_ver}"];
+                $target_ver = sanitize_text_field($_REQUEST['version'] ?? $pushed_data['version'] ?? '');
+                $action_result = waf_fw_update_core($target_ver);
             } elseif ($action === 'toggle_auto_update' || $action === 'set_auto_update') {
                 $target_type = sanitize_text_field($_REQUEST['type'] ?? $pushed_data['type'] ?? 'plugin');
                 $enabled = (isset($_REQUEST['enabled']) && ($_REQUEST['enabled'] === '1' || $_REQUEST['enabled'] === 'true' || $_REQUEST['enabled'] === true)) ||
@@ -2061,158 +2285,178 @@ function waf_fw_handle_cloud_sync_webhook() {
                 if (!in_array($pol, ['all', 'minor', 'disabled'], true)) $pol = 'minor';
                 update_option('waf_fw_auto_update_core', $pol);
                 $action_result = ['success' => true, 'policy' => $pol, 'message' => "WordPress Core auto-update policy successfully set to '{$pol}'."];
-            } elseif ($action === 'update_core' || $action === 'upgrade_core') {
-                $target_ver = sanitize_text_field($_REQUEST['version'] ?? $pushed_data['version'] ?? '7.1.4');
-                delete_site_transient('update_core');
-                update_option('waf_fw_core_last_updated', current_time('mysql'));
-                update_option('waf_fw_checksum_status', 'verified');
-                update_option('waf_fw_modified_core_files', []);
-                $action_result = [
-                    'success' => true,
-                    'status' => 'updated',
-                    'updated_version' => $target_ver,
-                    'message' => "WordPress Core successfully upgraded to official release v{$target_ver} with 0 regression."
-                ];
             } elseif ($action === 'safe_update_pipeline' || $action === 'run_safe_update') {
                 @set_time_limit(180);
                 $t_type = sanitize_text_field($_REQUEST['target_type'] ?? $pushed_data['target_type'] ?? 'plugin');
                 $t_slug = sanitize_text_field($_REQUEST['target_slug'] ?? $pushed_data['target_slug'] ?? '');
                 $t_file = sanitize_text_field($_REQUEST['target_file'] ?? $pushed_data['target_file'] ?? '');
-
-                // Step 1: Create Pre-Update Micro-Snapshot
                 $checkpoint_dir = WP_CONTENT_DIR . '/uploads/waf-backups/safety_checkpoints/';
-                if (!is_dir($checkpoint_dir)) wp_mkdir_p($checkpoint_dir);
                 $checkpoint_id = 'mdf_safe_' . date('Ymd_His') . '_' . substr(md5(uniqid()), 0, 6);
-                $checkpoint_meta = [
-                    'id' => $checkpoint_id,
-                    'type' => $t_type,
-                    'target_slug' => $t_slug,
-                    'target_file' => $t_file,
-                    'created_at' => current_time('mysql'),
-                    'status' => 'created'
-                ];
-
-                $target_dir = '';
+                $target_path = '';
+                $root_path = '';
+                $target_is_file = false;
                 if ($t_type === 'plugin' && $t_file) {
-                    $parts = explode('/', $t_file);
-                    $p_dir = $parts[0];
-                    if ($p_dir && is_dir(WP_PLUGIN_DIR . '/' . $p_dir)) {
-                        $target_dir = WP_PLUGIN_DIR . '/' . $p_dir;
+                    $clean_file = ltrim(str_replace('\\', '/', $t_file), '/');
+                    if (strpos($clean_file, '..') === false && isset(get_plugins()[$clean_file])) {
+                        $plugin_path = WP_PLUGIN_DIR . '/' . $clean_file;
+                        $plugin_dir = dirname($clean_file);
+                        $root_path = WP_PLUGIN_DIR;
+                        if ($plugin_dir === '.' && is_file($plugin_path)) {
+                            $target_path = $plugin_path;
+                            $target_is_file = true;
+                        } elseif ($plugin_dir !== '.' && is_dir(WP_PLUGIN_DIR . '/' . $plugin_dir)) {
+                            $target_path = WP_PLUGIN_DIR . '/' . $plugin_dir;
+                        }
                     }
                 } elseif ($t_type === 'theme' && $t_slug) {
-                    if (is_dir(get_theme_root() . '/' . $t_slug)) {
-                        $target_dir = get_theme_root() . '/' . $t_slug;
+                    $clean_slug = sanitize_file_name($t_slug);
+                    $theme_root = get_theme_root();
+                    if ($clean_slug === $t_slug && is_dir($theme_root . '/' . $clean_slug)) {
+                        $target_path = $theme_root . '/' . $clean_slug;
+                        $root_path = $theme_root;
                     }
                 }
 
                 $snap_archive = $checkpoint_dir . $checkpoint_id . '.zip';
                 $snap_created = false;
-                if ($target_dir && class_exists('ZipArchive')) {
+                if ($target_path && $root_path && !is_link($target_path) && class_exists('ZipArchive')) {
+                    if (!is_dir($checkpoint_dir)) {
+                        wp_mkdir_p($checkpoint_dir);
+                    }
                     $zip = new ZipArchive();
                     if ($zip->open($snap_archive, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
-                        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($target_dir, RecursiveDirectoryIterator::SKIP_DOTS));
-                        foreach ($files as $f) {
-                            if (!$f->isDir()) {
-                                $r_path = substr($f->getPathname(), strlen($target_dir) + 1);
-                                $zip->addFile($f->getPathname(), $r_path);
+                        $file_count = 0;
+                        if ($target_is_file) {
+                            $file_count = $zip->addFile($target_path, basename($target_path)) ? 1 : 0;
+                        } else {
+                            $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($target_path, FilesystemIterator::SKIP_DOTS));
+                            foreach ($files as $file) {
+                                if ($file->isFile() && !$file->isLink()) {
+                                    $relative_path = substr($file->getPathname(), strlen($target_path) + 1);
+                                    if ($zip->addFile($file->getPathname(), $relative_path)) {
+                                        $file_count++;
+                                    }
+                                }
                             }
                         }
                         $zip->close();
-                        $snap_created = file_exists($snap_archive);
+                        $snap_created = $file_count > 0 && file_exists($snap_archive) && filesize($snap_archive) > 0;
                     }
                 }
 
-                // Step 2: Baseline probe
                 $home_url = home_url('/');
-                $admin_url = admin_url();
-                $t0 = microtime(true);
-                $is_local = (strpos($home_url, 'localhost') !== false || strpos($home_url, '127.0.0.1') !== false);
-                $base_time_ms = 45;
-
-                // Step 3: Execute Target Update
-                if ($t_type === 'plugin' && $t_file) {
-                    $trans = get_site_transient('update_plugins');
-                    if ($trans && isset($trans->response[$t_file])) {
-                        unset($trans->response[$t_file]);
-                        set_site_transient('update_plugins', $trans);
-                    }
-                } elseif ($t_type === 'theme' && $t_slug) {
-                    $trans = get_site_transient('update_themes');
-                    if ($trans && isset($trans->response[$t_slug])) {
-                        unset($trans->response[$t_slug]);
-                        set_site_transient('update_themes', $trans);
-                    }
-                }
-
-                // Step 4: Synthetic Regression Probes
                 $probe_endpoints = [
                     ['url' => $home_url, 'name' => 'Frontend Homepage (/)'],
-                    ['url' => $admin_url, 'name' => 'WordPress Admin (/wp-admin/)'],
+                    ['url' => admin_url(), 'name' => 'WordPress Admin (/wp-admin/)'],
                     ['url' => home_url('/wp-json/'), 'name' => 'REST API Gateway (/wp-json/)']
                 ];
-
                 $probe_results = [];
-                $regression_detected = false;
-                $failure_reason = '';
-
-                foreach ($probe_endpoints as $ep) {
-                    $p_t0 = microtime(true);
-                    $resp = null;
-                    if (!$is_local) {
-                        $resp = wp_remote_get($ep['url'], ['timeout' => 3, 'sslverify' => false]);
+                $run_probes = function() use ($probe_endpoints) {
+                    $results = [];
+                    foreach ($probe_endpoints as $endpoint) {
+                        $started_at = microtime(true);
+                        $response = wp_remote_get($endpoint['url'], [
+                            'timeout' => 5,
+                            'redirection' => 0,
+                            'reject_unsafe_urls' => true
+                        ]);
+                        $latency_ms = round((microtime(true) - $started_at) * 1000);
+                        if (is_wp_error($response)) {
+                            $results[] = [
+                                'endpoint' => $endpoint['name'],
+                                'status' => 'failed',
+                                'error' => $response->get_error_message(),
+                                'latency_ms' => $latency_ms
+                            ];
+                            break;
+                        }
+                        $body = (string) wp_remote_retrieve_body($response);
+                        $results[] = [
+                            'endpoint' => $endpoint['name'],
+                            'status' => 'healthy',
+                            'http_code' => (int) wp_remote_retrieve_response_code($response),
+                            'body_bytes' => strlen($body),
+                            'fatal_error' => (bool) preg_match('/(Fatal error|Parse error|There has been a critical error on this website)/i', $body),
+                            'latency_ms' => $latency_ms
+                        ];
                     }
-                    $lat_ms = max(18, round((microtime(true) - $p_t0) * 1000));
+                    return $results;
+                };
 
-                    $code = 200;
-                    $has_fatal = false;
-                    $is_wsod = false;
+                $failure_reason = '';
+                $regression_detected = false;
+                $rolled_back = false;
+                $update_result = [];
+                $baseline_results = [];
+                $base_time_ms = null;
 
-                    if ($resp && !is_wp_error($resp)) {
-                        $code = wp_remote_retrieve_response_code($resp);
-                        $body = wp_remote_retrieve_body($resp);
-                        $body_len = strlen($body);
-                        $has_fatal = preg_match('/(Fatal error|Parse error|There has been a critical error on this website)/i', $body);
-                        $is_wsod = ($body_len < 300 && $code === 200 && strpos($ep['url'], 'wp-json') === false);
-                    } else {
-                        // Local/Self-hosted verification: verify debug.log and critical origin files
-                        $debug_log = WP_CONTENT_DIR . '/debug.log';
-                        if (file_exists($debug_log)) {
-                            $tail = @file_get_contents($debug_log, false, null, max(0, filesize($debug_log) - 4096));
-                            if ($tail && preg_match('/(Fatal error|Parse error)/i', $tail)) {
-                                $has_fatal = true;
-                            }
+                if (!$snap_created) {
+                    $regression_detected = true;
+                    $failure_reason = 'A complete pre-update snapshot could not be created; update was not attempted.';
+                } else {
+                    $baseline_started_at = microtime(true);
+                    $baseline_results = $run_probes();
+                    $base_time_ms = round((microtime(true) - $baseline_started_at) * 1000);
+                    foreach ($baseline_results as $probe) {
+                        if (($probe['status'] ?? '') !== 'healthy' || ($probe['http_code'] ?? 0) < 200 || ($probe['http_code'] ?? 0) >= 400 || !empty($probe['fatal_error'])) {
+                            $regression_detected = true;
+                            $failure_reason = 'Baseline health probes failed; update was not attempted.';
+                            break;
                         }
                     }
+                }
 
-                    if ($code >= 500 || $has_fatal || $is_wsod) {
+                if (!$regression_detected) {
+                    $update_result = $t_type === 'plugin'
+                        ? waf_fw_update_plugins($t_file)
+                        : ($t_type === 'theme' ? waf_fw_update_themes($t_slug) : waf_fw_update_result(false, 'failed', 'Unsupported update target type.'));
+                    if (($update_result['success'] ?? false) !== true) {
                         $regression_detected = true;
-                        $failure_reason = $has_fatal ? "PHP Fatal Error detected on {$ep['name']}" : ($is_wsod ? "White Screen of Death (WSOD) detected on {$ep['name']}" : "HTTP {$code} Internal Server Error on {$ep['name']}");
-                        $probe_results[] = ['endpoint' => $ep['name'], 'status' => 'failed', 'http_code' => $code, 'latency_ms' => $lat_ms, 'error' => $failure_reason];
-                        break;
+                        $failure_reason = $update_result['message'] ?? 'The WordPress upgrader did not confirm the requested update.';
+                    } elseif (($update_result['status'] ?? '') === 'updated') {
+                        $probe_results = $run_probes();
+                        foreach ($probe_results as $index => $probe) {
+                            $baseline = $baseline_results[$index] ?? [];
+                            $code = (int) ($probe['http_code'] ?? 0);
+                            $body_bytes = (int) ($probe['body_bytes'] ?? 0);
+                            $is_frontend = strpos((string) ($probe['endpoint'] ?? ''), 'Frontend') === 0;
+                            if (
+                                ($probe['status'] ?? '') !== 'healthy'
+                                || $code < 200
+                                || $code >= 400
+                                || !empty($probe['fatal_error'])
+                                || $code !== (int) ($baseline['http_code'] ?? 0)
+                                || ($is_frontend && (int) ($baseline['body_bytes'] ?? 0) > 100 && $body_bytes < 20)
+                            ) {
+                                $regression_detected = true;
+                                $probe_results[$index]['status'] = 'failed';
+                                $failure_reason = $probe['error'] ?? ('Post-update health regression detected on ' . ($probe['endpoint'] ?? 'WordPress endpoint'));
+                                break;
+                            }
+                        }
+                    } else {
+                        $probe_results = $baseline_results;
                     }
-
-                    $probe_results[] = ['endpoint' => $ep['name'], 'status' => 'healthy', 'http_code' => $code, 'latency_ms' => $lat_ms];
                 }
 
-                // Step 5: Rollback if regression detected
-                $rolled_back = false;
-                if ($regression_detected && $snap_created && $target_dir && class_exists('ZipArchive')) {
-                    $zip = new ZipArchive();
-                    if ($zip->open($snap_archive) === true) {
-                        $zip->extractTo($target_dir);
-                        $zip->close();
-                        $rolled_back = true;
+                if ($regression_detected && $snap_created && $target_path && class_exists('ZipArchive')) {
+                    $rolled_back = waf_fw_restore_safe_update_snapshot($snap_archive, $target_path, $target_is_file, $root_path);
+                    if (!$rolled_back) {
+                        $failure_reason .= ' Snapshot restoration could not be verified.';
                     }
                 }
 
-                // Save Audit Log
                 $history = (array) get_option('waf_fw_safe_update_history', []);
+                $status = $regression_detected
+                    ? ($rolled_back ? 'rolled_back' : 'failed')
+                    : ((($update_result['status'] ?? '') === 'no_update') ? 'no_update' : 'verified_clean');
+                $probe_results = $probe_results ?: $baseline_results;
                 $log_entry = [
                     'id' => $checkpoint_id,
                     'timestamp' => current_time('mysql'),
                     'target_type' => $t_type,
                     'target_name' => $t_slug ?: $t_file,
-                    'status' => $regression_detected ? ($rolled_back ? 'rolled_back' : 'failed') : 'verified_clean',
+                    'status' => $status,
                     'regression_detected' => $regression_detected,
                     'rolled_back' => $rolled_back,
                     'failure_reason' => $failure_reason,
@@ -2227,15 +2471,17 @@ function waf_fw_handle_cloud_sync_webhook() {
                 $action_result = [
                     'success' => !$regression_detected,
                     'checkpoint_id' => $checkpoint_id,
-                    'status' => $regression_detected ? ($rolled_back ? 'rolled_back' : 'failed') : 'verified_clean',
+                    'status' => $status,
                     'regression_detected' => $regression_detected,
                     'rolled_back' => $rolled_back,
                     'failure_reason' => $failure_reason,
                     'probe_results' => $probe_results,
                     'baseline_ms' => $base_time_ms,
-                    'message' => $regression_detected 
-                        ? ($rolled_back ? "CRITICAL REGRESSION PREVENTED: {$failure_reason}. Instant self-healing rollback restored website in 1.8s." : "Update failed with regression: {$failure_reason}")
-                        : "Safe Update Verified: 0 regression detected across all synthetic probes. Health score 100%."
+                    'snapshot_saved' => $snap_created,
+                    'update_result' => $update_result,
+                    'message' => $regression_detected
+                        ? ($rolled_back ? "Update was rolled back after a detected failure: {$failure_reason}" : "Update failed: {$failure_reason}")
+                        : (($status === 'no_update') ? 'No update was available for the selected component.' : 'Update completed and passed the configured HTTP regression probes.')
                 ];
             } elseif ($action === 'get_safe_update_history' || $action === 'safe_update_history') {
                 $history = (array) get_option('waf_fw_safe_update_history', []);
@@ -3636,6 +3882,33 @@ add_action('init', 'waf_fw_handle_cloud_sso_login', 1);
 
 add_action('init', 'waf_fw_handle_cloud_sync_webhook', 1);
 
+if (!function_exists('waf_fw_remote_rest_permission_callback')) {
+    function waf_fw_remote_rest_permission_callback($request) {
+        if (function_exists('current_user_can') && current_user_can('manage_options')) {
+            return true;
+        }
+
+        $stored_key = trim((string) get_option('waf_fw_ml_api_key', get_option('waf_fw_api_key', '')));
+        $stored_token = trim((string) get_option('waf_fw_site_token', ''));
+        $raw_auth = (string) ($request->get_header('authorization') ?: $request->get_header('x-api-key') ?: $request->get_param('api_key') ?: '');
+        $req_key = trim(sanitize_text_field(preg_replace('/^\s*Bearer\s+/i', '', $raw_auth)));
+        $req_token = trim(sanitize_text_field((string) ($request->get_header('x-site-token') ?: $request->get_param('site_token') ?: '')));
+
+        if (
+            ($stored_key !== '' && $req_key !== '' && hash_equals($stored_key, $req_key)) ||
+            ($stored_token !== '' && $req_token !== '' && hash_equals($stored_token, $req_token))
+        ) {
+            return true;
+        }
+
+        return new WP_Error(
+            'rest_forbidden',
+            'Unauthorized: valid MDefender API credentials are required.',
+            ['status' => 401]
+        );
+    }
+}
+
 add_action('rest_api_init', function() {
     register_rest_route('waf-fw/v1', '/sync', [
         'methods' => ['POST', 'GET'],
@@ -3867,13 +4140,11 @@ add_action('rest_api_init', function() {
             } elseif ($action === 'sync_inventory' || $action === 'get_inventory' || $action === 'refresh_plugins' || $action === 'refresh_themes') {
                 $action_result = ['success' => true, 'status' => 'synced', 'message' => 'Full site inventory synchronized successfully'];
             } elseif ($action === 'update_plugin') {
-                if (!function_exists('get_plugins')) {
-                    require_once ABSPATH . 'wp-admin/includes/plugin.php';
-                }
                 $plugin_file = sanitize_text_field($_REQUEST['plugin_file'] ?? $pushed_data['plugin_file'] ?? $_REQUEST['plugin'] ?? $pushed_data['plugin'] ?? '');
                 if (!$plugin_file) {
                     $pid = sanitize_text_field($_REQUEST['plugin_id'] ?? $pushed_data['plugin_id'] ?? '');
-                    if ($pid && function_exists('get_plugins')) {
+                    if ($pid) {
+                        require_once ABSPATH . 'wp-admin/includes/plugin.php';
                         foreach (get_plugins() as $pfile => $pdata) {
                             if (sanitize_title($pdata['Name']) === $pid || strpos($pfile, $pid) !== false) {
                                 $plugin_file = $pfile;
@@ -3882,21 +4153,11 @@ add_action('rest_api_init', function() {
                         }
                     }
                 }
-                if ($plugin_file) {
-                    $trans = get_site_transient('update_plugins');
-                    if ($trans && isset($trans->response[$plugin_file])) {
-                        unset($trans->response[$plugin_file]);
-                        set_site_transient('update_plugins', $trans);
-                    }
-                    $action_result = ['success' => true, 'plugin' => $plugin_file, 'status' => 'updated', 'message' => "Plugin {$plugin_file} updated to latest release"];
-                }
+                $action_result = $plugin_file
+                    ? waf_fw_update_plugins($plugin_file)
+                    : waf_fw_update_result(false, 'failed', 'A plugin file or ID is required.');
             } elseif ($action === 'update_all_plugins') {
-                $trans = get_site_transient('update_plugins');
-                if ($trans) {
-                    $trans->response = [];
-                    set_site_transient('update_plugins', $trans);
-                }
-                $action_result = ['success' => true, 'status' => 'updated', 'message' => 'All fleet plugins updated to latest releases'];
+                $action_result = waf_fw_update_plugins();
             } elseif ($action === 'activate_theme' || $action === 'switch_theme') {
                 $theme_slug = sanitize_text_field($pushed_data['theme'] ?? $pushed_data['slug'] ?? $_REQUEST['theme'] ?? $_REQUEST['slug'] ?? $pushed_data['theme_slug'] ?? $_REQUEST['theme_slug'] ?? '');
                 if ($theme_slug) {
@@ -3905,21 +4166,11 @@ add_action('rest_api_init', function() {
                 }
             } elseif ($action === 'update_theme') {
                 $theme_slug = sanitize_text_field($pushed_data['theme'] ?? $pushed_data['slug'] ?? $_REQUEST['theme'] ?? $_REQUEST['slug'] ?? $pushed_data['theme_slug'] ?? $_REQUEST['theme_slug'] ?? '');
-                if ($theme_slug) {
-                    $trans = get_site_transient('update_themes');
-                    if ($trans && isset($trans->response[$theme_slug])) {
-                        unset($trans->response[$theme_slug]);
-                        set_site_transient('update_themes', $trans);
-                    }
-                    $action_result = ['success' => true, 'theme' => $theme_slug, 'status' => 'updated', 'message' => "Theme {$theme_slug} successfully updated to latest verified release"];
-                }
+                $action_result = $theme_slug
+                    ? waf_fw_update_themes($theme_slug)
+                    : waf_fw_update_result(false, 'failed', 'A theme slug is required.');
             } elseif ($action === 'update_all_themes') {
-                $trans = get_site_transient('update_themes');
-                if ($trans) {
-                    $trans->response = [];
-                    set_site_transient('update_themes', $trans);
-                }
-                $action_result = ['success' => true, 'status' => 'updated', 'message' => 'All fleet themes updated to latest releases'];
+                $action_result = waf_fw_update_themes();
             }
 
             // Fresh inventory after action
@@ -3954,12 +4205,12 @@ add_action('rest_api_init', function() {
             $data = $logger->get_logs($params);
             return new WP_REST_Response($data, 200);
         },
-        'permission_callback' => '__return_true'
+        'permission_callback' => 'waf_fw_remote_rest_permission_callback'
     ]);
 
     // Remote Clear Logs Endpoint
     register_rest_route('waf-fw/v1', '/remote-clear-logs', [
-        'methods' => ['POST', 'GET'],
+        'methods' => ['POST'],
         'callback' => function($request) {
             $params = array_merge($request->get_query_params(), (array)$request->get_json_params());
             $days = sanitize_text_field($params['days'] ?? 'all');
@@ -3986,7 +4237,7 @@ add_action('rest_api_init', function() {
                 'total_blocked' => (int)($fresh['total_attacks'] ?? 0),
             ], 200);
         },
-        'permission_callback' => '__return_true'
+        'permission_callback' => 'waf_fw_remote_rest_permission_callback'
     ]);
 
     // Remote Auto-Recycle Settings Endpoint
@@ -4040,7 +4291,7 @@ add_action('rest_api_init', function() {
                 ]
             ], 200);
         },
-        'permission_callback' => '__return_true'
+        'permission_callback' => 'waf_fw_remote_rest_permission_callback'
     ]);
 
     // Remote Backup Download Stream Route
@@ -4081,7 +4332,7 @@ add_action('rest_api_init', function() {
             readfile($path);
             exit;
         },
-        'permission_callback' => '__return_true'
+        'permission_callback' => 'waf_fw_remote_rest_permission_callback'
     ]);
 
     register_rest_route('waf-fw/v1', '/remote-recycle-settings', [
@@ -4110,7 +4361,7 @@ add_action('rest_api_init', function() {
                 'retention_days' => (int) get_option('waf_fw_recycle_days', 7)
             ], 200);
         },
-        'permission_callback' => '__return_true'
+        'permission_callback' => 'waf_fw_remote_rest_permission_callback'
     ]);
 
     // =========================================================================
@@ -4366,7 +4617,7 @@ add_action('rest_api_init', function() {
 
             return new WP_REST_Response($payload, 200);
         },
-        'permission_callback' => '__return_true'
+        'permission_callback' => 'waf_fw_remote_rest_permission_callback'
     ]);
 
     // =========================================================================
@@ -4410,7 +4661,7 @@ add_action('rest_api_init', function() {
                 ], 200);
             }
         },
-        'permission_callback' => '__return_true'
+        'permission_callback' => 'waf_fw_remote_rest_permission_callback'
     ]);
 
     // =========================================================================
@@ -4469,7 +4720,7 @@ add_action('rest_api_init', function() {
                 'message' => 'Core file repaired successfully.'
             ], 200);
         },
-        'permission_callback' => '__return_true'
+        'permission_callback' => 'waf_fw_remote_rest_permission_callback'
     ]);
 });
 

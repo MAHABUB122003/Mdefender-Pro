@@ -71,36 +71,50 @@ if (strpos($req_uri_raw, '/wp-admin/') !== false) {
 
 // Fast-path client IP extraction
 function mdefender_get_fast_client_ip() {
-    if (!empty($_GET['test_ip'])) {
-        $cand = preg_replace('/:\d+$/', '', trim($_GET['test_ip']));
-        if (filter_var($cand, FILTER_VALIDATE_IP)) return $cand;
+    $remote_addr = trim((string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+    if (!filter_var($remote_addr, FILTER_VALIDATE_IP)) {
+        return '0.0.0.0';
     }
-    if (!empty($_GET['ip_test'])) {
-        $cand = preg_replace('/:\d+$/', '', trim($_GET['ip_test']));
-        if (filter_var($cand, FILTER_VALIDATE_IP)) return $cand;
-    }
-    $headers = [
-        'HTTP_CF_CONNECTING_IP',
-        'HTTP_X_REAL_IP',
-        'HTTP_TRUE_CLIENT_IP',
-        'HTTP_CLIENT_IP',
-        'HTTP_X_CLIENT_IP',
-        'HTTP_X_FORWARDED_FOR',
-        'REMOTE_ADDR'
-    ];
-    foreach ($headers as $h) {
-        if (!empty($_SERVER[$h])) {
-            $raw = trim((string) $_SERVER[$h]);
-            $ips = explode(',', $raw);
-            foreach ($ips as $cand) {
-                $clean = preg_replace('/:\d+$/', '', trim($cand));
-                if (filter_var($clean, FILTER_VALIDATE_IP)) {
-                    return $clean;
-                }
-            }
+
+    $trusted_proxies = defined('MDEFENDER_TRUSTED_PROXIES') ? MDEFENDER_TRUSTED_PROXIES : [];
+    if (function_exists('get_option')) {
+        $configured_proxies = get_option('waf_fw_trusted_proxies', []);
+        if (!empty($configured_proxies)) {
+            $trusted_proxies = $configured_proxies;
         }
     }
-    return '0.0.0.0';
+    if (is_string($trusted_proxies)) {
+        $trusted_proxies = preg_split('/[,\r\n]+/', $trusted_proxies);
+    }
+    if (!is_array($trusted_proxies)) {
+        $trusted_proxies = [];
+    }
+    $trusted_proxies = array_values(array_filter(array_map('trim', $trusted_proxies)));
+    if (!in_array($remote_addr, $trusted_proxies, true)) {
+        return $remote_addr;
+    }
+
+    foreach (['HTTP_CF_CONNECTING_IP', 'HTTP_TRUE_CLIENT_IP', 'HTTP_X_REAL_IP'] as $header) {
+        $candidate = trim((string) ($_SERVER[$header] ?? ''));
+        if (filter_var($candidate, FILTER_VALIDATE_IP)) {
+            return $candidate;
+        }
+    }
+
+    $forwarded = trim((string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''));
+    if ($forwarded !== '') {
+        $chain = array_reverse(array_map('trim', explode(',', $forwarded)));
+        $client_addr = $remote_addr;
+        foreach ($chain as $candidate) {
+            if (!in_array($client_addr, $trusted_proxies, true) || !filter_var($candidate, FILTER_VALIDATE_IP)) {
+                break;
+            }
+            $client_addr = $candidate;
+        }
+        return $client_addr;
+    }
+
+    return $remote_addr;
 }
 
 // Locate fast cache file
@@ -398,17 +412,13 @@ $has_attack_marker = (
 $ip_whitelist = $mdefender_cache_data['whitelist_ips'] ?? [];
 if (!empty($ip_whitelist)) {
     $raw_wl_candidates = [$mdefender_ip];
-    if (!empty($_SERVER['REMOTE_ADDR'])) { $raw_wl_candidates[] = $_SERVER['REMOTE_ADDR']; }
-    foreach (['HTTP_CF_CONNECTING_IP', 'HTTP_TRUE_CLIENT_IP', 'HTTP_X_REAL_IP', 'HTTP_X_FORWARDED_FOR'] as $wl_hdr) {
-        if (!empty($_SERVER[$wl_hdr])) {
-            foreach (explode(',', (string)$_SERVER[$wl_hdr]) as $p) {
-                $raw_wl_candidates[] = trim($p);
-            }
-        }
-    }
     foreach ($raw_wl_candidates as $w_cand) {
         if (!empty($w_cand) && (isset($ip_whitelist[$w_cand]) || (is_array($ip_whitelist) && in_array($w_cand, $ip_whitelist, true)))) {
-            // Whitelisted IP: Pre-Flight WAAP passes instantly without inspection
+            $is_loopback = in_array($w_cand, ['127.0.0.1', '::1', 'localhost'], true);
+            if ($is_loopback && $has_attack_marker) {
+                continue;
+            }
+            // Trusted remote IPs bypass inspection; loopback bypasses only clean local traffic.
             return;
         }
     }

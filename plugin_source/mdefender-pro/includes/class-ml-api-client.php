@@ -443,6 +443,7 @@ class WAF_FW_ML_Api_Client {
         }
         $data = $this->request('POST', '/api/v1/wordpress/heartbeat', $payload, $timeout);
         if (is_array($data)) {
+            update_option('waf_fw_connected', 'yes');
             return $data;
         }
         // Fallback retry without stats if backend version threw an error on stats parsing
@@ -450,8 +451,12 @@ class WAF_FW_ML_Api_Client {
             unset($payload['stats']);
             $fallback_data = $this->request('POST', '/api/v1/wordpress/heartbeat', $payload, $timeout);
             if (is_array($fallback_data)) {
+                update_option('waf_fw_connected', 'yes');
                 return $fallback_data;
             }
+        }
+        if (in_array($this->last_status_code, [401, 403], true)) {
+            update_option('waf_fw_connected', 'no');
         }
         return null;
     }
