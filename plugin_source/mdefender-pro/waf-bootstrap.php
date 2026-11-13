@@ -342,7 +342,14 @@ $has_attack_marker = (
     !empty($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE']) ||
     preg_match('@(?:attacker-phishing|evil-phishing)@i', ($_SERVER['HTTP_HOST'] ?? '')) ||
     preg_match('#\b(?:or|and)\s+(?:\d+=\d+|\w+=\w+)#i', $deobfuscated_stripped) ||
-    preg_match('#(?:https?|ftp|gopher|dict)://(?:127\.0\.0\.1|localhost|\[::1\]|10\.\d+|192\.168\.|172\.(?:1[6-9]|2\d|3[01]))#i', $deobfuscated) ||
+    (function() use ($deobfuscated, $mdefender_cur_host) {
+        $curr_h = strtolower(preg_replace('/:\d+$/', '', $mdefender_cur_host));
+        $s_eval = preg_replace('#https?://' . preg_quote($mdefender_cur_host, '#') . '\b#i', '', $deobfuscated);
+        if (in_array($curr_h, ['localhost', '127.0.0.1', '::1'])) {
+            $s_eval = preg_replace('#https?://(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?\b#i', '', $s_eval);
+        }
+        return (bool) preg_match('#(?:https?|ftp|gopher|dict)://(?:127\.0\.0\.1|localhost|\[::1\]|10\.\d+|192\.168\.|172\.(?:1[6-9]|2\d|3[01]))#i', $s_eval);
+    })() ||
     (strpos($eval_uri, '/wp-json/wp/v2/users/me') === false && preg_match('#(?:\.env|\.git|\.user\.ini|\.htaccess|wp-config\.php(?:\.(?:bak|old|swp)|~)?\b|(?:shell|c99|r57|wso|alfa|b374k|cmd|webshell)\.php\b|\.(?:phtml|php[3-8]|phar)\b|\.php\.(?:png|jpg|gif)\b|wp-admin/(?:install|setup-config)\.php\b|wp-json/wp/v2/users(?:\?|$|/(?!me\b)))\b#i', $eval_uri)) ||
     !empty($_SERVER['HTTP_X_FORWARDED_TRANSFER_ENCODING']) ||
     !empty($_SERVER['HTTP_X_CUSTOM_SMUGGLE']) ||
@@ -595,7 +602,14 @@ if (!$is_blocked && $has_attack_marker) {
         $block_reason = 'Path Traversal & Sensitive Configuration Exposure probe intercepted by Pre-Flight WAAP.';
     }
     // Check Module 5: Server-Side Request Forgery (SSRF) & Cloud Metadata
-    elseif (preg_match('@(?:https?|ftp|gopher|dict):\/\/(?:169\.254\.\d+\.\d+|127\.0\.0\.1|0\.0\.0\.0|localhost|\[::1\]|\[::ffff:(?:127\.|10\.|192\.168\.|172\.)\d+.*\]|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+|2130706433|0x7f000001|017700000001|metadata\.google(?:\.internal)?)@i', $eval_payload)) {
+    elseif ((function() use ($eval_payload, $mdefender_cur_host) {
+        $curr_h = strtolower(preg_replace('/:\d+$/', '', $mdefender_cur_host));
+        $s_eval = preg_replace('#https?://' . preg_quote($mdefender_cur_host, '#') . '\b#i', '', $eval_payload);
+        if (in_array($curr_h, ['localhost', '127.0.0.1', '::1'])) {
+            $s_eval = preg_replace('#https?://(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?\b#i', '', $s_eval);
+        }
+        return (bool) preg_match('@(?:https?|ftp|gopher|dict):\/\/(?:169\.254\.\d+\.\d+|127\.0\.0\.1|0\.0\.0\.0|localhost|\[::1\]|\[::ffff:(?:127\.|10\.|192\.168\.|172\.)\d+.*\]|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+|2130706433|0x7f000001|017700000001|metadata\.google(?:\.internal)?)@i', $s_eval);
+    })()) {
         $is_blocked = true;
         $attack_name = 'Server-Side Request Forgery (SSRF)';
         $rule_name = 'Pre-Flight WAAP: Cloud Metadata & SSRF Guard';

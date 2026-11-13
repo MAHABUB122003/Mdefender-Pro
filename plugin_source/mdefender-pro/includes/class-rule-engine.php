@@ -266,6 +266,22 @@ class WAF_FW_Rule_Engine {
                     }
                 }
             }
+            if (strpos($rule['name'], 'SSRF') !== false) {
+                $curr_h = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
+                $site_h = function_exists('home_url') ? strtolower((string)parse_url(home_url(), PHP_URL_HOST)) : '';
+                $is_local_env = in_array($curr_h, ['localhost', '127.0.0.1', '::1']) || in_array($site_h, ['localhost', '127.0.0.1', '::1']);
+
+                $ssrf_norm = preg_replace('#https?://' . preg_quote($curr_h, '#') . '\b#i', '', $normalized);
+                $ssrf_raw = preg_replace('#https?://' . preg_quote($curr_h, '#') . '\b#i', '', $raw_decoded);
+                if ($is_local_env) {
+                    $ssrf_norm = preg_replace('#https?://(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?\b#i', '', $ssrf_norm);
+                    $ssrf_raw = preg_replace('#https?://(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?\b#i', '', $ssrf_raw);
+                }
+
+                if (!@preg_match($rule['pattern'], $ssrf_norm) && !@preg_match($rule['pattern'], $ssrf_raw)) {
+                    continue;
+                }
+            }
 
             if (@preg_match($rule['pattern'], $normalized) || @preg_match($rule['pattern'], $raw_decoded) || @preg_match($rule['pattern'], $combined)) {
                 $matches[] = [
