@@ -487,11 +487,7 @@ class WAF_FW_Website_Hardening {
     /* ===== 2. LOGIN PROTECT ===== */
     public function apply_login_protect($settings = []) {
         $results = ['feature' => 'login_protect', 'actions' => []];
-
-        if (isset($settings['login_captcha'])) {
-            update_option('waf_harden_login_captcha', $settings['login_captcha'] ? 'yes' : 'no');
-            $results['actions'][] = 'Login CAPTCHA ' . ($settings['login_captcha'] ? 'enabled' : 'disabled');
-        }
+        delete_option('waf_harden_login_captcha');
         if (isset($settings['recaptcha_site_key'])) {
             update_option('waf_harden_recaptcha_site_key', sanitize_text_field($settings['recaptcha_site_key']));
         }
@@ -1499,7 +1495,7 @@ class WAF_FW_Website_Hardening {
             case 'strict':
             case 'maximum':
                 $this->apply_admin_protect(['disable_file_editor' => true, 'disable_user_enum' => true, 'admin_session_timeout' => 1800]);
-                $this->apply_login_protect(['login_captcha' => true, 'brute_force_threshold' => 3, 'login_lockout_time' => 3600]);
+                $this->apply_login_protect(['brute_force_threshold' => 3, 'login_lockout_time' => 3600]);
                 $this->apply_wp_config(['lock_permissions' => true]);
                 $this->apply_htaccess(['block_dir_browsing' => true, 'protect_wp_config' => true, 'block_cpanel_probes' => true]);
                 $this->apply_uploads(['block_php' => true, 'scan_uploads' => true, 'block_executables' => true]);

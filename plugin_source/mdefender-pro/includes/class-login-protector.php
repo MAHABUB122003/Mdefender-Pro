@@ -54,15 +54,11 @@ class WAF_FW_Login_Protector {
             add_action('wp_logout', [$this, 'on_logout_redirect']);
         }
 
-        $is_connected = in_array(get_option('waf_fw_connected', 'no'), ['yes', '1', 1, true], true);
-        $hold_press_active = $is_connected && (get_option('waf_hold_press_enabled', 'no') === 'yes');
-        $captcha_active = $is_connected && (get_option('waf_harden_login_captcha', 'no') === 'yes');
-        if ($hold_press_active || $captcha_active) {
-            add_action('login_form', [$this, 'render_captcha_form'], 20);
+        // Biometric 'Press & Hold' Defense for WordPress Admin Login
+        $hold_press_active = (get_option('waf_hold_press_enabled', 'no') === 'yes');
+        if ($hold_press_active) {
+            add_action('login_form', [$this, 'render_hold_press_challenge'], 20);
             add_filter('authenticate', [$this, 'validate_login_challenge'], 10, 3);
-            add_filter('wp_authenticate_user', [$this, 'validate_captcha'], 10, 2);
-            add_action('wp_ajax_waf_captcha_image', [$this, 'generate_captcha_image']);
-            add_action('wp_ajax_nopriv_waf_captcha_image', [$this, 'generate_captcha_image']);
         }
     }
 
@@ -686,41 +682,8 @@ class WAF_FW_Login_Protector {
     }
 
     /* =====================================================================
-       ADVANCED CAPTCHA  (reCAPTCHA v2 + honeypot + math fallback)
-       ===================================================================== */
-
-        /* =====================================================================
        MDEFENDER PRO ADVANCED BOT DEFENSE & BIOMETRIC VERIFICATION
        ===================================================================== */
-
-    public function render_captcha_form() {
-        $hold_press_enabled = get_option('waf_hold_press_enabled', 'no') === 'yes';
-        if ($hold_press_enabled) {
-            $this->render_hold_press_challenge();
-            return;
-        }
-
-        if (get_option('waf_fw_turnstile_enabled', get_option('waf_turnstile_enabled', 'no')) === 'yes') {
-            return; // Managed by Turnstile class
-        }
-
-        $site_key = get_option('waf_harden_recaptcha_site_key', '');
-        $secret_key = get_option('waf_harden_recaptcha_secret_key', '');
-
-        echo '<div style="margin: 14px 0 16px; background: #ffffff; border: 1px solid #dcdfe4; border-radius: 8px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); font-family: -apple-system, BlinkMacSystemFont, sans-serif;">';
-
-        if ($site_key && $secret_key) {
-            $this->render_recaptcha($site_key);
-        } elseif (function_exists('imagecreatetruecolor')) {
-            $this->render_image_captcha();
-        } else {
-            $this->render_math_captcha();
-        }
-
-        $this->render_honeypot();
-
-        echo '</div>';
-    }
 
     /**
      * MDefender Pro Unbypassable Biometric 'Press & Hold' Challenge
@@ -827,183 +790,7 @@ class WAF_FW_Login_Protector {
         <?php
     }
 
-    private function render_recaptcha($site_key) {
-        wp_enqueue_script('google-recaptcha', 'https://www.google.com/recaptcha/api.js', [], null, true);
-        ?>
-        <div class="g-recaptcha" data-sitekey="<?php echo esc_attr($site_key); ?>" style="margin-bottom:10px;"></div>
-        <input type="hidden" name="waf_captcha_type" value="recaptcha" />
-        <?php
-    }
-
-    private function render_image_captcha() {
-        $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-        $code = '';
-        $len = 5;
-        for ($i = 0; $i < $len; $i++) {
-            $code .= $chars[rand(0, strlen($chars) - 1)];
-        }
-        $hash = wp_hash($code . time() . wp_rand());
-        $key = 'waf_captcha_' . md5($hash);
-        set_transient($key, $code, 300);
-        $img_url = admin_url('admin-ajax.php?action=waf_captcha_image&hash=' . urlencode($hash) . '&t=' . time());
-        ?>
-        <p style="margin-bottom:8px;">
-            <label for="waf_captcha">Type the characters shown below:</label>
-        </p>
-        <p style="margin-bottom:8px;text-align:center;">
-            <img src="<?php echo esc_url($img_url); ?>" alt="CAPTCHA" style="border:1px solid #ccc;border-radius:4px;max-width:100%;height:auto;" />
-        </p>
-        <p style="margin-bottom:4px;">
-            <input type="text" name="waf_captcha" id="waf_captcha" class="input" value="" size="20" autocomplete="off" required style="text-transform:uppercase;" placeholder="Enter code" />
-            <input type="hidden" name="waf_captcha_hash" value="<?php echo esc_attr($hash); ?>" />
-            <input type="hidden" name="waf_captcha_type" value="image" />
-        </p>
-        <?php
-    }
-
-    private function render_math_captcha() {
-        $ops = ['+', '-', "\xC3\x97"];
-        $op = $ops[array_rand($ops)];
-        if ($op === "\xC3\x97") {
-            $a = rand(2, 9);
-            $b = rand(2, 9);
-            $answer = $a * $b;
-            $display = $a . ' &times; ' . $b;
-        } else {
-            $a = rand(5, 50);
-            $b = rand(1, 25);
-            if ($op === '-' && $a < $b) { list($a, $b) = [$b, $a]; }
-            $answer = $op === '+' ? ($a + $b) : ($a - $b);
-            $display = $a . ' ' . $op . ' ' . $b;
-        }
-        $hash = wp_hash($a . $op . $b . time() . wp_rand());
-        $key = 'waf_captcha_' . md5($hash);
-        set_transient($key, $answer, 300);
-        ?>
-        <p style="margin-bottom:6px;">
-            <label for="waf_captcha">Security Question: <?php echo $display; ?> = ?</label>
-        </p>
-        <p style="margin-bottom:4px;">
-            <input type="number" name="waf_captcha" id="waf_captcha" class="input" value="" size="20" autocomplete="off" required />
-            <input type="hidden" name="waf_captcha_hash" value="<?php echo esc_attr($hash); ?>" />
-            <input type="hidden" name="waf_captcha_type" value="math" />
-        </p>
-        <?php
-    }
-
-    private function render_honeypot() {
-        ?>
-        <p style="display:none !important;position:absolute !important;left:-9999px !important;">
-            <label for="waf_website">Website</label>
-            <input type="text" name="waf_website" id="waf_website" value="" tabindex="-1" autocomplete="off" />
-        </p>
-        <?php
-    }
-
-    public function generate_captcha_image() {
-        $hash = sanitize_text_field($_GET['hash'] ?? '');
-        if (!$hash) {
-            $this->output_blank_image();
-            exit;
-        }
-        $key = 'waf_captcha_' . md5($hash);
-        $code = get_transient($key);
-        if ($code === false) {
-            $this->output_blank_image();
-            exit;
-        }
-
-        $width = 160;
-        $height = 50;
-        $img = imagecreatetruecolor($width, $height);
-
-        $bg = imagecolorallocate($img, 245, 247, 250);
-        $text_colors = [
-            imagecolorallocate($img, 30, 64, 175),
-            imagecolorallocate($img, 180, 40, 40),
-            imagecolorallocate($img, 20, 120, 60),
-            imagecolorallocate($img, 140, 80, 20),
-        ];
-        $line_color = imagecolorallocate($img, 200, 210, 220);
-        $noise_color = imagecolorallocate($img, 180, 190, 200);
-
-        imagefilledrectangle($img, 0, 0, $width, $height, $bg);
-
-        for ($i = 0; $i < 4; $i++) {
-            imageline($img, rand(0, $width), rand(0, $height), rand(0, $width), rand(0, $height), $line_color);
-        }
-
-        for ($i = 0; $i < 80; $i++) {
-            imagesetpixel($img, rand(0, $width), rand(0, $height), $noise_color);
-        }
-
-        $font = $this->get_captcha_font();
-        if ($font && function_exists('imagettftext')) {
-            $font_size = 22;
-            $x = 12;
-            for ($i = 0; $i < strlen($code); $i++) {
-                $color = $text_colors[$i % count($text_colors)];
-                $angle = rand(-25, 25);
-                $y = rand(32, 40);
-                $char = $code[$i];
-                $box = imagettfbbox($font_size, 0, $font, $char);
-                $char_w = $box[2] - $box[0];
-                $spacing = rand(6, 10);
-                imagettftext($img, $font_size, $angle, $x, $y, $color, $font, $char);
-                $x += $char_w + $spacing;
-            }
-        } else {
-            $font_size = 5;
-            $x = 10;
-            $colors = [imagecolorallocate($img, 30, 64, 175), imagecolorallocate($img, 180, 40, 40)];
-            for ($i = 0; $i < strlen($code); $i++) {
-                $color = $colors[$i % 2];
-                $y = rand(14, 30);
-                imagestring($img, $font_size, $x, $y, $code[$i], $color);
-                $x += rand(22, 30);
-            }
-        }
-
-        header('Content-Type: image/png');
-        header('Cache-Control: no-store, no-cache, must-revalidate');
-        imagepng($img);
-        imagedestroy($img);
-        exit;
-    }
-
-    private function get_captcha_font() {
-        $fonts = [
-            WAF_FW_PLUGIN_DIR . 'assets/fonts/arial.ttf',
-            WAF_FW_PLUGIN_DIR . 'assets/fonts/verdana.ttf',
-            WAF_FW_PLUGIN_DIR . 'assets/fonts/opensans.ttf',
-        ];
-        foreach ($fonts as $f) {
-            if (file_exists($f)) return $f;
-        }
-        $sys_fonts = [
-            'C:/Windows/Fonts/arial.ttf',
-            'C:/Windows/Fonts/verdana.ttf',
-            'C:/Windows/Fonts/calibri.ttf',
-            '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-            '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
-        ];
-        foreach ($sys_fonts as $f) {
-            if (file_exists($f)) return $f;
-        }
-        return '';
-    }
-
-    private function output_blank_image() {
-        $img = imagecreatetruecolor(160, 50);
-        $bg = imagecolorallocate($img, 245, 247, 250);
-        imagefilledrectangle($img, 0, 0, 160, 50, $bg);
-        header('Content-Type: image/png');
-        header('Cache-Control: no-store');
-        imagepng($img);
-        imagedestroy($img);
-    }
-
-        /**
+    /**
      * MDefender Pro Unbypassable Biometric 'Press & Hold' Challenge Pre-Validation
      * Hooks into 'authenticate' filter (priority 10) to block automated brute-force scripts before credentials check
      */
@@ -1073,71 +860,6 @@ class WAF_FW_Login_Protector {
             return $user; // Biometric Passed!
         }
 
-        return $user;
-    }
-
-    public function validate_captcha($user, $password) {
-        if (is_wp_error($user)) return $user;
-
-        $hold_press_enabled = get_option('waf_hold_press_enabled', 'no') === 'yes';
-        if ($hold_press_enabled) {
-            return $user; // Handled strictly in validate_login_challenge on authenticate filter
-        }
-
-        $honeypot = $_POST['waf_website'] ?? '';
-        if (!empty($honeypot)) {
-            return new WP_Error('waf_captcha_bot', 'Your submission was flagged as spam.');
-        }
-
-        $type = sanitize_text_field($_POST['waf_captcha_type'] ?? '');
-
-        if ($type === 'recaptcha') {
-            return $this->validate_recaptcha($user);
-        }
-
-        $hash = sanitize_text_field($_POST['waf_captcha_hash'] ?? '');
-        $answer = sanitize_text_field($_POST['waf_captcha'] ?? '');
-        if (!$hash || $answer === '') {
-            return new WP_Error('waf_captcha_empty', 'Please complete the security check.');
-        }
-        $key = 'waf_captcha_' . md5($hash);
-        $expected = get_transient($key);
-        if ($expected === false) {
-            return new WP_Error('waf_captcha_expired', 'Security check expired. Please refresh and try again.');
-        }
-        delete_transient($key);
-
-        if ($type === 'image') {
-            if (strtoupper(trim($answer)) !== strtoupper(trim($expected))) {
-                return new WP_Error('waf_captcha_wrong', 'Incorrect code entered. Please try again.');
-            }
-        } elseif ((int)$answer !== (int)$expected) {
-            return new WP_Error('waf_captcha_wrong', 'Incorrect answer. Please try again.');
-        }
-
-        return $user;
-    }
-
-    private function validate_recaptcha($user) {
-        $secret = get_option('waf_harden_recaptcha_secret_key', '');
-        $response = sanitize_text_field($_POST['g-recaptcha-response'] ?? '');
-        if (!$response) {
-            return new WP_Error('waf_captcha_recaptcha', 'Please complete the reCAPTCHA verification.');
-        }
-        $verify = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', [
-            'body' => [
-                'secret' => $secret,
-                'response' => $response,
-                'remoteip' => $this->get_client_ip(),
-            ],
-        ]);
-        if (is_wp_error($verify)) {
-            return new WP_Error('waf_captcha_error', 'reCAPTCHA verification failed. Please try again.');
-        }
-        $result = json_decode(wp_remote_retrieve_body($verify), true);
-        if (empty($result['success'])) {
-            return new WP_Error('waf_captcha_recaptcha_fail', 'reCAPTCHA verification failed. Please try again.');
-        }
         return $user;
     }
 

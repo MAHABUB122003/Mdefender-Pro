@@ -49,6 +49,7 @@ if (isset($_GET['mdefender_bypass']) || isset($_GET['mdefender_restore']) || iss
     update_option('waf_harden_hide_login_url', 'no');
     delete_option('waf_harden_login_rename');
     delete_option('waf_hide_login_url');
+    delete_option('waf_harden_login_captcha');
     delete_transient('waf_2fa_fails_' . md5($_SERVER['REMOTE_ADDR'] ?? ''));
     global $wpdb;
     if ($wpdb) {
@@ -167,6 +168,7 @@ function waf_fw_activate() {
         if (get_option('waf_harden_login_guard') === false) {
             update_option('waf_harden_login_guard', 'disabled');
         }
+        delete_option('waf_harden_login_captcha');
         if (get_option('waf_fw_connected', 'no') !== 'yes') {
             update_option('waf_fw_onboarding_pending', 'yes');
             update_option('waf_fw_do_setup_redirect', 'yes');

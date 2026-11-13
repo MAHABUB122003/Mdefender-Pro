@@ -346,6 +346,7 @@ if ($action === 'clear_blocks' || $action === 'unblock_all') {
     delete_option('waf_fw_local_blacklist_cache');
     delete_option('waf_fw_attack_attempts');
     delete_option('waf_fw_gateway_locked_ips');
+    delete_option('waf_harden_login_captcha');
     foreach ($cleared_ips as $cip) {
         delete_transient('waf_attack_cnt_' . md5($cip));
         delete_transient('waf_gw_lock_' . md5($cip));

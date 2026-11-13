@@ -427,7 +427,7 @@ class WAF_FW_Logger {
             'waf_harden_disable_file_editor', 'waf_harden_security_headers', 'waf_harden_hide_wp_version',
             'waf_harden_prevent_php_uploads', 'waf_harden_protect_wp_config', 'waf_harden_protect_system_files',
             'waf_harden_disable_rest_users', 'waf_harden_block_xmlrpc_multicall', 'waf_harden_salt_expiration',
-            'waf_harden_login_captcha', 'waf_harden_force_strong_passwords', 'waf_harden_admin_slug_protection',
+            'waf_hold_press_enabled', 'waf_harden_force_strong_passwords', 'waf_harden_admin_slug_protection',
             'waf_harden_clean_head'
         ];
         foreach ($harden_options as $opt) {
