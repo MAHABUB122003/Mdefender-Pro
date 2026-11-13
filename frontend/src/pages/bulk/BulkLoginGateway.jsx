@@ -24,20 +24,31 @@ import api from '../../api/api'
 export default function BulkLoginGateway() {
   const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite, fetchFleet } = useBulkFleet()
 
+  // Local fleetSites state for instantaneous 0ms optimistic UI updates
+  const [fleetSites, setFleetSites] = useState([])
+
+  useEffect(() => {
+    if (wpWebsites && wpWebsites.length > 0) {
+      setFleetSites(wpWebsites)
+    }
+  }, [wpWebsites])
+
+  const sitesToUse = fleetSites.length > 0 ? fleetSites : (wpWebsites || [])
+
   const isAllTarget = !selectedSiteId || selectedSiteId === 'all'
   const activeTargetSite = useMemo(() => {
-    if (isAllTarget) return activeWebsite || wpWebsites[0] || {}
-    return wpWebsites.find(w => (w.id || w._id) === selectedSiteId) || activeWebsite || wpWebsites[0] || {}
-  }, [selectedSiteId, isAllTarget, activeWebsite, wpWebsites])
+    if (isAllTarget) return activeWebsite || sitesToUse[0] || {}
+    return sitesToUse.find(w => (w.id || w._id) === selectedSiteId) || activeWebsite || sitesToUse[0] || {}
+  }, [selectedSiteId, isAllTarget, activeWebsite, sitesToUse])
 
   const targetDomainName = useMemo(() => {
     if (isAllTarget) {
       if (activeWebsite?.domain) return activeWebsite.domain
-      if (wpWebsites && wpWebsites[0]?.domain) return wpWebsites[0].domain
+      if (sitesToUse && sitesToUse[0]?.domain) return sitesToUse[0].domain
       return 'All Connected Sites'
     }
     return activeTargetSite.domain || activeTargetSite.url || 'mahabubur.shop'
-  }, [isAllTarget, activeWebsite, wpWebsites, activeTargetSite])
+  }, [isAllTarget, activeWebsite, sitesToUse, activeTargetSite])
 
   // 1. WP Admin Hide & Custom Login URL
   const [customLoginSlug, setCustomLoginSlug] = useState('')
@@ -151,6 +162,27 @@ export default function BulkLoginGateway() {
 
       const successCount = results.filter(r => r.status === 'fulfilled' && (!r.value || r.value.success !== false)).length
       if (successCount > 0) {
+        // Instant 0ms optimistic local state update across fleetSites
+        setFleetSites(prev => {
+          const base = prev.length > 0 ? prev : (wpWebsites || [])
+          return base.map(site => {
+            const isMatch = validTargets.some(t => (t.id || t._id) === (site.id || site._id))
+            if (!isMatch) return site
+            return {
+              ...site,
+              custom_login_slug: cleanSlug,
+              hide_login_url: true,
+              login_redirect_type: loginRedirectType || '404',
+              hardening: {
+                ...(site.hardening || {}),
+                custom_login_slug: cleanSlug,
+                hide_login_url: true,
+                login_redirect_type: loginRedirectType || '404'
+              }
+            }
+          })
+        })
+
         validTargets.forEach(site => {
           site.custom_login_slug = cleanSlug
           site.hide_login_url = true
@@ -187,6 +219,26 @@ export default function BulkLoginGateway() {
       login_redirect_type: '404'
     }
     try {
+      // Instant 0ms optimistic UI removal
+      setFleetSites(prev => {
+        const base = prev.length > 0 ? prev : (wpWebsites || [])
+        return base.map(s => {
+          if ((s.id || s._id) === siteKey) {
+            return {
+              ...s,
+              custom_login_slug: '',
+              hide_login_url: false,
+              hardening: {
+                ...(s.hardening || {}),
+                custom_login_slug: '',
+                hide_login_url: false
+              }
+            }
+          }
+          return s
+        })
+      })
+
       await api.updateWebsiteSecuritySettings(siteKey, payload)
 
       siteToReset.custom_login_slug = ''
@@ -251,6 +303,25 @@ export default function BulkLoginGateway() {
 
       const successCount = results.filter(r => r.status === 'fulfilled' && (!r.value || r.value.success !== false)).length
       if (successCount > 0) {
+        // Instant 0ms optimistic UI update for authorized IPs
+        setFleetSites(prev => {
+          const base = prev.length > 0 ? prev : (wpWebsites || [])
+          return base.map(site => {
+            const isMatch = validTargets.some(t => (t.id || t._id) === (site.id || site._id))
+            if (!isMatch) return site
+            return {
+              ...site,
+              admin_ip_whitelist: listToSave,
+              admin_ip_whitelist_enabled: hasIps,
+              hardening: {
+                ...(site.hardening || {}),
+                admin_ip_whitelist: listToSave,
+                admin_ip_whitelist_enabled: hasIps
+              }
+            }
+          })
+        })
+
         validTargets.forEach(site => {
           site.admin_ip_whitelist = listToSave
           site.admin_ip_whitelist_enabled = hasIps
@@ -281,14 +352,42 @@ export default function BulkLoginGateway() {
     setDeletingIp(ipToRemove)
     try {
       const targetSite = fromSite || activeTargetSite
-      if (targetSite && (targetSite.id || targetSite._id)) {
+      const targetId = targetSite?.id || targetSite?._id
+
+      // Instant 0ms optimistic UI removal
+      if (targetId) {
+        setFleetSites(prev => {
+          const base = prev.length > 0 ? prev : (wpWebsites || [])
+          return base.map(s => {
+            if ((s.id || s._id) === targetId) {
+              const currentList = Array.isArray(s.admin_ip_whitelist)
+                ? s.admin_ip_whitelist
+                : (s.hardening?.admin_ip_whitelist || [])
+              const updated = currentList.filter(ip => ip !== ipToRemove)
+              return {
+                ...s,
+                admin_ip_whitelist: updated,
+                admin_ip_whitelist_enabled: updated.length > 0,
+                hardening: {
+                  ...(s.hardening || {}),
+                  admin_ip_whitelist: updated,
+                  admin_ip_whitelist_enabled: updated.length > 0
+                }
+              }
+            }
+            return s
+          })
+        })
+      }
+
+      if (targetSite && targetId) {
         const currentList = Array.isArray(targetSite.admin_ip_whitelist) ? targetSite.admin_ip_whitelist : []
         const updated = currentList.filter(ip => ip !== ipToRemove)
         const payload = {
           admin_ip_whitelist_enabled: updated.length > 0,
           admin_ip_whitelist: updated
         }
-        await api.updateWebsiteSecuritySettings(targetSite.id || targetSite._id, payload)
+        await api.updateWebsiteSecuritySettings(targetId, payload)
         targetSite.admin_ip_whitelist = updated
         targetSite.admin_ip_whitelist_enabled = updated.length > 0
         if (targetSite.id === activeTargetSite.id || targetSite._id === activeTargetSite._id) {
@@ -311,7 +410,7 @@ export default function BulkLoginGateway() {
 
   // Active Secret Gateways List
   const activeSecretGateways = useMemo(() => {
-    const list = (wpWebsites || []).filter(site => {
+    const list = (sitesToUse || []).filter(site => {
       const effectiveSlug = site.custom_login_slug || site.hardening?.custom_login_slug || ''
       return Boolean(
         effectiveSlug &&
@@ -323,7 +422,7 @@ export default function BulkLoginGateway() {
       return list.filter(site => (site.id || site._id) === selectedSiteId)
     }
     return list
-  }, [wpWebsites, selectedSiteId])
+  }, [sitesToUse, selectedSiteId])
 
   const filteredSecretGateways = useMemo(() => {
     if (!gatewaySearchQuery.trim()) return activeSecretGateways
@@ -339,7 +438,7 @@ export default function BulkLoginGateway() {
   // Active IP Rules List
   const allFleetIpRules = useMemo(() => {
     const list = []
-    wpWebsites.forEach(site => {
+    sitesToUse.forEach(site => {
       const raw = site.admin_ip_whitelist || site.hardening?.admin_ip_whitelist
       const parsed = Array.isArray(raw)
         ? raw
@@ -349,7 +448,7 @@ export default function BulkLoginGateway() {
       })
     })
     return list
-  }, [wpWebsites])
+  }, [sitesToUse])
 
   const displayedIpRules = useMemo(() => {
     if (selectedSiteId && selectedSiteId !== 'all') {
@@ -951,18 +1050,36 @@ export default function BulkLoginGateway() {
                                   onClick={() => handleResetLoginGateway(site)}
                                   disabled={resettingSecretSiteId === siteKey}
                                   title="Remove secret slug & restore /wp-login.php"
+                                  className="mdef-remove-btn"
                                   style={{
-                                    padding: '4px 8px',
+                                    padding: '4px 9px',
                                     borderRadius: '5px',
                                     border: '1px solid #FECACA',
                                     background: '#FEF2F2',
                                     color: '#DC2626',
                                     cursor: resettingSecretSiteId === siteKey ? 'wait' : 'pointer',
                                     fontSize: '11px',
-                                    fontWeight: 600,
+                                    fontWeight: 700,
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: '3px'
+                                    gap: '4px',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    if (resettingSecretSiteId !== siteKey) {
+                                      e.currentTarget.style.background = '#DC2626'
+                                      e.currentTarget.style.color = '#FFFFFF'
+                                      e.currentTarget.style.borderColor = '#B91C1C'
+                                      e.currentTarget.style.boxShadow = '0 2px 6px rgba(220, 38, 38, 0.35)'
+                                      e.currentTarget.style.transform = 'translateY(-1px)'
+                                    }
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = '#FEF2F2'
+                                    e.currentTarget.style.color = '#DC2626'
+                                    e.currentTarget.style.borderColor = '#FECACA'
+                                    e.currentTarget.style.boxShadow = 'none'
+                                    e.currentTarget.style.transform = 'none'
                                   }}
                                 >
                                   <Trash2 size={11} />
@@ -1144,10 +1261,40 @@ export default function BulkLoginGateway() {
                                 onClick={() => handleRemoveAllowedIp(ip, site)}
                                 disabled={deletingIp === ip}
                                 title="Remove IP"
-                                style={{ padding: '4px 8px', borderRadius: '5px', border: '1px solid #FECACA', background: '#FEF2F2', cursor: 'pointer', fontSize: '11px', color: '#DC2626', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                                className="mdef-remove-btn"
+                                style={{
+                                  padding: '4px 9px',
+                                  borderRadius: '5px',
+                                  border: '1px solid #FECACA',
+                                  background: '#FEF2F2',
+                                  cursor: deletingIp === ip ? 'wait' : 'pointer',
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  color: '#DC2626',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  transition: 'all 0.15s ease'
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (deletingIp !== ip) {
+                                    e.currentTarget.style.background = '#DC2626'
+                                    e.currentTarget.style.color = '#FFFFFF'
+                                    e.currentTarget.style.borderColor = '#B91C1C'
+                                    e.currentTarget.style.boxShadow = '0 2px 6px rgba(220, 38, 38, 0.35)'
+                                    e.currentTarget.style.transform = 'translateY(-1px)'
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = '#FEF2F2'
+                                  e.currentTarget.style.color = '#DC2626'
+                                  e.currentTarget.style.borderColor = '#FECACA'
+                                  e.currentTarget.style.boxShadow = 'none'
+                                  e.currentTarget.style.transform = 'none'
+                                }}
                               >
                                 <Trash2 size={11} />
-                                <span>Remove</span>
+                                <span>{deletingIp === ip ? 'Removing...' : 'Remove'}</span>
                               </button>
                             </td>
                           </tr>
