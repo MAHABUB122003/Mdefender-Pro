@@ -17,6 +17,14 @@ class WAF_FW_Attack_Blocker {
         if ($ip === '127.0.0.1' || $ip === '::1' || $ip === 'localhost' || $ip === '0.0.0.0') {
             return;
         }
+        // Never auto-block logged in WordPress administrators
+        if (function_exists('is_user_logged_in') && is_user_logged_in() && function_exists('current_user_can') && current_user_can('manage_options')) {
+            return;
+        }
+        // Never auto-block whitelisted IPs
+        if (class_exists('WAF_FW_IP_Filter') && WAF_FW_IP_Filter::instance()->is_whitelisted($ip)) {
+            return;
+        }
         $this->increment_attempts($ip);
 
         $enabled = get_option('waf_fw_attack_blocker_enabled', 'yes');

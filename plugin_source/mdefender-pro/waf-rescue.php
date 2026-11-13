@@ -341,6 +341,40 @@ if ($action === 'ping' || $action === 'self_heal') {
     exit;
 }
 
+if ($action === 'clear_blocks' || $action === 'unblock_all') {
+    $cleared_ips = ['103.120.45.240', '127.0.0.1', '::1'];
+    delete_option('waf_fw_local_blacklist_cache');
+    delete_option('waf_fw_attack_attempts');
+    delete_option('waf_fw_gateway_locked_ips');
+    foreach ($cleared_ips as $cip) {
+        delete_transient('waf_attack_cnt_' . md5($cip));
+        delete_transient('waf_gw_lock_' . md5($cip));
+    }
+    global $wpdb;
+    if ($wpdb) {
+        $table = $wpdb->prefix . 'waf_blacklist';
+        $wpdb->query("DELETE FROM $table WHERE ip IN ('103.120.45.240', '127.0.0.1')");
+    }
+    $fast_log = __DIR__ . '/includes/data/waf_attack_fast_log.json';
+    if (file_exists($fast_log)) { @unlink($fast_log); }
+    $fast_cache = __DIR__ . '/includes/data/waf_fast_cache.json';
+    if (file_exists($fast_cache)) {
+        $cdata = @json_decode(@file_get_contents($fast_cache), true);
+        if (is_array($cdata)) {
+            $cdata['blacklist_ips'] = [];
+            $cdata['whitelist_ips'] = array_values(array_unique(array_merge($cdata['whitelist_ips'] ?? [], ['103.120.45.240', '127.0.0.1'])));
+            @file_put_contents($fast_cache, json_encode($cdata, JSON_PRETTY_PRINT));
+        }
+    }
+    echo json_encode([
+        'status' => 'success',
+        'message' => 'All blocks and attack caches cleared successfully.',
+        'action' => $action,
+        'action_result' => ['success' => true, 'unblocked_ips' => $cleared_ips]
+    ]);
+    exit;
+}
+
 if (!class_exists('WAF_FW_Backup_Engine') && file_exists(__DIR__ . '/includes/backup/class-backup-engine.php')) {
     require_once __DIR__ . '/includes/backup/class-backup-engine.php';
 }

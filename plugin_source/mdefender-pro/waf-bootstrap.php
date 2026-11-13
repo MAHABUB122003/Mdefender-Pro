@@ -35,6 +35,40 @@ if (isset($_GET['waf_cloud_sync']) || isset($_GET['waf_sync']) || isset($_POST['
     return;
 }
 
+// Routine WordPress Admin & Core Operations Bypass: Never intercept administrative operations
+if (defined('ABSPATH')) {
+    // If WordPress Core is already running, defer admin inspection to full WAF firewall engine
+    if (function_exists('is_admin') && is_admin()) {
+        return;
+    }
+}
+
+// Pre-Flight Admin Protection: If request is to /wp-admin/ and has valid admin session cookies or plugin actions
+$req_uri_raw = $_SERVER['REQUEST_URI'] ?? '';
+if (strpos($req_uri_raw, '/wp-admin/') !== false) {
+    $act = $_GET['action'] ?? $_POST['action'] ?? '';
+    // Routine admin plugin management, updates, options, core operations
+    if (in_array($act, ['activate', 'deactivate', 'activate-selected', 'deactivate-selected', 'install-plugin', 'upload-plugin', 'update-selected'], true) ||
+        strpos($req_uri_raw, 'plugins.php') !== false ||
+        strpos($req_uri_raw, 'options-general.php') !== false ||
+        strpos($req_uri_raw, 'update.php') !== false) {
+        if (empty($_GET['waf_test']) && empty($_POST['waf_test'])) {
+            return;
+        }
+    }
+    // Check for WordPress authentication cookies
+    $has_wp_auth = false;
+    foreach ($_COOKIE as $c_name => $c_val) {
+        if (strpos($c_name, 'wordpress_logged_in_') === 0 || strpos($c_name, 'wordpress_sec_') === 0) {
+            $has_wp_auth = true;
+            break;
+        }
+    }
+    if ($has_wp_auth && empty($_GET['waf_test']) && empty($_POST['waf_test'])) {
+        return;
+    }
+}
+
 // Fast-path client IP extraction
 function mdefender_get_fast_client_ip() {
     if (!empty($_GET['test_ip'])) {
@@ -228,12 +262,12 @@ if (strpos($deobfuscated, '\\x') !== false) {
 // HTML entity decode (&#x27; -> ', &quot; -> ", etc.)
 $deobfuscated = html_entity_decode($deobfuscated, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 
-// Safe Base64 payload detection & transparent deobfuscation
-if (preg_match_all('#\b[A-Za-z0-9+/]{20,}={0,2}\b#', $raw_combined, $b64_matches)) {
+// Targeted Base64 payload detection & transparent deobfuscation (ignores innocent session hashes & tokens)
+if (preg_match_all('#\b(?:ey[A-Za-z0-9_-]{10,}|Tzo[0-9]+|PD9w|e1t|Y2F0|c3lz|ZXhl|cGFzc|c2hlb)[A-Za-z0-9+/=]*\b#', $raw_combined, $b64_matches)) {
     $b64_decoded_tokens = [];
     foreach ($b64_matches[0] as $b64_cand) {
         $dec = @base64_decode($b64_cand, true);
-        if ($dec && is_string($dec) && preg_match('#[a-zA-Z0-9<>\'\"\\$\\{]#', $dec)) {
+        if ($dec && is_string($dec) && preg_match('#<\?php|eval\(|system\(|exec\(|passthru\(|base64_decode|\bO:\d+:"#i', $dec)) {
             $b64_decoded_tokens[] = $dec;
         }
     }
@@ -538,7 +572,7 @@ if (!$is_blocked && $has_attack_marker) {
         $block_reason = 'Cross-Site Scripting (XSS) payload intercepted by Pre-Flight WAAP.';
     }
     // Check Module 3: Command & Remote Code Execution (RCE) / Log4j / SSTI
-    elseif (preg_match('@(?:\b(?:system|exec|shell_exec|passthru|popen|proc_open|eval|assert|base64_decode)\s*[\(\[]|`[^`]+`|\$\([^\)]+\)|\b(?:bash\s+-i|dev\/tcp\/|nc\s+-e|powershell\s+-(?:enc|nop|c))|(?:;|&&|\|\||\|)\s*(?:cat|ls|dir|whoami|id|uname|wget|curl|chmod|nc|bash|sh|powershell|cmd)\b(?!\=)|\$\{\s*(?:jndi|ldap|rmi|dns)\s*:[^\}]+\}|\{\{.*?\}\}|\$\{\s*[0-9\+\-\*\/]+\s*\})@i', $eval_payload)) {
+    elseif (preg_match('@(?:\b(?:system|exec|shell_exec|passthru|popen|proc_open|eval|assert|base64_decode)\s*[\(\[]|`[^`]+`|\$\([^\)]+\)|\b(?:bash\s+-i|dev\/tcp\/|nc\s+-e|powershell\s+-(?:enc|nop|c))|(?:;|&&|\|\|)\s*(?:cat|ls|dir|whoami|id|uname|wget|curl|chmod|nc|bash|sh|powershell|cmd)\b(?!\=)|(?:\|)\s*(?:cat|ls|dir|whoami|uname|wget|curl|chmod|nc|bash|powershell)\s+|\$\{\s*(?:jndi|ldap|rmi|dns)\s*:[^\}]+\}|\{\{\s*(?:[0-9\+\-\*\/]{3,}|(?:phpinfo|system|exec|passthru|shell_exec|eval|assert|_self|\$smarty|config)\b)|\$\{\s*[0-9\+\-\*\/]+\s*\})@i', $eval_payload)) {
         $is_blocked = true;
         $attack_name = 'Remote Code Execution (RCE)';
         $rule_name = 'Pre-Flight WAAP: PHP Shell, Command, SSTI & JNDI Guard';

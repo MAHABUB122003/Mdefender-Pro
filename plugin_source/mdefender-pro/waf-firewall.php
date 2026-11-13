@@ -4734,6 +4734,16 @@ function waf_fw_analyze_request() {
         return;
     }
 
+    // Fast bypass for routine admin plugin activation, deactivation, and updates
+    if (is_admin() && (isset($_GET['action']) || isset($_POST['action']))) {
+        $act_admin = $_GET['action'] ?? $_POST['action'] ?? '';
+        if (in_array($act_admin, ['activate', 'deactivate', 'activate-selected', 'deactivate-selected', 'install-plugin', 'upload-plugin'], true)) {
+            if (empty($_GET['waf_test']) && empty($_POST['waf_test'])) {
+                return;
+            }
+        }
+    }
+
     // Fast bypass for static files (css, js, media, fonts) (< 0.0001ms)
     $req_path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
     if (!empty($req_path)) {

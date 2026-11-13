@@ -75,6 +75,13 @@ class WAF_FW_IP_Filter {
         }
         $candidates = array_values(array_unique(array_filter($candidates)));
 
+        // Whitelisted IPs are NEVER blacklisted!
+        foreach ($candidates as $cand) {
+            if ($this->is_whitelisted($cand)) {
+                return false;
+            }
+        }
+
         // 1. Check ultra-fast local JSON fast-cache (0.005ms)
         $fast_cache_file = dirname(__DIR__) . '/includes/data/waf_fast_cache.json';
         if (file_exists($fast_cache_file)) {
