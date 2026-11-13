@@ -1,0 +1,317 @@
+{
+  "timestamp": "2026-11-13T11:43:51.405909",
+  "summary": {
+    "pass": 48,
+    "fail": 0,
+    "warn": 3,
+    "total": 51
+  },
+  "results": [
+    {
+      "status": "PASS",
+      "section": "Health",
+      "test": "Backend /health",
+      "detail": "HTTP 200"
+    },
+    {
+      "status": "PASS",
+      "section": "Health",
+      "test": "ML WAF Model Loaded",
+      "detail": "loaded=True"
+    },
+    {
+      "status": "PASS",
+      "section": "Health",
+      "test": "ML Malware Model Loaded",
+      "detail": "loaded=True"
+    },
+    {
+      "status": "PASS",
+      "section": "Health",
+      "test": "ML Status API",
+      "detail": "WAF vv7.0_full_master_7.5m"
+    },
+    {
+      "status": "PASS",
+      "section": "Health",
+      "test": "WordPress Accessible",
+      "detail": "HTTP 200"
+    },
+    {
+      "status": "PASS",
+      "section": "Auth",
+      "test": "Login (Legacy)",
+      "detail": "Token received"
+    },
+    {
+      "status": "PASS",
+      "section": "Auth",
+      "test": "Profile Fetch",
+      "detail": "email=admin"
+    },
+    {
+      "status": "PASS",
+      "section": "Dashboard",
+      "test": "Dashboard Stats",
+      "detail": "sites=4"
+    },
+    {
+      "status": "PASS",
+      "section": "Sites",
+      "test": "List Websites",
+      "detail": "4 site(s) found"
+    },
+    {
+      "status": "PASS",
+      "section": "Sites",
+      "test": "Get Site Detail",
+      "detail": "domain=, wp_connected=False"
+    },
+    {
+      "status": "PASS",
+      "section": "Isolation",
+      "test": "Fake Site ID Access Denied",
+      "detail": "HTTP 404"
+    },
+    {
+      "status": "PASS",
+      "section": "WAF",
+      "test": "Block SQLi Basic",
+      "detail": "403 Blocked"
+    },
+    {
+      "status": "PASS",
+      "section": "WAF",
+      "test": "Block XSS Script",
+      "detail": "403 Blocked"
+    },
+    {
+      "status": "PASS",
+      "section": "WAF",
+      "test": "Block Path Traversal",
+      "detail": "403 Blocked"
+    },
+    {
+      "status": "PASS",
+      "section": "WAF",
+      "test": "Block Command Injection",
+      "detail": "403 Blocked"
+    },
+    {
+      "status": "PASS",
+      "section": "WAF",
+      "test": "Benign Request Pass",
+      "detail": "Homepage loads OK"
+    },
+    {
+      "status": "PASS",
+      "section": "CloudWAF",
+      "test": "SQLi Detection via API",
+      "detail": "status=blocked, attack=SQL Injection"
+    },
+    {
+      "status": "PASS",
+      "section": "Scanner",
+      "test": "Trigger Site Scan",
+      "detail": "response keys: ['success', 'request_id', 'data']"
+    },
+    {
+      "status": "PASS",
+      "section": "Scanner",
+      "test": "Get Scan History",
+      "detail": "0 scan(s)"
+    },
+    {
+      "status": "PASS",
+      "section": "Scanner",
+      "test": "Cloud Scan Benign File",
+      "detail": "result=clean"
+    },
+    {
+      "status": "PASS",
+      "section": "Scanner",
+      "test": "Cloud Scan Malware File",
+      "detail": "result=malicious, threat=?"
+    },
+    {
+      "status": "PASS",
+      "section": "Blacklist",
+      "test": "Add IP",
+      "detail": "HTTP 200"
+    },
+    {
+      "status": "PASS",
+      "section": "Blacklist",
+      "test": "IP Found in List",
+      "detail": "1 entries"
+    },
+    {
+      "status": "PASS",
+      "section": "Blacklist",
+      "test": "Remove IP",
+      "detail": "HTTP 200"
+    },
+    {
+      "status": "PASS",
+      "section": "Whitelist",
+      "test": "Add IP",
+      "detail": "HTTP 200"
+    },
+    {
+      "status": "PASS",
+      "section": "Whitelist",
+      "test": "Get List",
+      "detail": "HTTP 200"
+    },
+    {
+      "status": "PASS",
+      "section": "Whitelist",
+      "test": "Remove IP",
+      "detail": "HTTP 200"
+    },
+    {
+      "status": "PASS",
+      "section": "Rules",
+      "test": "Create Custom Rule",
+      "detail": "id=None"
+    },
+    {
+      "status": "PASS",
+      "section": "Rules",
+      "test": "List Rules",
+      "detail": "47 rule(s)"
+    },
+    {
+      "status": "PASS",
+      "section": "Logs",
+      "test": "Fetch User Logs",
+      "detail": "20 log entries"
+    },
+    {
+      "status": "PASS",
+      "section": "Security",
+      "test": "Get Security Config",
+      "detail": "HTTP 200"
+    },
+    {
+      "status": "PASS",
+      "section": "Security",
+      "test": "Get Country Blocks",
+      "detail": "HTTP 200"
+    },
+    {
+      "status": "PASS",
+      "section": "Security",
+      "test": "Site Security Settings",
+      "detail": "keys=['success', 'request_id', 'data']"
+    },
+    {
+      "status": "WARN",
+      "section": "Backup",
+      "test": "WP Connection Status",
+      "detail": "connected=False"
+    },
+    {
+      "status": "PASS",
+      "section": "WPPlugin",
+      "test": "WAF Rescue Sync",
+      "detail": "response keys: ['status', 'action', 'action_result', 'timestamp']"
+    },
+    {
+      "status": "PASS",
+      "section": "WPPlugin",
+      "test": "Plugin Meta API",
+      "detail": "version=?"
+    },
+    {
+      "status": "PASS",
+      "section": "Stability",
+      "test": "Rapid-fire 20 requests",
+      "detail": "0 errors, avg=74ms, max=1303ms"
+    },
+    {
+      "status": "PASS",
+      "section": "Monitoring",
+      "test": "Overview",
+      "detail": "keys=['success', 'request_id', 'data']"
+    },
+    {
+      "status": "PASS",
+      "section": "Monitoring",
+      "test": "SSL Status",
+      "detail": "HTTP 200"
+    },
+    {
+      "status": "PASS",
+      "section": "Billing",
+      "test": "Payment Config",
+      "detail": "HTTP 200"
+    },
+    {
+      "status": "PASS",
+      "section": "Billing",
+      "test": "Payment History",
+      "detail": "HTTP 200"
+    },
+    {
+      "status": "PASS",
+      "section": "2FA",
+      "test": "Get 2FA Config",
+      "detail": "enabled=?"
+    },
+    {
+      "status": "PASS",
+      "section": "Notifications",
+      "test": "Get Notifications",
+      "detail": "HTTP 200"
+    },
+    {
+      "status": "PASS",
+      "section": "Admin",
+      "test": "Admin Stats",
+      "detail": "keys=['total_requests', 'total_attacks_blocked', 'active_clients', 'blacklisted_ips', 'attack_types', 'attack_counts']"
+    },
+    {
+      "status": "PASS",
+      "section": "Admin",
+      "test": "List Users",
+      "detail": "8 user(s)"
+    },
+    {
+      "status": "PASS",
+      "section": "Support",
+      "test": "User Tickets",
+      "detail": "HTTP 200"
+    },
+    {
+      "status": "PASS",
+      "section": "Support",
+      "test": "Admin Tickets",
+      "detail": "HTTP 200"
+    },
+    {
+      "status": "WARN",
+      "section": "Reports",
+      "test": "Get Reports",
+      "detail": "HTTP 404"
+    },
+    {
+      "status": "PASS",
+      "section": "DDoS",
+      "test": "DDoS Status",
+      "detail": "enabled=?"
+    },
+    {
+      "status": "PASS",
+      "section": "WPCore",
+      "test": "Core Status",
+      "detail": "sites=obj"
+    },
+    {
+      "status": "WARN",
+      "section": "Team",
+      "test": "Get Team",
+      "detail": "HTTP 404"
+    }
+  ]
+}

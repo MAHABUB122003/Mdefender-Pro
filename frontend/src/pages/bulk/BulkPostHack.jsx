@@ -49,14 +49,63 @@ export default function BulkPostHack() {
     setTimeout(() => setToastMsg(null), 4000)
   }
 
-  // Fetch status of the target website
+  // Fetch status of the target website(s)
   const loadStatus = useCallback(async () => {
-    if (!targetSiteId) return
+    const targets = (isAllTarget || !selectedSiteId || selectedSiteId === 'all')
+      ? (wpWebsites.length > 0 ? wpWebsites : [activeTargetSite])
+      : [activeTargetSite]
+    const validTargets = targets.filter(t => t && (t.id || t._id))
+
+    if (validTargets.length === 0) return
     setLoadingStatus(true)
+
     try {
-      const res = await api.getPostHackStatus(targetSiteId)
-      const data = res?.data?.status || res?.status || res?.data || {}
-      setStatusData(data)
+      if (validTargets.length > 1) {
+        const results = await Promise.allSettled(
+          validTargets.map(site => api.getPostHackStatus(site.id || site._id))
+        )
+
+        let totalSessions = 0
+        let allAdmins = []
+        let anyLockdown = false
+        let latestSalts = ''
+        let hasSuccess = false
+
+        results.forEach((res, idx) => {
+          if (res.status === 'fulfilled') {
+            const d = res.value?.data?.status || res.value?.status || res.value?.data || {}
+            if (d.success !== false && d.reachable !== false) hasSuccess = true
+            totalSessions += Number(d.active_sessions_count || 0)
+            if (d.lockdown_active) anyLockdown = true
+            if (d.salts_last_regenerated && d.salts_last_regenerated !== 'Not available' && (!latestSalts || d.salts_last_regenerated > latestSalts)) {
+              latestSalts = d.salts_last_regenerated
+            }
+            if (Array.isArray(d.admins)) {
+              d.admins.forEach(adm => {
+                allAdmins.push({
+                  ...adm,
+                  site_domain: validTargets[idx]?.domain || validTargets[idx]?.url || 'Fleet Site'
+                })
+              })
+            }
+          }
+        })
+
+        setStatusData({
+          success: hasSuccess,
+          reachable: hasSuccess,
+          lockdown_active: anyLockdown,
+          salts_last_regenerated: latestSalts || (hasSuccess ? 'Current / Protected' : 'Not available'),
+          active_sessions_count: totalSessions,
+          total_admins: allAdmins.length,
+          admins: allAdmins
+        })
+      } else {
+        const singleId = validTargets[0]?.id || validTargets[0]?._id
+        const res = await api.getPostHackStatus(singleId)
+        const data = res?.data?.status || res?.status || res?.data || {}
+        setStatusData(data)
+      }
     } catch (err) {
       console.error('Failed to load post-hack status:', err)
       setStatusData({
@@ -70,7 +119,7 @@ export default function BulkPostHack() {
     } finally {
       setLoadingStatus(false)
     }
-  }, [targetSiteId])
+  }, [isAllTarget, selectedSiteId, wpWebsites, activeTargetSite])
 
   useEffect(() => {
     loadStatus()
@@ -80,16 +129,51 @@ export default function BulkPostHack() {
   const handleExecuteAction = async (action, payload = {}) => {
     setActionInProgress(action)
     setConfirmModal(null)
-    try {
-      const siteIdToUse = isAllTarget ? 'all' : targetSiteId
-      const res = await api.executePostHackAction(siteIdToUse, action, payload)
-      const resultObj = res?.data || res
-      const isSuccess = resultObj?.results?.every(r => r.success !== false) ?? (resultObj?.status === 'success' || resultObj?.success)
+    const actionLabel = {
+      terminate_sessions: 'Sever All Active Sessions',
+      regen_salts: 'Regenerate Security Salts',
+      force_password_reset: 'Mandate Password Reset',
+      toggle_lockdown: payload.enable ? 'Emergency Lockdown' : 'Lift Lockdown'
+    }[action] || action.replace('_', ' ')
 
-      if (isSuccess) {
-        showToast(resultObj?.results?.[0]?.result?.message || `Successfully executed ${action.replace('_', ' ')}.`)
+    try {
+      const targets = (isAllTarget || !selectedSiteId || selectedSiteId === 'all')
+        ? (wpWebsites.length > 0 ? wpWebsites : [activeTargetSite])
+        : [activeTargetSite]
+      const validTargets = targets.filter(t => t && (t.id || t._id))
+
+      if (validTargets.length === 0) {
+        showToast('No target WordPress site available.', true)
+        return
+      }
+
+      if (validTargets.length > 1) {
+        // Execute across all fleet sites simultaneously
+        const results = await Promise.allSettled(
+          validTargets.map(site => api.executePostHackAction(site.id || site._id, action, payload))
+        )
+        const successCount = results.filter(r => {
+          if (r.status !== 'fulfilled') return false
+          const resVal = r.value?.data || r.value
+          return resVal?.success !== false && (!resVal?.results || resVal.results.every(x => x.success !== false))
+        }).length
+
+        if (successCount > 0) {
+          showToast(`Successfully executed "${actionLabel}" across ${successCount} of ${validTargets.length} fleet websites!`)
+        } else {
+          showToast(`Action "${actionLabel}" could not connect to origin sites. Check site reachability.`, true)
+        }
       } else {
-        showToast(resultObj?.results?.[0]?.result?.message || 'Action executed with some warnings.', true)
+        const singleSite = validTargets[0]
+        const res = await api.executePostHackAction(singleSite.id || singleSite._id, action, payload)
+        const resultObj = res?.data || res
+        const isSuccess = resultObj?.results?.every(r => r.success !== false) ?? (resultObj?.status === 'success' || resultObj?.success)
+
+        if (isSuccess) {
+          showToast(resultObj?.results?.[0]?.result?.message || resultObj?.message || `Successfully executed ${actionLabel}.`)
+        } else {
+          showToast(resultObj?.results?.[0]?.result?.message || resultObj?.message || 'Action executed with some warnings.', true)
+        }
       }
       await loadStatus()
     } catch (err) {
@@ -803,6 +887,9 @@ export default function BulkPostHack() {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                  {isAllTarget && (
+                    <th style={{ padding: '8px 14px', color: '#64748B', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Website</th>
+                  )}
                   <th style={{ padding: '8px 18px', color: '#64748B', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Administrator</th>
                   <th style={{ padding: '8px 14px', color: '#64748B', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Risk Rating</th>
                   <th style={{ padding: '8px 14px', color: '#64748B', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>2FA Status</th>
@@ -817,7 +904,7 @@ export default function BulkPostHack() {
                     const isMedRisk = adm.risk_level === 'Medium'
                     return (
                       <tr
-                        key={adm.ID || idx}
+                        key={adm.ID || `${adm.user_login}-${adm.site_domain || idx}`}
                         style={{
                           borderBottom: '1px solid #F1F5F9',
                           transition: 'background 0.15s ease'
@@ -825,6 +912,13 @@ export default function BulkPostHack() {
                         onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
                         onMouseLeave={e => e.currentTarget.style.background = '#FFFFFF'}
                       >
+                        {isAllTarget && (
+                          <td style={{ padding: '8px 14px' }}>
+                            <span style={{ fontSize: '12px', fontWeight: 600, color: '#0F172A', background: '#F1F5F9', padding: '2px 8px', borderRadius: '4px' }}>
+                              {adm.site_domain || 'Fleet Site'}
+                            </span>
+                          </td>
+                        )}
                         <td style={{ padding: '8px 18px' }}>
                           <div style={{ fontWeight: 700, color: '#0F172A' }}>{adm.user_login}</div>
                           <div style={{ fontSize: '12px', color: '#64748B' }}>{adm.user_email}</div>
@@ -891,7 +985,7 @@ export default function BulkPostHack() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={5} style={{ padding: '36px 28px', textAlign: 'center', color: '#64748B' }}>
+                    <td colSpan={isAllTarget ? 6 : 5} style={{ padding: '36px 28px', textAlign: 'center', color: '#64748B' }}>
                       {loadingStatus ? 'Loading administrator security audit...' : 'No administrator accounts discovered.'}
                     </td>
                   </tr>

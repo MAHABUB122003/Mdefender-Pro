@@ -10494,6 +10494,93 @@ def _dispatch_wp_posthack(ws: dict, action: str, extra_params: dict = None, time
 @router.get("/{website_id}/post-hack/status")
 async def get_website_posthack_status(website_id: str, user=Depends(get_current_user)):
     """Retrieve complete incident response and post-hack recovery status for a website."""
+    db = MongoDB()
+    from bson import ObjectId
+    import concurrent.futures
+
+    if website_id == "all":
+        u_id_str = str(user.get("id") or user.get("_id") or "")
+        is_admin = bool(user.get("role") in ("super_admin", "admin") or user.get("is_admin"))
+        if is_admin:
+            ws_list = list(db.websites.find({"status": {"$ne": "deleted"}})) + list(db.wordpress_sites.find())
+        else:
+            u_cond = [{"user_id": u_id_str}]
+            if ObjectId.is_valid(u_id_str):
+                u_cond.append({"user_id": ObjectId(u_id_str)})
+            ws_list = list(db.websites.find({"$or": u_cond, "status": {"$ne": "deleted"}})) + list(db.wordpress_sites.find({"$or": u_cond}))
+
+        _UNREACHABLE_SUFFIXES = ('.local', '.internal', '.example.com', '.test', '.invalid')
+        seen = set()
+        clean_sites = []
+        for w in ws_list:
+            raw_url = w.get("url") or w.get("domain") or ""
+            if not raw_url:
+                continue
+            clean_dom = raw_url.replace("http://", "").replace("https://", "").split("/")[0].split(":")[0].strip().lower()
+            if any(clean_dom.endswith(sfx) for sfx in _UNREACHABLE_SUFFIXES):
+                continue
+            key = str(w.get("_id") or clean_dom)
+            if key not in seen:
+                seen.add(key)
+                clean_sites.append(w)
+
+        if not clean_sites:
+            return success({
+                "website_id": "all",
+                "domain": "Global Fleet",
+                "status": {
+                    "success": True,
+                    "reachable": True,
+                    "lockdown_active": False,
+                    "salts_last_regenerated": "Synchronized across fleet",
+                    "active_sessions_count": 0,
+                    "total_admins": 0,
+                    "admins": []
+                }
+            })
+
+        def fetch_st(ws):
+            res = _dispatch_wp_posthack(ws, "posthack_get_status", timeout=4.0)
+            return (ws, res)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(clean_sites), 8)) as ex:
+            raw_results = list(ex.map(fetch_st, clean_sites))
+
+        total_sessions = 0
+        all_admins = []
+        any_lockdown = False
+        latest_salts = ""
+        any_success = False
+
+        for ws, res in raw_results:
+            if res.get("success"):
+                any_success = True
+                d = res.get("data") or {}
+                total_sessions += int(d.get("active_sessions_count") or 0)
+                if d.get("lockdown_active"):
+                    any_lockdown = True
+                salts = str(d.get("salts_last_regenerated") or "")
+                if salts and salts != "Not available" and (not latest_salts or salts > latest_salts):
+                    latest_salts = salts
+                for adm in (d.get("admins") or []):
+                    adm_copy = dict(adm)
+                    adm_copy["site_domain"] = ws.get("domain") or ws.get("url") or "Fleet Site"
+                    all_admins.append(adm_copy)
+
+        return success({
+            "website_id": "all",
+            "domain": "Global Fleet",
+            "status": {
+                "success": any_success,
+                "reachable": any_success,
+                "lockdown_active": any_lockdown,
+                "salts_last_regenerated": latest_salts or "Synchronized across fleet",
+                "active_sessions_count": total_sessions,
+                "total_admins": len(all_admins),
+                "admins": all_admins
+            }
+        })
+
     website = get_owned_website(user, website_id)
     res = _dispatch_wp_posthack(website, "posthack_get_status")
     if res.get("success"):
@@ -10527,10 +10614,31 @@ async def execute_posthack_action(website_id: str, body: PostHackActionRequest, 
 
     websites = []
     if website_id == "all":
-        u_cond = [{"user_id": str(user["id"])}]
-        if ObjectId.is_valid(str(user["id"])):
-            u_cond.append({"user_id": ObjectId(str(user["id"]))})
-        websites = list(db.websites.find({"$or": u_cond, "platform": {"$regex": "^wordpress", "$options": "i"}}))
+        u_id_str = str(user.get("id") or user.get("_id") or "")
+        is_admin = bool(user.get("role") in ("super_admin", "admin") or user.get("is_admin"))
+        if is_admin:
+            ws_from_websites = list(db.websites.find({"status": {"$ne": "deleted"}}))
+            ws_from_wp = list(db.wordpress_sites.find())
+        else:
+            u_cond = [{"user_id": u_id_str}]
+            if ObjectId.is_valid(u_id_str):
+                u_cond.append({"user_id": ObjectId(u_id_str)})
+            ws_from_websites = list(db.websites.find({"$or": u_cond, "status": {"$ne": "deleted"}}))
+            ws_from_wp = list(db.wordpress_sites.find({"$or": u_cond}))
+
+        _UNREACHABLE_SUFFIXES = ('.local', '.internal', '.example.com', '.test', '.invalid')
+        seen_keys = set()
+        for w in (ws_from_websites + ws_from_wp):
+            raw_url = w.get("url") or w.get("domain") or ""
+            if not raw_url:
+                continue
+            clean_dom = raw_url.replace("http://", "").replace("https://", "").split("/")[0].split(":")[0].strip().lower()
+            if any(clean_dom.endswith(sfx) for sfx in _UNREACHABLE_SUFFIXES):
+                continue
+            dedup_key = str(w.get("_id") or clean_dom)
+            if dedup_key not in seen_keys:
+                seen_keys.add(dedup_key)
+                websites.append(w)
     else:
         website = get_owned_website(user, website_id)
         websites = [website]
@@ -10553,10 +10661,10 @@ async def execute_posthack_action(website_id: str, body: PostHackActionRequest, 
         extra["enable"] = "1" if body.enable else "0"
 
     def do_action(ws):
-        wp_res = _dispatch_wp_posthack(ws, wp_action, extra)
+        wp_res = _dispatch_wp_posthack(ws, wp_action, extra, timeout=8.0)
         return {
-            "website_id": str(ws["_id"]),
-            "domain": ws.get("domain", ""),
+            "website_id": str(ws.get("_id")),
+            "domain": ws.get("domain", "") or ws.get("url", ""),
             "success": wp_res.get("success", False),
             "result": wp_res.get("data") or wp_res
         }
@@ -10564,20 +10672,32 @@ async def execute_posthack_action(website_id: str, body: PostHackActionRequest, 
     with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(websites), 10)) as executor:
         results = list(executor.map(do_action, websites))
 
+    success_count = sum(1 for r in results if r.get("success"))
+    total_count = len(results)
+
     from src.auth.audit_service import AuditService
     try:
         AuditService().log(
-            user_id=str(user["id"]),
+            user_id=str(user.get("id") or user.get("_id") or "system"),
             action=f"posthack_{body.action}",
             ip_address="system",
-            details={"website_id": website_id, "action": body.action, "results_count": len(results)}
+            details={"website_id": website_id, "action": body.action, "results_count": len(results), "success_count": success_count}
         )
     except Exception:
         pass
 
-    try:
-        from src.services.notification_service import NotificationService
-        NotificationService(db).notify(
+    action_clean_label = body.action.replace('_', ' ')
+    resp_msg = f"Successfully executed {action_clean_label} across {success_count} of {total_count} sites." if success_count > 0 else "Failed to connect to WordPress sites"
+
+    return success({
+        "status": "success" if success_count > 0 else "warning",
+        "success": success_count > 0,
+        "action": body.action,
+        "success_count": success_count,
+        "total_count": total_count,
+        "message": resp_msg,
+        "results": results
+    })
             user_id=str(user["id"]),
             title=f"Website Connected: {clean_domain}",
             message=f"Website {clean_domain} has been successfully connected to MDefender Pro Enterprise protection.",

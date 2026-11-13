@@ -125,7 +125,7 @@ class WAF_FW_Rule_Engine {
             ['name' => 'Automated Vulnerability Scanner', 'pattern' => '/\b(?:sqlmap|nikto|acunetix|nuclei|wpscan|gobuster|dirbuster|ffuf|nmap|masscan|zgrab|nessus|openvas|hydra|medusa)\b/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'WAF Bypass Wildcard & Encoded Execution', 'pattern' => '/(?:\/\?{2,}\/[a-z\?]+)|(?:%0a\s*(?:id|whoami|cat|ls|dir|\/bin\/))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'File Upload Double Extension & Null Byte', 'pattern' => '/(?:\.(?:php\d*|phtml|phar)\.(?:jpg|png|gif|pdf|txt|zip)|\.(?:jpg|png|gif|pdf|txt|zip)\.(?:php\d*|phtml|phar)\b|\.(?:php\d*|phtml|phar)%00)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'User Enumeration Probe', 'pattern' => '/(?:\/wp-json\/wp\/v2\/users\b|[?&]author=\d+)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
+            ['name' => 'User Enumeration Probe', 'pattern' => '/(?:\/wp-json\/wp\/v2\/users(?:\?|$|\/(?!me\b)[0-9]+)|[?&]author=\d+)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
             ['name' => 'Hosting Control Panel Probe', 'pattern' => '/(?:^|[?&])(?:cpanel|whm|webmail)=\d*|:(?:2082|2083|2086|2087)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Double URL Encoded Injection', 'pattern' => '/(?:%25(?:27|22|3d|20|3c|3e))/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
             ['name' => 'Application Logic Cart Tampering', 'pattern' => '/(?:[?&](?:price|amount|total)=-\d+|"price"\s*:\s*-\d+|"discount_override"\s*:\s*100)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
@@ -244,6 +244,29 @@ class WAF_FW_Rule_Engine {
 
         foreach ($all_rules as $rule) {
             if (!$rule['enabled']) continue;
+
+            // False-positive prevention for legitimate WordPress operations
+            if ($rule['name'] === 'User Enumeration Probe') {
+                if (strpos($combined, '/wp-json/wp/v2/users/me') !== false ||
+                    (function_exists('is_user_logged_in') && is_user_logged_in()) ||
+                    (!empty($_COOKIE) && preg_grep('/^wordpress_logged_in_/i', array_keys($_COOKIE)))) {
+                    continue;
+                }
+            }
+            if ($rule['name'] === 'Open Redirect Protection') {
+                $curr_h = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
+                $site_h = function_exists('home_url') ? strtolower((string)parse_url(home_url(), PHP_URL_HOST)) : '';
+                if (preg_match('@(?:^|[\s?&])(?:redirect(?:_to)?|return(?:_to)?|url|dest|next|target|goto)=(?:https?:)?//([^/\s?#&]+)@i', $combined . ' ' . $raw_decoded, $m_rd)) {
+                    $tgt_h = strtolower(preg_replace('/:\d+$/', '', $m_rd[1] ?? ''));
+                    $is_same = empty($tgt_h) || $tgt_h === $curr_h || $tgt_h === $site_h || $tgt_h === 'localhost' || $tgt_h === '127.0.0.1' ||
+                               ($curr_h && substr($tgt_h, -strlen('.' . $curr_h)) === ('.' . $curr_h)) ||
+                               ($site_h && substr($tgt_h, -strlen('.' . $site_h)) === ('.' . $site_h));
+                    if ($is_same) {
+                        continue;
+                    }
+                }
+            }
+
             if (@preg_match($rule['pattern'], $normalized) || @preg_match($rule['pattern'], $raw_decoded) || @preg_match($rule['pattern'], $combined)) {
                 $matches[] = [
                     'rule_name' => $rule['name'],

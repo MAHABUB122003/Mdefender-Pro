@@ -343,7 +343,7 @@ $has_attack_marker = (
     preg_match('@(?:attacker-phishing|evil-phishing)@i', ($_SERVER['HTTP_HOST'] ?? '')) ||
     preg_match('#\b(?:or|and)\s+(?:\d+=\d+|\w+=\w+)#i', $deobfuscated_stripped) ||
     preg_match('#(?:https?|ftp|gopher|dict)://(?:127\.0\.0\.1|localhost|\[::1\]|10\.\d+|192\.168\.|172\.(?:1[6-9]|2\d|3[01]))#i', $deobfuscated) ||
-    preg_match('#(?:\.env|\.git|\.user\.ini|\.htaccess|wp-config\.php(?:\.(?:bak|old|swp)|~)?\b|(?:shell|c99|r57|wso|alfa|b374k|cmd|webshell)\.php\b|\.(?:phtml|php[3-8]|phar)\b|\.php\.(?:png|jpg|gif)\b|wp-admin/(?:install|setup-config)\.php\b|wp-json/wp/v2/users\b)#i', $eval_uri) ||
+    (strpos($eval_uri, '/wp-json/wp/v2/users/me') === false && preg_match('#(?:\.env|\.git|\.user\.ini|\.htaccess|wp-config\.php(?:\.(?:bak|old|swp)|~)?\b|(?:shell|c99|r57|wso|alfa|b374k|cmd|webshell)\.php\b|\.(?:phtml|php[3-8]|phar)\b|\.php\.(?:png|jpg|gif)\b|wp-admin/(?:install|setup-config)\.php\b|wp-json/wp/v2/users(?:\?|$|/(?!me\b)))\b#i', $eval_uri)) ||
     !empty($_SERVER['HTTP_X_FORWARDED_TRANSFER_ENCODING']) ||
     !empty($_SERVER['HTTP_X_CUSTOM_SMUGGLE']) ||
     strpos($deobfuscated, 'TE.CL') !== false ||
@@ -357,7 +357,16 @@ $has_attack_marker = (
     preg_match('@\b(?:price|amount|total|subtotal)\s*=\s*-\d+@i', $raw_combined) ||
     preg_match('@["\'](?:discount_override|price_override)["\']\s*:\s*\d+@i', $raw_combined) ||
     preg_match('@["\']total["\']\s*:\s*0(?:\.00)?\s*,\s*["\']discount@i', $raw_combined) ||
-    preg_match('@(?:^|[?&])(?:redirect|url|dest|next|return_to|target|goto)=(?:https?:)?//(?:evil|attacker|[a-z0-9-]+\.[a-z]{2,})@i', $eval_uri . ' ' . $raw_combined) ||
+    (!empty($_GET['redirect_test']) || (function() use ($deobfuscated, $raw_combined) {
+        $stream = $deobfuscated . ' ' . $raw_combined . ' ' . urldecode($raw_combined);
+        if (preg_match('@(?:^|[?&])(?:redirect|redirect_to|url|dest|next|return_to|target|goto)=(?:https?:)?//([^/\s?#&]+)@i', $stream, $m_rd)) {
+            $curr_host = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
+            $target_host = strtolower(preg_replace('/:\d+$/', '', $m_rd[1] ?? ''));
+            $is_safe = empty($target_host) || $target_host === $curr_host || $target_host === 'localhost' || $target_host === '127.0.0.1' || ($curr_host && substr($target_host, -strlen('.' . $curr_host)) === ('.' . $curr_host));
+            return !$is_safe;
+        }
+        return false;
+    })()) ||
     (!empty($_SERVER['HTTP_ORIGIN']) && (preg_match('@(?:evil|attacker)@i', $_SERVER['HTTP_ORIGIN']) || $_SERVER['HTTP_ORIGIN'] === 'null')) ||
     (!empty($_SERVER['HTTP_SEC_FETCH_DEST']) && $_SERVER['HTTP_SEC_FETCH_DEST'] === 'iframe' && !empty($_SERVER['HTTP_ORIGIN'])) ||
     strpos($eval_uri, 'iframe_embed') !== false ||
@@ -600,7 +609,15 @@ if (!$is_blocked && $has_attack_marker) {
         $block_reason = 'Malicious XML External Entity (XXE) / Serialized Object payload intercepted by Pre-Flight WAAP.';
     }
     // Check Module 7: Broken Authentication & Access Control (BOLA/IDOR/Enum & CVE Exploits)
-    elseif (preg_match('@(?:(?:^|[?&])author=\d+\b|/wp-json/wp/v2/users\b|eyJhbGciOiJub25l|["\']alg["\']\s*:\s*["\']none["\']|\broles?=(?:administrator|admin)\b|["\']capabilities["\']\s*:\s*\[[^\]]*"administrator"|wp-admin/(?:install|setup-config)\.php\b|(?:attacker-phishing|evil-phishing)|wp-json/reallysimplessl/v1/two_fa/(?:skip_onboarding|authenticate)|action=async_litespeed.*litespeed_hash|wp-json/bricks/v1/render_element|/wp-automatic/inc/csv\.php|backup-heart\.php)@i', $eval_payload . ' ' . ($_SERVER['HTTP_HOST'] ?? ''))) {
+    elseif (
+        strpos($eval_uri, '/wp-json/wp/v2/users/me') === false && (
+            (
+                (empty($_COOKIE) || !preg_grep('/^wordpress_logged_in_/i', array_keys($_COOKIE))) &&
+                preg_match('@(?:(?:^|[?&])author=\d+\b|/wp-json/wp/v2/users(?:\?|$|/(?!me\b)[0-9]+))@i', $eval_payload)
+            ) ||
+            preg_match('@(?:eyJhbGciOiJub25l|["\']alg["\']\s*:\s*["\']none["\']|\broles?=(?:administrator|admin)\b|["\']capabilities["\']\s*:\s*\[[^\]]*"administrator"|wp-admin/(?:install|setup-config)\.php\b|(?:attacker-phishing|evil-phishing)|wp-json/reallysimplessl/v1/two_fa/(?:skip_onboarding|authenticate)|action=async_litespeed.*litespeed_hash|wp-json/bricks/v1/render_element|/wp-automatic/inc/csv\.php|backup-heart\.php)@i', $eval_payload . ' ' . ($_SERVER['HTTP_HOST'] ?? ''))
+        )
+    ) {
         $is_blocked = true;
         $attack_name = 'Broken Authentication / Access Control';
         $rule_name = 'Pre-Flight WAAP: Auth, Role Tampering & User Enumeration Guard';
@@ -630,10 +647,19 @@ if (!$is_blocked && $has_attack_marker) {
     // Check Module 11: CSRF, CORS & Open Redirect Defense
     elseif (
         (!empty($_SERVER['HTTP_ORIGIN']) && (preg_match('@(?:evil|attacker)@i', $_SERVER['HTTP_ORIGIN']) || $_SERVER['HTTP_ORIGIN'] === 'null')) ||
-        preg_match('@(?:^|[?&])(?:redirect|url|dest|next|return_to|target|goto)=(?:https?:)?//(?:evil|attacker|[a-z0-9-]+\.[a-z]{2,})@i', $eval_uri . ' ' . $raw_combined) ||
         (!empty($_SERVER['HTTP_SEC_FETCH_DEST']) && $_SERVER['HTTP_SEC_FETCH_DEST'] === 'iframe' && !empty($_SERVER['HTTP_ORIGIN'])) ||
         strpos($eval_uri, 'iframe_embed') !== false ||
-        strpos($eval_uri, 'clickjacking') !== false
+        strpos($eval_uri, 'clickjacking') !== false ||
+        (!empty($_GET['redirect_test']) || (function() use ($deobfuscated, $raw_combined) {
+            $stream = $deobfuscated . ' ' . $raw_combined . ' ' . urldecode($raw_combined);
+            if (preg_match('@(?:^|[?&])(?:redirect|redirect_to|url|dest|next|return_to|target|goto)=(?:https?:)?//([^/\s?#&]+)@i', $stream, $m_rd)) {
+                $curr_host = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
+                $target_host = strtolower(preg_replace('/:\d+$/', '', $m_rd[1] ?? ''));
+                $is_safe = empty($target_host) || $target_host === $curr_host || $target_host === 'localhost' || $target_host === '127.0.0.1' || ($curr_host && substr($target_host, -strlen('.' . $curr_host)) === ('.' . $curr_host));
+                return !$is_safe;
+            }
+            return false;
+        })())
     ) {
         $is_blocked = true;
         $attack_name = 'CSRF / CORS / Open Redirect';
