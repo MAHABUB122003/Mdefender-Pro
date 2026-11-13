@@ -1734,12 +1734,22 @@ def get_user_connected_wordpress_sites(user):
         user_sites = list(db.websites.find({'$or': [{'user_id': user_id_str}, {'user_id': u_obj}]}))
         wp_sites = list(db.wordpress_sites.find({'$or': [{'user_id': user_id_str}, {'user_id': u_obj}]}))
 
+    # Domains that are unreachable from this server — skip to avoid timeout delays
+    _UNREACHABLE_SUFFIXES = ('.local', '.internal', '.example.com', '.test', '.invalid')
+
     unique_sites = {}
     for s in (user_sites + wp_sites):
         raw_u = s.get('url') or s.get('domain')
         if not raw_u or not s.get('api_key'):
             continue
+        # Skip paused/disconnected sites
+        if s.get('status') in ('paused', 'disconnected', 'deleted'):
+            continue
         clean_k = str(raw_u).lower().strip().replace('http://', '').replace('https://', '').rstrip('/')
+        # Skip unreachable internal/test domains — they cause 1-5s TCP timeouts per call
+        domain_part = clean_k.split('/')[0].split(':')[0]
+        if any(domain_part.endswith(suffix) for suffix in _UNREACHABLE_SUFFIXES):
+            continue
         if clean_k and clean_k not in unique_sites:
             unique_sites[clean_k] = s
     return list(unique_sites.values())

@@ -57,16 +57,37 @@ async def get_current_user(request: Request) -> dict:
         raise HTTPException(status_code=401, detail='MFA verification required')
 
     if payload.get('is_admin') or payload.get('role') == 'super_admin':
+        # Fetch admin user from DB to get correct _id (needed for user_id matching on websites)
+        admin_user = None
+        admin_sub = payload.get('sub', '')
+        try:
+            if ObjectId.is_valid(admin_sub):
+                admin_user = db.users.find_one({'_id': ObjectId(admin_sub)})
+            if not admin_user:
+                admin_user = db.users.find_one({'_id': admin_sub})
+            if not admin_user:
+                admin_user = db.users.find_one({
+                    '$or': [
+                        {'email': payload.get('email')},
+                        {'username': payload.get('email')},
+                        {'role': 'super_admin'},
+                    ]
+                })
+        except Exception:
+            pass
+        admin_id = str(admin_user['_id']) if admin_user else admin_sub
         return {
-            'id': payload.get('sub', 'admin'),
-            'email': payload.get('email', 'admin'),
+            'id': admin_id,
+            '_id': admin_id,
+            'email': payload.get('email') or (admin_user.get('email') if admin_user else 'admin'),
             'full_name': 'Administrator',
-            'username': payload.get('email', 'admin'),
+            'username': payload.get('email') or (admin_user.get('username') if admin_user else 'admin'),
             'role': 'super_admin',
             'email_verified': True,
             'mfa_enabled': False,
             'plan': 'enterprise',
             'is_admin': True,
+            'api_key': admin_user.get('api_key', '') if admin_user else '',
         }
 
     try:

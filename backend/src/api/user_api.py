@@ -852,6 +852,13 @@ class UserAPI:
         site_key = site_info.get('api_key') or ''
         if not site_url or not site_key:
             return None
+        # Skip paused or internal dummy sites to prevent connection timeouts
+        if site_info.get('status') in ('paused', 'disconnected', 'deleted'):
+            return None
+        _UNREACHABLE_SUFFIXES = ('.local', '.internal', '.example.com', '.test', '.invalid')
+        domain_part = site_url.replace('http://', '').replace('https://', '').split('/')[0].split(':')[0]
+        if any(domain_part.endswith(sfx) for sfx in _UNREACHABLE_SUFFIXES):
+            return None
         try:
             import requests as _req
             import urllib3
@@ -1715,7 +1722,7 @@ class UserAPI:
                         try:
                             clean_base = raw_url.replace('https://', '').replace('http://', '').strip('/')
                             test_url = f"{attempt_proto}{clean_base}/?waf_cloud_sync=1&action=get_logs&api_key={site_key}&site_token={site_token}"
-                            resp = requests.get(test_url, params=req_params, headers=headers, timeout=(6.0, 15.0), verify=False)
+                            resp = requests.get(test_url, params=req_params, headers=headers, timeout=(2.0, 5.0), verify=False)
                             if resp and resp.status_code == 200:
                                 break
                         except Exception:
@@ -1772,11 +1779,17 @@ class UserAPI:
             # When viewing "All Websites", query all user's unique connected WordPress sites in parallel!
             # Zero database load on central MongoDB, completely lightweight and memory-efficient.
             unique_connected_sites = {}
+            _UNREACHABLE_SUFFIXES = ('.local', '.internal', '.example.com', '.test', '.invalid')
             for s in (user_sites + wp_sites):
                 raw_u = s.get('url') or s.get('domain')
                 if not raw_u or not s.get('api_key'):
                     continue
+                if s.get('status') in ('paused', 'disconnected', 'deleted'):
+                    continue
                 clean_k = str(raw_u).lower().strip().replace('http://', '').replace('https://', '').rstrip('/')
+                domain_part = clean_k.split('/')[0].split(':')[0]
+                if any(domain_part.endswith(sfx) for sfx in _UNREACHABLE_SUFFIXES):
+                    continue
                 if clean_k and clean_k not in unique_connected_sites:
                     unique_connected_sites[clean_k] = s
 
@@ -1821,7 +1834,7 @@ class UserAPI:
                             try:
                                 clean_base = raw_url.replace('https://', '').replace('http://', '').strip('/')
                                 test_url = f"{attempt_proto}{clean_base}/?waf_cloud_sync=1&action=get_logs&api_key={site_key}&site_token={site_key}"
-                                resp = requests.get(test_url, params=req_params, headers=headers, timeout=(6.0, 15.0), verify=False)
+                                resp = requests.get(test_url, params=req_params, headers=headers, timeout=(2.0, 5.0), verify=False)
                                 if resp and resp.status_code == 200:
                                     break
                             except Exception:
