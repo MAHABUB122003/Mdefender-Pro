@@ -71,6 +71,28 @@ def get_owned_website(user, website_id):
             ]
         }))
 
+    # 4. Check db.wordpress_sites fallback
+    if not website:
+        try:
+            if ObjectId.is_valid(website_id):
+                website = db.wordpress_sites.find_one(apply_user_scope({"_id": ObjectId(website_id)}))
+        except Exception:
+            pass
+    if not website:
+        clean_d = str(website_id).replace("https://", "").replace("http://", "").split("/")[0].split(":")[0].strip().lower()
+        website = db.wordpress_sites.find_one(apply_user_scope({
+            "$or": [
+                {"_id": str(website_id)},
+                {"id": str(website_id)},
+                {"domain": clean_d},
+                {"url": clean_d},
+                {"site_url": clean_d},
+                {"domain": str(website_id)},
+                {"url": str(website_id)},
+                {"site_url": str(website_id)},
+            ]
+        }))
+
     if not website:
         raise HTTPException(status_code=404, detail="Website not found or not owned by current user")
 
