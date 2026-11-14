@@ -5014,9 +5014,10 @@ function waf_fw_analyze_request() {
         }
     }
     
-    // Cloud sync, remote fleet actions, and internal WAF REST endpoints handle their own authentication and must not be blocked
+    // Cloud sync, remote fleet actions, and internal WAF REST endpoints handle their own authentication and must not be blocked or logged as visitor traffic
     if (isset($_GET['waf_cloud_sync']) || isset($_GET['waf_sync']) || isset($_POST['waf_cloud_sync']) || (isset($_GET['action']) && $_GET['action'] === 'waf_cloud_sync') ||
-        (isset($_SERVER['HTTP_USER_AGENT']) && strpos($_SERVER['HTTP_USER_AGENT'], 'MDefender-Pro-CloudAction') !== false) ||
+        !empty($_SERVER['HTTP_X_MDEFENDER_PROBE']) || !empty($_SERVER['HTTP_X_MDEFENDER_KEY']) ||
+        (isset($_SERVER['HTTP_USER_AGENT']) && strpos($_SERVER['HTTP_USER_AGENT'], 'MDefender') !== false) ||
         (isset($_GET['rest_route']) && strpos($_GET['rest_route'], '/waf-fw/') !== false) ||
         (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], '/wp-json/waf-fw/') !== false)) {
         return;

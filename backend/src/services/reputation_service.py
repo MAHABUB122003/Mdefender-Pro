@@ -326,7 +326,8 @@ class ReputationService:
         # 2. HTTP Headers Check
         try:
             scheme = "https" if has_ssl else "http"
-            r = requests.get(f"{scheme}://{domain}", timeout=5, verify=False)
+            headers = {"User-Agent": "MDefender-Pro-CloudAction/1.0", "X-MDefender-Probe": "1"}
+            r = requests.get(f"{scheme}://{domain}", headers=headers, timeout=5, verify=False)
             h = r.headers
             hsts_active = "strict-transport-security" in h
             csp_active = "content-security-policy" in h
