@@ -1,7 +1,9 @@
 {
   "enabled": true,
-  "updated_at": 1794674441,
-  "blacklist_ips": {},
+  "updated_at": 1794674954,
+  "blacklist_ips": {
+    "192.168.1.104": true
+  },
   "blocked_countries": [],
   "local_server_country": "BD"
 }

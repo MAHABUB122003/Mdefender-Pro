@@ -77,9 +77,14 @@ class WAF_FW_ML_Api_Client {
     }
 
     /** Single page domain this plugin is protecting. */
-    private function get_domain() {
-        $host = parse_url(home_url(), PHP_URL_HOST);
-        return $host ? $host : 'localhost';
+    public function get_domain() {
+        $host = parse_url(home_url(), PHP_URL_HOST) ?: ($_SERVER['HTTP_HOST'] ?? 'localhost');
+        $clean_host = $host ? preg_replace('/^www\./i', '', $host) : 'localhost';
+        $site_path = trim(parse_url(home_url(), PHP_URL_PATH) ?? '', '/');
+        if (in_array(strtolower($clean_host), ['localhost', '127.0.0.1']) && !empty($site_path)) {
+            return $clean_host . '/' . $site_path;
+        }
+        return $clean_host;
     }
 
     private $last_error = '';

@@ -83,7 +83,9 @@ class LicenseSlotService:
         t_days_rem = max(0, int(math.ceil((trial_ends - now_dt).total_seconds() / 86400)))
 
         plan = str(user_doc.get("plan") or "free").lower()
-        payment_status = str(user_doc.get("payment_status") or "free").lower()
+        payment_status = str(user_doc.get("payment_status") or "").lower()
+        role = str(user_doc.get("role") or "user").lower()
+        is_admin_user = role in ("admin", "super_admin")
 
         # Check active subscription in db.subscriptions (Paddle / Stripe webhook source of truth)
         uid_str = str(user_doc["_id"])
@@ -93,18 +95,22 @@ class LicenseSlotService:
             payment_status = "active"
 
         # Check if user has active paid subscription or admin entitlement
-        is_paid = (payment_status in ("active", "trialing") and plan != "free") or (
-            plan in ("go", "pro", "enterprise", "premium", "ultra") and payment_status == "active"
+        is_paid = is_admin_user or (
+            (payment_status in ("active", "trialing") and plan != "free") or (
+                plan in ("go", "pro", "enterprise", "premium", "ultra") and payment_status != "canceled"
+            )
         )
         is_trial_active = (not is_paid) and (t_days_rem > 0)
 
-        # Purchased slots: explicitly stored or resolved from subscription
+        # Purchased slots: explicitly stored or resolved from subscription / role
         raw_slots = user_doc.get("purchased_slots")
         if raw_slots is not None and isinstance(raw_slots, (int, float)) and int(raw_slots) > 0:
             purchased_slots = int(raw_slots)
+        elif is_admin_user:
+            purchased_slots = 100
         elif is_paid:
             # Fallback based on plan tier if not explicitly quantified
-            plan_defaults = {"go": 5, "pro": 10, "enterprise": 20, "premium": 10, "ultra": 9999}
+            plan_defaults = {"go": 5, "pro": 10, "enterprise": 50, "premium": 10, "ultra": 9999}
             purchased_slots = plan_defaults.get(plan, 1)
         elif is_trial_active:
             # During 14-day free trial, grant full fleet access (up to 50 websites)
