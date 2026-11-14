@@ -79,6 +79,8 @@ export default function UserWebsites() {
   const [loading, setLoading] = useState(() => !cachedData)
 
   const [feedbackMsg, setFeedbackMsg] = useState(null)
+  const [slotSummary, setSlotSummary] = useState(null)
+  const [slotActionLoading, setSlotActionLoading] = useState({})
 
 
 
@@ -282,11 +284,67 @@ export default function UserWebsites() {
 
 
 
+  const fetchSlots = useCallback(async () => {
+    try {
+      const res = await api.getLicenseSlotsStatus()
+      if (res?.data) {
+        setSlotSummary(res.data)
+      }
+    } catch (e) {
+      console.warn('Could not fetch license slots status:', e)
+    }
+  }, [])
+
   useEffect(() => {
-
     fetchData(true)
+    fetchSlots()
+  }, [fetchData, fetchSlots])
 
-  }, [fetchData])
+  const handleAssignSlot = async (siteId) => {
+    if (!siteId) return
+    setSlotActionLoading(prev => ({ ...prev, [siteId]: true }))
+    setFeedbackMsg(null)
+    try {
+      const res = await api.assignLicenseSlot(siteId)
+      setFeedbackMsg({
+        type: 'success',
+        text: res?.data?.message || '✅ License slot assigned! Autonomous WAF & Malware Hunter active for this website.'
+      })
+      userStore.invalidate('websites')
+      userStore.invalidate('dashboard')
+      await Promise.all([fetchData(true), fetchSlots()])
+    } catch (err) {
+      setFeedbackMsg({
+        type: 'error',
+        text: err.message || 'Failed to assign license slot.'
+      })
+    } finally {
+      setSlotActionLoading(prev => ({ ...prev, [siteId]: false }))
+    }
+  }
+
+  const handleReleaseSlot = async (siteId) => {
+    if (!siteId) return
+    setSlotActionLoading(prev => ({ ...prev, [siteId]: true }))
+    setFeedbackMsg(null)
+    try {
+      const res = await api.releaseLicenseSlot(siteId)
+      setFeedbackMsg({
+        type: 'success',
+        text: res?.data?.message || 'Slot released. You can now assign it to another website in your fleet.'
+      })
+      userStore.invalidate('websites')
+      userStore.invalidate('dashboard')
+      await Promise.all([fetchData(true), fetchSlots()])
+    } catch (err) {
+      setFeedbackMsg({
+        type: 'error',
+        text: err.message || 'Failed to release license slot.'
+      })
+    } finally {
+      setSlotActionLoading(prev => ({ ...prev, [siteId]: false }))
+    }
+  }
 
 
   const handleOpenKeyModal = (w) => {
@@ -1279,38 +1337,70 @@ export default function UserWebsites() {
           <div>
 
             <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#10201E', margin: '0 0 2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-
               <span>Protected WordPress Websites</span>
-
               <span style={{
-
                 fontSize: '11px',
-
                 padding: '2px 8px',
-
                 borderRadius: '999px',
-
                 background: '#F1F5F3',
-
                 color: '#10201E',
-
                 fontWeight: '800',
-
                 border: '1px solid #D9E1DC'
-
               }}>
-
                 {wpWebsites.length}
-
               </span>
-
             </h3>
-
             <p style={{ margin: 0, fontSize: '12px', color: '#64748B' }}>
-
               Manage WordPress site API keys, edge security status, and Under Attack enforcement.
-
             </p>
+
+            {/* Active Fleet License Slot Quota Meter */}
+            {slotSummary && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                marginTop: '8px',
+                flexWrap: 'wrap'
+              }}>
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: '750',
+                  padding: '3px 10px',
+                  borderRadius: '6px',
+                  background: slotSummary.available_slots > 0 ? '#E8F3EC' : '#FAFBF9',
+                  color: slotSummary.available_slots > 0 ? '#28745D' : '#10201E',
+                  border: `1px solid ${slotSummary.available_slots > 0 ? '#CFE2D4' : '#D9E1DC'}`,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <ShieldCheck size={13} color={slotSummary.available_slots > 0 ? '#28745D' : '#10201E'} />
+                  <span>
+                    License Allocation: <strong>{slotSummary.used_slots} / {slotSummary.total_slots} Slots Assigned</strong>
+                    {slotSummary.available_slots > 0 ? ` (${slotSummary.available_slots} Available)` : ' (All Slots In Use)'}
+                  </span>
+                </span>
+
+                {slotSummary.available_slots === 0 && wpWebsites.some(w => !w.is_licensed) && (
+                  <Link
+                    to="/user/pricing"
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: '800',
+                      color: '#E8792F',
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <span>+ Scale Fleet Licenses ($4/mo)</span>
+                    <ArrowRight size={12} />
+                  </Link>
+                )}
+              </div>
+            )}
 
           </div>
 
@@ -1516,23 +1606,8 @@ export default function UserWebsites() {
                         <span>WordPress Plugin</span>
                       </span>
 
-                      {(w.trial_days_remaining !== undefined && w.trial_days_remaining !== null) ? (
-                        <span style={{
-                          fontSize: '10px',
-                          padding: '2px 8px',
-                          borderRadius: '6px',
-                          background: w.trial_days_remaining > 0 ? '#EFF6FF' : '#FEF2F2',
-                          color: w.trial_days_remaining > 0 ? '#1D4ED8' : '#DC2626',
-                          border: w.trial_days_remaining > 0 ? '1px solid #BFDBFE' : '1px solid #FECACA',
-                          fontWeight: '700',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}>
-                          <Sparkles size={11} color={w.trial_days_remaining > 0 ? '#2563EB' : '#DC2626'} />
-                          <span>{w.trial_days_remaining > 0 ? `${w.trial_days_remaining}d Trial Active` : 'Trial Expired'}</span>
-                        </span>
-                      ) : (w.subscription_status === 'active' || isPremium) ? (
+                      {/* License Slot State & Action Button */}
+                      {w.is_licensed ? (
                         <span style={{
                           fontSize: '10px',
                           padding: '2px 8px',
@@ -1546,9 +1621,71 @@ export default function UserWebsites() {
                           gap: '4px'
                         }}>
                           <CheckCircle2 size={11} color="#15803D" />
-                          <span>Pro Active</span>
+                          <span>Licensed (Protected)</span>
                         </span>
-                      ) : null}
+                      ) : (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{
+                            fontSize: '10px',
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            background: '#FEF3C7',
+                            color: '#B45309',
+                            border: '1px solid #FDE68A',
+                            fontWeight: '700',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            <AlertTriangle size={11} color="#B45309" />
+                            <span>Unlicensed (Protection Paused)</span>
+                          </span>
+
+                          {slotSummary && slotSummary.available_slots > 0 ? (
+                            <button
+                              type="button"
+                              disabled={slotActionLoading[w.id || w._id]}
+                              onClick={() => handleAssignSlot(w.id || w._id)}
+                              style={{
+                                fontSize: '10.5px',
+                                fontWeight: '750',
+                                padding: '3px 9px',
+                                borderRadius: '6px',
+                                background: '#0B2522',
+                                color: '#FFFFFF',
+                                border: 'none',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              <ShieldCheck size={11} color="#10B981" />
+                              <span>{slotActionLoading[w.id || w._id] ? 'Claiming...' : 'Assign Slot'}</span>
+                            </button>
+                          ) : (
+                            <Link
+                              to="/user/pricing"
+                              style={{
+                                fontSize: '10.5px',
+                                fontWeight: '750',
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                background: '#FFFBEB',
+                                color: '#B45309',
+                                border: '1px solid #FDE68A',
+                                textDecoration: 'none',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px'
+                              }}
+                            >
+                              <span>Add Slot (+$4/mo)</span>
+                            </Link>
+                          )}
+                        </div>
+                      )}
 
 
 
@@ -1909,6 +2046,67 @@ export default function UserWebsites() {
                           <Zap size={14} color="#059669" />
                           <span>Open WP-Admin (1-Click SSO)</span>
                         </button>
+
+                        {/* License Slot Reassignment Action */}
+                        {w.is_licensed ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveMenuSiteId(null)
+                              handleReleaseSlot(w.id || w._id)
+                            }}
+                            style={{
+                              width: '100%',
+                              padding: '8px 12px',
+                              background: 'none',
+                              border: 'none',
+                              borderRadius: '8px',
+                              color: '#B45309',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              textAlign: 'left',
+                              transition: 'background 0.12s ease'
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#FFFBEB' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
+                          >
+                            <Sliders size={14} color="#B45309" />
+                            <span>Release License Slot</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveMenuSiteId(null)
+                              handleAssignSlot(w.id || w._id)
+                            }}
+                            style={{
+                              width: '100%',
+                              padding: '8px 12px',
+                              background: 'none',
+                              border: 'none',
+                              borderRadius: '8px',
+                              color: '#059669',
+                              fontSize: '12px',
+                              fontWeight: '700',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              textAlign: 'left',
+                              transition: 'background 0.12s ease'
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#ECFDF5' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
+                          >
+                            <ShieldCheck size={14} color="#059669" />
+                            <span>Assign License Slot</span>
+                          </button>
+                        )}
 
 
 

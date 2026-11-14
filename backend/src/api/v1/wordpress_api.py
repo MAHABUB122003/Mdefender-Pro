@@ -299,8 +299,22 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
 
     import math
     from src.services.subscription_service import SubscriptionService
+    from src.services.license_slot_service import LicenseSlotService
     user_eff_plan = SubscriptionService(db).effective_plan(auth_data["user_id"])
     is_user_pro = user_eff_plan in ("pro", "enterprise", "premium", "ultra", "go")
+
+    slot_service = LicenseSlotService(db)
+    is_site_licensed, license_reason = slot_service.verify_edge_license(
+        website_id=str(auth_data["website_id"]),
+        domain=body.domain,
+        user_id=str(auth_data["user_id"])
+    )
+
+    # Auto-claim an available slot if user holds available purchased licenses
+    if not is_site_licensed:
+        auto_ok, _ = slot_service.assign_slot(auth_data["user_id"], str(auth_data["website_id"]))
+        if auto_ok:
+            is_site_licensed = True
 
     trial_starts_at = website.get("trial_starts_at") or now
     trial_ends_at = website.get("trial_ends_at") or (now + timedelta(days=14))
@@ -308,18 +322,29 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
     seconds_remaining = (trial_ends_at - now).total_seconds() if trial_ends_at else 14 * 86400
     days_remaining = max(0, math.ceil(seconds_remaining / 86400))
 
-    if is_user_pro:
-        current_sub_status = "pro"
+    if is_site_licensed:
+        current_sub_status = "pro" if is_user_pro else "trial_active"
+        trial_days_remaining_val = 0 if is_user_pro else days_remaining
+        site_active_status = "active"
+    elif is_user_pro:
+        # User is Pro but has consumed all purchased slots -> Unlicensed
+        current_sub_status = "unlicensed"
         trial_days_remaining_val = 0
+        site_active_status = "paused"
     elif days_remaining > 0:
         current_sub_status = "trial_active"
         trial_days_remaining_val = days_remaining
+        site_active_status = "active"
     else:
-        current_sub_status = "trial_expired"
+        current_sub_status = "unlicensed"
         trial_days_remaining_val = 0
+        site_active_status = "paused"
 
     update_fields = {
-        "status": "active" if (is_user_pro or days_remaining > 0) else "expired",
+        "status": site_active_status,
+        "is_licensed": is_site_licensed,
+        "license_status": current_sub_status,
+        "is_protected": is_site_licensed,
         "user_id": str(auth_data["user_id"]),
         "platform": "wordpress",
         "verified": True,
@@ -542,12 +567,58 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
 
 
     website = auth_data.get("website") or {}
-
     website_id = auth_data.get("website_id")
-
     user_id = auth_data.get("user_id")
 
+    # Strict License Slot Gate: Unlicensed sites must never receive active WAF rules or scan commands
+    from src.services.license_slot_service import LicenseSlotService
+    slot_service = LicenseSlotService(db)
+    is_site_licensed, lic_reason = slot_service.verify_edge_license(
+        website_id=str(website_id),
+        domain=body.domain,
+        user_id=str(user_id)
+    )
 
+    if not is_site_licensed:
+        # Update heartbeat timestamp only, but return disabled protection state
+        now_ts = datetime.now()
+        db.wordpress_sites.update_one(
+            {"website_id": website_id},
+            {"$set": {"last_heartbeat": now_ts, "status": "unlicensed", "license_status": "unlicensed"}},
+            upsert=True
+        )
+        w_uid = ObjectId(str(website_id)) if ObjectId.is_valid(str(website_id)) else str(website_id)
+        db.websites.update_one(
+            {"_id": w_uid},
+            {"$set": {
+                "last_heartbeat": now_ts,
+                "is_licensed": False,
+                "license_status": "unlicensed",
+                "is_protected": False,
+                "status": "paused"
+            }}
+        )
+        return {
+            "status": "unlicensed",
+            "license_status": "unlicensed",
+            "is_licensed": False,
+            "message": "This website is not covered by an active license slot. Security protection is paused.",
+            "data": {
+                "status": "unlicensed",
+                "config": {"waf_mode": "disabled", "learning_mode": False},
+                "command": None,
+                "blacklist": [],
+                "whitelist": [],
+                "blocked_countries": [],
+                "user_rules": []
+            },
+            "blacklist": [],
+            "whitelist": [],
+            "blocked_countries": [],
+            "user_rules": [],
+            "config": {"waf_mode": "disabled"},
+            "command": None
+        }
 
     stored = db.wordpress_sites.find_one({"website_id": website_id})
 
@@ -2245,6 +2316,19 @@ async def generate_wordpress_sso_token(website_id: str, user=Depends(get_current
     """Generate a single-use 60-second cryptographic HMAC SSO magic login token for 1-Click WP-Admin access."""
     website = get_owned_website(user, website_id)
     db = MongoDB()
+
+    # Strict License Slot Gate: Unlicensed sites cannot use 1-Click SSO
+    from src.services.license_slot_service import LicenseSlotService
+    uid_str = str(user.get("id") or user.get("_id"))
+    is_licensed, reason = LicenseSlotService(db).verify_edge_license(
+        website_id=website_id,
+        user_id=uid_str
+    )
+    if not is_licensed:
+        raise HTTPException(
+            status_code=403,
+            detail="1-Click WP-Admin SSO requires an active license slot for this website. Please assign a slot from the dashboard."
+        )
 
     # 1. Resolve site domain and base target URL
     raw_domain = website.get("domain") or website.get("url") or ""

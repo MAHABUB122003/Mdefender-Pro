@@ -25,6 +25,7 @@ from src.features.feature_flags import FeatureFlagService
 from src.services.paddle_service import PaddleService
 from src.services.plan_service import PlanService
 from src.services.subscription_service import SubscriptionService
+from src.services.license_slot_service import LicenseSlotService
 from src.utils.api_response import success
 
 router = APIRouter(prefix="/billing", tags=["Billing"])
@@ -239,3 +240,42 @@ async def paddle_webhook(request: Request):
     if "subscription." in event_type:
         service.upsert_paddle_subscription(user_id, event)
     return success({"ok": True, "event_type": event_type})
+
+
+class SlotActionRequest(BaseModel):
+    website_id: str
+
+
+@router.get("/license-slots/status")
+async def get_license_slots_status(user=Depends(get_current_user)):
+    """Return real-time allocation status: total slots, used slots, available slots, and site states."""
+    db = MongoDB()
+    user_id = str(user.get("id") or user.get("_id"))
+    slot_service = LicenseSlotService(db)
+    summary = slot_service.get_slots_summary(user_id)
+    return success(summary)
+
+
+@router.post("/license-slots/assign")
+async def assign_license_slot(body: SlotActionRequest, user=Depends(get_current_user)):
+    """Atomically assign an available license slot to a website."""
+    db = MongoDB()
+    user_id = str(user.get("id") or user.get("_id"))
+    slot_service = LicenseSlotService(db)
+    ok, msg = slot_service.assign_slot(user_id, body.website_id)
+    if not ok:
+        raise HTTPException(status_code=400, detail=msg)
+    return success({"message": msg, "website_id": body.website_id, "is_licensed": True})
+
+
+@router.post("/license-slots/release")
+async def release_license_slot(body: SlotActionRequest, user=Depends(get_current_user)):
+    """Release an assigned license slot from a website to make it available for another site."""
+    db = MongoDB()
+    user_id = str(user.get("id") or user.get("_id"))
+    slot_service = LicenseSlotService(db)
+    ok, msg = slot_service.release_slot(user_id, body.website_id)
+    if not ok:
+        raise HTTPException(status_code=400, detail=msg)
+    return success({"message": msg, "website_id": body.website_id, "is_licensed": False})
+
