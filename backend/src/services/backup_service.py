@@ -465,7 +465,7 @@ class BackupService:
 
         # 3. CRITICAL: Merge existing valid DB backups strictly belonging to this site
         db_backups = list(target_site.get("backups") or [])
-        clean_domain_lower = clean_name.lower()
+        clean_domain_lower = clean_name.lower().replace("www.", "")
         for b in db_backups:
             if isinstance(b, dict):
                 bfn = str(b.get("filename") or "").strip()
@@ -473,11 +473,11 @@ class BackupService:
                     continue
 
                 # STRICT ISOLATION: Drop backups that belong to a different domain
-                b_dom = str(b.get("domain") or "").strip().lower()
+                b_dom = str(b.get("domain") or "").strip().lower().replace("www.", "")
                 if b_dom and b_dom != clean_domain_lower:
                     continue
 
-                slug_part = bfn.replace("-database.zip", "").replace(".zip", "").replace(".sql.gz", "").replace(".sql", "").lower()
+                slug_part = bfn.replace("-database.zip", "").replace(".zip", "").replace(".sql.gz", "").replace(".sql", "").lower().replace("www.", "")
                 if "." in slug_part and slug_part != clean_domain_lower:
                     continue
 
@@ -985,7 +985,7 @@ class BackupService:
                 logger.warning(f"Could not dispatch delete_backup to remote site: {e}")
 
         # If the filename slug belongs to a specific domain in user's fleet, also notify that origin
-        clean_slug = clean_fn.replace("-database.zip", "").replace(".zip", "").replace(".sql.gz", "").replace(".sql", "").lower()
+        clean_slug = clean_fn.replace("-database.zip", "").replace(".zip", "").replace(".sql.gz", "").replace(".sql", "").lower().replace("www.", "")
         if "." in clean_slug:
             user_id = website.get("user_id")
             from bson import ObjectId
@@ -994,7 +994,7 @@ class BackupService:
                 u_cond.append({"user_id": ObjectId(str(user_id))})
             all_user_sites = list(self.db.websites.find({"$or": u_cond}))
             for osite in all_user_sites:
-                osite_slug = self.get_clean_domain_slug(osite).lower()
+                osite_slug = self.get_clean_domain_slug(osite).lower().replace("www.", "")
                 if osite_slug == clean_slug and str(osite.get("_id")) != str(website.get("_id")):
                     try:
                         self.dispatch_remote_wp_action(osite, {"action": "delete_backup", "filename": clean_fn}, timeout=20.0)
@@ -1015,7 +1015,7 @@ class BackupService:
                 except Exception as e:
                     logger.warning(f"Could not remove physical file {cand}: {e}")
 
-        # 3. Remove from MongoDB document catalog across ALL websites owned by this user
+        # 3. Remove from MongoDB document catalog across ALL websites and wordpress_sites owned by this user
         candidates = [clean_fn, filename, os.path.splitext(clean_fn)[0]]
         user_id = website.get("user_id")
         from bson import ObjectId
@@ -1034,6 +1034,20 @@ class BackupService:
                 }
             }}
         )
+        try:
+            self.db.wordpress_sites.update_many(
+                {"$or": u_cond},
+                {"$pull": {
+                    "backups": {
+                        "$or": [
+                            {"filename": {"$in": candidates}},
+                            {"id": {"$in": candidates}}
+                        ]
+                    }
+                }}
+            )
+        except Exception:
+            pass
 
         return {
             "success": True,

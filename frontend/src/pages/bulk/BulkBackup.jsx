@@ -110,15 +110,14 @@ export default function BulkBackup() {
           const hasClean = rawBackups.some(b => b.filename && !b.filename.startsWith('mdf_') && b.filename.endsWith('.zip'))
           const cleaned = hasClean ? rawBackups.filter(b => !b.filename.startsWith('mdf_full_') && !b.filename.startsWith('mdf_db_')) : rawBackups
 
-          // Deduplicate across fleet by (domain, filename)
-          const seen = new Set()
+          // Deduplicate across fleet strictly by unique filename
+          const seenFns = new Set()
           const uniqueBackups = []
           for (const b of cleaned) {
-            const dom = (b.domain || '').toLowerCase()
-            const fn = (b.filename || '').toLowerCase()
-            const key = `${dom}:${fn}`
-            if (!seen.has(key)) {
-              seen.add(key)
+            const fn = (b.filename || '').toLowerCase().trim()
+            if (!fn) continue
+            if (!seenFns.has(fn)) {
+              seenFns.add(fn)
               uniqueBackups.push(b)
             }
           }
@@ -322,21 +321,21 @@ export default function BulkBackup() {
     }
 
     // Resolve the exact owner site
+    const fn = (bk.filename || '').toLowerCase().trim()
+    const fnSlug = fn.replace('-database.zip', '').replace('.zip', '').replace('.sql.gz', '').replace('.sql', '').replace(/^www\./, '')
     const matchedSite = (wpWebsites || []).find(w => {
+      const wDom = (w.domain || w.url || '').toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/^www\./, '')
+      if (fnSlug && (wDom === fnSlug || wDom.startsWith(fnSlug) || fnSlug.startsWith(wDom))) return true
+      const bDom = (bk.domain || '').toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/^www\./, '')
+      if (bDom && (wDom === bDom || wDom.startsWith(bDom))) return true
       const wid = w.id || w._id
       if (bk.site_id && wid === bk.site_id) return true
-      const wDom = (w.domain || w.url || '').toLowerCase()
-      const bDom = (bk.domain || '').toLowerCase()
-      const fn = (bk.filename || '').toLowerCase()
-      const fnSlug = fn.replace('-database.zip', '').replace('.zip', '').replace('.sql.gz', '').replace('.sql', '')
-      if (bDom && wDom.includes(bDom)) return true
-      if (fnSlug && wDom.includes(fnSlug)) return true
       return false
     })
     const siteId = matchedSite?.id || matchedSite?._id || bk.site_id || (activeTargetSite?.id || activeTargetSite?._id)
 
-    // Instant optimistic UI update
-    setBackups(prev => prev.filter(b => !(b.filename === bk.filename && (b.domain === bk.domain || b.site_id === bk.site_id))))
+    // Instant optimistic UI update: immediately remove all instances of this archive from view
+    setBackups(prev => prev.filter(b => (b.filename || '').toLowerCase().trim() !== fn))
     if (bk.size_bytes) {
       setTotalBytes(prev => Math.max(0, prev - bk.size_bytes))
     }

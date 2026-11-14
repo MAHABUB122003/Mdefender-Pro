@@ -250,14 +250,17 @@ class SignatureDetector:
         if md5 in md5_set:
             matches.append("known_malicious_md5")
 
-        # 2. Query 2.5M+ malicious signatures database in wp_checksums.db
+        # 2. Query 76k+ exact malicious file hashes database in wp_checksums.db
         checksum_db = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../datasets/wordpress_malware/database/wp_checksums.db"))
         if os.path.exists(checksum_db):
             try:
                 import sqlite3
                 conn = sqlite3.connect(f"file:{checksum_db}?mode=ro", uri=True, timeout=2)
                 c = conn.cursor()
-                c.execute("SELECT category, description FROM malicious_signatures WHERE pattern_or_hash IN (?, ?, ?) LIMIT 1", (sha256, md5, sha1))
+                c.execute(
+                    "SELECT category, description FROM malicious_signatures WHERE signature_type = 'exact_file_sha256' AND pattern_or_hash = ? LIMIT 1",
+                    (sha256,)
+                )
                 row = c.fetchone()
                 if row:
                     matches.append(f"malicious_signature: {row[0]} ({row[1]})")

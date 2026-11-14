@@ -11508,18 +11508,18 @@ async def get_fleet_backups(user=Depends(get_current_user)):
                 continue
 
             # Check if this backup's filename indicates it belongs to a different domain
-            b_slug = fn.replace("-database.zip", "").replace(".zip", "").replace(".sql.gz", "").replace(".sql", "").lower()
-            if "." in b_slug and b_slug != s_clean.lower():
+            b_slug = fn.replace("-database.zip", "").replace(".zip", "").replace(".sql.gz", "").replace(".sql", "").lower().replace("www.", "")
+            s_clean_clean = s_clean.lower().replace("www.", "")
+            if "." in b_slug and b_slug != s_clean_clean:
                 continue
 
-            b_dom = b.get("domain") or s_domain
-            # Deduplicate across fleet
-            key = f"{b_dom.lower()}:{fn.lower()}"
-            if key in seen_fleet_keys:
+            # Strictly deduplicate across fleet by filename to prevent multi-origin ghost duplicates
+            fn_key = fn.lower()
+            if fn_key in seen_fleet_keys:
                 continue
-            seen_fleet_keys.add(key)
+            seen_fleet_keys.add(fn_key)
 
-            b["domain"] = b_dom
+            b["domain"] = s_domain
             b["site_id"] = s_id
             deduped_backups.append(b)
             total_bytes += b.get("size_bytes", 0)

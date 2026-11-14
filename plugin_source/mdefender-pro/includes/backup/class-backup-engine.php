@@ -166,6 +166,29 @@ class WAF_FW_Backup_Engine {
     }
 
     /**
+     * Check if a backup filename belongs strictly to the current website domain.
+     * Prevents multi-tenant directory bleeding on shared cPanel / VPS hosts.
+     */
+    private function is_file_owned_by_this_site($filename, $site_host) {
+        $clean_host = strtolower(preg_replace('/^www\./', '', preg_replace('/:[0-9]+$/', '', (string)$site_host)));
+        $clean_fn = strtolower(basename((string)$filename));
+        $fn_slug = preg_replace('/(-database)?\.(zip|sql\.gz|sql)$/i', '', $clean_fn);
+        $fn_slug = preg_replace('/^www\./', '', $fn_slug);
+
+        // If filename contains a dot (domain name pattern like mahabubur.shop or mbr.mahabubur.shop)
+        if (strpos($fn_slug, '.') !== false) {
+            return ($fn_slug === $clean_host);
+        }
+
+        // If filename starts with a known domain pattern followed by _ or -
+        if (strpos($fn_slug, 'localhost-') === 0 && strpos($clean_host, 'localhost') !== 0) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Retrieve all recorded backups sorted by newest first.
      */
     public function get_backups() {
@@ -175,10 +198,14 @@ class WAF_FW_Backup_Engine {
             $stored = [];
         }
 
-        $site_host = strtolower(parse_url(home_url(), PHP_URL_HOST) ?: 'site');
-        $site_slug = sanitize_file_name($site_host);
+        $home_url = home_url();
+        $parsed_host = parse_url($home_url, PHP_URL_HOST);
+        $site_host = strtolower($parsed_host ?: ($_SERVER['HTTP_HOST'] ?? 'site'));
+        $site_host = preg_replace('/:[0-9]+$/', '', $site_host);
+        $site_host_clean = preg_replace('/^www\./', '', $site_host);
+        $site_slug = sanitize_file_name($site_host_clean);
 
-        // Scan filesystem across all resilient storage tiers (outside root & fallback)
+        // Scan filesystem across all resilient storage tiers (strictly site-scoped + fallback)
         $search_dirs = array_unique([
             $this->backup_dir,
             wp_normalize_path(dirname(ABSPATH) . '/mdefender-backups/' . $site_slug . '/'),
@@ -228,6 +255,14 @@ class WAF_FW_Backup_Engine {
                 continue;
             }
 
+            // STRICT DOMAIN ISOLATION: Check if this file belongs to the current site!
+            if (!$this->is_file_owned_by_this_site($filename, $site_host_clean)) {
+                if (isset($stored[$filename])) {
+                    unset($stored[$filename]); // Purge foreign file from WordPress option!
+                }
+                continue; // Do NOT include foreign file in catalog!
+            }
+
             $file_size = @filesize($file_path);
             $file_mtime = @filemtime($file_path);
 
@@ -235,24 +270,15 @@ class WAF_FW_Backup_Engine {
                 $item = $stored[$filename];
                 $item['size'] = $file_size;
                 $item['size_formatted'] = size_format($file_size, 2);
-                $item['domain'] = $site_host;
+                $item['domain'] = $site_host_clean;
                 $catalog[$filename] = $item;
             } else {
-                // Check if this uncatalogued file belongs to this site or a different site in shared parent folder
-                $file_slug = strtolower(str_replace(['-database.zip', '.zip', '.sql.gz', '.sql'], '', $filename));
-                if (strpos($file_slug, '.') !== false) {
-                    if ($file_slug !== $site_host && $file_slug !== $site_slug && $file_slug !== str_replace('www.', '', $site_host)) {
-                        // Belongs to another website on this shared server - DO NOT INCLUDE!
-                        continue;
-                    }
-                }
-
                 // Auto-detect orphan backup file and inspect metadata
                 $type = (strpos($filename, 'db_') === 0 || strpos($filename, '.sql') !== false) ? 'database' : ((strpos($filename, 'files_') === 0) ? 'files' : 'full');
                 $catalog[$filename] = [
                     'id' => sanitize_key(pathinfo($filename, PATHINFO_FILENAME)),
                     'filename' => $filename,
-                    'domain' => $site_host,
+                    'domain' => $site_host_clean,
                     'type' => $type,
                     'created_at' => date('Y-m-d H:i:s', $file_mtime),
                     'size' => $file_size,
@@ -261,6 +287,13 @@ class WAF_FW_Backup_Engine {
                     'status' => 'completed',
                     'note' => 'Discovered Archive',
                 ];
+            }
+        }
+
+        // Also clean up any lingering foreign entries from $stored that may not be on disk
+        foreach ($stored as $st_fn => $st_item) {
+            if (!$this->is_file_owned_by_this_site($st_fn, $site_host_clean)) {
+                unset($stored[$st_fn]);
             }
         }
 
@@ -1171,8 +1204,12 @@ class WAF_FW_Backup_Engine {
             str_replace('_.sql.gz', '.sql.gz', $clean_fn),
         ]);
 
-        $site_host = strtolower(parse_url(home_url(), PHP_URL_HOST) ?: 'site');
-        $site_slug = sanitize_file_name($site_host);
+        $home_url = home_url();
+        $parsed_host = parse_url($home_url, PHP_URL_HOST);
+        $site_host = strtolower($parsed_host ?: ($_SERVER['HTTP_HOST'] ?? 'site'));
+        $site_host = preg_replace('/:[0-9]+$/', '', $site_host);
+        $site_host_clean = preg_replace('/^www\./', '', $site_host);
+        $site_slug = sanitize_file_name($site_host_clean);
 
         $search_dirs = array_unique([
             $this->backup_dir,
@@ -1191,6 +1228,15 @@ class WAF_FW_Backup_Engine {
                     if (@unlink($cand)) {
                         $deleted_any = true;
                     }
+                }
+            }
+        }
+
+        if (!$deleted_any) {
+            $found_loc = $this->find_backup_file($basename);
+            if ($found_loc && file_exists($found_loc)) {
+                if (@unlink($found_loc)) {
+                    $deleted_any = true;
                 }
             }
         }
