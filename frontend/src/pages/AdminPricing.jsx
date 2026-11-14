@@ -54,92 +54,13 @@ const DEFAULT_DYNAMIC_CONFIG = {
   ]
 }
 
-const DEFAULT_PLANS = {
-  free: {
-    name: 'Starter Free',
-    display_name: 'Starter',
-    badge: '14-Day Free Trial',
-    monthly_price: 0,
-    yearly_price: 0,
-    website_limit: 1,
-    requests_per_day: 10000,
-    scans_per_day: 5,
-    max_scan_size_mb: 2,
-    waf_mode: 'basic',
-    ml_waf: false,
-    malware_scanner: true,
-    analytics: false,
-    notifications: false,
-    priority_support: false,
-    team_seats: 1,
-  },
-  go: {
-    name: 'Developer Go',
-    display_name: 'Developer Go',
-    badge: 'Growing Apps',
-    monthly_price: 9,
-    yearly_price: 90,
-    website_limit: 5,
-    requests_per_day: 100000,
-    scans_per_day: 50,
-    max_scan_size_mb: 10,
-    waf_mode: 'advanced',
-    ml_waf: true,
-    malware_scanner: true,
-    analytics: true,
-    notifications: true,
-    priority_support: false,
-    team_seats: 3,
-  },
-  pro: {
-    name: 'Enterprise Pro',
-    display_name: 'Enterprise Pro',
-    badge: 'Most Popular',
-    monthly_price: 20,
-    yearly_price: 190,
-    website_limit: 10,
-    requests_per_day: 1000000,
-    scans_per_day: 200,
-    max_scan_size_mb: 25,
-    waf_mode: 'advanced',
-    ml_waf: true,
-    malware_scanner: true,
-    analytics: true,
-    notifications: true,
-    priority_support: true,
-    team_seats: 10,
-  },
-  enterprise: {
-    name: 'Business & Agency',
-    display_name: 'Business & Agency',
-    badge: 'Agency & Scale',
-    monthly_price: 49,
-    yearly_price: 470,
-    website_limit: 20,
-    requests_per_day: 10000000,
-    scans_per_day: 10000,
-    max_scan_size_mb: 100,
-    waf_mode: 'advanced',
-    ml_waf: true,
-    malware_scanner: true,
-    analytics: true,
-    notifications: true,
-    priority_support: true,
-    team_seats: 100,
-  },
-}
-
 export default function AdminPricing() {
   const [dynamicConfig, setDynamicConfig] = useState(() => {
     return adminStore.get('dynamic_pricing_config') || DEFAULT_DYNAMIC_CONFIG
   })
-  const [plans, setPlans] = useState(() => {
-    return adminStore.get('pricing_plans') || DEFAULT_PLANS
-  })
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [toastMessage, setToastMessage] = useState(null)
-  const [showLegacy, setShowLegacy] = useState(false)
 
   // Interactive Simulator State
   const [simSites, setSimSites] = useState(5)
@@ -153,28 +74,12 @@ export default function AdminPricing() {
   const fetchPricing = async () => {
     setLoading(true)
     try {
-      const [dynRes, plansRes] = await Promise.allSettled([
-        api.adminGetDynamicPricingConfig(),
-        api.adminGetPricing()
-      ])
-
-      if (dynRes.status === 'fulfilled' && dynRes.value?.data) {
-        const merged = { ...DEFAULT_DYNAMIC_CONFIG, ...dynRes.value.data }
+      const dynRes = await api.adminGetDynamicPricingConfig()
+      if (dynRes?.data || dynRes) {
+        const configData = dynRes.data || dynRes
+        const merged = { ...DEFAULT_DYNAMIC_CONFIG, ...configData }
         setDynamicConfig(merged)
         adminStore.set('dynamic_pricing_config', merged)
-      }
-
-      if (plansRes.status === 'fulfilled' && plansRes.value?.data?.plans) {
-        const raw = plansRes.value.data.plans
-        const map = {}
-        if (Array.isArray(raw)) {
-          raw.forEach(p => { if (p?.id) map[p.id] = p })
-        } else if (typeof raw === 'object') {
-          Object.assign(map, raw)
-        }
-        const updated = { ...DEFAULT_PLANS, ...map }
-        setPlans(updated)
-        adminStore.set('pricing_plans', updated)
       }
     } catch (err) {
       console.error(err)
@@ -203,26 +108,12 @@ export default function AdminPricing() {
     })
   }
 
-  const handlePlanChange = (planId, field, value) => {
-    setPlans(prev => ({
-      ...prev,
-      [planId]: {
-        ...prev[planId],
-        [field]: value
-      }
-    }))
-  }
-
   const handleSave = async (e) => {
     if (e) e.preventDefault()
     setSaving(true)
     try {
-      await Promise.all([
-        api.adminUpdateDynamicPricingConfig(dynamicConfig),
-        api.adminUpdatePricing(plans)
-      ])
+      await api.adminUpdateDynamicPricingConfig(dynamicConfig)
       adminStore.set('dynamic_pricing_config', dynamicConfig)
-      adminStore.set('pricing_plans', plans)
       showToast('Pricing engine updated! Changes are live across landing page, user dashboard, and checkout gateways.')
     } catch (err) {
       console.error(err)
@@ -235,7 +126,6 @@ export default function AdminPricing() {
   const handleResetDefaults = () => {
     if (window.confirm('Reset dynamic pricing and volume tiers to default $4.00/site/mo model?')) {
       setDynamicConfig(DEFAULT_DYNAMIC_CONFIG)
-      setPlans(DEFAULT_PLANS)
       showToast('Reset to defaults in editor. Click "Save All Pricing Changes" to persist.')
     }
   }
@@ -929,101 +819,7 @@ export default function AdminPricing() {
         </div>
       </div>
 
-      {/* Expandable Legacy Plan Accordion */}
-      <div style={{
-        background: '#FFFFFF',
-        borderRadius: '12px',
-        border: '1px solid #E2E8F0',
-        overflow: 'hidden',
-        boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)'
-      }}>
-        <button
-          type="button"
-          onClick={() => setShowLegacy(prev => !prev)}
-          style={{
-            width: '100%',
-            padding: '18px 24px',
-            background: '#F8FAFC',
-            border: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            cursor: 'pointer',
-            textAlign: 'left'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Layers size={17} style={{ color: '#64748B' }} />
-            <div>
-              <span style={{ fontSize: '14px', fontWeight: '700', color: '#0F172A' }}>
-                Legacy Plan Tiers Compatibility (Free, Go, Pro, Enterprise)
-              </span>
-              <span style={{ display: 'block', fontSize: '11.5px', color: '#64748B', marginTop: '2px' }}>
-                Maintained for backwards compatibility with legacy user subscriptions and API tokens.
-              </span>
-            </div>
-          </div>
-          {showLegacy ? <ChevronUp size={18} style={{ color: '#64748B' }} /> : <ChevronDown size={18} style={{ color: '#64748B' }} />}
-        </button>
 
-        {showLegacy && (
-          <div style={{ padding: '24px', borderTop: '1px solid #E2E8F0' }}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-              gap: '16px'
-            }}>
-              {Object.entries(plans).map(([pid, p]) => (
-                <div key={pid} style={{
-                  background: '#FFFFFF',
-                  borderRadius: '10px',
-                  border: '1px solid #E2E8F0',
-                  padding: '16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '14px', fontWeight: '800', color: '#0F172A' }}>{p.name}</span>
-                    <span style={{ fontSize: '11px', background: '#F1F5F9', padding: '2px 6px', borderRadius: '4px', color: '#64748B', fontWeight: '600' }}>{p.badge}</span>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <div>
-                      <label style={{ fontSize: '11px', color: '#64748B', display: 'block', marginBottom: '2px' }}>Monthly ($)</label>
-                      <input
-                        type="number"
-                        value={p.monthly_price}
-                        onChange={(e) => handlePlanChange(pid, 'monthly_price', parseFloat(e.target.value) || 0)}
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', fontWeight: '600' }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '11px', color: '#64748B', display: 'block', marginBottom: '2px' }}>Yearly ($)</label>
-                      <input
-                        type="number"
-                        value={p.yearly_price}
-                        onChange={(e) => handlePlanChange(pid, 'yearly_price', parseFloat(e.target.value) || 0)}
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', fontWeight: '600' }}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label style={{ fontSize: '11px', color: '#64748B', display: 'block', marginBottom: '2px' }}>Sites Limit</label>
-                    <input
-                      type="number"
-                      value={p.website_limit}
-                      onChange={(e) => handlePlanChange(pid, 'website_limit', parseInt(e.target.value, 10) || 1)}
-                      style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', fontWeight: '600' }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
 
       {/* Floating Save Footer */}
       <div style={{

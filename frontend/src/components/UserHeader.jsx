@@ -557,20 +557,14 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
               height: '36px',
               borderRadius: '50%',
               background: '#0B2522',
-              padding: '2px',
-              border: isPro ? '2px solid transparent' : '1px solid #164E48',
-              backgroundImage: isPro
-                ? 'linear-gradient(#0B2522, #0B2522), linear-gradient(135deg, #6366F1 0%, #A855F7 50%, #EC4899 100%)'
-                : 'none',
-              backgroundOrigin: 'border-box',
-              backgroundClip: 'content-box, border-box',
+              border: isPro ? '1.5px solid #10B981' : '1.5px solid #164E48',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
               color: '#FFFFFF',
-              boxShadow: isPro ? '0 0 12px rgba(168, 85, 247, 0.5), 0 2px 5px rgba(0,0,0,0.2)' : '0 1px 3px rgba(11, 37, 34, 0.15)',
-              transition: 'all 0.25s ease',
+              boxShadow: isPro ? '0 1px 4px rgba(16, 185, 129, 0.25)' : '0 1px 3px rgba(11, 37, 34, 0.15)',
+              transition: 'all 0.2s ease',
               outline: 'none',
               position: 'relative'
             }}
@@ -581,16 +575,16 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
             {isPro && (
               <span style={{
                 position: 'absolute',
-                bottom: '-3px',
-                right: '-4px',
-                background: 'linear-gradient(135deg, #6366F1, #EC4899)',
-                color: '#FFFFFF',
+                bottom: '-2px',
+                right: '-3px',
+                background: '#10B981',
+                color: '#081D1A',
                 fontSize: '8px',
                 fontWeight: 900,
                 padding: '1px 3.5px',
-                borderRadius: '4px',
+                borderRadius: '3px',
                 letterSpacing: '0.4px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                 lineHeight: 1
               }}>
                 PRO
