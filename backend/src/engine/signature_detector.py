@@ -65,7 +65,8 @@ class SignatureDetector:
         {"id": "builtin_crypto_miner", "name": "JavaScript Crypto Miner (CoinHive/XMRig/WebAssembly)", "pattern": r"(?:CoinHive|coinhive|cryptoloot|CoinImp|mineralt|webminepool|cryptonight|Wasm\.instantiate.*miner)"},
         {"id": "builtin_sensitive_env_exposure", "name": "Sensitive Config / Secret Key Exposure", "pattern": r"(?:DB_PASSWORD|AWS_SECRET_ACCESS_KEY|JWT_SECRET|REDIS_PASSWORD|MAIL_PASSWORD)\s*=\s*['\"][^\r\n'\"]{4,}|(?:DB_PASSWORD|AWS_SECRET_ACCESS_KEY|JWT_SECRET)=[^\r\n]{4,}"},
         {"id": "builtin_spam_injection", "name": "SEO Blackhat Spam & Malicious Redirect Injector", "pattern": r"(?:preg_replace\s*\(\s*['\"].*['\"]\s*,\s*['\"].*['\"]\s*,\s*\$_(?:POST|GET)\)|add_action\s*\(\s*['\"]wp_head['\"]\s*,\s*['\"].*eval.*['\"]\))"},
-        {"id": "builtin_polyglot_shell", "name": "Polyglot Image Header with PHP Injection", "pattern": r"^(?:GIF89a|GIF87a|\xFF\xD8\xFF|\x89PNG)[\s\S]{0,100}<\?(?:php|=)"},
+        {"id": "builtin_polyglot_shell", "name": "Polyglot Media Header / Disguised WebShell", "pattern": r"(?:^(?:GIF89a|GIF87a|\xFF\xD8\xFF|\x89PNG|%PDF|\x00\x00\x01\x00|RIFF.{4}WEBP)|<svg)[\s\S]*?<\?(?:php|=|\s)"},
+        {"id": "builtin_reverse_shell_sink", "name": "Reverse Shell / Remote Command Execution Process Sink", "pattern": r"\bproc_open\s*\(\s*['\"](?:/bin/sh|/bin/bash|cmd\.exe|sh|bash)['\"]|\b(?:fsockopen|pfsockopen|socket_create|stream_socket_client)\s*\([^)]*(?:/bin/sh|/bin/bash|cmd\.exe|\$_(?:GET|POST|REQUEST))|\b(?:system|shell_exec|exec|passthru)\s*\(\s*['\"][^'\"]*(?:nc\s+-[el]|bash\s+-i|/dev/tcp/|python\s+-c\s+['\"]import\s+socket)"},
         {"id": "builtin_variable_func", "name": "Dynamic Variable Function Execution Trap", "pattern": r"\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\s*=\s*\$_(?:POST|GET|REQUEST|COOKIE)\[[\s\S]{0,80}\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\s*\(|\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\s*\(\s*\$_(?:POST|GET|REQUEST|COOKIE)\s*\["},
         {"id": "builtin_xor_obfuscation", "name": "XOR Cipher WebShell Payload Decryptor", "pattern": r"(?:\$[a-zA-Z0-9_]+\[\$[a-zA-Z0-9_]+\]\s*\^\s*\$[a-zA-Z0-9_]+\[\$[a-zA-Z0-9_]+\]|\$[a-zA-Z0-9_]+\s*\^\s*['\"][a-zA-Z0-9_]{3,}['\"])"},
         {"id": "builtin_chr_concat_chain", "name": "Polymorphic chr() Byte Concatenation String Assembler", "pattern": r"(?:chr\s*\(\s*\d+\s*\)\s*\.\s*){5,}chr\s*\(\s*\d+\s*\)"},
@@ -83,6 +84,7 @@ class SignatureDetector:
         {"id": "builtin_japanese_keyword_hack", "name": "Japanese Keyword SEO Hack / Injected Kanji-Hiragana Spam Pages", "pattern": r"(?:[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]{8,}.*?(?:激安|通販|送料無料|人気|正規品|割引|特価|限定|専門店|購入))"},
         {"id": "builtin_rogue_admin_creation", "name": "Stealth Rogue Administrator Account Injector Hook", "pattern": r"(?:wp_create_user|wp_insert_user|wp_set_current_user)[\s\S]{0,100}(?:administrator|add_cap\s*\(\s*['\"]administrator['\"]\)|add_role\s*\(\s*['\"]administrator['\"]\)|set_role\s*\(\s*['\"]administrator['\"]\))"},
         {"id": "builtin_htaccess_malicious_rewrite", "name": "Malicious .htaccess Search Engine Redirection Rule", "pattern": r"(?:RewriteCond\s+%{HTTP_USER_AGENT}\s+.*(?:googlebot|bingbot|yahoo|baiduspider|crawler)|RewriteCond\s+%{HTTP_REFERER}\s+.*(?:google|bing|yahoo|yandex|duckduckgo)|RewriteRule\s+.*\s+https?:\/\/[^\s]+\s+\[R=(?:301|302))"},
+        {"id": "builtin_htaccess_php_override", "name": "Apache .htaccess Executable MIME Handler Override", "pattern": r"(?:AddType\s+application\/x-httpd-php|SetHandler\s+application\/x-httpd-php|php_value\s+auto_prepend_file|php_value\s+auto_append_file)"},
         {"id": "builtin_cron_eval_injector", "name": "Malicious WordPress Cron Job Scheduled Injection Hook", "pattern": r"(?:wp_schedule_event|wp_schedule_single_event)[\s\S]{0,100}(?:base64_decode|eval|assert|curl_exec|wp_remote_get)[\s\S]{0,150}https?:\/\/"},
     ]
 
@@ -145,7 +147,7 @@ class SignatureDetector:
                     self.load_error = f"hashes: {e}"
             # Also load hashes from WordPress malware scanner dataset database if present
             db_dataset_path = os.path.abspath(
-                os.path.join(os.path.dirname(__file__), "../../../wordpress malware scner datasets/database/dataset.db")
+                os.path.join(os.path.dirname(__file__), "../../../datasets/wordpress_malware/database/dataset.db")
             )
             if os.path.exists(db_dataset_path):
                 try:
@@ -212,11 +214,9 @@ class SignatureDetector:
                 m = re.search(rule["pattern"], text, re.IGNORECASE)
                 if m:
                     line_no = text[:m.start()].count('\n') + 1
-                    snippet = ""
-                    if 1 <= line_no <= len(lines):
-                        snippet = lines[line_no - 1].strip()[:160]
-                    else:
-                        snippet = text[m.start():m.end()][:160].strip()
+                    match_snippet = text[m.start():min(m.start() + 160, len(text))]
+                    clean_snip = re.sub(r'[\x00-\x1f\x7f-\x9f]', ' ', match_snippet).strip()
+                    snippet = clean_snip[:160] if clean_snip else "Binary payload execution match"
                     matches.append({
                         "name": rule["name"],
                         "id": rule.get("id", ""),
@@ -257,7 +257,7 @@ class SignatureDetector:
                 import sqlite3
                 conn = sqlite3.connect(f"file:{checksum_db}?mode=ro", uri=True, timeout=2)
                 c = conn.cursor()
-                c.execute("SELECT category, description FROM malicious_signatures WHERE pattern_or_hash = ? LIMIT 1", (sha256,))
+                c.execute("SELECT category, description FROM malicious_signatures WHERE pattern_or_hash IN (?, ?, ?) LIMIT 1", (sha256, md5, sha1))
                 row = c.fetchone()
                 if row:
                     matches.append(f"malicious_signature: {row[0]} ({row[1]})")

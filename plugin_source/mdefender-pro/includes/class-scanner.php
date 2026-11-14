@@ -1381,12 +1381,13 @@ class WAF_FW_Scanner {
             $findings[] = "Obfuscation Exploit: Concatenated chr() execution chain detected";
         }
 
-        // Arbitrary File Upload Backdoor: Unauthenticated file upload sink (move_uploaded_file/copy from $_FILES)
-        if (preg_match('/(?:move_uploaded_file|copy)\s*\(\s*\$_FILES\s*\[/i', $content)) {
+        // Arbitrary File Upload Backdoor: Untrusted or executable destination upload sink
+        if (preg_match('/(?:move_uploaded_file|copy)\s*\(\s*\$_FILES\s*\[[^\]]+\]\s*\[\s*[\x27\x22]tmp_name[\x27\x22]\s*\]\s*,\s*[^;]*\.(?:php|phtml|php5|inc)[\x27\x22]/i', $content) ||
+            preg_match('/(?:move_uploaded_file|copy)\s*\(\s*\$_FILES\s*\[[^\]]+\]\s*\[\s*[\x27\x22]tmp_name[\x27\x22]\s*\]\s*,\s*\$_(?:POST|GET|REQUEST|COOKIE)\[/i', $content)) {
             $score = max($score, 95);
             $confidence = 'HIGH';
             $classification = 'CONFIRMED_MALWARE';
-            $findings[] = "Arbitrary File Upload Backdoor: Unauthenticated upload sink (move_uploaded_file/copy from \$_FILES)";
+            $findings[] = "Arbitrary File Upload Backdoor: Unsanitized upload sink targeting executable extension or direct user input";
         }
 
         // Arbitrary File Dropper Backdoor
@@ -1482,7 +1483,7 @@ class WAF_FW_Scanner {
                     '#call_user_func(?:_array)?\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)\s*\[#i',
                     '#array_map\s*\(\s*[\x27\x22](?:exec|system|shell_exec|passthru|eval|assert)[\x27\x22]\s*,\s*\$_(?:GET|POST|REQUEST|COOKIE)\s*\[#i',
                     '#preg_replace\s*\(\s*[\x27\x22]/.*?/e[a-z]*[\x27\x22]\s*,\s*\$#i',
-                    '#(?:move_uploaded_file|copy)\s*\(\s*\$_FILES\s*\[#i',
+                    '#(?:move_uploaded_file|copy)\s*\(\s*\$_FILES\s*\[[^\]]+\]\s*\[\s*[\x27\x22]tmp_name[\x27\x22]\s*\]\s*,\s*[\x27\x22][^\x27\x22]*\.(?:php|phtml|php5|inc)[\x27\x22]#i',
                     '#file_put_contents\s*\(\s*[^,]+,\s*(?:base64_decode|gzinflate|str_rot13)?\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)#i',
                     '#(?:include|require|include_once|require_once)\s*\(?\s*\$_(?:GET|POST|REQUEST|COOKIE)#i',
                     '#(?<![\w`])`[^`\r\n]{1,80}\$_(?:GET|POST|REQUEST|COOKIE)[^`\r\n]{0,80}`(?![\w`])#i',
@@ -1515,9 +1516,9 @@ class WAF_FW_Scanner {
             'sql_injection_payload' => [
                 'weight' => 95,
                 'patterns' => [
-                    '#\$wpdb\s*->\s*(?:query|get_results|get_row|get_var|get_col)\s*\([^;]*\.\s*(?:\$_|\$[a-zA-Z0-9_]+)#i',
+                    '#\$wpdb\s*->\s*(?:query|get_results|get_row|get_var|get_col)\s*\([^;]*\.\s*(?:\$_POST|\$_GET|\$_REQUEST|\$_COOKIE)#i',
                     '#\$wpdb\s*->\s*(?:query|get_results|get_row|get_var|get_col)\s*\([^;]*\$_(?:GET|POST|REQUEST|COOKIE)#i',
-                    '#(?:mysqli_query|mysql_query|pg_query)\s*\([^;]*\.\s*(?:\$_|\$[a-zA-Z0-9_]+)#i',
+                    '#(?:mysqli_query|mysql_query|pg_query)\s*\([^;]*\.\s*(?:\$_POST|\$_GET|\$_REQUEST|\$_COOKIE)#i',
                     '#SELECT\s+[\s\S]{1,100}\s+FROM\s+[\s\S]{1,100}\s+WHERE\s+[\s\S]{0,100}(?:UNION\s+(?:ALL\s+)?SELECT|OR\s+[\'"]?1[\'"]?\s*=\s*[\'"]?1|AND\s+1=1|\bSLEEP\s*\(|\bBENCHMARK\s*\(|INFORMATION_SCHEMA)#i',
                     '#UNION\s+(?:ALL\s+)?SELECT[\s\S]{1,100}(?:FROM|WHERE|NULL|CHAR\(|0x[0-9a-fA-F]+)#i',
                     '#(?:INTO\s+OUTFILE|INTO\s+DUMPFILE|LOAD_FILE\s*\()#i',
@@ -2164,34 +2165,79 @@ class WAF_FW_Scanner {
                     ];
                 }
             } else {
-                // Polyglot Media/Carrier containing embedded PHP execution headers or base64 PHP markers
+                // Polyglot Media/Carrier containing embedded PHP execution headers, reverse shells, or base64 PHP markers
                 $has_polyglot = false;
                 $poly_m = [];
-                // 1. Explicit PHP tags with execution sinks or tainted inputs
-                if (preg_match('/<\?(?:php|=)[\s\S]{0,1000}?(?:eval|assert|system|passthru|shell_exec|exec|popen|proc_open|\$_(?:GET|POST|REQUEST|COOKIE|SERVER)|base64_decode|gzinflate|str_rot13|include|require|file_put_contents)\b/i', $content, $poly_m, PREG_OFFSET_CAPTURE)) {
+                $poly_finding = 'Polyglot Media Carrier: Executable PHP payload disguised inside ' . strtoupper($ext) . ' asset';
+
+                // Check 0: Double extension disguise (e.g. avatar.php.jpg, shell.phtml.png, test.php;.jpg)
+                if (preg_match('/\.(?:php|phtml|php3|php4|php5|php7|php8|inc|cgi|pl|py|sh|bash)\.[a-z0-9]+$/i', $rel_path) || preg_match('/\.(?:php|phtml|inc)[\x00;]/i', $name)) {
                     $has_polyglot = true;
-                } elseif (preg_match('/<script\s+language\s*=\s*["\']?php["\']?[\s\S]{0,500}?(?:eval|assert|system|passthru|shell_exec|exec|\$_(?:GET|POST|REQUEST|COOKIE))/i', $content, $poly_m, PREG_OFFSET_CAPTURE)) {
+                    $poly_finding = 'Double Extension WebShell: Executable PHP script masquerading as ' . strtoupper($ext) . ' media asset (' . $name . ')';
+                    $poly_m = [[$name, 0]];
+                }
+                // Check 1: ANY explicit PHP tags anywhere in media file (Zero-Tolerance: No authentic image legitimately contains PHP tags)
+                elseif (preg_match('/<\?(?:php|=|\s)/i', $content, $poly_m, PREG_OFFSET_CAPTURE)) {
                     $has_polyglot = true;
-                } elseif (preg_match('/__halt_compiler\s*\(\s*\)/i', $content, $poly_m, PREG_OFFSET_CAPTURE)) {
+                    $poly_finding = 'Polyglot WebShell: Executable PHP tag embedded inside ' . strtoupper($ext) . ' image payload';
+                }
+                // Check 2: <script language="php"> tag
+                elseif (preg_match('/<script\s+language\s*=\s*["\']?php["\']?/i', $content, $poly_m, PREG_OFFSET_CAPTURE)) {
                     $has_polyglot = true;
-                } elseif (preg_match('/(?:PD9waHA[A-Za-z0-9+\/]{8,}|c3lzdGVtKA|c2hlbGxfZXhlY)/', $content, $poly_m, PREG_OFFSET_CAPTURE)) {
-                    // Valid base64 webshell markers: PD9waHA is '<?php', c3lzdGVtKA is 'system(', c2hlbGxfZXhlY is 'shell_exec'
+                    $poly_finding = 'Polyglot Script Vector: <script language=php> tag embedded inside ' . strtoupper($ext) . ' media asset';
+                }
+                // Check 3: __halt_compiler() token
+                elseif (preg_match('/__halt_compiler\s*\(\s*\)/i', $content, $poly_m, PREG_OFFSET_CAPTURE)) {
                     $has_polyglot = true;
+                    $poly_finding = 'Compiler Halt Backdoor: __halt_compiler() directive embedded inside ' . strtoupper($ext) . ' asset';
+                }
+                // Check 4: Base64 webshell / code execution markers
+                elseif (preg_match('/(?:PD9waHA[A-Za-z0-9+\/]{4,}|c3lzdGVtKA|c2hlbGxfZXhlY|ZXZhbCg|cGFzc3RocnU|cHJvY19vcGVu)/', $content, $poly_m, PREG_OFFSET_CAPTURE)) {
+                    $has_polyglot = true;
+                    $poly_finding = 'Obfuscated Payload: Base64-encoded PHP execution signature embedded inside ' . strtoupper($ext) . ' asset';
+                }
+                // Check 5: Reverse shell socket/process markers in media
+                elseif (preg_match('/\b(?:fsockopen|pfsockopen|proc_open|socket_create|stream_socket_client)\s*\(/i', $content, $poly_m, PREG_OFFSET_CAPTURE)) {
+                    $has_polyglot = true;
+                    $poly_finding = 'Reverse Shell Socket: Network tunneling or process spawning primitive embedded inside ' . strtoupper($ext) . ' asset';
+                }
+                // Check 6: EXIF Metadata analysis for stealth embedded PHP payloads
+                elseif (function_exists('exif_read_data') && in_array($ext, ['jpg', 'jpeg', 'tif', 'tiff']) && $size < 5000000) {
+                    try {
+                        $exif = @exif_read_data($path, 'ANY_TAG', true, false);
+                        if (is_array($exif)) {
+                            foreach ($exif as $section => $tags) {
+                                if (is_array($tags)) {
+                                    foreach ($tags as $tag_key => $tag_val) {
+                                        if (is_string($tag_val) && (stripos($tag_val, '<?php') !== false || stripos($tag_val, '<?=') !== false || preg_match('/(?:eval|assert|system|passthru|shell_exec|base64_decode)\s*\(/i', $tag_val))) {
+                                            $has_polyglot = true;
+                                            $poly_finding = 'EXIF Metadata WebShell: Malicious PHP execution payload injected into EXIF ' . $section . ':' . $tag_key;
+                                            $poly_m = [[$tag_val, 0]];
+                                            break 2;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch (Throwable $e) {
+                        // ignore exif parsing errors
+                    }
                 }
 
                 if ($has_polyglot && !empty($poly_m)) {
-                    $line_num = substr_count(substr($content, 0, $poly_m[0][1]), "\n") + 1;
-                    $raw_snip = substr($content, $poly_m[0][1], 120);
-                    $snippet = preg_replace('/[^\x20-\x7E\t\r\n]/', '', $raw_snip);
+                    $offset = isset($poly_m[0][1]) ? $poly_m[0][1] : 0;
+                    $line_num = substr_count(substr($content, 0, $offset), "\n") + 1;
+                    $raw_snip = substr($content, $offset, 120);
+                    $snippet = preg_replace('/[^\x20-\x7E\t\r\n]/', ' ', $raw_snip);
                     return [
                         'file' => $rel_path,
                         'score' => 100,
                         'severity' => 'critical',
                         'confidence' => 'HIGH',
                         'line_number' => $line_num,
-                        'snippet' => trim($snippet),
+                        'snippet' => trim($snippet) ?: '[Binary Polyglot Payload Match]',
                         'classification' => 'CONFIRMED_MALWARE',
-                        'findings' => ['Polyglot Media Carrier: Executable PHP payload disguised inside ' . strtoupper($ext) . ' asset'],
+                        'findings' => [$poly_finding],
                         'size' => $size,
                         'hash' => md5($content),
                     ];
@@ -2280,6 +2326,13 @@ class WAF_FW_Scanner {
                 $confidence = 'HIGH';
                 $classification = 'CONFIRMED_MALWARE';
                 $findings[] = 'Critical Threat: Executable PHP script located inside uploads directory (' . $name . ')';
+            } elseif ($name === '.htaccess' || $name === '.user.ini') {
+                if (preg_match('/(?:AddType\s+.*php|SetHandler\s+.*php|auto_prepend_file|auto_append_file|php_value|php_flag)/i', $content)) {
+                    $total_score = max($total_score, 100);
+                    $confidence = 'HIGH';
+                    $classification = 'CONFIRMED_MALWARE';
+                    $findings[] = 'Critical Exploit: Unauthorized ' . $name . ' inside uploads directory configured to execute static media as PHP scripts';
+                }
             } elseif ($is_non_php_executable) {
                 $total_score = max($total_score, 95);
                 $confidence = 'HIGH';
