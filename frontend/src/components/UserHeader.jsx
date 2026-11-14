@@ -76,7 +76,6 @@ const pageConfig = {
   '/user/monitoring/broken-links': { name: 'Broken Links Audit', icon: LinkIcon },
   '/user/monitoring/blacklist': { name: 'Blacklist Monitoring', icon: Ban },
   '/user/bulk/broken-links': { name: 'Broken Links Audit', icon: LinkIcon },
-  '/user/bulk/site-health': { name: 'Site Health Telemetry', icon: ShieldCheck },
   '/user/bulk/activity': { name: 'Fleet Activity Log', icon: FileText }
 };
 

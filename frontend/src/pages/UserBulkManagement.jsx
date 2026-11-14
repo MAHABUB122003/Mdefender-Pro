@@ -69,7 +69,7 @@ export default function UserBulkManagement() {
   const [loading, setLoading] = useState(() => !cachedDashboard)
   const [refreshing, setRefreshing] = useState(false)
   const [selectedSiteId, setSelectedSiteId] = useState('all')
-  const [activeTab, setActiveTab] = useState('monitoring') // 'monitoring' | 'plugins' | 'themes' | 'core' | 'backup' | 'scanner' | 'hardening' | 'safe_updates' | 'site_health' | 'activity'
+  const [activeTab, setActiveTab] = useState('monitoring') // 'monitoring' | 'plugins' | 'themes' | 'core' | 'backup' | 'scanner' | 'hardening' | 'safe_updates' | 'activity'
 
   const [toastMsg, setToastMsg] = useState(null)
   const showToast = (text, type = 'success') => {
@@ -419,7 +419,6 @@ export default function UserBulkManagement() {
           { id: 'scanner', label: 'Malware Scanner', icon: Bug },
           { id: 'hardening', label: 'Hardening', icon: ShieldCheck },
           { id: 'safe_updates', label: 'Safe Updates', icon: Sparkles },
-          { id: 'site_health', label: 'Site Health', icon: HeartRateIcon },
           { id: 'activity', label: 'Activity History', icon: Clock }
         ].map(tab => {
           const Icon = tab.icon
@@ -1051,44 +1050,6 @@ export default function UserBulkManagement() {
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 9: SITE HEALTH                                                        */}
-      {/* ========================================================================= */}
-      {activeTab === 'site_health' && (
-        <div style={contentCardStyle}>
-          <div style={{ marginBottom: '20px' }}>
-            <h3 style={{ margin: '0 0 4px', fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
-              Fleet Site Health &amp; Vulnerability Matrix
-            </h3>
-            <p style={{ margin: 0, fontSize: '13px', color: '#60716B' }}>
-              Audit PHP versions, vulnerable plugins with known CVE exploits, and failed update states.
-            </p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-            <div style={{ padding: '18px', borderRadius: '12px', border: '1px solid #CFE2D4', background: '#E8F3EC' }}>
-              <div style={{ fontSize: '12px', fontWeight: '800', color: '#2A8B68', textTransform: 'uppercase' }}>PHP Compatibility</div>
-              <div style={{ fontSize: '22px', fontWeight: '700', color: '#10201E', marginTop: '4px' }}>
-                {activeWebsite?.php_version || wpWebsites[0]?.php_version || 'PHP 8.2+'}
-              </div>
-              <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>Secure &amp; OpCache Optimized</div>
-            </div>
-
-            <div style={{ padding: '18px', borderRadius: '12px', border: '1px solid #CFE2D4', background: '#E8F3EC' }}>
-              <div style={{ fontSize: '12px', fontWeight: '800', color: '#2A8B68', textTransform: 'uppercase' }}>Vulnerable Plugins</div>
-              <div style={{ fontSize: '22px', fontWeight: '700', color: '#10201E', marginTop: '4px' }}>0 Vulnerabilities</div>
-              <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>No known CVE risks detected</div>
-            </div>
-
-            <div style={{ padding: '18px', borderRadius: '12px', border: '1px solid #D9E1DC', background: '#FBFCFA' }}>
-              <div style={{ fontSize: '12px', fontWeight: '800', color: '#0B2522', textTransform: 'uppercase' }}>Failed Updates</div>
-              <div style={{ fontSize: '22px', fontWeight: '700', color: '#10201E', marginTop: '4px' }}>0 Errors</div>
-              <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>Clean deployment pipeline</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
       {/* TAB 10: ACTIVITY HISTORY                                                  */}
       {/* ========================================================================= */}
       {activeTab === 'activity' && (
@@ -1138,10 +1099,6 @@ export default function UserBulkManagement() {
       )}
     </div>
   )
-}
-
-function HeartRateIcon(props) {
-  return <Activity {...props} />
 }
 
 // Styling tokens harmonized with UserPricing

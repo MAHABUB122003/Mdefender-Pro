@@ -221,7 +221,7 @@ export default function UserSidebar({ isOpen, onClose }) {
     const path = typeof window !== 'undefined' ? window.location.pathname : ''
     const search = typeof window !== 'undefined' ? window.location.search : ''
     return {
-      monitoring: path.includes('/monitoring') || path.includes('/site-health'),
+      monitoring: path.includes('/monitoring'),
       wordpress: path.includes('/bulk/plugins') || path.includes('/bulk/themes') || path.includes('/bulk/core') || path.includes('/bulk/scanner') || path.includes('/bulk/hardening') || path.includes('/bulk/database'),
       accessControl: path.includes('/blacklist') || path.includes('/access/'),
       securityProtection: path.includes('/security/bot-shield') || path.includes('/security/bot-defense') || path.includes('/security/login-gateway') || path.includes('/security/rate-limits') || path.includes('/security/2fa') || path.includes('/security/post-hack') || path.includes('/security/incident-response') || path.includes('/bulk/posthack') || path.includes('/bulk/tools'),
@@ -233,7 +233,7 @@ export default function UserSidebar({ isOpen, onClose }) {
   useEffect(() => {
     const path = location.pathname
     const search = location.search
-    if (path.includes('/monitoring') || path.includes('/site-health')) {
+    if (path.includes('/monitoring')) {
       setOpenDropdowns(prev => prev.monitoring ? prev : { ...prev, monitoring: true })
     } else if (path.includes('/bulk/plugins') || path.includes('/bulk/themes') || path.includes('/bulk/core') || path.includes('/bulk/scanner') || path.includes('/bulk/hardening') || path.includes('/bulk/database')) {
       setOpenDropdowns(prev => prev.wordpress ? prev : { ...prev, wordpress: true })
@@ -338,7 +338,7 @@ export default function UserSidebar({ isOpen, onClose }) {
   }
 
   // Active status for dropdown parent headers
-  const isMonitoringGroupActive = currentPath.includes('/monitoring') || currentPath.includes('/site-health')
+  const isMonitoringGroupActive = currentPath.includes('/monitoring')
   const isWordpressGroupActive = currentPath.includes('/bulk/plugins') || currentPath.includes('/bulk/themes') || currentPath.includes('/bulk/core') || currentPath.includes('/bulk/scanner') || currentPath.includes('/bulk/hardening') || currentPath.includes('/bulk/database') || currentPath.includes('/bulk/safe-updates')
   const isAccessControlGroupActive = currentPath === '/user/blacklist' || currentPath.includes('/access/')
   const isSecurityProtectionGroupActive = currentPath.includes('/security/bot-shield') || currentPath.includes('/security/bot-defense') || currentPath.includes('/security/login-gateway') || currentPath.includes('/security/rate-limits') || currentPath.includes('/security/2fa') || currentPath.includes('/security/post-hack') || currentPath.includes('/security/incident-response') || currentPath.includes('/bulk/posthack') || currentPath.includes('/bulk/tools')
@@ -438,13 +438,6 @@ export default function UserSidebar({ isOpen, onClose }) {
               className={`user-subnav-link ${isSubLinkActive('/user/monitoring/performance') ? 'active' : ''}`}
             >
               <span style={{ pointerEvents: 'none' }}>Performance</span>
-            </Link>
-            <Link
-              to="/user/bulk/site-health"
-              onClick={handleLinkClick}
-              className={`user-subnav-link ${isSubLinkActive('/user/bulk/site-health') ? 'active' : ''}`}
-            >
-              <span style={{ pointerEvents: 'none' }}>Site Health</span>
             </Link>
             <Link
               to="/user/monitoring/broken-links"

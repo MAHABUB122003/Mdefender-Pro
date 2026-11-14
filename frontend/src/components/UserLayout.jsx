@@ -60,7 +60,6 @@ export default function UserLayout({ children, onLogout }) {
         import('../pages/bulk/BulkUptime')
         import('../pages/bulk/BulkPerformance')
         import('../pages/bulk/BulkBrokenLinks')
-        import('../pages/bulk/BulkSiteHealth')
         import('../pages/bulk/BulkScanner')
         import('../pages/bulk/BulkHardening')
         import('../pages/bulk/BulkSafeUpdates')

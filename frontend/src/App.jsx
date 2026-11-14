@@ -53,7 +53,6 @@ const BulkBreachIntelligence = lazy(() => import('./pages/bulk/BulkBreachIntelli
 const BulkSafeUpdates = lazy(() => import('./pages/bulk/BulkSafeUpdates'))
 const BulkDatabase = lazy(() => import('./pages/bulk/BulkDatabase'))
 const BulkBlacklist = lazy(() => import('./pages/bulk/BulkBlacklist'))
-const BulkSiteHealth = lazy(() => import('./pages/bulk/BulkSiteHealth'))
 const BulkActivity = lazy(() => import('./pages/bulk/BulkActivity'))
 const UserTeam = lazy(() => import('./pages/UserTeam'))
 const UserAlerts = lazy(() => import('./pages/UserAlerts'))
@@ -361,7 +360,7 @@ function App() {
           <Route path="database" element={<Navigate to="/user/bulk/database" replace />} />
           <Route path="bulk/environment" element={<Navigate to="/user/bulk/hardening?tab=environment" replace />} />
           <Route path="environment" element={<Navigate to="/user/bulk/hardening?tab=environment" replace />} />
-          <Route path="bulk/site-health" element={<BulkSiteHealth />} />
+          <Route path="bulk/site-health" element={<Navigate to="/user/monitoring/performance" replace />} />
           <Route path="bulk/activity" element={<BulkActivity />} />
           <Route path="activity" element={<Navigate to="/user/bulk/activity" replace />} />
           <Route path="activity-logs" element={<Navigate to="/user/bulk/activity" replace />} />
