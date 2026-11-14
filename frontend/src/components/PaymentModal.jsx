@@ -18,26 +18,26 @@ import {
 
 const PLAN_META = {
   go: {
-    name: 'Developer Go',
+    name: 'Starter Fleet',
     icon: Zap,
-    monthlyPrice: 9,
-    yearlyPrice: 90,
+    monthlyPrice: 4,
+    yearlyPrice: 40,
     features: [
-      '5 Protected Domains & Origin Endpoints',
+      'Protected Domain & Origin Endpoints ($4/site/mo)',
       '100,000 monthly clean requests',
       '6.5M+ Threat Neural Classifier',
       '20 Custom Regex Rules Builder',
-      'Priority Email Technical SLA',
+      'Standard Technical SLA',
     ],
   },
   pro: {
     name: 'Enterprise Pro',
     icon: Sparkles,
-    monthlyPrice: 20,
-    yearlyPrice: 190,
+    monthlyPrice: 4,
+    yearlyPrice: 40,
     features: [
-      '10 Protected Domains & APIs',
-      '1,000,000 monthly clean requests',
+      'Full Fleet Protection ($4.00/site/mo or $40/site/yr)',
+      '1,000,000+ monthly clean requests',
       'Full 2,000,000+ Hyper-Scale Signatures',
       '639K+ Generative AI Prompt Injection Shield',
       'Sub-Millisecond (0.12ms) Edge Inspection Latency',
@@ -45,12 +45,12 @@ const PLAN_META = {
     ],
   },
   enterprise: {
-    name: 'Dedicated Enterprise',
+    name: 'Enterprise MSP',
     icon: Globe,
-    monthlyPrice: 49,
-    yearlyPrice: 470,
+    monthlyPrice: 4,
+    yearlyPrice: 40,
     features: [
-      '15 Protected Domains & Custom Fleet',
+      'Custom Multi-Site Fleet with Bulk Volume Discounts',
       '10,000,000+ monthly edge requests',
       'Dedicated ML Neural Vectorizer Node',
       'Full Anycast Layer 7 DDoS Scrubber',

@@ -30,6 +30,8 @@ class WAF_FW_Admin {
         add_action('admin_page_access_denied', [$this, 'handle_access_denied_fallback']);
         add_action('wp_ajax_waf_connector_save_connection', [$this, 'ajax_save_connection']);
         add_action('wp_ajax_waf_connector_disconnect', [$this, 'ajax_disconnect']);
+        add_action('wp_ajax_waf_connector_sync_license', [$this, 'ajax_sync_license']);
+        add_action('rest_api_init', [$this, 'register_license_sync_route']);
     }
 
     public function handle_legacy_redirects() {
@@ -303,6 +305,109 @@ class WAF_FW_Admin {
             'message' => 'Agent disconnected. Protection is currently dormant.',
             'status' => 'disconnected'
         ]);
+    }
+
+    public function register_license_sync_route() {
+        register_rest_route('mdefender/v1', '/license-sync', [
+            'methods' => 'POST',
+            'callback' => [$this, 'rest_sync_license'],
+            'permission_callback' => '__return_true'
+        ]);
+    }
+
+    public function rest_sync_license(\WP_REST_Request $request) {
+        $body = $request->get_json_params();
+        $site_token = sanitize_text_field($body['site_token'] ?? '');
+        $stored_token = get_option('waf_fw_site_token', '');
+        $api_key = sanitize_text_field($body['api_key'] ?? '');
+        $stored_key = get_option('waf_fw_api_key', '');
+
+        // Hardened authentication check: at least one secret must be stored and match securely via constant-time comparison
+        if (empty($stored_token) && empty($stored_key)) {
+            return new \WP_REST_Response(['success' => false, 'message' => 'Agent not connected or paired.'], 403);
+        }
+
+        $token_valid = !empty($stored_token) && !empty($site_token) && hash_equals($stored_token, $site_token);
+        $key_valid   = !empty($stored_key) && !empty($api_key) && hash_equals($stored_key, $api_key);
+
+        if (!$token_valid && !$key_valid) {
+            return new \WP_REST_Response(['success' => false, 'message' => 'Unauthorized: Invalid authentication credentials.'], 403);
+        }
+
+        // Whitelist allowed subscription statuses to prevent arbitrary option injection
+        $allowed_statuses = ['pro', 'active', 'trial_active', 'trial_expired', 'canceled', 'past_due'];
+        $raw_status = strtolower(sanitize_text_field($body['subscription_status'] ?? 'trial_active'));
+        $sub_status = in_array($raw_status, $allowed_statuses, true) ? $raw_status : 'trial_active';
+        $trial_days = max(0, min(14, intval($body['trial_days_remaining'] ?? 0)));
+
+        update_option('waf_fw_subscription_status', $sub_status);
+        update_option('waf_fw_trial_days_remaining', $trial_days);
+        update_option('waf_fw_last_sync', current_time('mysql'));
+
+        if (class_exists('WAF_FW_Engine')) {
+            WAF_FW_Engine::instance()->export_fast_cache();
+        }
+
+        return new \WP_REST_Response([
+            'success' => true,
+            'message' => 'License successfully synchronized with MDefender Cloud',
+            'subscription_status' => $sub_status,
+            'trial_days_remaining' => $trial_days
+        ], 200);
+    }
+
+    public function ajax_sync_license() {
+        check_ajax_referer('waf_connector_nonce_action', 'waf_connector_nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized permissions']);
+        }
+
+        $api_key = get_option('waf_fw_api_key', get_option('waf_fw_ml_api_key', ''));
+        $cloud_url = get_option('waf_fw_cloud_api_url', 'https://mdefender-pro.crafix.tech');
+        $site_token = get_option('waf_fw_site_token', '');
+
+        if (empty($api_key)) {
+            wp_send_json_error(['message' => 'No Cloud API key connected']);
+        }
+
+        $response = wp_remote_post(rtrim($cloud_url, '/') . '/api/v1/wordpress/sync', [
+            'timeout' => 12,
+            'sslverify' => false,
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'Authorization' => 'Bearer ' . $api_key
+            ],
+            'body' => wp_json_encode([
+                'api_key' => $api_key,
+                'site_token' => $site_token,
+                'home_url' => home_url()
+            ])
+        ]);
+
+        if (is_wp_error($response)) {
+            wp_send_json_error(['message' => $response->get_error_message()]);
+        }
+
+        $body = wp_remote_retrieve_body($response);
+        $decoded = json_decode($body, true);
+        if (!empty($decoded['data'])) {
+            $data = $decoded['data'];
+            $sub_status = $data['subscription_status'] ?? 'trial_active';
+            $trial_days = intval($data['trial_days_remaining'] ?? 0);
+
+            update_option('waf_fw_subscription_status', $sub_status);
+            update_option('waf_fw_trial_days_remaining', $trial_days);
+            update_option('waf_fw_last_sync', current_time('mysql'));
+
+            wp_send_json_success([
+                'message' => 'License and threat signatures updated!',
+                'subscription_status' => $sub_status,
+                'trial_days' => $trial_days,
+                'last_sync' => date_i18n('M j, Y - H:i:s')
+            ]);
+        }
+
+        wp_send_json_success(['message' => 'Cloud sync completed.']);
     }
 
     // Dynamic alias fallbacks

@@ -983,17 +983,18 @@ export default function UserSidebar({ isOpen, onClose }) {
                   </span>
                   <span style={{
                     fontSize: '8.5px',
-                    fontWeight: 800,
-                    padding: '1px 5px',
+                    fontWeight: 900,
+                    padding: '2px 6px',
                     borderRadius: '4px',
-                    background: isPaid ? 'rgba(16, 185, 129, 0.15)' : 'rgba(232, 121, 47, 0.15)',
-                    color: isPaid ? '#10B981' : '#E8792F',
-                    border: isPaid ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(232, 121, 47, 0.3)',
+                    background: isPaid ? 'linear-gradient(135deg, #6366F1, #EC4899)' : 'rgba(232, 121, 47, 0.15)',
+                    color: isPaid ? '#FFFFFF' : '#E8792F',
+                    border: isPaid ? 'none' : '1px solid rgba(232, 121, 47, 0.3)',
                     textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                    lineHeight: 1.2
+                    letterSpacing: '0.05em',
+                    lineHeight: 1.2,
+                    boxShadow: isPaid ? '0 1px 4px rgba(168, 85, 247, 0.4)' : 'none'
                   }}>
-                    {isPaid ? (userPlan === 'enterprise' ? 'ENT' : 'PRO') : 'FREE'}
+                    {isPaid ? (userPlan === 'enterprise' ? '⚡ ENTERPRISE' : '⚡ PRO') : 'TRIAL'}
                   </span>
                 </div>
                 <span style={{

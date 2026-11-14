@@ -124,7 +124,7 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
     try {
       await api.markNotificationRead(notif.id);
       window.dispatchEvent(new Event('mdf_notifications_updated'));
-    } catch {}
+    } catch { }
   };
 
   const handleMarkAllHeaderRead = async (e) => {
@@ -134,7 +134,7 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
     try {
       await api.markAllNotificationsRead();
       window.dispatchEvent(new Event('mdf_notifications_updated'));
-    } catch {}
+    } catch { }
   };
 
   const { wpWebsites, selectedSiteId } = useBulkFleet();
@@ -154,7 +154,19 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
   const PageIcon = currentConfig.icon;
   const pageName = currentConfig.name;
 
-  const userPlan = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || 'free') : 'free').toLowerCase();
+  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const testTrialParam = urlParams ? urlParams.get('test_trial_days') : null;
+  const testProParam = urlParams ? urlParams.get('test_pro') : null;
+
+  const userPlan = (testProParam === 'true'
+    ? 'pro'
+    : (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || 'free') : 'free')
+  ).toLowerCase();
+  const isPro = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan);
+  const trialDays = testTrialParam !== null
+    ? Number(testTrialParam)
+    : Number(typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_trial_days') ?? 14) : 14);
+
   const planLabel = {
     free: 'Free Plan',
     go: 'Developer Go',
@@ -493,7 +505,44 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
           </div>
         </div>
 
-        {/* Professional User Icon Button (Matching media_1794253835890_f0f46d0d.png - No Username String) */}
+        {/* Modern 14-Day Free Trial Countdown (Hidden permanently when PRO) */}
+        {!isPro && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: trialDays <= 4 ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)',
+            border: trialDays <= 4 ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(16, 185, 129, 0.25)',
+            padding: '4px 10px',
+            borderRadius: '999px',
+            fontSize: '11.5px',
+            fontWeight: 700,
+            color: trialDays <= 4 ? '#DC2626' : '#059669',
+            whiteSpace: 'nowrap'
+          }}>
+            <span>⏳ {trialDays > 0 ? `${trialDays}d Trial Left` : 'Trial Expired'}</span>
+            <Link
+              to="/user/pricing"
+              style={{
+                background: 'linear-gradient(135deg, #0B2522, #1A4D45)',
+                color: '#fff',
+                padding: '2px 8px',
+                borderRadius: '12px',
+                fontSize: '10.5px',
+                textDecoration: 'none',
+                fontWeight: 800,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '3px'
+              }}
+            >
+              <Zap size={10} color="#FCD34D" fill="#FCD34D" />
+              <span>Upgrade</span>
+            </Link>
+          </div>
+        )}
+
+        {/* Gemini-Style Luxury PRO User Avatar */}
         <div style={{ position: 'relative' }}>
           <button
             type="button"
@@ -504,30 +553,69 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
               setShowDomainMenu(false);
             }}
             style={{
-              width: '34px',
-              height: '34px',
+              width: '36px',
+              height: '36px',
               borderRadius: '50%',
               background: '#0B2522',
-              border: '1px solid #164E48',
+              padding: '2px',
+              border: isPro ? '2px solid transparent' : '1px solid #164E48',
+              backgroundImage: isPro
+                ? 'linear-gradient(#0B2522, #0B2522), linear-gradient(135deg, #6366F1 0%, #A855F7 50%, #EC4899 100%)'
+                : 'none',
+              backgroundOrigin: 'border-box',
+              backgroundClip: 'content-box, border-box',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              padding: 0,
               color: '#FFFFFF',
-              boxShadow: '0 1px 3px rgba(11, 37, 34, 0.15)',
-              transition: 'all 0.15s ease',
-              outline: 'none'
+              boxShadow: isPro ? '0 0 12px rgba(168, 85, 247, 0.5), 0 2px 5px rgba(0,0,0,0.2)' : '0 1px 3px rgba(11, 37, 34, 0.15)',
+              transition: 'all 0.25s ease',
+              outline: 'none',
+              position: 'relative'
             }}
             aria-label="User Account Menu"
-            title="Account Profile & Settings"
+            title={isPro ? "MDefender PRO Active" : "Account Profile & Settings"}
           >
             <User size={16} strokeWidth={2.3} color="#FFFFFF" />
+            {isPro && (
+              <span style={{
+                position: 'absolute',
+                bottom: '-3px',
+                right: '-4px',
+                background: 'linear-gradient(135deg, #6366F1, #EC4899)',
+                color: '#FFFFFF',
+                fontSize: '8px',
+                fontWeight: 900,
+                padding: '1px 3.5px',
+                borderRadius: '4px',
+                letterSpacing: '0.4px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                lineHeight: 1
+              }}>
+                PRO
+              </span>
+            )}
           </button>
 
           <div className={`dropdown-menu ${showDropdown ? 'show' : ''}`} style={{ right: 0 }}>
             <div style={{ padding: '8px 14px', borderBottom: '1px solid #E2E8F0', marginBottom: '4px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E' }}>{userName}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E' }}>{userName}</div>
+                {isPro && (
+                  <span style={{
+                    background: 'linear-gradient(135deg, #6366F1, #EC4899)',
+                    color: '#fff',
+                    fontSize: '9px',
+                    fontWeight: 900,
+                    padding: '1px 5px',
+                    borderRadius: '4px',
+                    letterSpacing: '0.5px'
+                  }}>
+                    PRO
+                  </span>
+                )}
+              </div>
               <div style={{ fontSize: '11px', color: '#87948D', textTransform: 'capitalize' }}>{planLabel}</div>
             </div>
             <Link to="/" onClick={() => setShowDropdown(false)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

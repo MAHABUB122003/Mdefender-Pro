@@ -297,20 +297,39 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
     host, canonical_domain, norm_url = normalize_target_identity(body.domain, target_url)
     clean_target_url = target_url or norm_url
 
+    import math
+    from src.services.subscription_service import SubscriptionService
+    user_eff_plan = SubscriptionService(db).effective_plan(auth_data["user_id"])
+    is_user_pro = user_eff_plan in ("pro", "enterprise", "premium", "ultra", "go")
+
     trial_starts_at = website.get("trial_starts_at") or now
     trial_ends_at = website.get("trial_ends_at") or (now + timedelta(days=14))
 
+    seconds_remaining = (trial_ends_at - now).total_seconds() if trial_ends_at else 14 * 86400
+    days_remaining = max(0, math.ceil(seconds_remaining / 86400))
+
+    if is_user_pro:
+        current_sub_status = "pro"
+        trial_days_remaining_val = 0
+    elif days_remaining > 0:
+        current_sub_status = "trial_active"
+        trial_days_remaining_val = days_remaining
+    else:
+        current_sub_status = "trial_expired"
+        trial_days_remaining_val = 0
+
     update_fields = {
-        "status": "active",
+        "status": "active" if (is_user_pro or days_remaining > 0) else "expired",
         "user_id": str(auth_data["user_id"]),
         "platform": "wordpress",
         "verified": True,
         "api_key": site_api_key,
         "site_token": site_token,
         "url": clean_target_url,
-        "subscription_status": website.get("subscription_status") or "trial_active",
+        "subscription_status": current_sub_status,
         "trial_starts_at": trial_starts_at,
         "trial_ends_at": trial_ends_at,
+        "trial_days_remaining": trial_days_remaining_val,
         "wordpress_connection": {
             "connected": True,
             "connected_at": now,
@@ -492,17 +511,13 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
 
 
 
-    import math
-    seconds_remaining = (trial_ends_at - now).total_seconds() if trial_ends_at else 14 * 86400
-    days_remaining = max(0, math.ceil(seconds_remaining / 86400))
-
     return success({
         "site_token": site_token,
         "site_api_key": site_api_key,
         "website_id": auth_data["website_id"],
         "mode": website.get("waf_mode", "protect"),
-        "subscription_status": update_fields.get("subscription_status", "trial_active"),
-        "trial_days_remaining": days_remaining,
+        "subscription_status": current_sub_status,
+        "trial_days_remaining": trial_days_remaining_val,
         "message": "WordPress site connected",
     })
 

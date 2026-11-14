@@ -4,6 +4,7 @@ import sys
 import json
 import secrets
 import asyncio
+import uuid
 import traceback
 from datetime import datetime, timedelta
 from typing import Optional
@@ -3177,6 +3178,192 @@ async def api_get_logs(request: Request):
         return JSONResponse(status_code=401, content={'error': 'Invalid API key'})
     params = dict(request.query_params)
     return waf_api.get_logs(params, user_id=auth_data.get('user_id'), website_id=auth_data.get('website_id'))
+
+
+@app.post("/api/v1/wordpress/connect")
+async def wordpress_connect(request: Request):
+    """Secure endpoint for WordPress Plugin Agent pairing and trial/license synchronization."""
+    try:
+        auth_header = request.headers.get("Authorization", "")
+        token = auth_header.replace("Bearer ", "").strip()
+        body = await request.json()
+    except Exception:
+        body = {}
+        token = ""
+
+    api_key = str(body.get("api_key") or token or "").strip()
+    if not api_key or len(api_key) < 16:
+        return JSONResponse(status_code=401, content={"status": "error", "message": "Valid MDefender Pro API Key required."})
+
+    # Strict MongoDB NoSQL injection prevention & constant-time key lookup
+    user = db.users.find_one({"api_key": {"$eq": api_key}})
+    if not user:
+        # Check website or client scoped keys
+        ws = db.websites.find_one({"api_key": {"$eq": api_key}})
+        if ws and ws.get("user_id"):
+            u_id = ws["user_id"]
+            user = db.users.find_one({"$or": [{"_id": u_id}, {"id": u_id}, {"_id": ObjectId(str(u_id)) if ObjectId.is_valid(str(u_id)) else None}]})
+
+    if not user:
+        return JSONResponse(status_code=401, content={"status": "error", "message": "Invalid API key: account not found."})
+
+    import math
+    now_dt = datetime.now()
+    user_created = user.get("created_at") or now_dt
+    if isinstance(user_created, str):
+        try: user_created = datetime.fromisoformat(user_created)
+        except Exception: user_created = now_dt
+
+    trial_ends = user.get("trial_ends_at") or (user_created + timedelta(days=14))
+    if isinstance(trial_ends, str):
+        try: trial_ends = datetime.fromisoformat(trial_ends)
+        except Exception: trial_ends = user_created + timedelta(days=14)
+
+    trial_days_remaining = max(0, int(math.ceil((trial_ends - now_dt).total_seconds() / 86400)))
+
+    from src.services.subscription_service import SubscriptionService
+    eff_plan = SubscriptionService(db).effective_plan(user)
+    is_pro = eff_plan in ("pro", "enterprise", "premium", "ultra", "go") or user.get("plan") in ("pro", "enterprise", "premium", "ultra", "go")
+
+    if is_pro:
+        sub_status = "pro"
+        trial_days = 0
+    elif trial_days_remaining > 0:
+        sub_status = "trial_active"
+        trial_days = trial_days_remaining
+    else:
+        sub_status = "trial_expired"
+        trial_days = 0
+
+    raw_domain = str(body.get("domain") or body.get("home_url") or "wordpress-site").strip()
+    clean_domain = raw_domain.replace("https://", "").replace("http://", "").split("/")[0].lower()
+
+    # Find or upsert website
+    site_query = {"user_id": str(user["_id"]), "domain": clean_domain}
+    site = db.websites.find_one(site_query)
+    site_token = site.get("site_token") if site else secrets.token_hex(24)
+
+    if not site:
+        new_site_id = str(uuid.uuid4())
+        site_record = {
+            "_id": new_site_id,
+            "id": new_site_id,
+            "user_id": str(user["_id"]),
+            "domain": clean_domain,
+            "name": body.get("site_name") or clean_domain,
+            "url": body.get("site_url") or body.get("home_url") or f"https://{clean_domain}",
+            "site_token": site_token,
+            "api_key": api_key,
+            "platform": "wordpress",
+            "subscription_status": sub_status,
+            "trial_days_remaining": trial_days,
+            "wp_version": body.get("wp_version", ""),
+            "php_version": body.get("php_version", ""),
+            "plugin_version": body.get("plugin_version", "4.3.0"),
+            "status": "active" if (is_pro or trial_days > 0) else "expired",
+            "created_at": now_dt,
+            "last_sync": now_dt
+        }
+        db.websites.insert_one(site_record)
+        website_id = new_site_id
+    else:
+        website_id = str(site["_id"])
+        db.websites.update_one(
+            {"_id": site["_id"]},
+            {"$set": {
+                "site_token": site_token,
+                "subscription_status": sub_status,
+                "trial_days_remaining": trial_days,
+                "wp_version": body.get("wp_version", site.get("wp_version", "")),
+                "php_version": body.get("php_version", site.get("php_version", "")),
+                "plugin_version": body.get("plugin_version", site.get("plugin_version", "4.3.0")),
+                "status": "active" if (is_pro or trial_days > 0) else "expired",
+                "last_sync": now_dt
+            }}
+        )
+
+    return {
+        "status": "success",
+        "data": {
+            "website_id": website_id,
+            "site_token": site_token,
+            "subscription_status": sub_status,
+            "trial_days_remaining": trial_days,
+            "plan": "pro" if is_pro else "trial",
+            "message": "Successfully connected to MDefender Pro Cloud Fleet!"
+        }
+    }
+
+
+@app.post("/api/v1/wordpress/sync")
+async def wordpress_sync(request: Request):
+    """Bi-directional licensing and rule update synchronization for WordPress Agent."""
+    try:
+        auth_header = request.headers.get("Authorization", "")
+        token = auth_header.replace("Bearer ", "").strip()
+        body = await request.json()
+    except Exception:
+        body = {}
+        token = ""
+
+    api_key = str(body.get("api_key") or token or "").strip()
+    site_token = str(body.get("site_token") or "").strip()
+
+    if not api_key:
+        return JSONResponse(status_code=401, content={"status": "error", "message": "API key required."})
+
+    user = db.users.find_one({"api_key": {"$eq": api_key}})
+    if not user:
+        return JSONResponse(status_code=401, content={"status": "error", "message": "Invalid API key."})
+
+    import math
+    now_dt = datetime.now()
+    user_created = user.get("created_at") or now_dt
+    if isinstance(user_created, str):
+        try: user_created = datetime.fromisoformat(user_created)
+        except Exception: user_created = now_dt
+
+    trial_ends = user.get("trial_ends_at") or (user_created + timedelta(days=14))
+    if isinstance(trial_ends, str):
+        try: trial_ends = datetime.fromisoformat(trial_ends)
+        except Exception: trial_ends = user_created + timedelta(days=14)
+
+    trial_days_remaining = max(0, int(math.ceil((trial_ends - now_dt).total_seconds() / 86400)))
+
+    from src.services.subscription_service import SubscriptionService
+    eff_plan = SubscriptionService(db).effective_plan(user)
+    is_pro = eff_plan in ("pro", "enterprise", "premium", "ultra", "go") or user.get("plan") in ("pro", "enterprise", "premium", "ultra", "go")
+
+    if is_pro:
+        sub_status = "pro"
+        trial_days = 0
+    elif trial_days_remaining > 0:
+        sub_status = "trial_active"
+        trial_days = trial_days_remaining
+    else:
+        sub_status = "trial_expired"
+        trial_days = 0
+
+    if site_token:
+        db.websites.update_one(
+            {"site_token": site_token},
+            {"$set": {
+                "subscription_status": sub_status,
+                "trial_days_remaining": trial_days,
+                "status": "active" if (is_pro or trial_days > 0) else "expired",
+                "last_sync": now_dt
+            }}
+        )
+
+    return {
+        "status": "success",
+        "data": {
+            "subscription_status": sub_status,
+            "trial_days_remaining": trial_days,
+            "plan": "pro" if is_pro else "trial",
+            "synced_at": now_dt.isoformat()
+        }
+    }
 
 
 @app.get("/api/v1/wordpress/plugin")

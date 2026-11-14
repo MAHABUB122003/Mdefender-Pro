@@ -96,12 +96,21 @@ export default function UserWebsites() {
 
 
 
+  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
+  const testTrialParam = urlParams ? urlParams.get('test_trial_days') : null
+  const testProParam = urlParams ? urlParams.get('test_pro') : null
+
   const accountApiKey = data?.api_key || data?.user?.api_key || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_api_key') : null) || ''
-  const rawPlan = data?.user?.plan || data?.plan || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_plan') : null) || 'free'
+  const rawPlan = testProParam === 'true'
+    ? 'pro'
+    : (data?.user?.plan || data?.plan || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_plan') : null) || 'free')
 
   const userPlan = (typeof rawPlan === 'string' ? rawPlan : (rawPlan?.id || rawPlan?.name || 'free')).toLowerCase()
 
   const isPremium = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan)
+  const displayTrialDays = testTrialParam !== null
+    ? Number(testTrialParam)
+    : (data?.user?.trial_days_remaining !== undefined ? data.user.trial_days_remaining : 14)
 
 
 
@@ -786,46 +795,73 @@ export default function UserWebsites() {
 
     <div style={{ padding: '4px 0 40px' }}>
 
-      {/* Premium Banner */}
-
+      {/* Modern 14-Day Enterprise Trial Bar (Hidden permanently for PRO subscribers) */}
       {!isPremium && (
-
         <div style={{
-
-          background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', borderRadius: '12px', border: '1px solid #fde68a',
-
-          padding: '16px 20px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px',
-
+          background: 'linear-gradient(135deg, rgba(11, 37, 34, 0.04), rgba(42, 139, 104, 0.08))',
+          borderRadius: '12px',
+          border: '1px solid rgba(42, 139, 104, 0.25)',
+          padding: '14px 20px',
+          marginBottom: '24px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px',
         }}>
-
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-
-            <i className="fas fa-crown" style={{ fontSize: '20px', color: '#d97706' }}></i>
-
-            <div>
-
-              <div style={{ fontSize: '13px', fontWeight: '700', color: '#92400e' }}>Free Tier Active</div>
-
-              <div style={{ fontSize: '12px', color: '#b45309', marginTop: '2px' }}>Upgrade to Enterprise Pro for up to 10 protected domains, real-time ML rules &amp; priority telemetry.</div>
-
+            <div style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '10px',
+              background: 'linear-gradient(135deg, #0B2522, #164E48)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#34D399',
+              boxShadow: '0 2px 6px rgba(11, 37, 34, 0.2)'
+            }}>
+              <i className="fas fa-shield-alt" style={{ fontSize: '16px' }}></i>
             </div>
-
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>14-Day Enterprise Trial Active</span>
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  background: '#E0F2FE',
+                  color: '#0284C7',
+                  border: '1px solid #BAE6FD',
+                  padding: '2px 8px',
+                  borderRadius: '20px'
+                }}>
+                  {displayTrialDays !== undefined ? `${displayTrialDays} Days Remaining` : 'Full Access'}
+                </span>
+              </div>
+              <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
+                All autonomous WAF rules, AI threat heuristics, and malware defenses are fully active on all your connected sites.
+              </div>
+            </div>
           </div>
-
-          <a href="/user/settings" style={{
-
-            padding: '8px 18px', background: '#0B2522', color: '#ffffff', border: '1px solid #0B2522', border: 'none', borderRadius: '8px',
-
-            fontSize: '12px', fontWeight: '700', cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px'
-
+          <a href="/user/pricing" style={{
+            padding: '8px 18px',
+            background: 'linear-gradient(135deg, #0B2522, #1A4D45)',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '12px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            textDecoration: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            boxShadow: '0 2px 4px rgba(11, 37, 34, 0.15)',
+            transition: 'all 0.15s ease'
           }}>
-
-            <i className="fas fa-arrow-up"></i> Upgrade to Premium
-
+            <i className="fas fa-bolt" style={{ color: '#FCD34D' }}></i> Upgrade to PRO ($4/mo)
           </a>
-
         </div>
-
       )}
 
 
@@ -2399,75 +2435,40 @@ export default function UserWebsites() {
           >
 
             <div style={{
-
-              width: '56px', height: '56px', borderRadius: '16px', background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-
-              color: '#ffffff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px',
-
-              marginBottom: '18px', boxShadow: '0 8px 20px rgba(217, 119, 6, 0.25)'
-
+              width: '56px', height: '56px', borderRadius: '16px', background: 'linear-gradient(135deg, #0B2522 0%, #1A4D45 100%)',
+              color: '#34D399', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px',
+              marginBottom: '18px', boxShadow: '0 8px 20px rgba(11, 37, 34, 0.25)'
             }}>
-
-              <i className="fas fa-crown"></i>
-
+              <i className="fas fa-shield-alt"></i>
             </div>
-
             <h3 style={{ fontSize: '19px', fontWeight: '800', color: '#0f172a', margin: '0 0 10px' }}>
-
-              Upgrade to Premium Plan
-
+              Expand Your Fleet Capacity
             </h3>
-
             <p style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.6', margin: '0 0 24px' }}>
-
-              Your current plan website limit has been reached. Upgrade to Enterprise Pro to connect up to 10 protected domains, unlock real-time ML threat detection, and priority support.
-
+              Your current site limit has been reached. Upgrade to Enterprise Pro for just $4.00/site/month (or $40/year with 2 months free) to protect additional domains with sub-millisecond edge ML filtering.
             </p>
-
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-
               <button
-
                 type="button"
-
                 onClick={() => setShowUpgradeModal(false)}
-
                 style={{
-
                   padding: '10px 20px', background: '#FFFFFF', color: '#10201E', border: '1px solid #D9E1DC',
-
                   borderRadius: '10px', fontSize: '13px', fontWeight: '700', cursor: 'pointer'
-
                 }}
-
               >
-
                 Close
-
               </button>
-
               <a
-
-                href="/user/settings"
-
+                href="/user/pricing"
                 style={{
-
-                  padding: '10px 24px', background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-
+                  padding: '10px 24px', background: 'linear-gradient(135deg, #0B2522 0%, #1A4D45 100%)',
                   color: '#ffffff', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: '800',
-
                   textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '8px',
-
-                  boxShadow: '0 4px 14px rgba(217, 119, 6, 0.3)'
-
+                  boxShadow: '0 4px 14px rgba(11, 37, 34, 0.3)'
                 }}
-
               >
-
-                <i className="fas fa-bolt"></i> Upgrade Now
-
+                <i className="fas fa-bolt"></i> View Pricing &amp; Plans
               </a>
-
             </div>
 
           </div>

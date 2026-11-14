@@ -2,6 +2,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import UserSidebar from './UserSidebar'
 import UserHeader from './UserHeader'
+import TrialPaywallModal from './TrialPaywallModal'
 import userStore from '../utils/userStore'
 import { BackupRestoreProvider } from '../context/BackupRestoreContext'
 import { MalwareScanProvider } from '../context/MalwareScanContext'
@@ -156,6 +157,7 @@ export default function UserLayout({ children, onLogout }) {
             </div>
           )}
           <UserHeader onToggleSidebar={() => setSidebarOpen(prev => !prev)} onLogout={onLogout} />
+          <TrialPaywallModal />
           <Suspense fallback={<InnerContentFallback />}>
             <div key={location.pathname} className="dashboard-page-enter">
               {children || <Outlet />}
