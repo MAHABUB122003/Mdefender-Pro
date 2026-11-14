@@ -418,7 +418,7 @@ export default function TrialPaywallModal() {
           </div>
 
           <div style={{ padding: '24px' }}>
-            {/* Row 1: Site Count Selection */}
+            {/* Row 1: Site Count Selection & Subtotal */}
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -429,7 +429,7 @@ export default function TrialPaywallModal() {
               gap: '12px'
             }}>
               <div>
-                <div style={{ fontSize: '14px', fontWeight: '700', color: brandTokens.textHeading, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ fontSize: '14.5px', fontWeight: '750', color: brandTokens.textHeading, display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span>{siteCount} {siteCount === 1 ? 'Protected Website' : 'Protected Websites'}</span>
                   {activeTier.discount_percent > 0 && (
                     <span style={{
@@ -444,69 +444,80 @@ export default function TrialPaywallModal() {
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: '12.5px', color: brandTokens.textMuted, marginTop: '2px' }}>
+                <div style={{ fontSize: '12px', color: brandTokens.textMuted, marginTop: '2px' }}>
                   {billingCycle === 'yearly'
                     ? `$${yearlyRate.toFixed(2)} per site annually (Save 17% / 2 Months Free)`
                     : `$${monthlyRate.toFixed(2)} per site, flexible monthly billing`}
                 </div>
               </div>
 
-              {/* Stepper Control */}
-              <div style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                background: '#F8FAF9',
-                border: `1px solid ${brandTokens.cardBorder}`,
-                borderRadius: '8px',
-                padding: '3px'
-              }}>
-                <button
-                  type="button"
-                  onClick={() => setSiteCount(prev => Math.max(1, prev - 1))}
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '6px',
-                    background: '#FFFFFF',
-                    border: '1px solid #D9E1DC',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: siteCount <= 1 ? 'not-allowed' : 'pointer',
-                    color: brandTokens.textHeading,
-                    opacity: siteCount <= 1 ? 0.4 : 1
-                  }}
-                  disabled={siteCount <= 1}
-                >
-                  <Minus size={14} />
-                </button>
-                <span style={{
-                  minWidth: '44px',
-                  textAlign: 'center',
-                  fontSize: '14px',
-                  fontWeight: '800',
-                  color: brandTokens.textHeading
+              {/* Stepper Control and Row Subtotal */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  background: '#F8FAF9',
+                  border: `1.5px solid ${brandTokens.cardBorder}`,
+                  borderRadius: '8px',
+                  padding: '3px'
                 }}>
-                  {siteCount}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSiteCount(prev => Math.min(500, prev + 1))}
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '6px',
-                    background: '#FFFFFF',
-                    border: '1px solid #D9E1DC',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
+                  <button
+                    type="button"
+                    onClick={() => setSiteCount(prev => Math.max(1, prev - 1))}
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '6px',
+                      background: '#FFFFFF',
+                      border: '1px solid #D9E1DC',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: siteCount <= 1 ? 'not-allowed' : 'pointer',
+                      color: brandTokens.textHeading,
+                      opacity: siteCount <= 1 ? 0.4 : 1
+                    }}
+                    disabled={siteCount <= 1}
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span style={{
+                    minWidth: '44px',
+                    textAlign: 'center',
+                    fontSize: '14px',
+                    fontWeight: '800',
                     color: brandTokens.textHeading
-                  }}
-                >
-                  <Plus size={14} />
-                </button>
+                  }}>
+                    {siteCount}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSiteCount(prev => Math.min(500, prev + 1))}
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '6px',
+                      background: '#FFFFFF',
+                      border: '1px solid #D9E1DC',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: brandTokens.textHeading
+                    }}
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+
+                <div style={{ textAlign: 'right', minWidth: '95px' }}>
+                  <div style={{ fontSize: '15px', fontWeight: '800', color: brandTokens.textHeading }}>
+                    ${rawBase.toFixed(2)}
+                  </div>
+                  <div style={{ fontSize: '11px', color: brandTokens.textMuted }}>
+                    /{billingCycle === 'yearly' ? 'year' : 'month'}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -587,6 +598,30 @@ export default function TrialPaywallModal() {
               </div>
             </div>
 
+            {/* Row 2.5: Volume Discount if applicable */}
+            {activeTier.discount_percent > 0 && (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '14px 0',
+                borderBottom: '1px solid #F1F5F2',
+                fontSize: '13px'
+              }}>
+                <div>
+                  <span style={{ fontWeight: '700', color: '#B45309' }}>
+                    Volume Tier Discount ({activeTier.label})
+                  </span>
+                  <div style={{ fontSize: '11.5px', color: brandTokens.textMuted }}>
+                    {activeTier.discount_percent}% off across {siteCount} protected websites
+                  </div>
+                </div>
+                <div style={{ fontWeight: '800', color: '#B45309' }}>
+                  -${discountAmount.toFixed(2)}
+                </div>
+              </div>
+            )}
+
             {/* Row 3: Trial / Special Guarantee Line */}
             <div style={{
               display: 'flex',
@@ -598,14 +633,14 @@ export default function TrialPaywallModal() {
             }}>
               <div>
                 <span style={{ fontWeight: '700', color: brandTokens.emeraldPrimary }}>
-                  {isSoftPrompt ? '14-Day Free Trial Auto-Renew Guarantee' : 'Autonomous AI Edge Firewall Fleet Protection'}
+                  {isSoftPrompt ? '14-Day Free Trial Protection Guarantee' : 'Autonomous AI Edge Firewall Fleet Protection'}
                 </span>
                 <div style={{ fontSize: '11.5px', color: brandTokens.textMuted }}>
                   Includes AST Machine Learning, 5.24M+ Checksums &amp; Anycast L7 DDoS Scrubber
                 </div>
               </div>
               <div style={{ fontWeight: '800', color: brandTokens.emeraldPrimary }}>
-                {isSoftPrompt ? '-$0.00 Today' : 'Included'}
+                {isSoftPrompt ? `-$${totalAmount.toFixed(2)} Today (100% Free)` : 'Included'}
               </div>
             </div>
 
@@ -613,7 +648,7 @@ export default function TrialPaywallModal() {
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'flex-end',
+              alignItems: 'flex-start',
               padding: '20px 0 24px 0',
               flexWrap: 'wrap',
               gap: '12px'
@@ -622,34 +657,50 @@ export default function TrialPaywallModal() {
                 <div style={{ fontSize: '15px', fontWeight: '800', color: brandTokens.textHeading }}>
                   Total
                 </div>
-                <div style={{ fontSize: '12px', color: brandTokens.textMuted }}>
+                <div style={{ fontSize: '12px', color: brandTokens.textMuted, marginTop: '2px' }}>
                   Billed in USD ($) • Cancel anytime with 1 click • Zero hidden fees
                 </div>
               </div>
 
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '28px', fontWeight: '800', color: brandTokens.textHeading, letterSpacing: '-0.02em' }}>
-                  {isSoftPrompt ? (
-                    <>
-                      $0.00 <span style={{ fontSize: '14px', fontWeight: '600', color: brandTokens.textMuted }}>today</span>
-                    </>
-                  ) : (
-                    <>
+                {isSoftPrompt ? (
+                  <>
+                    <div style={{ fontSize: '28px', fontWeight: '800', color: brandTokens.textHeading, letterSpacing: '-0.02em' }}>
+                      $0.00 <span style={{ fontSize: '14px', fontWeight: '700', color: brandTokens.emeraldPrimary }}>due today</span>
+                    </div>
+                    <div style={{
+                      fontSize: '12.5px',
+                      fontWeight: '700',
+                      color: brandTokens.deepForest,
+                      background: brandTokens.emeraldLight,
+                      border: `1px solid ${brandTokens.emeraldBorder}`,
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      marginTop: '4px',
+                      display: 'inline-block'
+                    }}>
+                      Renews at ${totalAmount.toFixed(2)} / {billingCycle === 'yearly' ? 'year' : 'month'} after Day 14
+                    </div>
+                    <div style={{ fontSize: '11.5px', color: brandTokens.textMuted, marginTop: '4px' }}>
+                      {billingCycle === 'yearly'
+                        ? `Effective $${yearlyEquivalent} / month across ${siteCount} sites (Save 17%)`
+                        : `Flexible $${monthlyRate.toFixed(2)} / site monthly across ${siteCount} sites`}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: '30px', fontWeight: '800', color: brandTokens.textHeading, letterSpacing: '-0.02em' }}>
                       ${totalAmount.toFixed(2)} <span style={{ fontSize: '14px', fontWeight: '600', color: brandTokens.textMuted }}>
                         /{billingCycle === 'yearly' ? 'year' : 'month'}
                       </span>
-                    </>
-                  )}
-                </div>
-                <div style={{ fontSize: '12px', color: brandTokens.textMuted, marginTop: '2px' }}>
-                  {isSoftPrompt ? (
-                    `then $${totalAmount.toFixed(2)} / ${billingCycle === 'yearly' ? 'year' : 'month'} after Day 14`
-                  ) : (
-                    billingCycle === 'yearly'
-                      ? `effective $${yearlyEquivalent} / month across ${siteCount} sites`
-                      : 'billed monthly per connected site'
-                  )}
-                </div>
+                    </div>
+                    <div style={{ fontSize: '12px', color: brandTokens.textMuted, marginTop: '2px' }}>
+                      {billingCycle === 'yearly'
+                        ? `Effective $${yearlyEquivalent} / month across ${siteCount} sites`
+                        : `Billed monthly for ${siteCount} protected ${siteCount === 1 ? 'website' : 'websites'}`}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -681,7 +732,11 @@ export default function TrialPaywallModal() {
                 e.currentTarget.style.background = brandTokens.deepForest;
               }}
             >
-              <span>{isSoftPrompt ? 'Keep My Websites Protected & Auto-Renew' : 'Start My Subscription'}</span>
+              <span>
+                {isSoftPrompt
+                  ? `Keep My ${siteCount} ${siteCount === 1 ? 'Website' : 'Websites'} Protected & Auto-Renew ($0 Today)`
+                  : `Activate ${siteCount} ${siteCount === 1 ? 'Website' : 'Websites'} Protection ($${totalAmount.toFixed(2)})`}
+              </span>
               <ArrowRight size={16} />
             </button>
 
@@ -982,221 +1037,7 @@ export default function TrialPaywallModal() {
           </div>
         </div>
 
-        {/* =====================================================================
-            CARD 3: HEAD-TO-HEAD COMPARISON MATRIX (MDefender Pro vs Competitors)
-            Proving Beyond Doubt Why MDefender Pro Is 10x Superior to WP Umbrella
-            ===================================================================== */}
-        <div style={{
-          background: brandTokens.cardBg,
-          border: `1.5px solid ${brandTokens.cardBorder}`,
-          borderRadius: '16px',
-          boxShadow: brandTokens.shadowSm,
-          overflow: 'hidden',
-          marginBottom: '36px'
-        }}>
-          {/* Header */}
-          <div style={{
-            padding: '20px 28px',
-            background: 'linear-gradient(135deg, rgba(11, 37, 34, 0.03), rgba(40, 116, 93, 0.06))',
-            borderBottom: `1px solid ${brandTokens.cardBorder}`
-          }}>
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '11px',
-              fontWeight: 800,
-              color: brandTokens.emeraldPrimary,
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em',
-              marginBottom: '4px'
-            }}>
-              <Award size={13} />
-              <span>Head-to-Head Capability Comparison</span>
-            </div>
-            <h3 style={{
-              fontSize: '18px',
-              fontWeight: '800',
-              color: brandTokens.textHeading,
-              margin: '0 0 4px 0'
-            }}>
-              Why Agencies &amp; Enterprises Switch from WP Umbrella to MDefender Pro
-            </h3>
-            <p style={{ fontSize: '13px', color: brandTokens.textBody, margin: 0 }}>
-              WP Umbrella charges extra for basic security add-ons without providing any real edge WAF or malware remediation. MDefender Pro delivers the entire security and fleet suite in one unified engine.
-            </p>
-          </div>
 
-          {/* Responsive Comparison Table */}
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              fontSize: '12.5px',
-              textAlign: 'left'
-            }}>
-              <thead>
-                <tr style={{ background: '#FAFBF9', borderBottom: `1px solid ${brandTokens.cardBorder}` }}>
-                  <th style={{ padding: '14px 20px', fontWeight: '800', color: brandTokens.textHeading }}>
-                    Key Capability / Superpower
-                  </th>
-                  <th style={{ padding: '14px 16px', fontWeight: '700', color: brandTokens.textMuted, textAlign: 'center' }}>
-                    WP Umbrella ($4.19/site)
-                  </th>
-                  <th style={{ padding: '14px 16px', fontWeight: '700', color: brandTokens.textMuted, textAlign: 'center' }}>
-                    Cloudflare Pro ($25.00/site)
-                  </th>
-                  <th style={{ padding: '14px 16px', fontWeight: '700', color: brandTokens.textMuted, textAlign: 'center' }}>
-                    Wordfence ($12.42/site)
-                  </th>
-                  <th style={{
-                    padding: '14px 20px',
-                    fontWeight: '800',
-                    color: brandTokens.deepForest,
-                    background: brandTokens.emeraldLight,
-                    textAlign: 'center',
-                    borderLeft: `1px solid ${brandTokens.emeraldBorder}`,
-                    borderRight: `1px solid ${brandTokens.emeraldBorder}`
-                  }}>
-                    MDefender Pro ($4.00/site)
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  {
-                    feat: 'Layer-7 Cloud Edge WAF (<0.12ms)',
-                    desc: 'Stops SQLi, XSS, RCE, SSRF before touching the server',
-                    wp: { text: 'None', ok: false },
-                    cf: { text: 'Basic ($25/mo)', ok: 'warn' },
-                    wf: { text: 'PHP-only (Slow)', ok: false },
-                    md: { text: 'Included (<0.12ms Edge)', ok: true }
-                  },
-                  {
-                    feat: '5.24M+ SQLite Malware Hunter',
-                    desc: 'Official WordPress checksums with 0.01ms instant lookup',
-                    wp: { text: '+$2.00/mo Add-on', ok: 'warn' },
-                    cf: { text: 'None', ok: false },
-                    wf: { text: 'Slow PHP scanning', ok: 'warn' },
-                    md: { text: 'Included (5.24M+ Hashes)', ok: true }
-                  },
-                  {
-                    feat: '1-Click Post-Hack Remediation',
-                    desc: 'Rogue admin purge, salt rotation & zero-downtime disinfection',
-                    wp: { text: 'None', ok: false },
-                    cf: { text: 'None', ok: false },
-                    wf: { text: 'Manual ($490 Clean)', ok: false },
-                    md: { text: 'Included (1-Click Clean)', ok: true }
-                  },
-                  {
-                    feat: 'Zero-Day Virtual Patching Engine',
-                    desc: 'DFA state machine virtual patching without waiting for updates',
-                    wp: { text: '+$2.00/mo Add-on', ok: 'warn' },
-                    cf: { text: 'Pro tier required', ok: 'warn' },
-                    wf: { text: '$149/yr tier only', ok: 'warn' },
-                    md: { text: 'Included Autonomous', ok: true }
-                  },
-                  {
-                    feat: 'Anti-DDoS Proof-of-Work (PoW)',
-                    desc: 'Autonomous scrubber without frustrating visual captchas',
-                    wp: { text: 'None', ok: false },
-                    cf: { text: 'Visual CAPTCHAs', ok: 'warn' },
-                    wf: { text: 'None', ok: false },
-                    md: { text: 'Included (Zero CAPTCHAs)', ok: true }
-                  },
-                  {
-                    feat: '1-Click Passwordless WP-Admin SSO',
-                    desc: 'Direct secure access to all WordPress dashboards',
-                    wp: { text: 'Included', ok: true },
-                    cf: { text: 'None', ok: false },
-                    wf: { text: 'None', ok: false },
-                    md: { text: 'Included (Fleet SSO)', ok: true }
-                  },
-                  {
-                    feat: 'Bulk Safe Updates with Rollback',
-                    desc: 'Pre-update snapshot verification with automated recovery',
-                    wp: { text: 'Included', ok: true },
-                    cf: { text: 'None', ok: false },
-                    wf: { text: 'None', ok: false },
-                    md: { text: 'Included (Automated)', ok: true }
-                  },
-                  {
-                    feat: 'Router & Edge DNS Network Firewall',
-                    desc: 'Hardware router DNS protection + WordPress WAF unified',
-                    wp: { text: 'None', ok: false },
-                    cf: { text: 'None', ok: false },
-                    wf: { text: 'None', ok: false },
-                    md: { text: 'Included Proprietary', ok: true }
-                  },
-                  {
-                    feat: 'White-Label Executive Client PDF Reports',
-                    desc: 'Branded executive reports for digital agencies and clients',
-                    wp: { text: 'High tiers only', ok: 'warn' },
-                    cf: { text: 'None', ok: false },
-                    wf: { text: 'None', ok: false },
-                    md: { text: 'Included Unlimited', ok: true }
-                  },
-                  {
-                    feat: 'Effective Monthly Price',
-                    desc: 'Per website protected with every capability included',
-                    wp: { text: '$4.19 / site / mo', ok: 'warn' },
-                    cf: { text: '$25.00+ / site / mo', ok: false },
-                    wf: { text: '$12.42 / site / mo', ok: false },
-                    md: { text: '$4.00 / site / mo ($3.33/yr)', ok: 'highlight' }
-                  }
-                ].map((row, idx) => (
-                  <tr
-                    key={idx}
-                    style={{
-                      borderBottom: idx === 9 ? 'none' : '1px solid #F1F5F2',
-                      background: idx % 2 === 1 ? '#FAFBF9' : '#FFFFFF'
-                    }}
-                  >
-                    <td style={{ padding: '12px 20px' }}>
-                      <div style={{ fontWeight: '750', color: brandTokens.textHeading, fontSize: '13px' }}>
-                        {row.feat}
-                      </div>
-                      <div style={{ fontSize: '11px', color: brandTokens.textMuted, marginTop: '2px' }}>
-                        {row.desc}
-                      </div>
-                    </td>
-
-                    {/* WP Umbrella */}
-                    <td style={{ padding: '12px 16px', textAlign: 'center', color: row.wp.ok === true ? brandTokens.emeraldPrimary : row.wp.ok === 'warn' ? '#B45309' : '#DC2626', fontWeight: '600' }}>
-                      {row.wp.text}
-                    </td>
-
-                    {/* Cloudflare Pro */}
-                    <td style={{ padding: '12px 16px', textAlign: 'center', color: row.cf.ok === true ? brandTokens.emeraldPrimary : row.cf.ok === 'warn' ? '#B45309' : '#DC2626', fontWeight: '600' }}>
-                      {row.cf.text}
-                    </td>
-
-                    {/* Wordfence */}
-                    <td style={{ padding: '12px 16px', textAlign: 'center', color: row.wf.ok === true ? brandTokens.emeraldPrimary : row.wf.ok === 'warn' ? '#B45309' : '#DC2626', fontWeight: '600' }}>
-                      {row.wf.text}
-                    </td>
-
-                    {/* MDefender Pro */}
-                    <td style={{
-                      padding: '12px 20px',
-                      textAlign: 'center',
-                      background: row.md.ok === 'highlight' ? brandTokens.emeraldPrimary : brandTokens.emeraldLight,
-                      color: row.md.ok === 'highlight' ? '#FFFFFF' : brandTokens.emeraldPrimary,
-                      fontWeight: '800',
-                      borderLeft: `1px solid ${brandTokens.emeraldBorder}`,
-                      borderRight: `1px solid ${brandTokens.emeraldBorder}`
-                    }}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                        {row.md.ok !== 'highlight' && <Check size={14} strokeWidth={3} />}
-                        <span>{row.md.text}</span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
 
         {/* =====================================================================
             CARD 3: REAL MDEFENDER SUPERPOWERS (High-Impact Enterprise Grid)
