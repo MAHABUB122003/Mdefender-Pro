@@ -305,26 +305,24 @@ if (!defined('ABSPATH') && file_exists($wp_root . '/wp-load.php')) {
     require_once $wp_root . '/wp-load.php';
 }
 
-// Resilient self-healing API Key & Site Token synchronization
-if (function_exists('update_option')) {
-    $raw_key = $_REQUEST['api_key'] ?? $_REQUEST['key'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['HTTP_X_API_KEY'] ?? ($pushed['api_key'] ?? '');
-    $incoming_key = trim(str_ireplace('Bearer ', '', (string) $raw_key));
-    $incoming_token = trim((string) ($_REQUEST['site_token'] ?? $_REQUEST['token'] ?? $_SERVER['HTTP_X_SITE_TOKEN'] ?? ($pushed['site_token'] ?? '')));
+// Resilient API Key & Site Token synchronization - only if site is already paired and key matches
+if (function_exists('update_option') && function_exists('get_option')) {
+    $curr_key = (string) get_option('waf_fw_ml_api_key', get_option('waf_fw_api_key', ''));
+    if (!empty($curr_key) && strlen($curr_key) >= 16) {
+        $raw_key = $_REQUEST['api_key'] ?? $_REQUEST['key'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['HTTP_X_API_KEY'] ?? ($pushed['api_key'] ?? '');
+        $incoming_key = trim(str_ireplace('Bearer ', '', (string) $raw_key));
+        $incoming_token = trim((string) ($_REQUEST['site_token'] ?? $_REQUEST['token'] ?? $_SERVER['HTTP_X_SITE_TOKEN'] ?? ($pushed['site_token'] ?? '')));
 
-    if (!empty($incoming_key) && strlen($incoming_key) >= 16) {
-        $curr_key = (string) get_option('waf_fw_ml_api_key', get_option('waf_fw_api_key', ''));
-        if ($curr_key !== $incoming_key) {
-            update_option('waf_fw_ml_api_key', $incoming_key);
-            update_option('waf_fw_api_key', $incoming_key);
+        if (!empty($incoming_key) && hash_equals($curr_key, $incoming_key)) {
+            if (!empty($incoming_token) && strlen($incoming_token) >= 16) {
+                $curr_token = (string) get_option('waf_fw_site_token', '');
+                if ($curr_token !== $incoming_token) {
+                    update_option('waf_fw_site_token', $incoming_token);
+                }
+            }
+            update_option('waf_fw_connected', 'yes');
         }
     }
-    if (!empty($incoming_token) && strlen($incoming_token) >= 16) {
-        $curr_token = (string) get_option('waf_fw_site_token', '');
-        if ($curr_token !== $incoming_token) {
-            update_option('waf_fw_site_token', $incoming_token);
-        }
-    }
-    update_option('waf_fw_connected', 'yes');
 }
 
 // Re-evaluate action after wp-load in case globals were reset

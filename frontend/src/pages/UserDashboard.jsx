@@ -106,6 +106,150 @@ function postureFor(sites) {
   return { score, label, tone, tasks: tasks.slice(0, 3) };
 }
 
+function DashboardSkeleton({ userName }) {
+  return (
+    <div className="mdf-ud">
+      <style>{`
+        @keyframes mdf-shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        .mdf-skel {
+          background: linear-gradient(90deg, #ECEFE9 25%, #F7FAF6 50%, #ECEFE9 75%);
+          background-size: 200% 100%;
+          animation: mdf-shimmer 1.5s infinite ease-in-out;
+          border-radius: 6px;
+          display: inline-block;
+        }
+      `}</style>
+
+      <PageHeader
+        eyebrow="Fleet overview"
+        title={userName ? `Welcome back, ${userName}` : 'Overview'}
+        description="Synchronizing security telemetry across your connected WordPress fleet..."
+        actions={
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div className="mdf-skel" style={{ width: 180, height: 36, borderRadius: 8 }} />
+            <div className="mdf-skel" style={{ width: 90, height: 36, borderRadius: 8 }} />
+            <div className="mdf-skel" style={{ width: 85, height: 36, borderRadius: 8 }} />
+            <div className="mdf-skel" style={{ width: 110, height: 36, borderRadius: 8 }} />
+          </div>
+        }
+      />
+
+      {/* Posture Banner Skeleton */}
+      <div className="mdf-ud-posture" style={{ background: '#fff', border: '1px solid #e2e5de', borderRadius: 14, padding: '18px 20px', display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr) auto', gap: 20, alignItems: 'center' }}>
+        <div className="mdf-skel" style={{ width: 64, height: 64, borderRadius: '50%', flexShrink: 0 }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="mdf-skel" style={{ width: 220, height: 16 }} />
+            <div className="mdf-skel" style={{ width: 75, height: 18, borderRadius: 999 }} />
+          </div>
+          <div className="mdf-skel" style={{ width: '65%', maxWidth: 460, height: 12 }} />
+          <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+            <div className="mdf-skel" style={{ width: 180, height: 14 }} />
+            <div className="mdf-skel" style={{ width: 160, height: 14 }} />
+          </div>
+        </div>
+        <div className="mdf-skel" style={{ width: 140, height: 36, borderRadius: 8 }} />
+      </div>
+
+      {/* KPI Grid Skeleton (4 Cards) */}
+      <div className="mdui-grid mdui-kpi-grid">
+        {[
+          { label: 'Requests inspected', w: 120 },
+          { label: 'Threats blocked', w: 90 },
+          { label: 'Protected sites', w: 80 },
+          { label: 'Block rate', w: 95 }
+        ].map((item, idx) => (
+          <div key={idx} style={{
+            background: 'var(--md-surface, #fff)',
+            border: '1px solid var(--md-line, #e2e5de)',
+            borderRadius: 14,
+            padding: '16px 18px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: 'var(--md-ink-3, #6E7F7A)', fontWeight: 500 }}>{item.label}</span>
+              <div className="mdf-skel" style={{ width: 28, height: 28, borderRadius: 8 }} />
+            </div>
+            <div className="mdf-skel" style={{ width: item.w, height: 28, borderRadius: 4 }} />
+            <div className="mdf-skel" style={{ width: 130, height: 11 }} />
+          </div>
+        ))}
+      </div>
+
+      {/* Charts Row Skeleton */}
+      <div className="mdui-grid mdui-split">
+        <Card
+          title="Traffic & threats"
+          subtitle="Clean traffic compared with mitigated requests over the last 7 days"
+          action={<div className="mdf-skel" style={{ width: 170, height: 32, borderRadius: 8 }} />}
+        >
+          <div className="mdf-skel" style={{ width: '100%', height: 220, borderRadius: 10, marginBottom: 12 }} />
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+            <div className="mdf-skel" style={{ width: 110, height: 12 }} />
+            <div className="mdf-skel" style={{ width: 120, height: 12 }} />
+            <div className="mdf-skel" style={{ width: 100, height: 12, marginLeft: 'auto' }} />
+          </div>
+        </Card>
+
+        <Card title="Threat mix" subtitle="What the firewall stopped in this period">
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}>
+            <div className="mdf-skel" style={{ width: 140, height: 140, borderRadius: '50%' }} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+            {[1, 2, 3, 4].map(idx => (
+              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div className="mdf-skel" style={{ width: 8, height: 8, borderRadius: 2 }} />
+                  <div className="mdf-skel" style={{ width: 90 + idx * 20, height: 12 }} />
+                </div>
+                <div className="mdf-skel" style={{ width: 40, height: 12 }} />
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      {/* Sites Card Skeleton */}
+      <Card
+        title="Sites"
+        subtitle="Every site connected to this workspace"
+        flush
+      >
+        <div style={{ padding: '8px 20px' }}>
+          {[1, 2, 3].map(row => (
+            <div key={row} style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '14px 0',
+              borderBottom: row < 3 ? '1px solid var(--md-line, #e2e5de)' : 'none'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div className="mdf-skel" style={{ width: 28, height: 28, borderRadius: 6 }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <div className="mdf-skel" style={{ width: 160, height: 13 }} />
+                  <div className="mdf-skel" style={{ width: 220, height: 10 }} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                <div className="mdf-skel" style={{ width: 60, height: 18, borderRadius: 999 }} />
+                <div className="mdf-skel" style={{ width: 60, height: 18, borderRadius: 999 }} />
+                <div className="mdf-skel" style={{ width: 55, height: 12 }} />
+                <div className="mdf-skel" style={{ width: 45, height: 12 }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 export default function UserDashboard() {
   const navigate = useNavigate();
   const cached = useMemo(() => userStore.get('dashboard'), []);
@@ -305,12 +449,22 @@ export default function UserDashboard() {
   };
 
   const underAttack = selectedSite ? Boolean(selectedSite.under_attack_mode) : sites.some((s) => s.under_attack_mode);
-  const firstName = (data?.user?.name || data?.user?.full_name || '').trim().split(/\s+/)[0];
+  const storedName = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_name') || '') : '';
+  const firstName = (data?.user?.name || data?.user?.full_name || storedName || '').trim().split(/\s+/)[0];
+
+  if (loading && !data) {
+    return <DashboardSkeleton userName={firstName} />;
+  }
 
   return (
-    <div className="mdf-ud">
+    <div className="mdf-ud mdf-ud-fadein">
       <style>{`
         .mdf-ud { display: flex; flex-direction: column; gap: 14px; max-width: 1680px; margin: 0 auto; width: 100%; }
+        .mdf-ud-fadein { animation: mdf-fadein 0.25s ease-out; }
+        @keyframes mdf-fadein {
+          from { opacity: 0.4; transform: translateY(3px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
         .mdf-ud-select {
           height: 36px; min-width: 190px; border: 1px solid var(--md-line-strong, #cfd5cb);
           border-radius: 8px; background: var(--md-surface, #fff); color: var(--md-ink, #10201e);

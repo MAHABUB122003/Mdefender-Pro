@@ -71,18 +71,7 @@ export default function UserLogin({ onLoginSuccess }) {
       if (user.name) localStorage.setItem('mdefender_user_name', user.name);
       if (user.trial_days_remaining !== undefined) localStorage.setItem('mdefender_trial_days', user.trial_days_remaining);
       if (user.created_at) localStorage.setItem('mdefender_user_created_at', user.created_at);
-      userStore.set('dashboard', {
-        user,
-        api_key: user.api_key || '',
-        websites: user.websites || [],
-        total_requests: user.total_requests || 0,
-        blocked_threats: user.total_blocked || 0,
-        requests_today: user.requests_today || 0,
-        recent_attacks: [],
-        attack_types: ['SQL Injection', 'XSS', 'LFI', 'RCE', 'Bot Scan'],
-        attack_counts: [0, 0, 0, 0, 0],
-        daily_requests: [0, 0, 0, 0, 0, 0, 0],
-      });
+      userStore.invalidate('dashboard');
     }
     userStore.prefetchUserData(api);
     if (onLoginSuccess && user) {

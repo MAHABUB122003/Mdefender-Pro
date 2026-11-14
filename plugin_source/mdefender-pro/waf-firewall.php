@@ -417,7 +417,12 @@ function waf_fw_activate() {
             update_option('waf_harden_login_guard', 'disabled');
         }
         delete_option('waf_harden_login_captcha');
-        if (get_option('waf_fw_connected', 'no') !== 'yes') {
+        $stored_api_key = trim((string) get_option('waf_fw_api_key', get_option('waf_fw_ml_api_key', '')));
+        if (empty($stored_api_key) || strlen($stored_api_key) < 16) {
+            update_option('waf_fw_connected', 'no');
+            update_option('waf_fw_onboarding_pending', 'yes');
+            update_option('waf_fw_do_setup_redirect', 'yes');
+        } else if (get_option('waf_fw_connected', 'no') !== 'yes') {
             update_option('waf_fw_onboarding_pending', 'yes');
             update_option('waf_fw_do_setup_redirect', 'yes');
         }
@@ -821,7 +826,18 @@ function waf_fw_handle_cloud_sync_webhook() {
         $valid_incoming_token = !empty($token) && strlen($token) >= 16;
         $key_unconfigured = empty($stored_key) || strlen($stored_key) < 16;
 
-        // Resilient Multi-Key & Token Verification
+        // Strict Marketplace Security: If unconfigured, incoming requests MUST NEVER auto-pair or auto-connect.
+        // A site can only be connected via explicit manual setup by an administrator in WordPress Admin.
+        if ($key_unconfigured && !$is_admin) {
+            status_header(401);
+            wp_send_json_error([
+                'error' => 'not_connected',
+                'message' => 'MDefender Pro is not yet connected to a Cloud Dashboard account. Please connect manually from WordPress Admin.'
+            ], 401);
+            exit;
+        }
+
+        // Resilient Multi-Key & Token Verification for already-connected sites
         $matches_key = !empty($stored_key) && !empty($api_key) && (hash_equals($stored_key, $api_key) || strpos($stored_key, $api_key) !== false || hash_equals($api_key, $stored_key));
         $matches_token = !empty($stored_token) && !empty($token) && (hash_equals($stored_token, $token) || strcasecmp($stored_token, $token) === 0);
         $matches_constant = defined('MDEFENDER_API_KEY') && !empty($api_key) && hash_equals(MDEFENDER_API_KEY, $api_key);
@@ -830,17 +846,15 @@ function waf_fw_handle_cloud_sync_webhook() {
             || $hmac_verified
             || $matches_key
             || $matches_token
-            || $matches_constant
-            || ($key_unconfigured && $valid_incoming_key)
-            || ($is_local_req && ($valid_incoming_key || $valid_incoming_token));
+            || $matches_constant;
 
-        if ($is_authorized && ($valid_incoming_key || $valid_incoming_token)) {
-            // Intelligent self-healing: pair and cache valid cloud API key & site token
-            if ($valid_incoming_key && $stored_key !== $api_key) {
+        if ($is_authorized && ($valid_incoming_key || $valid_incoming_token) && !$key_unconfigured) {
+            // Synchronize rotated key or token only for already-authorized connections
+            if ($valid_incoming_key && $stored_key !== $api_key && $matches_token) {
                 update_option('waf_fw_ml_api_key', $api_key);
                 update_option('waf_fw_api_key', $api_key);
             }
-            if ($valid_incoming_token && $stored_token !== $token) {
+            if ($valid_incoming_token && $stored_token !== $token && $matches_key) {
                 update_option('waf_fw_site_token', $token);
             }
             update_option('waf_fw_connected', 'yes');
