@@ -740,43 +740,461 @@ export default function TrialPaywallModal() {
         </div>
 
         {/* =====================================================================
-            CARD 2: WHY MDEFENDER OUTCLASSES TRADITIONAL TOOLS (Comparison Banner)
+            CARD 2: EVERYTHING IS INCLUDED (Comprehensive 4-Column Breakdown)
+            Inspired by WP Umbrella's Clean Architecture + MDefender Enterprise Superpowers
             ===================================================================== */}
         <div style={{
-          background: 'linear-gradient(135deg, rgba(11, 37, 34, 0.04), rgba(40, 116, 93, 0.08))',
-          border: `1.5px solid ${brandTokens.emeraldBorder}`,
+          background: brandTokens.cardBg,
+          border: `1.5px solid ${brandTokens.cardBorder}`,
           borderRadius: '16px',
-          padding: '24px 28px',
-          marginBottom: '36px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '18px'
+          boxShadow: brandTokens.shadowSm,
+          padding: '32px 28px',
+          marginBottom: '36px'
         }}>
-          <div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 800, color: brandTokens.emeraldPrimary, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>
-              <Award size={13} />
-              <span>All-In-One Enterprise Consolidation</span>
-            </div>
-            <h3 style={{ fontSize: '18px', fontWeight: '800', color: brandTokens.textHeading, margin: '0 0 6px 0' }}>
-              One Single Platform Replacing 5 Costly Fragmented Services
-            </h3>
-            <p style={{ fontSize: '13px', color: brandTokens.textBody, margin: 0, maxWidth: '640px', lineHeight: '1.5' }}>
-              MDefender Pro natively consolidates Cloudflare Enterprise WAF ($200+/mo), Wordfence Premium ($149/yr), WP Umbrella maintenance ($4/site), iThemes 2FA security ($99/yr), and incident response ($500/clean) into one unified $4/site engine.
-            </p>
-          </div>
+          {/* Section Header */}
           <div style={{
             display: 'flex',
-            flexDirection: 'column',
-            gap: '6px',
-            fontSize: '12px',
-            fontWeight: 700,
-            color: brandTokens.emeraldPrimary
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            flexWrap: 'wrap',
+            gap: '12px',
+            marginBottom: '28px',
+            paddingBottom: '20px',
+            borderBottom: '1px solid #EEF2EF'
           }}>
-            <span>✓ Replaces Enterprise Cloudflare WAF</span>
-            <span>✓ Replaces Wordfence &amp; MalCare</span>
-            <span>✓ Replaces WP Umbrella Maintenance</span>
+            <div>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '11px',
+                fontWeight: 800,
+                color: brandTokens.emeraldPrimary,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                marginBottom: '6px'
+              }}>
+                <Sparkles size={13} />
+                <span>Zero Hidden Add-ons • Zero Tiered Lockouts</span>
+              </div>
+              <h2 style={{
+                fontSize: '22px',
+                fontWeight: '800',
+                color: brandTokens.textHeading,
+                margin: 0,
+                letterSpacing: '-0.02em'
+              }}>
+                Everything is included.
+              </h2>
+            </div>
+            <div style={{
+              fontSize: '13px',
+              fontWeight: '600',
+              color: brandTokens.textMuted,
+              maxWidth: '460px',
+              textAlign: 'right'
+            }}>
+              One flat price per site (${monthlyRate.toFixed(2)}/mo), every proprietary enterprise superpower, unlimited team members.
+            </div>
+          </div>
+
+          {/* 4 Clean Columns Grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '24px'
+          }}>
+            {/* Column 1: Next-Gen Cloud WAF & DDoS */}
+            <div>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '16px',
+                paddingBottom: '10px',
+                borderBottom: '1.5px solid #F1F5F2'
+              }}>
+                <div style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '7px',
+                  background: brandTokens.emeraldLight,
+                  color: brandTokens.emeraldPrimary,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Shield size={16} strokeWidth={2.4} />
+                </div>
+                <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '800', color: brandTokens.textHeading }}>
+                  Next-Gen WAF &amp; DDoS
+                </h3>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '9px' }}>
+                {[
+                  'Sub-millisecond (<0.12ms) L7 Edge Inspection',
+                  'Full OWASP Top 10 mitigation (SQLi, XSS, RCE, SSRF)',
+                  'Autonomous zero-day virtual patching DFA',
+                  'Proof-of-Work (PoW) Anti-DDoS (Zero Captchas)',
+                  'AI prompt injection barrier & LLM firewall',
+                  'Sovereign country geo-fencing & CIDR IP rules',
+                  'Dynamic rate limiting & auto scraper ban'
+                ].map((feat, idx) => (
+                  <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '12px', color: brandTokens.textBody, lineHeight: '1.45' }}>
+                    <Check size={14} color={brandTokens.emeraldPrimary} strokeWidth={2.6} style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <span>{feat}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Column 2: 5.24M+ Malware Hunter & Disinfection */}
+            <div>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '16px',
+                paddingBottom: '10px',
+                borderBottom: '1.5px solid #F1F5F2'
+              }}>
+                <div style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '7px',
+                  background: '#EFF6FF',
+                  color: '#2563EB',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Database size={16} strokeWidth={2.4} />
+                </div>
+                <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '800', color: brandTokens.textHeading }}>
+                  5.24M+ Malware Hunter
+                </h3>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '9px' }}>
+                {[
+                  '5.24M+ WP core & plugin checksums (0.01ms SQLite)',
+                  'AST heuristic obfuscated code & backdoor scanner',
+                  '1-Click post-hack disinfection (Zero downtime)',
+                  'Instant rogue admin purge & security salts rotation',
+                  'Uploads directory PHP execution lockdown',
+                  'Hidden malicious cron jobs & task killer',
+                  '1-Click automated quarantine & safe restore'
+                ].map((feat, idx) => (
+                  <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '12px', color: brandTokens.textBody, lineHeight: '1.45' }}>
+                    <Check size={14} color={brandTokens.emeraldPrimary} strokeWidth={2.6} style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <span>{feat}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Column 3: Fleet Management & Automation (All WP Umbrella Features) */}
+            <div>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '16px',
+                paddingBottom: '10px',
+                borderBottom: '1.5px solid #F1F5F2'
+              }}>
+                <div style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '7px',
+                  background: brandTokens.pillBg,
+                  color: brandTokens.deepForest,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Layers size={16} strokeWidth={2.4} />
+                </div>
+                <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '800', color: brandTokens.textHeading }}>
+                  Fleet &amp; Maintenance
+                </h3>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '9px' }}>
+                {[
+                  '1-Click passwordless WP-Admin SSO access',
+                  'Bulk safe updates with pre-rollback snapshot',
+                  '50-day encrypted cloud backups & 1-click restore',
+                  'Deep database hygiene & MySQL optimization',
+                  '24/7 uptime, domain, SSL & PHP error monitoring',
+                  'Broken links & Core Web Vitals diagnostics',
+                  'Router DNS edge network firewall integration'
+                ].map((feat, idx) => (
+                  <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '12px', color: brandTokens.textBody, lineHeight: '1.45' }}>
+                    <Check size={14} color={brandTokens.emeraldPrimary} strokeWidth={2.6} style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <span>{feat}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Column 4: Forensics, White-Label & Clients */}
+            <div>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '16px',
+                paddingBottom: '10px',
+                borderBottom: '1.5px solid #F1F5F2'
+              }}>
+                <div style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '7px',
+                  background: '#FFFBEB',
+                  color: '#D97706',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Activity size={16} strokeWidth={2.4} />
+                </div>
+                <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '800', color: brandTokens.textHeading }}>
+                  Forensics &amp; White-Label
+                </h3>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '9px' }}>
+                {[
+                  'Live HTTP attack inspector & raw payload dumps',
+                  'White-label executive client PDF audit exports',
+                  'Native RFC-6238 2FA multi-factor authentication',
+                  'Stealth WP-Admin gateway & URL camouflage',
+                  'Multi-channel alerts (Slack, Telegram, Email, Webhook)',
+                  'Unlimited team operators with granular RBAC',
+                  'Public REST API, MCP & automation webhooks'
+                ].map((feat, idx) => (
+                  <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '12px', color: brandTokens.textBody, lineHeight: '1.45' }}>
+                    <Check size={14} color={brandTokens.emeraldPrimary} strokeWidth={2.6} style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <span>{feat}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* =====================================================================
+            CARD 3: HEAD-TO-HEAD COMPARISON MATRIX (MDefender Pro vs Competitors)
+            Proving Beyond Doubt Why MDefender Pro Is 10x Superior to WP Umbrella
+            ===================================================================== */}
+        <div style={{
+          background: brandTokens.cardBg,
+          border: `1.5px solid ${brandTokens.cardBorder}`,
+          borderRadius: '16px',
+          boxShadow: brandTokens.shadowSm,
+          overflow: 'hidden',
+          marginBottom: '36px'
+        }}>
+          {/* Header */}
+          <div style={{
+            padding: '20px 28px',
+            background: 'linear-gradient(135deg, rgba(11, 37, 34, 0.03), rgba(40, 116, 93, 0.06))',
+            borderBottom: `1px solid ${brandTokens.cardBorder}`
+          }}>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '11px',
+              fontWeight: 800,
+              color: brandTokens.emeraldPrimary,
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+              marginBottom: '4px'
+            }}>
+              <Award size={13} />
+              <span>Head-to-Head Capability Comparison</span>
+            </div>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '800',
+              color: brandTokens.textHeading,
+              margin: '0 0 4px 0'
+            }}>
+              Why Agencies &amp; Enterprises Switch from WP Umbrella to MDefender Pro
+            </h3>
+            <p style={{ fontSize: '13px', color: brandTokens.textBody, margin: 0 }}>
+              WP Umbrella charges extra for basic security add-ons without providing any real edge WAF or malware remediation. MDefender Pro delivers the entire security and fleet suite in one unified engine.
+            </p>
+          </div>
+
+          {/* Responsive Comparison Table */}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              fontSize: '12.5px',
+              textAlign: 'left'
+            }}>
+              <thead>
+                <tr style={{ background: '#FAFBF9', borderBottom: `1px solid ${brandTokens.cardBorder}` }}>
+                  <th style={{ padding: '14px 20px', fontWeight: '800', color: brandTokens.textHeading }}>
+                    Key Capability / Superpower
+                  </th>
+                  <th style={{ padding: '14px 16px', fontWeight: '700', color: brandTokens.textMuted, textAlign: 'center' }}>
+                    WP Umbrella ($4.19/site)
+                  </th>
+                  <th style={{ padding: '14px 16px', fontWeight: '700', color: brandTokens.textMuted, textAlign: 'center' }}>
+                    Cloudflare Pro ($25.00/site)
+                  </th>
+                  <th style={{ padding: '14px 16px', fontWeight: '700', color: brandTokens.textMuted, textAlign: 'center' }}>
+                    Wordfence ($12.42/site)
+                  </th>
+                  <th style={{
+                    padding: '14px 20px',
+                    fontWeight: '800',
+                    color: brandTokens.deepForest,
+                    background: brandTokens.emeraldLight,
+                    textAlign: 'center',
+                    borderLeft: `1px solid ${brandTokens.emeraldBorder}`,
+                    borderRight: `1px solid ${brandTokens.emeraldBorder}`
+                  }}>
+                    MDefender Pro ($4.00/site)
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  {
+                    feat: 'Layer-7 Cloud Edge WAF (<0.12ms)',
+                    desc: 'Stops SQLi, XSS, RCE, SSRF before touching the server',
+                    wp: { text: 'None', ok: false },
+                    cf: { text: 'Basic ($25/mo)', ok: 'warn' },
+                    wf: { text: 'PHP-only (Slow)', ok: false },
+                    md: { text: 'Included (<0.12ms Edge)', ok: true }
+                  },
+                  {
+                    feat: '5.24M+ SQLite Malware Hunter',
+                    desc: 'Official WordPress checksums with 0.01ms instant lookup',
+                    wp: { text: '+$2.00/mo Add-on', ok: 'warn' },
+                    cf: { text: 'None', ok: false },
+                    wf: { text: 'Slow PHP scanning', ok: 'warn' },
+                    md: { text: 'Included (5.24M+ Hashes)', ok: true }
+                  },
+                  {
+                    feat: '1-Click Post-Hack Remediation',
+                    desc: 'Rogue admin purge, salt rotation & zero-downtime disinfection',
+                    wp: { text: 'None', ok: false },
+                    cf: { text: 'None', ok: false },
+                    wf: { text: 'Manual ($490 Clean)', ok: false },
+                    md: { text: 'Included (1-Click Clean)', ok: true }
+                  },
+                  {
+                    feat: 'Zero-Day Virtual Patching Engine',
+                    desc: 'DFA state machine virtual patching without waiting for updates',
+                    wp: { text: '+$2.00/mo Add-on', ok: 'warn' },
+                    cf: { text: 'Pro tier required', ok: 'warn' },
+                    wf: { text: '$149/yr tier only', ok: 'warn' },
+                    md: { text: 'Included Autonomous', ok: true }
+                  },
+                  {
+                    feat: 'Anti-DDoS Proof-of-Work (PoW)',
+                    desc: 'Autonomous scrubber without frustrating visual captchas',
+                    wp: { text: 'None', ok: false },
+                    cf: { text: 'Visual CAPTCHAs', ok: 'warn' },
+                    wf: { text: 'None', ok: false },
+                    md: { text: 'Included (Zero CAPTCHAs)', ok: true }
+                  },
+                  {
+                    feat: '1-Click Passwordless WP-Admin SSO',
+                    desc: 'Direct secure access to all WordPress dashboards',
+                    wp: { text: 'Included', ok: true },
+                    cf: { text: 'None', ok: false },
+                    wf: { text: 'None', ok: false },
+                    md: { text: 'Included (Fleet SSO)', ok: true }
+                  },
+                  {
+                    feat: 'Bulk Safe Updates with Rollback',
+                    desc: 'Pre-update snapshot verification with automated recovery',
+                    wp: { text: 'Included', ok: true },
+                    cf: { text: 'None', ok: false },
+                    wf: { text: 'None', ok: false },
+                    md: { text: 'Included (Automated)', ok: true }
+                  },
+                  {
+                    feat: 'Router & Edge DNS Network Firewall',
+                    desc: 'Hardware router DNS protection + WordPress WAF unified',
+                    wp: { text: 'None', ok: false },
+                    cf: { text: 'None', ok: false },
+                    wf: { text: 'None', ok: false },
+                    md: { text: 'Included Proprietary', ok: true }
+                  },
+                  {
+                    feat: 'White-Label Executive Client PDF Reports',
+                    desc: 'Branded executive reports for digital agencies and clients',
+                    wp: { text: 'High tiers only', ok: 'warn' },
+                    cf: { text: 'None', ok: false },
+                    wf: { text: 'None', ok: false },
+                    md: { text: 'Included Unlimited', ok: true }
+                  },
+                  {
+                    feat: 'Effective Monthly Price',
+                    desc: 'Per website protected with every capability included',
+                    wp: { text: '$4.19 / site / mo', ok: 'warn' },
+                    cf: { text: '$25.00+ / site / mo', ok: false },
+                    wf: { text: '$12.42 / site / mo', ok: false },
+                    md: { text: '$4.00 / site / mo ($3.33/yr)', ok: 'highlight' }
+                  }
+                ].map((row, idx) => (
+                  <tr
+                    key={idx}
+                    style={{
+                      borderBottom: idx === 9 ? 'none' : '1px solid #F1F5F2',
+                      background: idx % 2 === 1 ? '#FAFBF9' : '#FFFFFF'
+                    }}
+                  >
+                    <td style={{ padding: '12px 20px' }}>
+                      <div style={{ fontWeight: '750', color: brandTokens.textHeading, fontSize: '13px' }}>
+                        {row.feat}
+                      </div>
+                      <div style={{ fontSize: '11px', color: brandTokens.textMuted, marginTop: '2px' }}>
+                        {row.desc}
+                      </div>
+                    </td>
+
+                    {/* WP Umbrella */}
+                    <td style={{ padding: '12px 16px', textAlign: 'center', color: row.wp.ok === true ? brandTokens.emeraldPrimary : row.wp.ok === 'warn' ? '#B45309' : '#DC2626', fontWeight: '600' }}>
+                      {row.wp.text}
+                    </td>
+
+                    {/* Cloudflare Pro */}
+                    <td style={{ padding: '12px 16px', textAlign: 'center', color: row.cf.ok === true ? brandTokens.emeraldPrimary : row.cf.ok === 'warn' ? '#B45309' : '#DC2626', fontWeight: '600' }}>
+                      {row.cf.text}
+                    </td>
+
+                    {/* Wordfence */}
+                    <td style={{ padding: '12px 16px', textAlign: 'center', color: row.wf.ok === true ? brandTokens.emeraldPrimary : row.wf.ok === 'warn' ? '#B45309' : '#DC2626', fontWeight: '600' }}>
+                      {row.wf.text}
+                    </td>
+
+                    {/* MDefender Pro */}
+                    <td style={{
+                      padding: '12px 20px',
+                      textAlign: 'center',
+                      background: row.md.ok === 'highlight' ? brandTokens.emeraldPrimary : brandTokens.emeraldLight,
+                      color: row.md.ok === 'highlight' ? '#FFFFFF' : brandTokens.emeraldPrimary,
+                      fontWeight: '800',
+                      borderLeft: `1px solid ${brandTokens.emeraldBorder}`,
+                      borderRight: `1px solid ${brandTokens.emeraldBorder}`
+                    }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                        {row.md.ok !== 'highlight' && <Check size={14} strokeWidth={3} />}
+                        <span>{row.md.text}</span>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
 
