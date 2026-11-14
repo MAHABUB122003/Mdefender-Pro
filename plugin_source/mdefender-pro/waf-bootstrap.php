@@ -409,22 +409,27 @@ $has_attack_marker = (
 );
 
 // 3. Pre-Flight Allowlist (IP Whitelist) Check (< 0.001ms Fast Path)
+$is_whitelisted_ip = false;
 $ip_whitelist = $mdefender_cache_data['whitelist_ips'] ?? [];
 if (!empty($ip_whitelist)) {
     $raw_wl_candidates = [$mdefender_ip];
     foreach ($raw_wl_candidates as $w_cand) {
         if (!empty($w_cand) && (isset($ip_whitelist[$w_cand]) || (is_array($ip_whitelist) && in_array($w_cand, $ip_whitelist, true)))) {
-            $is_loopback = in_array($w_cand, ['127.0.0.1', '::1', 'localhost'], true);
-            if ($is_loopback && $has_attack_marker) {
-                continue;
-            }
-            // Trusted remote IPs bypass inspection; loopback bypasses only clean local traffic.
-            return;
+            $is_whitelisted_ip = true;
+            break;
         }
     }
 }
 
-// 4. IP Blacklist Check
+// ZERO-TRUST ARCHITECTURE:
+// Clean legitimate traffic from whitelisted IP bypasses all pre-flight filters instantly (< 0.001ms).
+// BUT if the request carries active exploit markers (SQLi, XSS, RCE, Path Traversal, Webshell),
+// it MUST NOT bypass - it falls through to deep signature inspection and gets neutralized!
+if ($is_whitelisted_ip && !$has_attack_marker) {
+    return;
+}
+
+// 4. IP Blacklist Check (Whitelisted IPs are exempt from blacklist bans)
 $ip_blacklist = $mdefender_cache_data['blacklist_ips'] ?? [];
 $is_blocked = false;
 $block_reason = '';
@@ -470,16 +475,18 @@ foreach ($raw_candidates as $cand) {
 }
 $candidates = array_values(array_unique(array_filter($candidates)));
 
-foreach ($candidates as $cand) {
-    if (in_array($cand, ['127.0.0.1', '::1', 'localhost'], true) && empty($_GET['waf_test_blacklist']) && empty($_GET['test_blacklisted'])) { continue; }
-    if (isset($ip_blacklist[$cand]) || (is_array($ip_blacklist) && in_array($cand, $ip_blacklist, true)) || !empty($_GET['waf_test_blacklist']) || !empty($_GET['test_blacklisted'])) {
-        $is_blocked = true;
-        $matched_ip = $cand;
-        $GLOBALS['waf_matched_blacklisted_ip'] = $cand;
-        $attack_name = 'Blacklisted IP';
-        $rule_name = 'Pre-Flight WAAP: Blacklisted IP Policy Rule';
-        $block_reason = 'Your IP address has been flagged for malicious activity (Blacklisted IP Policy Rule).';
-        break;
+if (!$is_whitelisted_ip) {
+    foreach ($candidates as $cand) {
+        if (in_array($cand, ['127.0.0.1', '::1', 'localhost'], true) && empty($_GET['waf_test_blacklist']) && empty($_GET['test_blacklisted'])) { continue; }
+        if (isset($ip_blacklist[$cand]) || (is_array($ip_blacklist) && in_array($cand, $ip_blacklist, true)) || !empty($_GET['waf_test_blacklist']) || !empty($_GET['test_blacklisted'])) {
+            $is_blocked = true;
+            $matched_ip = $cand;
+            $GLOBALS['waf_matched_blacklisted_ip'] = $cand;
+            $attack_name = 'Blacklisted IP';
+            $rule_name = 'Pre-Flight WAAP: Blacklisted IP Policy Rule';
+            $block_reason = 'Your IP address has been flagged for malicious activity (Blacklisted IP Policy Rule).';
+            break;
+        }
     }
 }
 
@@ -506,9 +513,9 @@ if (!$is_blocked && !$has_attack_marker && empty($_GET['test_ip']) && empty($_GE
     }
 }
 
-// 5. Fast Country Block Check
+// 5. Fast Country Block Check (Whitelisted IPs are exempt from geo-blocking)
 $is_country_block_enabled = !defined('MDEFENDER_BUILD_EDITION') || MDEFENDER_BUILD_EDITION !== 'free';
-if ($is_country_block_enabled && !$is_blocked && !empty($mdefender_cache_data['blocked_countries'])) {
+if (!$is_whitelisted_ip && $is_country_block_enabled && !$is_blocked && !empty($mdefender_cache_data['blocked_countries'])) {
     $geo_country = '';
     foreach (['country_test', 'test_country', 'country', 'geo_country'] as $p_key) {
         if (!empty($_GET[$p_key])) {

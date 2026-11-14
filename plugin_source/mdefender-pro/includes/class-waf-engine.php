@@ -222,18 +222,18 @@ class WAF_FW_Engine {
                 return $this->allowed_result($ip, $url, $method, 'WAF Sync Endpoint');
             }
 
-            // FAST-PATH 2: Whitelisted IP check FIRST (< 0.005ms)
-            if ($this->ip_filter->is_whitelisted($ip)) {
-                return $this->do_allow($ip, $url, $method, $_SERVER['HTTP_USER_AGENT'] ?? '', 'Whitelisted IP');
-            }
+            // ZERO-TRUST IP WHITELIST CLASSIFICATION:
+            // Whitelisted IPs are granted immunity against Blacklisting, Country Blocking, Rate Limiting, and Challenges.
+            // HOWEVER, all incoming payloads MUST still be inspected by the Rule Engine to prevent weaponized attacks from whitelisted sources.
+            $is_whitelisted = $this->ip_filter->is_whitelisted($ip);
 
-            // Instant Blacklisted IP Check (< 0.005ms)
-            if ($this->ip_filter->is_blacklisted($ip)) {
+            // Instant Blacklisted IP Check (Whitelisted IPs are exempt from blacklist bans)
+            if (!$is_whitelisted && $this->ip_filter->is_blacklisted($ip)) {
                 return $this->do_block($ip, $url, $method, 'Blacklisted IP', 1.0, $_SERVER['HTTP_USER_AGENT'] ?? '', $_SERVER['HTTP_REFERER'] ?? '', '', 'Access denied: Your IP address is blacklisted by security policy.', 'Blacklist Rule');
             }
 
-            // GeoIP Country Block Check (Instant if no countries blocked)
-            if ($this->check_country_block($ip)) {
+            // GeoIP Country Block Check (Whitelisted IPs are exempt from country restrictions)
+            if (!$is_whitelisted && $this->check_country_block($ip)) {
                 return $this->do_block($ip, $url, $method, 'Country Blocked', 1.0, $_SERVER['HTTP_USER_AGENT'] ?? '', $_SERVER['HTTP_REFERER'] ?? '', '', 'Access denied: Traffic from your country is restricted by security policy.', 'GeoIP Rule');
             }
 
@@ -257,9 +257,9 @@ class WAF_FW_Engine {
                 }
             }
 
-            // Enterprise Under Attack Mode - Proof-of-Work (PoW) Shield
+            // Enterprise Under Attack Mode - Proof-of-Work (PoW) Shield (Whitelisted IPs are exempt from challenges)
             if (class_exists('WAF_FW_Under_Attack_Shield')) {
-                $is_admin_safe = is_admin() || (function_exists('is_user_logged_in') && is_user_logged_in() && function_exists('current_user_can') && current_user_can('manage_options'));
+                $is_admin_safe = $is_whitelisted || is_admin() || (function_exists('is_user_logged_in') && is_user_logged_in() && function_exists('current_user_can') && current_user_can('manage_options'));
                 if (!$is_admin_safe) {
                     $shield = WAF_FW_Under_Attack_Shield::instance();
                     $shield->check_autonomous_surge($ip);
@@ -278,15 +278,16 @@ class WAF_FW_Engine {
             $referer = $_SERVER['HTTP_REFERER'] ?? '';
             $headers = getallheaders();
 
-            // JA4 Client Fingerprinting & AI Bot Assessment
-            if ($this->ja4) {
+            // JA4 Client Fingerprinting & AI Bot Assessment (Whitelisted IPs are exempt from generic bot blocks)
+            if (!$is_whitelisted && $this->ja4) {
                 $ja4_data = $this->ja4->calculate_ja4h($headers, $_SERVER);
                 if ($ja4_data['risk_level'] === 'critical' || ($ja4_data['is_automated_agent'] && $ja4_data['bot_type'] === 'exploit_fuzzer')) {
                     return $this->do_block($ip, $url, $method, 'Automated Exploit / Scanner Tool', 0.99, $user_agent, $referer, '', 'Automated vulnerability scanner signature detected (' . $ja4_data['bot_type'] . ')', 'JA4 Fingerprint: ' . $ja4_data['ja4h']);
                 }
             }
 
-            if ($this->rate_limiter) {
+            // Anti-DDoS Burst Flood & Rate Limiter (Whitelisted IPs are exempt from rate limits)
+            if (!$is_whitelisted && $this->rate_limiter) {
                 $this->rate_limiter->increment($ip);
                 if (method_exists($this->rate_limiter, 'is_ddos_flooding') && $this->rate_limiter->is_ddos_flooding($ip)) {
                     return $this->do_block($ip, $url, $method, 'DDoS Flood Protection', 1.0, $user_agent, $referer, '', 'Volumetric DDoS burst flood neutralized by Anti-DDoS Shield', 'Anti-DDoS Engine');
@@ -340,7 +341,8 @@ class WAF_FW_Engine {
 
             if (!empty($rule_matches)) {
                 $attack_type = $rule_matches[0]['rule_name'];
-                return $this->do_block($ip, $url, $method, $attack_type, 0.9, $user_agent, $referer, $body, "Blocked by rule: $attack_type", $rule_matches[0]['rule_name']);
+                $block_note = $is_whitelisted ? "Blocked exploit attempt ($attack_type) from whitelisted IP" : "Blocked by rule: $attack_type";
+                return $this->do_block($ip, $url, $method, $attack_type, 0.95, $user_agent, $referer, $body, $block_note, $rule_matches[0]['rule_name']);
             }
 
             $features = $this->feature_extractor->extract_features($url . ' ' . $comprehensive_payload);
@@ -361,7 +363,14 @@ class WAF_FW_Engine {
             // Feature-based high confidence block (Instant local decision)
             if ($this->feature_based_block($features)) {
                 $attack_type = $this->feature_extractor->get_attack_type($features);
-                return $this->do_block($ip, $url, $method, $attack_type, 0.85, $user_agent, $referer, $body, "Feature-based detection: $attack_type");
+                $block_note = $is_whitelisted ? "Feature-based exploit detection ($attack_type) from whitelisted IP" : "Feature-based detection: $attack_type";
+                return $this->do_block($ip, $url, $method, $attack_type, 0.85, $user_agent, $referer, $body, $block_note);
+            }
+
+            // Clean traffic from whitelisted IP has passed all exploit and attack signature checks:
+            // Allow immediately without submitting to cloud ML latency or heuristics!
+            if ($is_whitelisted) {
+                return $this->do_allow($ip, $url, $method, $user_agent, 'Whitelisted IP');
             }
 
             $cloud_mode = (string) get_option('waf_fw_cloud_mode', 'protect');
