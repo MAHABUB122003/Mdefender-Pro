@@ -455,15 +455,27 @@ class BackupService:
 
         # 3. CRITICAL: Always merge existing valid DB backups from fresh site doc so created snapshots are NEVER wiped!
         db_backups = list(target_site.get("backups") or [])
+        clean_domain_lower = clean_name.lower()
         for b in db_backups:
             if isinstance(b, dict):
-                bfn = b.get("filename")
+                bfn = str(b.get("filename") or "")
+                # Ignore backups that belong to a different WordPress website origin
+                b_dom = str(b.get("domain") or "").lower()
+                if b_dom and b_dom != domain.lower() and not (b_dom in domain.lower() or domain.lower() in b_dom):
+                    continue
+                if bfn.endswith(".zip") and not bfn.startswith("mdf_") and not bfn.startswith("backup_") and not bfn.startswith("db_"):
+                    slug_part = bfn.replace("-database.zip", "").replace(".zip", "").lower()
+                    if "." in slug_part and slug_part != clean_domain_lower and slug_part not in clean_domain_lower and clean_domain_lower not in slug_part:
+                        continue
                 if bfn and bfn not in seen_filenames:
                     bsize = b.get("size_bytes") or self.parse_size_to_bytes(b.get("size", "0 MB"))
                     # Filter out old 1.0 KB or 1.6 KB dummy archives
                     if bsize > 5000 or (b.get("size") and "KB" not in b.get("size") and "1." not in b.get("size")):
                         seen_filenames.add(bfn)
-                        fresh_backups.append(b)
+                        b_copy = dict(b)
+                        b_copy["domain"] = domain
+                        b_copy["site_id"] = site_id
+                        fresh_backups.append(b_copy)
                         total_size_bytes += bsize
 
         # 4. If clean domain archive exists (e.g. mahabubur.shop.zip), prune obsolete legacy archives (mdf_full_... / mdf_db_...)

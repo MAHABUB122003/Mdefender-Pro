@@ -99,6 +99,87 @@ export function BackupRestoreProvider({ children }) {
     }
   }, [])
 
+  // Start Fleet-Wide Concurrent Backup in background
+  const startFleetBackup = useCallback(async ({ sites = [], type = 'full', components, note = '', onSuccess, onError }) => {
+    if (isJobRunningRef.current) {
+      alert('A disaster recovery operation is already running in the background. Please wait for it to complete.')
+      return
+    }
+
+    if (!sites || sites.length === 0) {
+      if (onError) onError(new Error('No fleet sites available for backup.'))
+      return
+    }
+
+    const jobId = `job_fleet_backup_${Date.now()}`
+    const initialJob = {
+      id: jobId,
+      operation: 'backup',
+      siteId: 'all',
+      siteName: `Global Fleet (${sites.length} Sites)`,
+      backupType: type,
+      status: 'running',
+      progressMessage: `Packaging disaster recovery snapshots across ${sites.length} WordPress origins...`,
+      startedAt: Date.now(),
+      completedAt: null,
+      result: null,
+      error: null,
+      isMinimized: false
+    }
+
+    isJobRunningRef.current = true
+    setActiveJob(initialJob)
+
+    try {
+      const selectedComponents = components || (
+        type === 'database' ? ['db'] :
+        (type === 'files' ? ['plugins', 'themes', 'uploads', 'core', 'wp_config'] :
+        ['db', 'plugins', 'themes', 'uploads', 'core', 'wp_config'])
+      )
+      const noteStr = note.trim() || `Fleet ${type.toUpperCase()} Snapshot`
+
+      const settled = await Promise.allSettled(sites.map(async s => {
+        const sid = s.id || s._id
+        return api.createWebsiteBackup(sid, {
+          type,
+          components: selectedComponents,
+          note: noteStr
+        })
+      }))
+
+      const successful = settled.filter(r => r.status === 'fulfilled' && r.value?.data?.success !== false)
+      const isSuccess = successful.length > 0
+      const msg = `Fleet backup complete: ${successful.length} of ${sites.length} websites successfully archived.`
+
+      setActiveJob(prev => prev ? {
+        ...prev,
+        status: isSuccess ? 'completed' : 'error',
+        progressMessage: msg,
+        completedAt: Date.now(),
+        result: { success: isSuccess, count: successful.length, total: sites.length },
+        filename: `${sites.length}_sites_fleet.zip`,
+        size: 'Multi-Site Fleet'
+      } : null)
+
+      window.dispatchEvent(new CustomEvent('mdefender:backup_completed', { detail: { fleet: true, count: successful.length } }))
+      if (isSuccess && onSuccess) onSuccess({ message: msg, count: successful.length })
+      if (!isSuccess && onError) onError(new Error('Failed to create fleet backups'))
+    } catch (err) {
+      const errMsg = err?.message || 'Error generating fleet snapshots'
+      setActiveJob(prev => prev ? {
+        ...prev,
+        status: 'error',
+        progressMessage: errMsg,
+        error: errMsg,
+        completedAt: Date.now()
+      } : null)
+      window.dispatchEvent(new CustomEvent('mdefender:backup_completed', { detail: { success: false, error: errMsg } }))
+      if (onError) onError(err)
+    } finally {
+      isJobRunningRef.current = false
+    }
+  }, [])
+
   // Start Restore Job in background
   const startRestore = useCallback(async ({ siteId, siteName, filename, onSuccess, onError }) => {
     if (isJobRunningRef.current) {
@@ -181,6 +262,7 @@ export function BackupRestoreProvider({ children }) {
         activeJob,
         isJobRunning: !!activeJob && activeJob.status === 'running',
         startBackup,
+        startFleetBackup,
         startRestore,
         toggleMinimize,
         dismissJob

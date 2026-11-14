@@ -33,7 +33,7 @@ import { useBackupRestore } from '../../context/BackupRestoreContext'
 
 export default function BulkBackup() {
   const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite, fetchFleet } = useBulkFleet()
-  const { activeJob, isJobRunning, startBackup, startRestore } = useBackupRestore()
+  const { activeJob, isJobRunning, startBackup, startFleetBackup, startRestore } = useBackupRestore()
 
   const [activeTab, setActiveTab] = useState('backups') // 'backups' | 'create' | 'schedule' | 'upload'
   const [loading, setLoading] = useState(false)
@@ -91,7 +91,9 @@ export default function BulkBackup() {
 
   // Keep targetSiteId synced
   useEffect(() => {
-    if (activeTargetSite) {
+    if (selectedSiteId === 'all') {
+      setTargetSiteId('all')
+    } else if (activeTargetSite) {
       setTargetSiteId(activeTargetSite.id || activeTargetSite._id || '')
     }
   }, [selectedSiteId, activeTargetSite])
@@ -162,6 +164,61 @@ export default function BulkBackup() {
   // Handle Create Backup (Runs safely in Background without blocking the UI)
   const handleCreateSubmit = (e) => {
     e.preventDefault()
+
+    const isFleetMode = (selectedSiteId === 'all' && (targetSiteId === 'all' || !targetSiteId))
+
+    if (isFleetMode) {
+      if (!wpWebsites || wpWebsites.length === 0) {
+        showToast('No WordPress origins found in fleet.', true)
+        return
+      }
+
+      // Optimistically insert in-progress placeholders for every fleet site
+      const placeholders = wpWebsites.map(site => {
+        const curDomain = site.domain || site.url || 'origin'
+        const clean = curDomain.replace(/^https?:\/\//, '').replace(/:\d+$/, '').replace(/\/.*$/, '').replace(/[^a-zA-Z0-9.\-_]/g, '_')
+        const fn = backupType === 'database' ? `${clean}-database.zip` : `${clean}.zip`
+        return {
+          id: `creating_${site.id || site._id}`,
+          filename: fn,
+          domain: curDomain,
+          site_id: site.id || site._id,
+          name: backupNote.trim() || `Fleet Disaster Recovery Snapshot`,
+          type: backupType,
+          components: backupType === 'database' ? ['Database'] : ['Full Site'],
+          size: 'Creating...',
+          created_at: 'In Progress...',
+          status: 'creating',
+          is_creating: true
+        }
+      })
+
+      setBackups(prev => [
+        ...placeholders,
+        ...prev.filter(b => !placeholders.some(p => p.filename === b.filename))
+      ])
+
+      startFleetBackup({
+        sites: wpWebsites,
+        type: backupType,
+        components: backupType === 'custom' ? selectedComponents : undefined,
+        note: backupNote.trim() || `Fleet ${backupType.toUpperCase()} Snapshot`,
+        onSuccess: (data) => {
+          showToast(data.message || 'Fleet snapshots created successfully!')
+          setBackupNote('')
+          loadBackups()
+          fetchFleet(true)
+        },
+        onError: (err) => {
+          showToast(err.message || 'Fleet backup process encountered an error', true)
+          loadBackups()
+        }
+      })
+
+      setActiveTab('backups')
+      return
+    }
+
     const currentSite = (selectedSiteId !== 'all' ? activeTargetSite : wpWebsites.find(w => (w.id || w._id) === targetSiteId)) || wpWebsites[0] || {}
     const currentSiteId = currentSite.id || currentSite._id
     if (!currentSiteId) {
@@ -178,6 +235,8 @@ export default function BulkBackup() {
       {
         id: 'creating_placeholder',
         filename: expectedFn,
+        domain: currentSiteName,
+        site_id: currentSiteId,
         name: backupNote.trim() || `Disaster Recovery Snapshot`,
         type: backupType,
         components: backupType === 'database' ? ['Database'] : ['Full Site'],
@@ -811,6 +870,7 @@ export default function BulkBackup() {
                     <thead>
                       <tr style={{ background: '#F8FAF9', borderBottom: '1px solid #D9E1DC' }}>
                         <th style={thStyle}>ARCHIVE FILENAME / ID</th>
+                        <th style={thStyle}>WEBSITE ORIGIN</th>
                         <th style={thStyle}>TYPE</th>
                         <th style={thStyle}>INCLUDED COMPONENTS</th>
                         <th style={thStyle}>SIZE</th>
@@ -852,7 +912,28 @@ export default function BulkBackup() {
                               </div>
                             </td>
 
-                            {/* 2. Type */}
+                            {/* 2. Website Origin */}
+                            <td style={tdStyle}>
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '4px 10px',
+                                borderRadius: '6px',
+                                background: '#F0FDF4',
+                                border: '1px solid #DCFCE7',
+                                color: '#166534',
+                                fontWeight: 600,
+                                fontSize: '12px'
+                              }}>
+                                <Globe size={12} color="#166534" />
+                                <span>
+                                  {bk.domain || bk.site_name || (wpWebsites.find(w => (w.id || w._id) === bk.site_id)?.domain) || (wpWebsites[0]?.domain) || 'WordPress Origin'}
+                                </span>
+                              </span>
+                            </td>
+
+                            {/* 3. Type */}
                             <td style={tdStyle}>
                               <span style={badgeStyle(
                                 isDatabase ? '#EEF2FF' : '#E8F3EC',
@@ -956,6 +1037,7 @@ export default function BulkBackup() {
                       onChange={(e) => setTargetSiteId(e.target.value)}
                       style={formInputStyle}
                     >
+                      <option value="all">⚡ Global Fleet ({wpWebsites.length} Sites) — Backup All Origins</option>
                       {wpWebsites.map(w => (
                         <option key={w.id || w._id} value={w.id || w._id}>
                           {w.domain || w.name || w.url}
@@ -1216,6 +1298,7 @@ export default function BulkBackup() {
                       onChange={(e) => setTargetSiteId(e.target.value)}
                       style={formInputStyle}
                     >
+                      <option value="all">⚡ Global Fleet ({wpWebsites.length} Sites) — Backup All Origins</option>
                       {wpWebsites.map(w => (
                         <option key={w.id || w._id} value={w.id || w._id}>
                           {w.domain || w.name || w.url}

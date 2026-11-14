@@ -11843,6 +11843,13 @@ async def get_fleet_backups(user=Depends(get_current_user)):
 
 
 
+        s_domain = s.get("domain") or s.get("url") or "website"
+        s_id = str(s.get("_id") or s.get("id"))
+        for b in res.get("backups", []):
+            if not b.get("domain"):
+                b["domain"] = s_domain
+            if not b.get("site_id"):
+                b["site_id"] = s_id
         all_backups.extend(res.get("backups", []))
 
 

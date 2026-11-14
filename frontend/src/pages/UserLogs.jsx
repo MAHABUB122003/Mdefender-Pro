@@ -213,8 +213,9 @@ export default function UserLogs() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
-  const [expandedRow, setExpandedRow] = useState(null);
+  const [expandedLogId, setExpandedLogId] = useState(null);
   const [ipLocations, setIpLocations] = useState({});
+  const fetchedIpsRef = useRef(new Set());
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [blockForm, setBlockForm] = useState({ ip: '', reason: '', duration: '1d' });
   const [submittingBlock, setSubmittingBlock] = useState(false);
@@ -388,17 +389,20 @@ export default function UserLogs() {
     return () => clearInterval(interval);
   }, [fetchLogs, page, search, autoPoll]);
 
-  // Geolocation enrichment
+  // Geolocation enrichment - uses fetchedIpsRef to prevent redundant network queries and avoid infinite re-render freeze
   useEffect(() => {
     if (!logs?.logs || !Array.isArray(logs.logs)) return;
     const uniqueIps = [...new Set(logs.logs.map(l => l?.ip).filter(Boolean))].filter(rawIp => {
       const s = String(rawIp).trim();
-      return s && s !== '127.0.0.1' && s !== '::1' && s !== 'localhost' && s !== 'unknown' && !ipLocations[s];
+      return s && s !== '127.0.0.1' && s !== '::1' && s !== 'localhost' && s !== 'unknown' && !fetchedIpsRef.current.has(s);
     });
+
+    if (uniqueIps.length === 0) return;
 
     uniqueIps.forEach(rawIp => {
       const ip = String(rawIp).trim();
-      if (!ip) return;
+      if (!ip || fetchedIpsRef.current.has(ip)) return;
+      fetchedIpsRef.current.add(ip);
 
       if (ip.startsWith('10.') || ip.startsWith('192.168.') || ip.startsWith('172.16.') || ip.startsWith('172.17.') || ip.startsWith('172.18.') || ip.startsWith('172.19.') || ip.startsWith('172.2') || ip.startsWith('172.30.') || ip.startsWith('172.31.')) {
         setIpLocations(prev => ({
@@ -423,7 +427,7 @@ export default function UserLogs() {
         })
         .catch(() => {});
     });
-  }, [logs?.logs, ipLocations]);
+  }, [logs?.logs]);
 
   const handleFilter = (e) => {
     e.preventDefault();
@@ -1419,7 +1423,8 @@ export default function UserLogs() {
               ) : logsList.map((log, i) => {
                 const isBlocked = isBlockedTrafficLog(log);
                 const loc = getLoc(log);
-                const isExpanded = expandedRow === i;
+                const logUniqueId = String(log?.id || log?.reference_id || `${log?.ip || 'ip'}_${log?.timestamp || ''}_${log?.url || log?.uri || i}`);
+                const isExpanded = expandedLogId === logUniqueId;
                 const urlStr = String(log?.url || log?.uri || log?.path || '/');
                 const timeInfo = formatLogTime(log?.timestamp);
                 const domainName = log?.domain || (websites && websites.length > 0 && (websites[0]?.domain || websites[0]?.name)) || 'mahabubur.shop';
@@ -1427,7 +1432,7 @@ export default function UserLogs() {
                 const sev = getLogSeverity(log?.attack_type, isBlocked);
 
                 return (
-                  <Fragment key={log?.id || i}>
+                  <Fragment key={log?.id || logUniqueId || i}>
                     <tr
                       style={{
                         borderBottom: '1px solid #F1F5F9',
@@ -1435,7 +1440,7 @@ export default function UserLogs() {
                         background: isExpanded ? '#FAFBF9' : '#FFFFFF',
                         transition: 'background-color 0.15s ease'
                       }}
-                      onClick={() => setExpandedRow(isExpanded ? null : i)}
+                      onClick={() => setExpandedLogId(isExpanded ? null : logUniqueId)}
                       onMouseEnter={(e) => {
                         if (!isExpanded) e.currentTarget.style.backgroundColor = '#F8FAFC';
                       }}
@@ -1603,7 +1608,7 @@ export default function UserLogs() {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setExpandedRow(isExpanded ? null : i);
+                            setExpandedLogId(isExpanded ? null : logUniqueId);
                           }}
                           title={isExpanded ? "Collapse Forensics" : "View Incident Forensics"}
                           style={{
