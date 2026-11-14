@@ -682,8 +682,14 @@ const generateRecoveryCodes = () => {
     try {
       const data = await api.whoisLookup(queryIp)
       if (data) {
+        if (data.status === 'error') {
+          setWhoisError(data.message || 'Whois lookup failed.')
+          return
+        }
         setWhoisResult(data)
-        if (data.geo && data.geo.status === 'fail') {
+        if (Array.isArray(data.lookup_errors) && data.lookup_errors.length > 0) {
+          setWhoisError(`Partial results: ${data.lookup_errors.join(' ')}`)
+        } else if (data.geo && data.geo.status === 'fail') {
           setWhoisError(data.geo.message || 'Unable to retrieve geolocation for this IP.')
         }
       } else {

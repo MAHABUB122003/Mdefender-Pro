@@ -4,6 +4,7 @@ import api from '../api/api';
 import userStore from '../utils/userStore';
 import copyToClipboard from '../utils/clipboard';
 import { formatMetricNumber, formatExactNumber } from '../utils/formatters';
+import { getLiveTrafficMetrics, isBlockedTrafficLog, normalizeLiveTrafficResponse } from '../utils/liveTraffic';
 import {
   Shield,
   ShieldCheck,
@@ -203,6 +204,7 @@ export default function UserLogs() {
   });
 
   const [refreshing, setRefreshing] = useState(false);
+  const [logsError, setLogsError] = useState('');
   const [autoPoll, setAutoPoll] = useState(true);
   const [search, setSearch] = useState('');
   const [ipFilter, setIpFilter] = useState('');
@@ -217,6 +219,9 @@ export default function UserLogs() {
   const [blockForm, setBlockForm] = useState({ ip: '', reason: '', duration: '1d' });
   const [submittingBlock, setSubmittingBlock] = useState(false);
   const [copiedItem, setCopiedItem] = useState(null);
+  const [copyingItem, setCopyingItem] = useState(null);
+  const [copyFailureItem, setCopyFailureItem] = useState(null);
+  const [whitelistingIp, setWhitelistingIp] = useState('');
   const [cleaningLogs, setCleaningLogs] = useState(false);
   const [showCleanModal, setShowCleanModal] = useState(false);
   const [selectedCleanRange, setSelectedCleanRange] = useState('7');
@@ -295,8 +300,17 @@ export default function UserLogs() {
   }, [fetchWebsites]);
 
   const isFirstLoad = useRef(true);
+  const logsFetchInFlight = useRef(false);
+  const pendingManualLogsFetch = useRef(false);
+  const logsFetchRef = useRef(null);
 
   const fetchLogs = useCallback(async (manual = false) => {
+    if (logsFetchInFlight.current) {
+      if (manual) pendingManualLogsFetch.current = true;
+      return;
+    }
+    logsFetchInFlight.current = true;
+
     const cacheKey = `logs_p${page}_${search}_${ipFilter}_${typeFilter}_${statusFilter}_${websiteFilter}`;
     if (isFirstLoad.current && !manual) {
       try {
@@ -334,22 +348,9 @@ export default function UserLogs() {
       if (dateTo) params.date_to = dateTo;
 
       const data = await api.getUserLogs(params);
-      let safeLogs = [];
-      let total = 0;
-      let totalPages = 1;
-
-      if (data && Array.isArray(data.logs)) {
-        safeLogs = data.logs;
-        total = Number(data.total) || safeLogs.length;
-        totalPages = Number(data.total_pages) || Math.max(1, Math.ceil(total / perPage));
-      } else if (Array.isArray(data)) {
-        safeLogs = data;
-        total = safeLogs.length;
-        totalPages = Math.max(1, Math.ceil(total / perPage));
-      }
-
-      const normalizedData = { logs: safeLogs, total, total_pages: totalPages };
+      const normalizedData = normalizeLiveTrafficResponse(data, perPage);
       setLogs(normalizedData);
+      setLogsError('');
       try {
         userStore.set(cacheKey, normalizedData);
         if (page === 1 && !search && !ipFilter && !typeFilter && !statusFilter && !websiteFilter) {
@@ -358,11 +359,19 @@ export default function UserLogs() {
       } catch {}
     } catch (err) {
       console.error('Error fetching logs:', err);
+      setLogsError(err?.message || 'Live traffic could not be refreshed.');
     } finally {
+      logsFetchInFlight.current = false;
       setLoading(false);
-      if (manual) setTimeout(() => setRefreshing(false), 300);
+      const runPendingManualFetch = pendingManualLogsFetch.current;
+      pendingManualLogsFetch.current = false;
+      if (manual && !runPendingManualFetch) setTimeout(() => setRefreshing(false), 300);
+      if (runPendingManualFetch) {
+        setTimeout(() => logsFetchRef.current?.(true), 0);
+      }
     }
   }, [page, search, ipFilter, typeFilter, statusFilter, websiteFilter, dateFrom, dateTo, perPage]);
+  logsFetchRef.current = fetchLogs;
 
   // Real-time polling
   useEffect(() => {
@@ -498,7 +507,7 @@ export default function UserLogs() {
 
       const rows = list.map(l => {
         const loc = ipLocations[l.ip] || { name: 'Anycast Edge' };
-        const isBlocked = l.status === 'blocked' || l.action === 'blocked' || String(l.response_code) === '403';
+        const isBlocked = isBlockedTrafficLog(l);
         return [
           escapeCSV(l.timestamp || ''),
           escapeCSV(l.attack_type || (isBlocked ? 'Security Threat' : 'Clean Ingress')),
@@ -601,11 +610,15 @@ export default function UserLogs() {
     if (!confirm(`Confirm Whitelist: Do you want to allow all traffic from IP ${ip} across your connected websites?`)) {
       return;
     }
+    setWhitelistingIp(ip);
     try {
       const res = await api.addUserWhitelist({ ip, reason: 'Whitelisted from deep log inspection' });
-      alert(res?.message || `IP ${ip} successfully whitelisted across edge nodes.`);
+      if (res?.status === 'error') throw new Error(res.message || 'The whitelist request failed.');
+      alert(res?.message || `IP ${ip} was added to the whitelist; site synchronization has been queued.`);
     } catch (err) {
       alert('Error whitelisting IP: ' + (err?.message || String(err)));
+    } finally {
+      setWhitelistingIp('');
     }
   };
 
@@ -623,6 +636,7 @@ export default function UserLogs() {
     setSubmittingBlock(true);
     try {
       const res = await api.addUserBlacklist(blockForm);
+      if (res?.status === 'error') throw new Error(res.message || 'The block request failed.');
       userStore.invalidate('blacklist');
       setShowBlockModal(false);
       alert(res?.message || `IP ${blockForm.ip} quarantined across edge nodes successfully.`);
@@ -643,10 +657,29 @@ export default function UserLogs() {
 
   const handleCopyJson = async (log) => {
     const str = JSON.stringify(log, null, 2);
-    const ok = await copyToClipboard(str);
-    if (ok) {
-      setCopiedItem(`json-${log?.id || log?.ip}`);
-      setTimeout(() => setCopiedItem(null), 2000);
+    const itemId = `json-${log?.id || log?.ip}`;
+    let timeoutId;
+    setCopyingItem(itemId);
+    try {
+      const timedCopy = new Promise(resolve => {
+        timeoutId = setTimeout(() => resolve(false), 5000);
+      });
+      const ok = await Promise.race([copyToClipboard(str), timedCopy]);
+      if (ok) {
+        setCopyFailureItem(null);
+        setCopiedItem(itemId);
+        setTimeout(() => setCopiedItem(null), 2000);
+      } else {
+        setCopyFailureItem(itemId);
+        setTimeout(() => setCopyFailureItem(null), 2500);
+      }
+    } catch (err) {
+      console.error('Failed to copy log JSON:', err);
+      setCopyFailureItem(itemId);
+      setTimeout(() => setCopyFailureItem(null), 2500);
+    } finally {
+      clearTimeout(timeoutId);
+      setCopyingItem(null);
     }
   };
 
@@ -677,16 +710,7 @@ export default function UserLogs() {
   };
 
   const logsList = Array.isArray(logs?.logs) ? logs.logs : [];
-
-  // KPI Metrics computed from current stream
-  const kpiMetrics = useMemo(() => {
-    const total = logs?.total !== undefined ? Number(logs.total) : logsList.length;
-    const blockedCount = logs?.total_blocked !== undefined ? Number(logs.total_blocked) : logsList.filter(l => l?.status === 'blocked' || l?.action === 'blocked').length;
-    const allowedCount = logs?.total_allowed !== undefined ? Number(logs.total_allowed) : logsList.filter(l => l?.status === 'allowed' || l?.action === 'allowed').length;
-    const uniqueIps = logs?.unique_ips !== undefined ? Number(logs.unique_ips) : new Set(logsList.map(l => l?.ip).filter(Boolean)).size;
-    const blockedRatio = total > 0 ? Math.round((blockedCount / total) * 100) : 0;
-    return { total, blockedCount, allowedCount, uniqueIps, blockedRatio };
-  }, [logs, logsList]);
+  const kpiMetrics = useMemo(() => getLiveTrafficMetrics(logs), [logs]);
 
   return (
     <div style={{ maxWidth: '1720px', margin: '0 auto', padding: '4px 0 48px' }}>
@@ -880,6 +904,26 @@ export default function UserLogs() {
             </button>
           </div>
         </div>
+
+        {logsError && (
+          <div
+            role="alert"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 12px',
+              border: '1px solid #FECACA',
+              borderRadius: '8px',
+              background: '#FEF2F2',
+              color: '#B91C1C',
+              fontSize: '12px'
+            }}
+          >
+            <AlertTriangle size={14} />
+            <span>Live traffic refresh failed: {logsError}</span>
+          </div>
+        )}
 
         {/* 4 Dynamic KPI Cards - High-Density Enterprise Row */}
         <div style={{
@@ -1373,7 +1417,7 @@ export default function UserLogs() {
                   </td>
                 </tr>
               ) : logsList.map((log, i) => {
-                const isBlocked = log?.status === 'blocked' || log?.action === 'blocked' || String(log?.response_code) === '403' || !log?.status;
+                const isBlocked = isBlockedTrafficLog(log);
                 const loc = getLoc(log);
                 const isExpanded = expandedRow === i;
                 const urlStr = String(log?.url || log?.uri || log?.path || '/');
@@ -1657,6 +1701,7 @@ export default function UserLogs() {
                                 <button
                                   type="button"
                                   onClick={() => handleCopyJson(log)}
+                                  disabled={copyingItem === `json-${log?.id || log?.ip}`}
                                   style={{
                                     fontSize: '12px',
                                     fontWeight: '600',
@@ -1665,14 +1710,25 @@ export default function UserLogs() {
                                     border: '1px solid #D9E1DC',
                                     background: '#FFFFFF',
                                     color: '#10201E',
-                                    cursor: 'pointer',
+                                    cursor: copyingItem === `json-${log?.id || log?.ip}` ? 'wait' : 'pointer',
+                                    opacity: copyingItem === `json-${log?.id || log?.ip}` ? 0.65 : 1,
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     gap: '5px'
                                   }}
                                 >
-                                  {copiedItem === `json-${log?.id || log?.ip}` ? <Check size={12} color="#10B981" /> : <FileCode size={12} color="#60716B" />}
-                                  <span>{copiedItem === `json-${log?.id || log?.ip}` ? 'Copied' : 'JSON'}</span>
+                                  {copyFailureItem === `json-${log?.id || log?.ip}`
+                                    ? <AlertTriangle size={12} color="#DC2626" />
+                                    : copiedItem === `json-${log?.id || log?.ip}`
+                                      ? <Check size={12} color="#10B981" />
+                                      : <FileCode size={12} color="#60716B" />}
+                                  <span>
+                                    {copyingItem === `json-${log?.id || log?.ip}`
+                                      ? 'Copying...'
+                                      : copyFailureItem === `json-${log?.id || log?.ip}`
+                                      ? 'Copy failed'
+                                      : copiedItem === `json-${log?.id || log?.ip}` ? 'Copied' : 'JSON'}
+                                  </span>
                                 </button>
 
                                 <Link
@@ -1698,6 +1754,7 @@ export default function UserLogs() {
                                 <button
                                   type="button"
                                   onClick={() => handleWhitelistIp(log?.ip)}
+                                  disabled={Boolean(whitelistingIp)}
                                   style={{
                                     fontSize: '12px',
                                     fontWeight: '600',
@@ -1706,14 +1763,17 @@ export default function UserLogs() {
                                     border: '1px solid #D9E1DC',
                                     background: '#FFFFFF',
                                     color: '#10201E',
-                                    cursor: 'pointer',
+                                    cursor: whitelistingIp ? 'wait' : 'pointer',
+                                    opacity: whitelistingIp ? 0.65 : 1,
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     gap: '5px'
                                   }}
                                 >
-                                  <ShieldCheck size={12} color="#2A8B68" />
-                                  <span>Whitelist IP</span>
+                                  {whitelistingIp === String(log?.ip || '').trim()
+                                    ? <RotateCw size={12} color="#2A8B68" style={{ animation: 'spin 1s linear infinite' }} />
+                                    : <ShieldCheck size={12} color="#2A8B68" />}
+                                  <span>{whitelistingIp === String(log?.ip || '').trim() ? 'Whitelisting...' : 'Whitelist IP'}</span>
                                 </button>
 
                                 {log?.country_code && (

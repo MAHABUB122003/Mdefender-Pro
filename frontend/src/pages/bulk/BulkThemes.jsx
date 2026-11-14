@@ -68,6 +68,19 @@ export default function BulkThemes() {
     setTimeout(() => setToastMsg(null), 3500)
   }
 
+  const requireFleetActionSuccess = (response) => {
+    const data = response?.data || response
+    const results = data?.results
+    if (!Array.isArray(results) || results.length === 0) {
+      throw new Error('WordPress origin returned no per-site action results.')
+    }
+    const failed = results.filter(result => result?.success !== true)
+    if (failed.length > 0) {
+      throw new Error(`${failed.length} of ${results.length} WordPress site action(s) failed.`)
+    }
+    return data
+  }
+
   // Target websites based on dropdown selection
   const targetSites = useMemo(() => {
     if (!hasWebsites) return []
@@ -194,13 +207,15 @@ export default function BulkThemes() {
         theme_slug: theme.slug || theme.id,
         enabled: nextVal
       })
+      requireFleetActionSuccess(res)
       if (res?.data?.websites) {
         updateFleetWebsites(res.data.websites)
       } else {
         fetchFleet(true)
       }
     } catch {
-      showToast(`Auto-update preference saved locally; remote sync queued.`)
+      setThemes(prev => prev.map(t => t.id === theme.id ? { ...t, autoUpdate: !nextVal } : t))
+      showToast(`Could not update ${theme.name}'s auto-update preference on WordPress.`, true)
     } finally {
       setActionLoadingId(null)
     }
@@ -247,14 +262,16 @@ export default function BulkThemes() {
         bulk_action: bulkAction,
         themes: selectedSlugs
       })
+      requireFleetActionSuccess(res)
 
       showToast(`✓ Bulk ${bulkAction} successfully completed on ${count} theme(s)!`)
 
       if (res?.data?.websites && Array.isArray(res.data.websites) && res.data.websites.length > 0) {
         updateFleetWebsites(res.data.websites)
       }
-    } catch {
-      showToast(`✓ Bulk ${bulkAction} applied successfully!`)
+    } catch (err) {
+      await fetchFleet(true)
+      showToast(err?.message || `Bulk ${bulkAction} failed on WordPress.`, true)
     }
   }
 
@@ -275,17 +292,20 @@ export default function BulkThemes() {
   const handleBulkUpdate = async () => {
     setUpdating(true)
     const targetId = selectedSiteId === 'all' ? 'all' : (targetSites[0]?.id || targetSites[0]?._id || 'all')
+    const previousThemes = themes
     setThemes(prev => prev.map(t => ({ ...t, updateAvailable: false, currentVersion: t.latestVersion })))
     try {
       const res = await api.remoteWebsiteAction(targetId, 'update_all_themes', {})
+      requireFleetActionSuccess(res)
       showToast('All themes successfully updated to latest verified releases across selected fleet!')
       if (res?.data?.websites) {
         updateFleetWebsites(res.data.websites)
       } else {
         fetchFleet(true)
       }
-    } catch {
-      showToast('Theme updates applied across connected fleet!')
+    } catch (err) {
+      setThemes(previousThemes)
+      showToast(err?.message || 'Theme updates failed on WordPress.', true)
     } finally {
       setUpdating(false)
     }
@@ -311,12 +331,14 @@ export default function BulkThemes() {
       const res = await api.remoteWebsiteAction(targetId, 'activate_theme', {
         theme_slug: theme.slug || theme.id
       })
+      requireFleetActionSuccess(res)
       showToast(`"${theme.name}" is now the ACTIVE frontend theme!`)
       if (res?.data?.websites) {
         updateFleetWebsites(res.data.websites)
       }
-    } catch {
-      showToast(`"${theme.name}" set as active theme locally; remote sync queued.`)
+    } catch (err) {
+      await fetchFleet(true)
+      showToast(err?.message || `Could not activate "${theme.name}" on WordPress.`, true)
     } finally {
       setActionLoadingId(null)
     }
@@ -327,6 +349,7 @@ export default function BulkThemes() {
     const theme = themes.find(t => t.id === id)
     if (!theme) return
     setActionLoadingId(id)
+    const previousThemes = themes
 
     // Instant zero-lag optimistic state update
     setThemes(prev => prev.map(t => t.id === id ? { ...t, updateAvailable: false, currentVersion: t.latestVersion } : t))
@@ -336,14 +359,16 @@ export default function BulkThemes() {
       const res = await api.remoteWebsiteAction(targetId, 'update_theme', {
         theme_slug: theme.slug || theme.id
       })
+      requireFleetActionSuccess(res)
       showToast(`Theme "${theme.name}" updated to v${theme.latestVersion}!`)
       if (res?.data?.websites) {
         updateFleetWebsites(res.data.websites)
       } else {
         fetchFleet(true)
       }
-    } catch {
-      showToast(`Theme "${theme.name}" updated to v${theme.latestVersion}!`)
+    } catch (err) {
+      setThemes(previousThemes)
+      showToast(err?.message || `Could not update "${theme.name}" on WordPress.`, true)
     } finally {
       setActionLoadingId(null)
     }
@@ -352,6 +377,10 @@ export default function BulkThemes() {
   // Zero-Downtime Safe Update Pipeline for a theme
   const handleSafeUpdateTheme = async (theme) => {
     if (!theme) return
+    if (targetSites.length === 0) {
+      showToast('No connected WordPress sites are selected.', true)
+      return
+    }
     if (!safeRollbackArmed) {
       return handleSingleUpdate(theme.id)
     }
@@ -376,50 +405,41 @@ export default function BulkThemes() {
     }
 
     try {
-      // Step 1: Snapshot
-      await new Promise(r => setTimeout(r, 600))
-      appendLog(`[00:01] ✓ Theme micro-snapshot secured: mdf_theme_snap_${Date.now().toString(16)}.zip. Zero data loss armed.`)
-      setSafeUpdateModal(prev => ({ ...prev, step: 2 }))
-
-      // Step 2: Baseline probe
-      await new Promise(r => setTimeout(r, 500))
-      appendLog(`[00:02] ✓ Frontend visual rendering baseline probe verified: HTTP 200 OK.`)
-      setSafeUpdateModal(prev => ({ ...prev, step: 3 }))
-
-      // Step 3: Upgrade
-      appendLog(`[00:03] Upgrading theme ${theme.name} v${theme.currentVersion} -> v${theme.latestVersion}...`)
-      setThemes(prev => prev.map(t => t.id === theme.id ? { ...t, updateAvailable: false, currentVersion: t.latestVersion } : t))
-
-      const targetId = selectedSiteId === 'all' ? 'all' : (targetSites[0]?.id || targetSites[0]?._id || 'all')
-      try {
-        const res = await api.remoteWebsiteAction(targetId, 'update_theme', {
-          theme_slug: theme.slug || theme.id
+      const results = []
+      for (const site of targetSites) {
+        const siteId = site.id || site._id
+        if (!siteId) {
+          results.push({ domain: site.domain || 'Unknown site', success: false, error: 'Site ID is missing.' })
+          continue
+        }
+        appendLog(`Running safe update on ${site.domain || site.url || siteId}...`)
+        const response = await api.runSafeUpdate(siteId, {
+          target_type: 'theme',
+          target_slug: theme.slug || theme.id
         })
-        if (res?.data?.websites) updateFleetWebsites(res.data.websites)
-      } catch {
-        // Fallback
+        const result = response?.data || response
+        results.push({ domain: site.domain || site.url || siteId, ...result })
+        appendLog(`${site.domain || siteId}: ${result?.message || result?.failure_reason || 'No verified result returned.'}`)
       }
 
-      setSafeUpdateModal(prev => ({ ...prev, step: 4 }))
-      appendLog(`[00:04] Executing synthetic DOM regression and template health probe...`)
-      await new Promise(r => setTimeout(r, 600))
-      appendLog(`[00:05] ✓ Post-upgrade health probe PASSED: HTTP 200 OK. Zero stylesheet or fatal syntax errors.`)
-      appendLog(`[00:05] 🛡️ Safe Update completed successfully with zero downtime!`)
-
-      setSafeUpdateModal(prev => ({
-        ...prev,
-        status: 'completed',
-        result: 'success'
-      }))
-      showToast(`Theme "${theme.name}" safely updated to v${theme.latestVersion} with Rollback Guard!`)
+      const failures = results.filter(result => result.success !== true)
+      const summary = { results, succeeded: results.length - failures.length, failed: failures.length }
+      if (failures.length > 0) {
+        setSafeUpdateModal(prev => ({ ...prev, step: 4, status: 'error', result: summary }))
+        showToast(`${failures.length} theme safe update(s) failed or were not confirmed.`, true)
+      } else {
+        setSafeUpdateModal(prev => ({ ...prev, step: 5, status: 'completed', result: summary }))
+        showToast(`Theme "${theme.name}" safe update confirmed on ${results.length} WordPress site(s).`)
+      }
+      await fetchFleet(true)
     } catch (err) {
-      appendLog(`[00:06] ⚠️ Error during update: ${err.message || 'Unknown error'}`)
+      appendLog(`Safe update failed: ${err.message || 'Unknown error'}`)
       setSafeUpdateModal(prev => ({
         ...prev,
         status: 'error',
         result: 'failed'
       }))
-      showToast(`Safe update failed: ${err.message}`, true)
+      showToast(`Safe update failed: ${err.message || 'WordPress did not confirm the operation.'}`, true)
     }
   }
 
@@ -435,6 +455,7 @@ export default function BulkThemes() {
     }
 
     setActionLoadingId(theme.id)
+    const previousThemes = themes
     setThemes(prev => prev.filter(t => t.id !== theme.id))
     showToast(`Uninstalling theme "${theme.name}"...`)
 
@@ -443,6 +464,7 @@ export default function BulkThemes() {
       const res = await api.remoteWebsiteAction(targetId, 'delete_theme', {
         theme_slug: theme.slug || theme.id
       })
+      requireFleetActionSuccess(res)
       showToast(`Theme "${theme.name}" successfully deleted from WordPress!`)
       if (res?.data?.websites) {
         updateFleetWebsites(res.data.websites)
@@ -450,7 +472,8 @@ export default function BulkThemes() {
         fetchFleet(true)
       }
     } catch (err) {
-      showToast(`Theme uninstalled; local cache updated.`)
+      setThemes(previousThemes)
+      showToast(err?.message || `Could not delete theme "${theme.name}" from WordPress.`, true)
     } finally {
       setActionLoadingId(null)
     }
@@ -463,15 +486,15 @@ export default function BulkThemes() {
     try {
       const targetId = selectedSiteId === 'all' ? 'all' : (targetSites[0]?.id || targetSites[0]?._id || 'all')
       const res = await api.remoteWebsiteAction(targetId, 'sync_inventory', {})
+      requireFleetActionSuccess(res)
       showToast('Live theme inventory synchronized from connected sites!')
       if (res?.data?.websites) {
         updateFleetWebsites(res.data.websites)
       } else {
         await fetchFleet(true)
       }
-    } catch {
-      await fetchFleet(true)
-      showToast('Themes synchronized successfully!')
+    } catch (err) {
+      showToast(err?.message || 'Could not synchronize theme inventory from WordPress.', true)
     } finally {
       setUpdating(false)
     }
@@ -498,6 +521,7 @@ export default function BulkThemes() {
         theme_slug: cleanSlug,
         slug: cleanSlug
       })
+      requireFleetActionSuccess(res)
       showToast(`Theme "${cleanSlug}" installed successfully!`)
       setShowInstallModal(false)
       setInstallSlug('')
@@ -507,10 +531,7 @@ export default function BulkThemes() {
         fetchFleet(true)
       }
     } catch (err) {
-      showToast(`Installation dispatched. Themes will refresh in few moments.`)
-      setShowInstallModal(false)
-      setInstallSlug('')
-      fetchFleet(true)
+      showToast(err?.message || `Could not install theme "${cleanSlug}" on WordPress.`, true)
     } finally {
       setInstalling(false)
     }

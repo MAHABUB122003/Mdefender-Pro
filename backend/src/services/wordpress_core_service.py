@@ -8,10 +8,8 @@ Provides 100% authentic integration with:
   5. 1-Click Core update dispatching
 """
 
-import os
 import json
 import time
-import hashlib
 import urllib.request
 import logging
 from datetime import datetime, timedelta
@@ -49,14 +47,18 @@ class WordPressCoreService:
                 payload = json.loads(resp.read().decode("utf-8"))
                 offers = payload.get("offers", [])
                 primary = offers[0] if offers else {}
+                latest_version = str(primary.get("current") or "").strip()
+                if not latest_version:
+                    raise ValueError("WordPress.org returned no current stable release")
 
                 result = {
-                    "latest_version": primary.get("current", "7.1.4"),
-                    "version_branch": primary.get("current", "7.1.4").rsplit(".", 1)[0],
-                    "php_required": primary.get("php_version", "7.4"),
-                    "mysql_required": primary.get("mysql_version", "5.5.5"),
-                    "download_url": primary.get("download", f"https://wordpress.org/wordpress-{primary.get('current', '7.1.4')}.zip"),
-                    "package_type": primary.get("response", "latest"),
+                    "available": True,
+                    "latest_version": latest_version,
+                    "version_branch": latest_version.rsplit(".", 1)[0],
+                    "php_required": primary.get("php_version"),
+                    "mysql_required": primary.get("mysql_version"),
+                    "download_url": primary.get("download"),
+                    "package_type": primary.get("response"),
                     "official_source": "WordPress.org Official Security & Release API",
                     "fetched_at": now.isoformat()
                 }
@@ -74,14 +76,11 @@ class WordPressCoreService:
         except Exception as e:
             logger.warning(f"[WordPressCore] Failed to fetch official WP version: {e}")
             return {
-                "latest_version": "7.1.4",
-                "version_branch": "7.1",
-                "php_required": "7.4",
-                "mysql_required": "5.5.5",
-                "download_url": "https://wordpress.org/latest.zip",
-                "package_type": "latest",
-                "official_source": "WordPress.org Release Cache",
-                "fetched_at": now.isoformat()
+                "available": False,
+                "latest_version": None,
+                "official_source": "WordPress.org Official Security & Release API",
+                "fetched_at": now.isoformat(),
+                "error": "The official WordPress release could not be verified."
             }
 
     # -------------------------------------------------------------------------
@@ -89,7 +88,9 @@ class WordPressCoreService:
     # -------------------------------------------------------------------------
     def get_official_checksums(self, version: str) -> Dict[str, str]:
         """Fetch official md5 checksums for a given WordPress version."""
-        clean_ver = str(version or "7.1.4").replace("WordPress ", "").replace("v", "").strip()
+        clean_ver = str(version or "").replace("WordPress ", "").replace("v", "").strip()
+        if not clean_ver:
+            raise ValueError("A verified installed WordPress version is required for checksum lookup")
         now = datetime.now()
 
         # Check DB cache
@@ -130,7 +131,7 @@ class WordPressCoreService:
     def get_fleet_core_matrix(self, user_id: str) -> Dict[str, Any]:
         """Return WordPress core status, versions, and update availability across fleet."""
         official_info = self.get_official_version_info()
-        latest_ver = official_info.get("latest_version", "7.1.4")
+        latest_ver = official_info.get("latest_version")
 
         # Retrieve user websites with robust type compatibility
         all_user_sites = list(self.db.websites.find({"user_id": user_id}))
@@ -144,12 +145,13 @@ class WordPressCoreService:
         sites = []
         for s in all_user_sites:
             p = str(s.get("platform") or "").lower()
-            if not p or any(k in p for k in ["word", "wp", "domain"]):
+            if p.startswith("wordpress") or s.get("wordpress_connection") or s.get("wp_version"):
                 sites.append(s)
 
         fleet_rows = []
         up_to_date_count = 0
         needs_update_count = 0
+        unknown_version_count = 0
 
         for s in sites:
             s_id = str(s.get("_id") or s.get("id"))
@@ -157,33 +159,45 @@ class WordPressCoreService:
             wp_conn = s.get("wordpress_connection", {}) or {}
 
             # Installed version
-            raw_ver = s.get("wp_version") or wp_conn.get("wp_version") or "7.1.4"
+            raw_ver = s.get("wp_version") or wp_conn.get("wp_version")
             installed_ver = str(raw_ver).replace("WordPress ", "").replace("v", "").strip()
 
             # Compare versions
-            update_available = False
-            try:
-                inst_parts = [int(p) for p in installed_ver.split(".") if p.isdigit()]
-                lat_parts = [int(p) for p in latest_ver.split(".") if p.isdigit()]
-                update_available = (inst_parts < lat_parts)
-            except Exception:
-                update_available = (installed_ver != latest_ver)
-
-            if update_available:
-                needs_update_count += 1
+            update_available = None
+            if latest_ver and installed_ver:
+                inst_parts = tuple(int(p) for p in installed_ver.split(".") if p.isdigit())
+                lat_parts = tuple(int(p) for p in latest_ver.split(".") if p.isdigit())
+                if not inst_parts or not lat_parts:
+                    unknown_version_count += 1
+                else:
+                    while len(inst_parts) > 1 and inst_parts[-1] == 0:
+                        inst_parts = inst_parts[:-1]
+                    while len(lat_parts) > 1 and lat_parts[-1] == 0:
+                        lat_parts = lat_parts[:-1]
+                    update_available = inst_parts < lat_parts
+                    if update_available:
+                        needs_update_count += 1
+                    else:
+                        up_to_date_count += 1
             else:
-                up_to_date_count += 1
+                unknown_version_count += 1
 
             # PHP & Runtime
-            php_ver = s.get("php_version") or wp_conn.get("php_version") or "8.2.12"
-            db_engine = s.get("db_engine") or "MySQL 8.0 (InnoDB utf8mb4)"
+            php_ver = s.get("php_version") or wp_conn.get("php_version") or "unknown"
+            db_engine = s.get("db_engine") or "unknown"
             auto_update_policy = s.get("auto_update_core") or "minor" # 'minor' | 'all' | 'disabled'
 
             # Checksum status from latest scan
-            checksum_status = s.get("checksum_status") or "verified"
-            checksum_verified_at = s.get("checksum_verified_at")
-            files_verified_count = s.get("checksum_files_count") or 3224
-            modified_files_count = s.get("checksum_modified_count") or 0
+            checksum_result = s.get("checksum_result") or {}
+            checksum_confirmed = checksum_result.get("verification_complete") is True
+            checksum_status = checksum_result.get("status") if checksum_confirmed else "unknown"
+            checksum_verified_at = s.get("checksum_verified_at") if checksum_confirmed else None
+            files_verified_count = (checksum_result.get("total_files_checked") or 0) if checksum_confirmed else 0
+            modified_files_count = (
+                len(checksum_result.get("modified_files") or [])
+                + len(checksum_result.get("missing_files") or [])
+                + len(checksum_result.get("unknown_files") or [])
+            ) if checksum_confirmed else 0
 
             fleet_rows.append({
                 "site_id": s_id,
@@ -192,14 +206,18 @@ class WordPressCoreService:
                 "installed_version": installed_ver,
                 "latest_version": latest_ver,
                 "update_available": update_available,
+                "version_status": "known" if update_available is not None else "unknown",
                 "php_version": php_ver,
                 "db_engine": db_engine,
                 "auto_update_policy": auto_update_policy,
                 "checksum_status": checksum_status,
-                "checksum_verified_at": checksum_verified_at.isoformat() if isinstance(checksum_verified_at, datetime) else str(checksum_verified_at or "Live"),
+                "checksum_verified_at": checksum_verified_at.isoformat() if isinstance(checksum_verified_at, datetime) else checksum_verified_at,
                 "files_verified_count": files_verified_count,
                 "modified_files_count": modified_files_count,
-                "is_online": bool(wp_conn.get("connected") or s.get("verified"))
+                "modified_files": checksum_result.get("modified_files") or [] if checksum_confirmed else [],
+                "missing_files": checksum_result.get("missing_files") or [] if checksum_confirmed else [],
+                "unknown_files": checksum_result.get("unknown_files") or [] if checksum_confirmed else [],
+                "is_online": bool(wp_conn.get("connected"))
             })
 
         return {
@@ -207,7 +225,8 @@ class WordPressCoreService:
             "total_sites": len(sites),
             "up_to_date_count": up_to_date_count,
             "needs_update_count": needs_update_count,
-            "fleet_integrity_pct": "100.0" if needs_update_count == 0 else f"{((up_to_date_count / max(1, len(sites))) * 100):.1f}",
+            "unknown_version_count": unknown_version_count,
+            "fleet_integrity_pct": f"{((up_to_date_count / max(1, up_to_date_count + needs_update_count)) * 100):.1f}" if up_to_date_count + needs_update_count else None,
             "sites": fleet_rows
         }
 
@@ -235,116 +254,95 @@ class WordPressCoreService:
 
         domain = site.get("domain") or site.get("url") or "localhost"
         wp_conn = site.get("wordpress_connection", {}) or {}
-        raw_ver = site.get("wp_version") or wp_conn.get("wp_version") or "7.1.4"
+        raw_ver = site.get("wp_version") or wp_conn.get("wp_version")
         version = str(raw_ver).replace("WordPress ", "").replace("v", "").strip()
+        if not version:
+            raise RuntimeError("The installed WordPress version is unknown; checksum verification cannot proceed")
 
         now = datetime.now()
         official_checksums = self.get_official_checksums(version)
-        total_official_files = len(official_checksums) or 3224
+        total_official_files = len(official_checksums)
 
         modified_files = []
         missing_files = []
         unknown_files = []
         checked_count = 0
+        scan_confirmed = False
 
-        # 1. Try querying remote WordPress plugin's WAF_FW_Core_Integrity engine
+        # Prefer the WordPress origin's full scan, which has access to its actual filesystem.
         try:
             from src.api.v1.websites_api import _dispatch_wp_posthack
             remote_res = _dispatch_wp_posthack(site, "core_integrity_scan", timeout=25.0)
-            if remote_res.get("success") and remote_res.get("data", {}).get("success"):
+            if remote_res.get("success") and remote_res.get("data", {}).get("success") is True:
                 p_data = remote_res["data"]
-                total_official_files = p_data.get("total_official_files", total_official_files)
-                checked_count = p_data.get("total_official_files", checked_count)
-                for m in p_data.get("modified_files", []):
-                    modified_files.append({
-                        "file": m.get("path") or m.get("file"),
-                        "expected_md5": m.get("official_hash", ""),
-                        "actual_md5": m.get("local_hash", ""),
-                        "risk": "HIGH"
-                    })
-                missing_files = [m.get("path") for m in p_data.get("missing_files", [])]
-                for u in p_data.get("unknown_files", []):
-                    unknown_files.append({
-                        "file": u.get("path"),
-                        "size": u.get("file_size"),
-                        "risk": "CRITICAL"
-                    })
-        except Exception:
-            pass
+                remote_total = int(p_data.get("total_official_files") or 0)
+                intact_count = int(p_data.get("intact_count") or 0)
+                remote_modified = p_data.get("modified_files") or []
+                remote_missing = p_data.get("missing_files") or []
+                remote_unknown = p_data.get("unknown_files") or []
+                checked_count = int(p_data.get("checked_count") or 0)
+                skipped_count = int(p_data.get("skipped_count") or 0)
+                if (
+                    remote_total > 0
+                    and checked_count == intact_count + len(remote_modified) + len(remote_missing)
+                    and checked_count > 0
+                    and checked_count + skipped_count == remote_total
+                ):
+                    total_official_files = remote_total
+                    scan_confirmed = True
+                    for m in remote_modified:
+                        modified_files.append({
+                            "file": m.get("path") or m.get("file"),
+                            "expected_md5": m.get("official_hash", ""),
+                            "actual_md5": m.get("local_hash", ""),
+                            "risk": "HIGH"
+                        })
+                    missing_files = [m.get("path") for m in remote_missing]
+                    for u in remote_unknown:
+                        unknown_files.append({
+                            "file": u.get("path"),
+                            "size": u.get("file_size"),
+                            "risk": "CRITICAL"
+                        })
+        except (TypeError, ValueError, ImportError) as exc:
+            logger.warning("[WordPressCore] Origin checksum scan response was invalid: %s", exc)
 
-        # 2. If remote didn't return or site is local, compute local file MD5s as fallback
-        if not modified_files and not missing_files:
-            # Check if this website is hosted locally in XAMPP / htdocs
-            local_wp_root = None
-            candidates = [
-                r"C:\xampp\htdocs\mahabub",
-                rf"C:\xampp\htdocs\{domain.replace('.shop', '').replace('.local', '')}",
-                rf"/var/www/html",
-            ]
-            for c in candidates:
-                if os.path.isdir(c) and os.path.isfile(os.path.join(c, "wp-includes", "version.php")):
-                    local_wp_root = c
-                    break
-
-            if local_wp_root and os.path.exists(local_wp_root):
-                critical_files = [
-                    "index.php", "wp-login.php", "wp-settings.php", "wp-load.php", "xmlrpc.php",
-                    "wp-blog-header.php", "wp-cron.php", "wp-trackback.php", "wp-comments-post.php",
-                    "wp-includes/version.php", "wp-includes/load.php", "wp-includes/default-filters.php",
-                    "wp-includes/pluggable.php", "wp-includes/functions.php", "wp-includes/plugin.php",
-                    "wp-admin/admin.php", "wp-admin/index.php", "wp-admin/menu.php"
-                ]
-
-                for rel_path in critical_files:
-                    full_path = os.path.join(local_wp_root, rel_path.replace("/", os.sep))
-                    if not os.path.isfile(full_path):
-                        missing_files.append(rel_path)
-                        continue
-
-                    checked_count += 1
-                    try:
-                        with open(full_path, "rb") as f:
-                            file_md5 = hashlib.md5(f.read()).hexdigest()
-
-                        expected_md5 = official_checksums.get(rel_path)
-                        # For version.php or custom locale, allow minor local variance
-                        if expected_md5 and file_md5.lower() != expected_md5.lower() and rel_path != "wp-includes/version.php":
-                            modified_files.append({
-                                "file": rel_path,
-                                "expected_md5": expected_md5,
-                                "actual_md5": file_md5,
-                                "risk": "HIGH"
-                            })
-                    except Exception as e:
-                        logger.debug(f"[WordPressCore] Error hashing {rel_path}: {e}")
-
-        # Update website doc in DB with verified results
-        status = "modified_files_detected" if len(modified_files) > 0 else "verified"
+        if not scan_confirmed:
+            status = "verification_unavailable"
+        elif modified_files or missing_files or unknown_files:
+            status = "modified_files_detected"
+        else:
+            status = "verified"
         result = {
             "website_id": str(site["_id"]),
             "domain": domain,
             "version": version,
             "status": status,
             "total_official_files": total_official_files,
-            "total_files_checked": checked_count if checked_count > 0 else total_official_files,
+            "total_files_checked": checked_count,
             "modified_files_count": len(modified_files),
             "modified_files": modified_files,
             "missing_files_count": len(missing_files),
-            "integrity_percentage": "100.0" if len(modified_files) == 0 else f"{(((total_official_files - len(modified_files)) / total_official_files) * 100):.2f}",
+            "missing_files": missing_files,
+            "unknown_files_count": len(unknown_files),
+            "unknown_files": unknown_files,
+            "integrity_percentage": f"{max(0, ((total_official_files - len(modified_files) - len(missing_files)) / total_official_files) * 100):.2f}" if scan_confirmed and total_official_files else None,
             "official_api_source": "https://api.wordpress.org/core/checksums/1.0/",
+            "verification_complete": scan_confirmed,
             "verified_at": now.isoformat()
         }
 
-        self.db.websites.update_one(
-            {"_id": site["_id"]},
-            {"$set": {
-                "checksum_status": status,
-                "checksum_verified_at": now,
-                "checksum_files_count": total_official_files,
-                "checksum_modified_count": len(modified_files),
-                "checksum_result": result
-            }}
-        )
+        if scan_confirmed:
+            self.db.websites.update_one(
+                {"_id": site["_id"]},
+                {"$set": {
+                    "checksum_status": status,
+                    "checksum_verified_at": now,
+                    "checksum_files_count": total_official_files,
+                    "checksum_modified_count": len(modified_files) + len(missing_files) + len(unknown_files),
+                    "checksum_result": result
+                }}
+            )
 
         try:
             AuditService().log(
@@ -373,11 +371,19 @@ class WordPressCoreService:
         valid_policies = ("minor", "all", "disabled")
         clean_pol = policy.lower().strip()
         if clean_pol not in valid_policies:
-            clean_pol = "minor"
+            raise ValueError("Policy must be one of: minor, all, disabled")
 
         site = self._find_site(website_id)
-        target_id = site["_id"] if site else website_id
+        if not site:
+            raise ValueError("Website not found")
 
+        from src.api.v1.websites_api import _dispatch_wp_posthack
+        dispatch_result = _dispatch_wp_posthack(site, "set_auto_update_policy", {"policy": clean_pol}, timeout=8.0)
+        action_result = dispatch_result.get("data") or {}
+        if not dispatch_result.get("success") or action_result.get("success") is not True:
+            raise RuntimeError(action_result.get("message") or dispatch_result.get("message") or "WordPress origin did not confirm the policy change")
+
+        target_id = site["_id"]
         self.db.websites.update_one(
             {"_id": target_id},
             {"$set": {
@@ -387,25 +393,13 @@ class WordPressCoreService:
         )
 
         try:
-            target_url = site.get("url") or site.get("domain") or "" if site else ""
-            if target_url:
-                if not target_url.startswith("http"):
-                    target_url = f"https://{target_url}" if site.get("domain") not in ("localhost", "127.0.0.1") else "http://localhost"
-                sep = "&" if "?" in target_url else "?"
-                webhook_url = f"{target_url}{sep}waf_cloud_sync=1&action=set_auto_update_policy&policy={clean_pol}"
-                import requests
-                requests.post(webhook_url, timeout=5.0, verify=False)
-        except Exception:
-            pass
-
-        try:
             AuditService().log(
                 user_id=user_id,
                 action="core_policy_updated",
                 ip_address="system",
                 details={
                     "website_id": str(target_id),
-                    "domain": site.get("domain") if site else "",
+                    "domain": site.get("domain") or "",
                     "policy": clean_pol
                 }
             )
@@ -415,52 +409,93 @@ class WordPressCoreService:
         return {
             "website_id": str(target_id),
             "auto_update_core": clean_pol,
-            "message": f"WordPress Core auto-update policy updated to '{clean_pol.upper()}'."
+            "message": action_result.get("message") or f"WordPress Core auto-update policy updated to '{clean_pol.upper()}'."
         }
 
     # -------------------------------------------------------------------------
     # 6. Update WordPress Core Engine (Single & Fleet)
     # -------------------------------------------------------------------------
+    def _dispatch_core_update(self, site: Dict[str, Any], target_version: str) -> Dict[str, Any]:
+        import requests
+        from urllib.parse import urlencode
+
+        target_url = str(site.get("url") or site.get("domain") or "").strip().rstrip("/")
+        if not target_url:
+            raise RuntimeError("WordPress site URL is missing")
+        if not target_url.startswith(("http://", "https://")):
+            scheme = "http" if site.get("domain") in ("localhost", "127.0.0.1") else "https"
+            target_url = f"{scheme}://{target_url}"
+
+        api_key = str(site.get("api_key") or "")
+        site_token = str(site.get("site_token") or "")
+        connection = site.get("wordpress_connection") or {}
+        api_key = api_key or str(connection.get("api_key") or "")
+        site_token = site_token or str(connection.get("site_token") or "")
+        if not api_key and not site_token:
+            raise RuntimeError("WordPress site has no configured connection credential")
+
+        query = urlencode({
+            "waf_cloud_sync": "1",
+            "action": "update_core",
+            "version": target_version,
+        })
+        endpoint = f"{target_url}/?{query}"
+        headers = {"Content-Type": "application/json"}
+        if api_key:
+            headers.update({"Authorization": f"Bearer {api_key}", "X-API-Key": api_key})
+        if site_token:
+            headers["X-Site-Token"] = site_token
+
+        try:
+            response = requests.post(
+                endpoint,
+                json={"action": "update_core", "version": target_version},
+                headers=headers,
+                timeout=60.0,
+            )
+        except requests.RequestException as exc:
+            raise RuntimeError(f"Could not contact WordPress origin: {exc}") from exc
+
+        if response.status_code != 200:
+            raise RuntimeError(f"WordPress origin returned HTTP {response.status_code}")
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise RuntimeError("WordPress origin returned invalid JSON") from exc
+
+        action_result = payload.get("action_result") if isinstance(payload, dict) else None
+        if not isinstance(action_result, dict) or action_result.get("success") is not True:
+            message = action_result.get("message") if isinstance(action_result, dict) else None
+            raise RuntimeError(message or "WordPress origin did not confirm the core update")
+        return action_result
+
     def update_core(self, website_id: str, user_id: str) -> Dict[str, Any]:
-        """Perform 1-click upgrade to the latest official stable WordPress Core."""
+        """Dispatch a core update and persist the version only after origin confirmation."""
         site = self._find_site(website_id)
         if not site:
             raise ValueError("Website not found")
 
         official = self.get_official_version_info()
-        latest_ver = official.get("latest_version", "7.1.4")
-        now = datetime.now()
+        latest_ver = str(official.get("latest_version") or "").strip()
+        if not latest_ver:
+            raise RuntimeError("The official WordPress version could not be verified")
 
-        # Update in DB
-        self.db.websites.update_one(
-            {"_id": site["_id"]},
-            {"$set": {
-                "wp_version": latest_ver,
-                "wordpress_connection.wp_version": latest_ver,
-                "core_updated_at": now,
-                "checksum_status": "verified",
-                "checksum_verified_at": now
-            }}
-        )
+        action_result = self._dispatch_core_update(site, latest_ver)
+        installed_version = str(action_result.get("updated_version") or action_result.get("installed_version") or "").strip()
+        if not installed_version:
+            raise RuntimeError("WordPress origin did not return the installed core version")
+
+        now = datetime.now()
+        update_fields = {
+            "wp_version": installed_version,
+            "wordpress_connection.wp_version": installed_version,
+            "core_updated_at": now,
+        }
+        self.db.websites.update_one({"_id": site["_id"]}, {"$set": update_fields})
         self.db.wordpress_sites.update_one(
             {"website_id": str(site["_id"])},
-            {"$set": {
-                "wp_version": latest_ver,
-                "updated_at": now
-            }}
+            {"$set": {"wp_version": installed_version, "updated_at": now}}
         )
-
-        try:
-            target_url = site.get("url") or site.get("domain") or ""
-            if target_url:
-                if not target_url.startswith("http"):
-                    target_url = f"https://{target_url}" if site.get("domain") not in ("localhost", "127.0.0.1") else "http://localhost"
-                sep = "&" if "?" in target_url else "?"
-                webhook_url = f"{target_url}{sep}waf_cloud_sync=1&action=update_core&version={latest_ver}"
-                import requests
-                requests.post(webhook_url, timeout=5.0, verify=False)
-        except Exception:
-            pass
 
         try:
             AuditService().log(
@@ -470,8 +505,8 @@ class WordPressCoreService:
                 details={
                     "website_id": str(site["_id"]),
                     "domain": site.get("domain") or site.get("url"),
-                    "previous_version": site.get("wp_version") or "6.7.1",
-                    "updated_version": latest_ver
+                    "previous_version": site.get("wp_version") or None,
+                    "updated_version": installed_version
                 }
             )
         except Exception:
@@ -480,38 +515,77 @@ class WordPressCoreService:
         return {
             "website_id": str(site["_id"]),
             "domain": site.get("domain") or site.get("url"),
-            "previous_version": site.get("wp_version") or "6.7.1",
-            "updated_version": latest_ver,
+            "previous_version": site.get("wp_version"),
+            "updated_version": installed_version,
             "status": "success",
             "updated_at": now.isoformat(),
-            "message": f"Successfully updated WordPress Core to {latest_ver}."
+            "message": action_result.get("message") or f"WordPress Core is now {installed_version}."
         }
 
     def update_all_fleet(self, user_id: str) -> Dict[str, Any]:
-        """Update all fleet sites that are behind the latest official WordPress release."""
+        """Update each WordPress origin and persist only origin-confirmed versions."""
         official = self.get_official_version_info()
-        latest_ver = official.get("latest_version", "7.1.4")
-        now = datetime.now()
+        latest_ver = str(official.get("latest_version") or "").strip()
+        if not latest_ver:
+            raise RuntimeError("The official WordPress version could not be verified")
 
-        res = self.db.websites.update_many(
-            {"user_id": user_id},
-            {"$set": {
-                "wp_version": latest_ver,
-                "wordpress_connection.wp_version": latest_ver,
-                "core_updated_at": now,
-                "checksum_status": "verified",
-                "checksum_verified_at": now
-            }}
-        )
+        sites = list(self.db.websites.find({"user_id": user_id}))
+        results = []
+        for site in sites:
+            connection = site.get("wordpress_connection") or {}
+            is_wordpress = (
+                str(site.get("platform") or "").lower().startswith("wordpress")
+                or bool(connection)
+                or bool(site.get("wp_version"))
+            )
+            site_id = str(site.get("_id") or "")
+            if not is_wordpress:
+                continue
+            try:
+                action_result = self._dispatch_core_update(site, latest_ver)
+                installed_version = str(action_result.get("updated_version") or action_result.get("installed_version") or "").strip()
+                if not installed_version:
+                    raise RuntimeError("WordPress origin did not return the installed core version")
+                now = datetime.now()
+                self.db.websites.update_one(
+                    {"_id": site["_id"]},
+                    {"$set": {
+                        "wp_version": installed_version,
+                        "wordpress_connection.wp_version": installed_version,
+                        "core_updated_at": now,
+                    }}
+                )
+                self.db.wordpress_sites.update_one(
+                    {"website_id": site_id},
+                    {"$set": {"wp_version": installed_version, "updated_at": now}}
+                )
+                results.append({
+                    "website_id": site_id,
+                    "domain": site.get("domain") or site.get("url", ""),
+                    "success": True,
+                    "updated_version": installed_version,
+                    "message": action_result.get("message", ""),
+                })
+            except Exception as exc:
+                results.append({
+                    "website_id": site_id,
+                    "domain": site.get("domain") or site.get("url", ""),
+                    "success": False,
+                    "error": str(exc),
+                })
+
+        succeeded = sum(1 for result in results if result["success"])
+        failed = len(results) - succeeded
 
         try:
             AuditService().log(
                 user_id=user_id,
-                action="fleet_core_updated",
+                action="fleet_core_update_dispatched",
                 ip_address="system",
                 details={
                     "updated_version": latest_ver,
-                    "modified_count": res.modified_count
+                    "succeeded": succeeded,
+                    "failed": failed,
                 }
             )
         except Exception:
@@ -519,9 +593,12 @@ class WordPressCoreService:
 
         return {
             "updated_version": latest_ver,
-            "modified_count": res.modified_count,
-            "updated_at": now.isoformat(),
-            "message": f"Updated {res.modified_count} fleet website(s) to WordPress {latest_ver}."
+            "total": len(results),
+            "succeeded": succeeded,
+            "failed": failed,
+            "results": results,
+            "status": "success" if results and failed == 0 else ("partial" if succeeded else "failed"),
+            "message": f"Confirmed {succeeded} of {len(results)} WordPress core update(s)." if results else "No connected WordPress sites were found."
         }
 
     # -------------------------------------------------------------------------
@@ -534,59 +611,29 @@ class WordPressCoreService:
             raise ValueError("Website not found")
 
         report = self.verify_website_core_checksums(website_id, user_id)
+        if report.get("status") == "verification_unavailable":
+            raise RuntimeError("Core integrity could not be verified; no files were repaired")
         modified = report.get("modified_files", [])
+        missing = report.get("missing_files", [])
         repaired_files = []
         errors = []
+        from src.api.v1.websites_api import _dispatch_wp_posthack
 
-        target_url = site.get("url") or site.get("domain") or ""
-        if target_url and not target_url.startswith("http"):
-            target_url = f"https://{target_url}" if site.get("domain") not in ("localhost", "127.0.0.1") else "http://localhost"
-        api_key = site.get("api_key") or ""
-        site_token = site.get("site_token") or ""
-
-        import requests
-        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}", "X-API-Key": api_key}
-
-        for m in modified:
+        files_to_repair = modified + [{"file": item} for item in missing]
+        for m in files_to_repair:
             file_name = m.get("file") if isinstance(m, dict) else str(m)
             if not file_name:
                 continue
-            success_repair = False
-            candidates = [
-                f"{target_url}/wp-json/waf-fw/v1/remote-scan-repair-core?waf_cloud_sync=1&api_key={api_key}&site_token={site_token}",
-                f"{target_url}/index.php?rest_route=/waf-fw/v1/remote-scan-repair-core&waf_cloud_sync=1&api_key={api_key}&site_token={site_token}",
-                f"{target_url}/index.php?waf_cloud_sync=1&action=repair_core_file&api_key={api_key}&site_token={site_token}",
-            ]
-            for ep in candidates:
-                try:
-                    r = requests.post(ep, json={"file": file_name, "action": "repair_core_file"}, headers=headers, timeout=10.0, verify=False)
-                    if r.status_code == 200:
-                        success_repair = True
-                        repaired_files.append(file_name)
-                        break
-                except Exception:
-                    pass
-
-            if not success_repair:
-                # Also attempt local file restore if local development host
-                local_wp_root = r"C:\xampp\htdocs\mahabub"
-                if os.path.isdir(local_wp_root):
-                    lpath = os.path.join(local_wp_root, file_name.replace("/", os.sep))
-                    if os.path.isfile(lpath):
-                        raw_ver = site.get("wp_version") or "6.7.1"
-                        ver = str(raw_ver).replace("WordPress ", "").replace("v", "").strip()
-                        svn_url = f"https://core.svn.wordpress.org/tags/{ver}/{file_name}"
-                        try:
-                            r_svn = requests.get(svn_url, timeout=6.0)
-                            if r_svn.status_code == 200 and "<?php" in r_svn.text:
-                                with open(lpath, "w", encoding="utf-8") as lf:
-                                    lf.write(r_svn.text)
-                                repaired_files.append(file_name)
-                                success_repair = True
-                        except Exception:
-                            pass
-
-            if not success_repair:
+            dispatch_result = _dispatch_wp_posthack(
+                site,
+                "core_integrity_restore",
+                {"file_path": file_name, "file": file_name},
+                timeout=25.0,
+            )
+            action_result = dispatch_result.get("data") or {}
+            if dispatch_result.get("success") and action_result.get("success") is True:
+                repaired_files.append(file_name)
+            else:
                 errors.append(file_name)
 
         final_report = self.verify_website_core_checksums(website_id, user_id)
@@ -615,5 +662,9 @@ class WordPressCoreService:
             "errors": errors,
             "final_status": final_report.get("status"),
             "integrity_percentage": final_report.get("integrity_percentage"),
-            "message": f"Successfully repaired {len(repaired_files)} core file(s) from official WordPress.org release."
+            "verification": final_report,
+            "message": (
+                f"Restored {len(repaired_files)} core file(s); {len(errors)} file(s) could not be restored."
+                if errors else f"Verified core integrity after restoring {len(repaired_files)} file(s)."
+            )
         }

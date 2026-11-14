@@ -69,6 +69,19 @@ export default function BulkPlugins() {
     setTimeout(() => setToastMsg(null), 3500)
   }
 
+  const requireFleetActionSuccess = (response) => {
+    const data = response?.data || response
+    const results = data?.results
+    if (!Array.isArray(results) || results.length === 0) {
+      throw new Error('WordPress origin returned no per-site action results.')
+    }
+    const failed = results.filter(result => result?.success !== true)
+    if (failed.length > 0) {
+      throw new Error(`${failed.length} of ${results.length} WordPress site action(s) failed.`)
+    }
+    return data
+  }
+
   // Target websites based on dropdown selection
   const targetSites = useMemo(() => {
     if (!hasWebsites) return []
@@ -196,13 +209,15 @@ export default function BulkPlugins() {
         plugin_id: plugin.id,
         enabled: nextVal
       })
+      requireFleetActionSuccess(res)
       if (res?.data?.websites) {
         updateFleetWebsites(res.data.websites)
       } else {
         fetchFleet(true)
       }
     } catch {
-      showToast(`Auto-update preference saved locally; remote sync queued.`)
+      setPlugins(prev => prev.map(p => p.id === plugin.id ? { ...p, autoUpdate: !nextVal } : p))
+      showToast(`Could not update ${plugin.name}'s auto-update preference on WordPress.`, true)
     } finally {
       setActionLoadingId(null)
     }
@@ -247,14 +262,16 @@ export default function BulkPlugins() {
         bulk_action: bulkAction,
         plugins: selectedFiles
       })
+      requireFleetActionSuccess(res)
 
       showToast(`✓ Bulk ${bulkAction} successfully completed on ${count} plugin(s)!`)
 
       if (res?.data?.websites && Array.isArray(res.data.websites) && res.data.websites.length > 0) {
         updateFleetWebsites(res.data.websites)
       }
-    } catch {
-      showToast(`✓ Bulk ${bulkAction} applied successfully!`)
+    } catch (err) {
+      await fetchFleet(true)
+      showToast(err?.message || `Bulk ${bulkAction} failed on WordPress.`, true)
     }
   }
 
@@ -275,17 +292,20 @@ export default function BulkPlugins() {
   const handleBulkUpdate = async () => {
     setUpdating(true)
     const targetId = selectedSiteId === 'all' ? 'all' : (targetSites[0]?.id || targetSites[0]?._id || 'all')
+    const previousPlugins = plugins
     setPlugins(prev => prev.map(p => ({ ...p, updateAvailable: false, currentVersion: p.latestVersion })))
     try {
       const res = await api.remoteWebsiteAction(targetId, 'update_all_plugins', {})
+      requireFleetActionSuccess(res)
       showToast('All plugins successfully updated to latest verified releases across selected fleet!')
       if (res?.data?.websites) {
         updateFleetWebsites(res.data.websites)
       } else {
         fetchFleet(true)
       }
-    } catch {
-      showToast('All plugins updated across connected sites!')
+    } catch (err) {
+      setPlugins(previousPlugins)
+      showToast(err?.message || 'Plugin updates failed on WordPress.', true)
     } finally {
       setUpdating(false)
     }
@@ -309,12 +329,14 @@ export default function BulkPlugins() {
         plugin_id: plugin.id,
         status: nextStatus
       })
+      requireFleetActionSuccess(res)
       showToast(`${plugin.name} successfully updated to ${nextStatus.toUpperCase()}!`)
       if (res?.data?.websites) {
         updateFleetWebsites(res.data.websites)
       }
-    } catch {
-      showToast(`${plugin.name} status updated locally; remote sync queued.`)
+    } catch (err) {
+      setPlugins(prev => prev.map(p => p.id === id ? { ...p, status: plugin.status } : p))
+      showToast(err?.message || `Could not change ${plugin.name}'s status on WordPress.`, true)
     } finally {
       setActionLoadingId(null)
     }
@@ -325,6 +347,7 @@ export default function BulkPlugins() {
     const plugin = plugins.find(p => p.id === id)
     if (!plugin) return
     setActionLoadingId(id)
+    const previousPlugins = plugins
 
     // Instant zero-lag optimistic UI update
     setPlugins(prev => prev.map(p => p.id === id ? { ...p, updateAvailable: false, currentVersion: p.latestVersion } : p))
@@ -335,14 +358,16 @@ export default function BulkPlugins() {
         plugin_file: plugin.file || plugin.id,
         plugin_id: plugin.id
       })
+      requireFleetActionSuccess(res)
       showToast(`${plugin.name} updated to v${plugin.latestVersion}!`)
       if (res?.data?.websites) {
         updateFleetWebsites(res.data.websites)
       } else {
         fetchFleet(true)
       }
-    } catch {
-      showToast(`${plugin.name} updated to v${plugin.latestVersion}!`)
+    } catch (err) {
+      setPlugins(previousPlugins)
+      showToast(err?.message || `Could not update ${plugin.name} on WordPress.`, true)
     } finally {
       setActionLoadingId(null)
     }
@@ -375,51 +400,46 @@ export default function BulkPlugins() {
     }
 
     try {
-      // Step 1: Snapshot
-      await new Promise(r => setTimeout(r, 600))
-      appendLog(`[00:01] ✓ Micro-snapshot secured: mdf_snap_${Date.now().toString(16)}.zip. Zero data loss guarantee armed.`)
-      setSafeUpdateModal(prev => ({ ...prev, step: 2 }))
-
-      // Step 2: Baseline probe
-      await new Promise(r => setTimeout(r, 500))
-      appendLog(`[00:02] ✓ Baseline telemetry verified: HTTP 200 OK across public & admin gateways.`)
-      setSafeUpdateModal(prev => ({ ...prev, step: 3 }))
-
-      // Step 3: Component Upgrade
-      appendLog(`[00:03] Upgrading ${plugin.name} v${plugin.currentVersion} -> v${plugin.latestVersion}...`)
-      setPlugins(prev => prev.map(p => p.id === plugin.id ? { ...p, updateAvailable: false, currentVersion: p.latestVersion } : p))
-
-      const targetId = selectedSiteId === 'all' ? 'all' : (targetSites[0]?.id || targetSites[0]?._id || 'all')
-      try {
-        const res = await api.remoteWebsiteAction(targetId, 'update_plugin', {
-          plugin_file: plugin.file || plugin.id,
-          plugin_id: plugin.id
+      const results = []
+      for (const site of targetSites) {
+        const siteId = site.id || site._id
+        if (!siteId) {
+          results.push({ domain: site.domain || 'Unknown site', success: false, error: 'Site ID is missing.' })
+          continue
+        }
+        appendLog(`Running safe update on ${site.domain || site.url || siteId}...`)
+        const response = await api.runSafeUpdate(siteId, {
+          target_type: 'plugin',
+          target_slug: plugin.id,
+          target_file: plugin.file || plugin.id
         })
-        if (res?.data?.websites) updateFleetWebsites(res.data.websites)
-      } catch {
-        // Fallback
+        const result = response?.data || response
+        results.push({ domain: site.domain || site.url || siteId, ...result })
+        if (result?.success !== true) {
+          appendLog(`${site.domain || siteId}: ${result?.failure_reason || result?.history_error || 'Origin did not confirm success.'}`)
+        } else {
+          appendLog(`${site.domain || siteId}: ${result.message || result.status}`)
+        }
       }
 
-      setSafeUpdateModal(prev => ({ ...prev, step: 4 }))
-      appendLog(`[00:04] Executing synthetic post-upgrade regression probes...`)
-      await new Promise(r => setTimeout(r, 600))
-      appendLog(`[00:05] ✓ Post-upgrade health probe PASSED: HTTP 200 OK. Zero PHP fatal errors in debug.log.`)
-      appendLog(`[00:05] 🛡️ Safe Update completed successfully with zero downtime!`)
-
-      setSafeUpdateModal(prev => ({
-        ...prev,
-        status: 'completed',
-        result: 'success'
-      }))
-      showToast(`${plugin.name} safely updated to v${plugin.latestVersion} with Rollback Guard!`)
+      const failures = results.filter(result => result.success !== true)
+      const resultSummary = { results, succeeded: results.length - failures.length, failed: failures.length }
+      if (failures.length > 0) {
+        setSafeUpdateModal(prev => ({ ...prev, step: 4, status: 'error', result: resultSummary }))
+        showToast(`${failures.length} safe update(s) failed or were not confirmed.`, true)
+      } else {
+        setSafeUpdateModal(prev => ({ ...prev, step: 5, status: 'completed', result: resultSummary }))
+        showToast(`${plugin.name} safe update confirmed on ${results.length} WordPress site(s).`)
+      }
+      await fetchFleet(true)
     } catch (err) {
-      appendLog(`[00:06] ⚠️ Error during update: ${err.message || 'Unknown error'}`)
+      appendLog(`Safe update failed: ${err.message || 'Unknown error'}`)
       setSafeUpdateModal(prev => ({
         ...prev,
         status: 'error',
         result: 'failed'
       }))
-      showToast(`Safe update failed: ${err.message}`, true)
+      showToast(`Safe update failed: ${err.message || 'WordPress did not confirm the operation.'}`, true)
     }
   }
 
@@ -445,6 +465,7 @@ export default function BulkPlugins() {
         plugin_file: plugin.file || plugin.id,
         plugin_id: plugin.id
       })
+      requireFleetActionSuccess(res)
       showToast(`${plugin.name} successfully deleted from WordPress!`)
       if (res?.data?.websites) {
         updateFleetWebsites(res.data.websites)
@@ -452,7 +473,8 @@ export default function BulkPlugins() {
         fetchFleet(true)
       }
     } catch (err) {
-      showToast(`Plugin uninstalled; local cache updated.`)
+      await fetchFleet(true)
+      showToast(err?.message || `Could not delete ${plugin.name} from WordPress.`, true)
     } finally {
       setActionLoadingId(null)
     }
@@ -465,15 +487,15 @@ export default function BulkPlugins() {
     try {
       const targetId = selectedSiteId === 'all' ? 'all' : (targetSites[0]?.id || targetSites[0]?._id || 'all')
       const res = await api.remoteWebsiteAction(targetId, 'sync_inventory', {})
+      requireFleetActionSuccess(res)
       showToast('Live plugin inventory synchronized from connected sites!')
       if (res?.data?.websites) {
         updateFleetWebsites(res.data.websites)
       } else {
         await fetchFleet(true)
       }
-    } catch {
-      await fetchFleet(true)
-      showToast('Plugins synchronized successfully!')
+    } catch (err) {
+      showToast(err?.message || 'Could not synchronize plugin inventory from WordPress.', true)
     } finally {
       setUpdating(false)
     }
@@ -502,6 +524,7 @@ export default function BulkPlugins() {
         slug: cleanSlug,
         activate: installActivate
       })
+      requireFleetActionSuccess(res)
       showToast(`Plugin "${cleanSlug}" installed successfully!`)
       setShowInstallModal(false)
       setInstallSlug('')
@@ -511,8 +534,7 @@ export default function BulkPlugins() {
         fetchFleet(true)
       }
     } catch (err) {
-      showToast(`Installation dispatched to site. Running background sync.`)
-      setShowInstallModal(false)
+      showToast(err?.message || `Could not install "${cleanSlug}" on WordPress.`, true)
       setInstallSlug('')
       fetchFleet(true)
     } finally {

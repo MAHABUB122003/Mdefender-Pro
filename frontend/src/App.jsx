@@ -355,8 +355,8 @@ function App() {
           <Route path="bulk/backups" element={<BulkBackup />} />
           <Route path="bulk/scanner" element={<BulkScanner />} />
           <Route path="bulk/hardening" element={<BulkHardening />} />
-          <Route path="bulk/safe-updates" element={<Navigate to="/user/bulk/plugins" replace />} />
-          <Route path="safe-updates" element={<Navigate to="/user/bulk/plugins" replace />} />
+          <Route path="bulk/safe-updates" element={<BulkSafeUpdates />} />
+          <Route path="safe-updates" element={<Navigate to="/user/bulk/safe-updates" replace />} />
           <Route path="bulk/database" element={<BulkDatabase />} />
           <Route path="database" element={<Navigate to="/user/bulk/database" replace />} />
           <Route path="bulk/environment" element={<Navigate to="/user/bulk/hardening?tab=environment" replace />} />
@@ -378,7 +378,6 @@ function App() {
           <Route path="access/ip-blocklist" element={<UserBlacklist activeMode="ip" />} />
           <Route path="access/ip-allowlist" element={<UserBlacklist activeMode="whitelist" />} />
           <Route path="access/country-blocking" element={<UserBlacklist activeMode="country" />} />
-          <Route path="security/2fa" element={<Navigate to="/user/settings?tab=mfa" replace />} />
           <Route path="settings" element={<UserSettings />} />
           <Route path="sessions" element={<Navigate to="/user/settings?tab=sessions" replace />} />
           <Route path="support" element={<UserSupport />} />

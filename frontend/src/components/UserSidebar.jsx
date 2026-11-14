@@ -339,7 +339,7 @@ export default function UserSidebar({ isOpen, onClose }) {
 
   // Active status for dropdown parent headers
   const isMonitoringGroupActive = currentPath.includes('/monitoring') || currentPath.includes('/site-health')
-  const isWordpressGroupActive = currentPath.includes('/bulk/plugins') || currentPath.includes('/bulk/themes') || currentPath.includes('/bulk/core') || currentPath.includes('/bulk/scanner') || currentPath.includes('/bulk/hardening') || currentPath.includes('/bulk/database')
+  const isWordpressGroupActive = currentPath.includes('/bulk/plugins') || currentPath.includes('/bulk/themes') || currentPath.includes('/bulk/core') || currentPath.includes('/bulk/scanner') || currentPath.includes('/bulk/hardening') || currentPath.includes('/bulk/database') || currentPath.includes('/bulk/safe-updates')
   const isAccessControlGroupActive = currentPath === '/user/blacklist' || currentPath.includes('/access/')
   const isSecurityProtectionGroupActive = currentPath.includes('/security/bot-shield') || currentPath.includes('/security/bot-defense') || currentPath.includes('/security/login-gateway') || currentPath.includes('/security/rate-limits') || currentPath.includes('/security/2fa') || currentPath.includes('/security/post-hack') || currentPath.includes('/security/incident-response') || currentPath.includes('/bulk/posthack') || currentPath.includes('/bulk/tools')
   const isSecurityCenterGroupActive = currentPath.includes('/security/threat-intelligence') || currentPath.includes('/security/port-scanner') || currentPath.includes('/security/breach-intelligence') || currentPath.includes('/security/hibp') || currentPath.includes('/security/pwned') || currentPath.includes('/bulk/breach-intelligence') || currentPath === '/threat-intelligence'
@@ -440,6 +440,13 @@ export default function UserSidebar({ isOpen, onClose }) {
               <span style={{ pointerEvents: 'none' }}>Performance</span>
             </Link>
             <Link
+              to="/user/bulk/site-health"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/user/bulk/site-health') ? 'active' : ''}`}
+            >
+              <span style={{ pointerEvents: 'none' }}>Site Health</span>
+            </Link>
+            <Link
               to="/user/monitoring/broken-links"
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/monitoring/broken-links') ? 'active' : ''}`}
@@ -477,6 +484,13 @@ export default function UserSidebar({ isOpen, onClose }) {
               className={`user-subnav-link ${isSubLinkActive('/user/bulk/themes') ? 'active' : ''}`}
             >
               <span style={{ pointerEvents: 'none' }}>Themes</span>
+            </Link>
+            <Link
+              to="/user/bulk/safe-updates"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/user/bulk/safe-updates') ? 'active' : ''}`}
+            >
+              <span style={{ pointerEvents: 'none' }}>Safe Updates</span>
             </Link>
             <Link
               to="/user/bulk/core"

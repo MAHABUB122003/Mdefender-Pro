@@ -11,6 +11,82 @@ import hashlib
 import logging
 
 logger = logging.getLogger('mdefender.auth')
+_BLOCKED_REMOTE_STATUSES = {'block', 'blocked', 'b', '403', 'threat', 'mitigated', 'drop', 'denied'}
+_ALLOWED_REMOTE_STATUSES = {'allow', 'allowed', 'clean', 'pass', 'passed', 'a'}
+
+
+def _parse_remote_count(value):
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        count = int(value)
+    except (TypeError, ValueError):
+        return None
+    return count if count >= 0 else None
+
+
+def _sum_complete_remote_counts(values):
+    if not values or any(value is None for value in values):
+        return None
+    return sum(values)
+
+
+def _is_blocked_traffic_log(log):
+    status = str(log.get('status') or '').strip().lower()
+    action = str(log.get('action') or '').strip().lower()
+    code = _parse_remote_count(
+        log.get('response_code') or log.get('http_code') or log.get('status_code')
+    )
+    return status in _BLOCKED_REMOTE_STATUSES or action in _BLOCKED_REMOTE_STATUSES or code == 403
+
+
+def _is_allowed_traffic_log(log):
+    if _is_blocked_traffic_log(log):
+        return False
+    status = str(log.get('status') or '').strip().lower()
+    action = str(log.get('action') or '').strip().lower()
+    code = _parse_remote_count(
+        log.get('response_code') or log.get('http_code') or log.get('status_code')
+    )
+    return (
+        status in _ALLOWED_REMOTE_STATUSES
+        or action in _ALLOWED_REMOTE_STATUSES
+        or (code is not None and 200 <= code < 400)
+    )
+
+
+def _normalize_remote_wp_log(log, index, domain, website_id=None):
+    if not isinstance(log, dict):
+        return None
+
+    raw_code = log.get('response_code') or log.get('http_code') or log.get('status_code')
+    response_code = _parse_remote_count(raw_code)
+    is_blocked = _is_blocked_traffic_log(log)
+    attack_type = log.get('attack_type') or ('Blocked Attack' if is_blocked else 'Clean Traffic')
+    try:
+        confidence = float(log.get('confidence') or (0.95 if is_blocked else 0.0))
+    except (TypeError, ValueError):
+        confidence = 0.95 if is_blocked else 0.0
+
+    normalized = {
+        'id': str(log.get('id', index)),
+        'ip': log.get('ip') or log.get('source_ip', ''),
+        'url': log.get('url') or log.get('endpoint', '/'),
+        'domain': domain,
+        'attack_type': attack_type,
+        'status': 'blocked' if is_blocked else 'allowed',
+        'response_code': response_code,
+        'timestamp': str(log.get('created_at') or log.get('timestamp') or ''),
+        'confidence': confidence,
+        'method': log.get('method', 'GET'),
+        'user_agent': log.get('user_agent', ''),
+        'rule_matched': log.get('rule_matched', ''),
+        'country_code': log.get('country_code', ''),
+        'country': log.get('country', ''),
+    }
+    if website_id is not None:
+        normalized['website_id'] = website_id
+    return normalized
 
 
 class UserAPI:
@@ -1732,28 +1808,19 @@ class UserAPI:
                         if isinstance(r_data, dict) and 'logs' in r_data and isinstance(r_data['logs'], list):
                             norm_logs = []
                             for idx, rl in enumerate(r_data['logs']):
-                                st = str(rl.get('status') or rl.get('action') or 'allowed').lower()
-                                is_b = (st in ('block', 'blocked', 'b'))
-                                at = rl.get('attack_type') or ('Blocked Attack' if is_b else 'Clean Traffic')
-                                norm_logs.append({
-                                    'id': str(rl.get('id', idx)),
-                                    'ip': rl.get('ip') or rl.get('source_ip', ''),
-                                    'url': rl.get('url') or rl.get('endpoint', '/'),
-                                    'domain': target_site.get('domain') or target_site.get('name') or 'localhost',
-                                    'attack_type': at,
-                                    'status': 'blocked' if is_b else 'allowed',
-                                    'timestamp': str(rl.get('created_at') or rl.get('timestamp') or ''),
-                                    'confidence': float(rl.get('confidence') or (0.95 if is_b else 0.0)),
-                                    'method': rl.get('method', 'GET'),
-                                    'user_agent': rl.get('user_agent', ''),
-                                    'rule_matched': rl.get('rule_matched', ''),
-                                    'country_code': rl.get('country_code', ''),
-                                    'country': rl.get('country', ''),
-                                })
-                            tot = int(r_data.get('total', len(norm_logs)))
-                            tot_blk = int(r_data.get('total_blocked', tot))
-                            tot_all = int(r_data.get('total_allowed', 0))
-                            u_ips = int(r_data.get('unique_ips', 1))
+                                normalized_log = _normalize_remote_wp_log(
+                                    rl,
+                                    idx,
+                                    target_site.get('domain') or target_site.get('name') or 'localhost',
+                                )
+                                if normalized_log:
+                                    norm_logs.append(normalized_log)
+                            tot = _parse_remote_count(r_data.get('total'))
+                            if tot is None:
+                                tot = len(norm_logs)
+                            tot_blk = _parse_remote_count(r_data.get('total_blocked'))
+                            tot_all = _parse_remote_count(r_data.get('total_allowed'))
+                            u_ips = _parse_remote_count(r_data.get('unique_ips'))
                             return _return_cached({
                                 'total': tot,
                                 'total_blocked': tot_blk,
@@ -1802,8 +1869,8 @@ class UserAPI:
 
                 all_remote_logs = []
                 total_remote_count = 0
-                total_remote_blocked = 0
-                total_remote_allowed = 0
+                remote_blocked_counts = []
+                remote_allowed_counts = []
                 total_remote_ips = 0
 
                 def fetch_single_site_logs(site):
@@ -1843,10 +1910,19 @@ class UserAPI:
                             data = resp.json()
                             logs_list = data.get('logs', []) if isinstance(data, dict) else []
                             s_id = str(site.get('_id', site.get('id', '')))
-                            return logs_list, data.get('total', len(logs_list)), domain_name, s_id, data.get('total_blocked', 0), data.get('total_allowed', 0), data.get('unique_ips', 0)
+                            site_total = _parse_remote_count(data.get('total'))
+                            return (
+                                logs_list,
+                                len(logs_list) if site_total is None else site_total,
+                                domain_name,
+                                s_id,
+                                _parse_remote_count(data.get('total_blocked')),
+                                _parse_remote_count(data.get('total_allowed')),
+                                _parse_remote_count(data.get('unique_ips')),
+                            )
                     except Exception:
                         pass
-                    return [], 0, domain_name, str(site.get('_id', site.get('id', ''))), 0, 0, 0
+                    return [], 0, domain_name, str(site.get('_id', site.get('id', ''))), None, None, None
 
                 with ThreadPoolExecutor(max_workers=min(10, len(connected_wp_sites))) as executor:
                     futures = [executor.submit(fetch_single_site_logs, s) for s in connected_wp_sites]
@@ -1854,31 +1930,17 @@ class UserAPI:
                         try:
                             s_logs, s_tot, s_dom, s_id, s_blk, s_all, s_ips = fut.result()
                             total_remote_count += s_tot
-                            total_remote_blocked += s_blk
-                            total_remote_allowed += s_all
-                            total_remote_ips += s_ips
+                            remote_blocked_counts.append(s_blk)
+                            remote_allowed_counts.append(s_all)
+                            if s_ips is not None:
+                                total_remote_ips += s_ips
                             for idx, rl in enumerate(s_logs):
-                                st = str(rl.get('status') or rl.get('action') or 'allowed').lower()
-                                is_b = (st in ('block', 'blocked', 'b'))
-                                at = rl.get('attack_type') or ('Blocked Attack' if is_b else 'Clean Traffic')
-                                all_remote_logs.append({
-                                    'id': str(rl.get('id', idx)),
-                                    'ip': rl.get('ip') or rl.get('source_ip', ''),
-                                    'url': rl.get('url') or rl.get('endpoint', '/'),
-                                    'domain': s_dom,
-                                    'attack_type': at,
-                                    'status': 'blocked' if is_b else 'allowed',
-                                    'timestamp': str(rl.get('created_at') or rl.get('timestamp') or ''),
-                                    'confidence': float(rl.get('confidence') or (0.95 if is_b else 0.0)),
-                                    'method': rl.get('method', 'GET'),
-                                    'user_agent': rl.get('user_agent', ''),
-                                    'rule_matched': rl.get('rule_matched', ''),
-                                    'country_code': rl.get('country_code', ''),
-                                    'country': rl.get('country', ''),
-                                    'website_id': s_id,
-                                })
+                                normalized_log = _normalize_remote_wp_log(rl, idx, s_dom, s_id)
+                                if normalized_log:
+                                    all_remote_logs.append(normalized_log)
                         except Exception:
-                            pass
+                            remote_blocked_counts.append(None)
+                            remote_allowed_counts.append(None)
 
                 if all_remote_logs:
                     # Sort in memory by timestamp descending
@@ -1889,8 +1951,8 @@ class UserAPI:
                     calc_u_ips = max(total_remote_ips, len(set(l.get('ip') for l in all_remote_logs if l.get('ip'))))
                     return _return_cached({
                         'total': tot,
-                        'total_blocked': total_remote_blocked or tot,
-                        'total_allowed': total_remote_allowed,
+                        'total_blocked': _sum_complete_remote_counts(remote_blocked_counts),
+                        'total_allowed': _sum_complete_remote_counts(remote_allowed_counts),
                         'unique_ips': calc_u_ips,
                         'page': page,
                         'per_page': per_page,
@@ -1952,10 +2014,9 @@ class UserAPI:
         for l_doc in live_stream_docs:
             for ev in l_doc.get('events', []):
                 if status_filter:
-                    st = str(ev.get('status') or ev.get('action') or '').lower()
-                    if status_filter in ('block', 'blocked') and st not in ('block', 'blocked'):
+                    if status_filter in ('block', 'blocked', '403', 'threat', 'mitigated') and not _is_blocked_traffic_log(ev):
                         continue
-                    if status_filter in ('allow', 'allowed') and st not in ('allow', 'allowed'):
+                    if status_filter in ('allow', 'allowed', 'clean') and not _is_allowed_traffic_log(ev):
                         continue
                 if attack_type and ev.get('attack_type') != attack_type:
                     continue
@@ -1972,8 +2033,12 @@ class UserAPI:
             tot = len(all_live_events)
             start_idx = (page - 1) * per_page
             paged_logs = all_live_events[start_idx:start_idx + per_page]
+            total_blocked = sum(1 for event in all_live_events if _is_blocked_traffic_log(event))
+            total_allowed = sum(1 for event in all_live_events if _is_allowed_traffic_log(event))
             return _return_cached({
                 'total': tot,
+                'total_blocked': total_blocked,
+                'total_allowed': total_allowed,
                 'page': page,
                 'per_page': per_page,
                 'total_pages': max(1, (tot + per_page - 1) // per_page),
@@ -1982,19 +2047,49 @@ class UserAPI:
             })
 
         # Primary source: security_events (contains all requests: normal & blocked)
-        total = self.db.security_events.count_documents(final_query)
-        logs = list(self.db.security_events.find(final_query)
+        source_collection = self.db.security_events
+        total = source_collection.count_documents(final_query)
+        logs = list(source_collection.find(final_query)
             .sort('timestamp', -1)
             .skip((page - 1) * per_page)
             .limit(per_page))
 
         # Fallback to attacks collection if security_events has 0 matches
         if total == 0:
-            total = self.db.attacks.count_documents(final_query)
-            logs = list(self.db.attacks.find(final_query)
+            source_collection = self.db.attacks
+            total = source_collection.count_documents(final_query)
+            logs = list(source_collection.find(final_query)
                 .sort('timestamp', -1)
                 .skip((page - 1) * per_page)
                 .limit(per_page))
+
+        def count_matching_status(status_query):
+            return source_collection.count_documents({'$and': [final_query, status_query]})
+
+        blocked_query = {
+            '$or': [
+                {'status': {'$in': list(_BLOCKED_REMOTE_STATUSES)}},
+                {'action': {'$in': list(_BLOCKED_REMOTE_STATUSES)}},
+                {'response_code': {'$in': [403, '403']}},
+                {'http_code': {'$in': [403, '403']}},
+                {'status_code': {'$in': [403, '403']}},
+            ]
+        }
+        total_blocked = count_matching_status(blocked_query)
+        total_allowed = count_matching_status({
+            '$and': [
+                {
+                    '$or': [
+                        {'status': {'$in': list(_ALLOWED_REMOTE_STATUSES)}},
+                        {'action': {'$in': list(_ALLOWED_REMOTE_STATUSES)}},
+                        {'response_code': {'$gte': 200, '$lt': 400}},
+                        {'http_code': {'$gte': 200, '$lt': 400}},
+                        {'status_code': {'$gte': 200, '$lt': 400}},
+                    ]
+                },
+                {'$nor': [blocked_query]},
+            ]
+        })
 
         site_domain_map = {}
         for s in user_sites:
@@ -2012,9 +2107,9 @@ class UserAPI:
         result_logs = []
         for i, log in enumerate(logs):
             status_val = log.get('status') or log.get('action') or 'allowed'
-            if str(status_val).lower() in ('block', 'blocked', 'b'):
+            if _is_blocked_traffic_log(log):
                 status_val = 'blocked'
-            elif str(status_val).lower() in ('allow', 'allowed', 'pass', 'passed', 'a'):
+            elif _is_allowed_traffic_log(log):
                 status_val = 'allowed'
             
             is_blocked = (status_val == 'blocked')
@@ -2031,6 +2126,7 @@ class UserAPI:
                 'domain': domain_val,
                 'attack_type': attack_type_str,
                 'status': status_val,
+                'response_code': log.get('response_code') or log.get('http_code') or log.get('status_code'),
                 'timestamp': log['timestamp'].strftime('%Y-%m-%d %H:%M:%S') if log.get('timestamp') and hasattr(log['timestamp'], 'strftime') else str(log.get('timestamp', '')),
                 'confidence': log.get('confidence', 0.95 if is_blocked else 0.0),
                 'method': log.get('method', 'GET'),
@@ -2041,6 +2137,8 @@ class UserAPI:
             })
         return _return_cached({
             'total': total,
+            'total_blocked': total_blocked,
+            'total_allowed': total_allowed,
             'page': page,
             'per_page': per_page,
             'total_pages': (total + per_page - 1) // per_page if total > 0 else 1,

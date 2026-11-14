@@ -686,7 +686,7 @@ export const api = {
   toggleDdos: (enabled) => apiCall('/api/user/ddos-toggle', { method: 'POST', body: JSON.stringify({ enabled }) }),
   getNotices: () => apiCall('/api/notices'),
   addNotice: (content) => apiCall('/api/notices', { method: 'POST', body: JSON.stringify({ content }) }),
-  whoisLookup: (ip) => apiCall(`/api/user/whois?ip=${encodeURIComponent(ip)}`),
+  whoisLookup: (ip) => apiCall(`/api/user/whois?ip=${encodeURIComponent(ip)}`, { timeout: 15000 }),
   getUserCountryBlocks: (params = {}) => {
     const siteId = typeof params === 'string' ? params : (params?.website_id || '');
     const q = siteId && siteId !== 'all' ? `?website_id=${encodeURIComponent(siteId)}` : '';

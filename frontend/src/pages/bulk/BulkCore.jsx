@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   Cpu,
   CheckCircle2,
@@ -12,10 +12,7 @@ import {
   ExternalLink,
   ShieldCheck,
   X,
-  FileCode,
-  Info,
-  Clock,
-  ChevronRight
+  Info
 } from 'lucide-react'
 import BulkHeader from './BulkHeader'
 import EmptyFleetState from './EmptyFleetState'
@@ -23,21 +20,20 @@ import useBulkFleet from './useBulkFleet'
 import api from '../../api/api'
 
 export default function BulkCore() {
-  const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite, refreshing, fetchFleet } = useBulkFleet()
+  const { hasWebsites, selectedSiteId, fetchFleet } = useBulkFleet()
 
-  const [loading, setLoading] = useState(true)
   const [coreData, setCoreData] = useState({
     official_info: {
-      latest_version: '7.1.4',
-      php_required: '7.4',
-      mysql_required: '5.5.5',
-      download_url: 'https://downloads.wordpress.org/release/wordpress-7.1.4.zip',
+      latest_version: null,
+      php_required: null,
+      mysql_required: null,
+      download_url: null,
       official_source: 'WordPress.org Official Security & Release API'
     },
     total_sites: 0,
     up_to_date_count: 0,
     needs_update_count: 0,
-    fleet_integrity_pct: '100.0',
+    fleet_integrity_pct: null,
     sites: []
   })
 
@@ -49,35 +45,48 @@ export default function BulkCore() {
   const [repairingFile, setRepairingFile] = useState(null)
   const [toastMsg, setToastMsg] = useState(null)
 
-  const showToast = (text, isError = false) => {
+  const showToast = useCallback((text, isError = false) => {
     setToastMsg({ text, isError })
     setTimeout(() => setToastMsg(null), 3800)
-  }
+  }, [])
 
-  // Fetch real fleet core status from backend
-  const loadFleetCore = async () => {
-    setLoading(true)
+  const fetchFleetCore = useCallback(async () => {
+    const res = await api.getWordpressCoreStatus()
+    const actualData = res?.data || res
+    if (!actualData || (!Array.isArray(actualData.sites) && !actualData.official_info)) {
+      throw new Error('The backend returned an invalid WordPress core status response.')
+    }
+    return actualData
+  }, [])
+
+  const loadFleetCore = useCallback(async () => {
     try {
-      const res = await api.getWordpressCoreStatus()
-      const actualData = res?.data || res
-      if (actualData && (actualData.sites || actualData.official_info)) {
-        setCoreData(actualData)
-      }
+      setCoreData(await fetchFleetCore())
     } catch (err) {
       console.warn('[BulkCore] Failed to load core status:', err)
-      showToast('Connecting to WordPress.org version API...', false)
-    } finally {
-      setLoading(false)
+      showToast(err?.message || 'Could not load verified WordPress core status.', true)
     }
-  }
+  }, [fetchFleetCore, showToast])
 
   useEffect(() => {
-    if (hasWebsites) {
-      loadFleetCore()
-    } else {
-      setLoading(false)
+    if (!hasWebsites) return undefined
+
+    let active = true
+    fetchFleetCore()
+      .then(data => {
+        if (active) setCoreData(data)
+      })
+      .catch(err => {
+        if (active) {
+          console.warn('[BulkCore] Failed to load core status:', err)
+          showToast(err?.message || 'Could not load verified WordPress core status.', true)
+        }
+      })
+
+    return () => {
+      active = false
     }
-  }, [hasWebsites])
+  }, [fetchFleetCore, hasWebsites, showToast])
 
   // Filter sites according to dropdown selection in BulkHeader
   const displayedSites = useMemo(() => {
@@ -99,39 +108,49 @@ export default function BulkCore() {
     setVerifyingSiteId(site.site_id)
     try {
       const res = await api.verifyCoreChecksums(site.site_id)
-      const data = res?.data || {}
+      const data = res?.data || res || {}
+      if (!['verified', 'modified_files_detected'].includes(data.status)) {
+        throw new Error(data.message || data.error || 'Checksum verification was not confirmed.')
+      }
       const modFiles = data.modified_files || []
+      const verifiedCount = data.total_files_checked ?? 0
+      const modifiedCount = data.modified_files_count ?? modFiles.length
       
       setCoreData(prev => ({
         ...prev,
         sites: prev.sites.map(s => s.site_id === site.site_id ? {
           ...s,
-          checksum_status: data.status || (modFiles.length > 0 ? 'drift_detected' : 'verified'),
-          files_verified_count: data.total_official_files || 3224,
-          modified_files_count: data.modified_files_count || modFiles.length,
+          checksum_status: data.status,
+          files_verified_count: verifiedCount,
+          modified_files_count: modifiedCount + (data.missing_files_count || 0) + (data.unknown_files_count || 0),
           modified_files: modFiles,
-          checksum_verified_at: 'Just now'
+          missing_files: data.missing_files || [],
+          unknown_files: data.unknown_files || [],
+          checksum_verified_at: data.verified_at || s.checksum_verified_at
         } : s)
       }))
 
       if (auditModalSite && auditModalSite.site_id === site.site_id) {
         setAuditModalSite(prev => ({
           ...prev,
-          checksum_status: data.status || (modFiles.length > 0 ? 'drift_detected' : 'verified'),
-          files_verified_count: data.total_official_files || 3224,
-          modified_files_count: data.modified_files_count || modFiles.length,
+          checksum_status: data.status,
+          files_verified_count: verifiedCount,
+          modified_files_count: modifiedCount + (data.missing_files_count || 0) + (data.unknown_files_count || 0),
           modified_files: modFiles,
-          checksum_verified_at: 'Just now'
+          missing_files: data.missing_files || [],
+          unknown_files: data.unknown_files || [],
+          checksum_verified_at: data.verified_at || auditModalSite.checksum_verified_at
         }))
       }
 
-      if ((data.modified_files_count || modFiles.length) > 0) {
-        showToast(`${site.domain}: Checksum audit found ${data.modified_files_count || modFiles.length} modified core file(s). Review audit report.`, true)
+      const issueCount = modifiedCount + (data.missing_files_count || 0) + (data.unknown_files_count || 0)
+      if (issueCount > 0) {
+        showToast(`${site.domain}: Checksum verification found ${issueCount} core integrity issue(s). Review the audit report.`, true)
       } else {
-        showToast(`${site.domain}: 100% Core integrity verified against official WordPress.org SVN release!`)
+        showToast(`${site.domain}: Core checksums verified against the official WordPress.org manifest (${verifiedCount} files checked).`)
       }
     } catch (err) {
-      showToast(`Verification completed for ${site.domain}. Core integrity intact.`)
+      showToast(err?.message || `Core checksum verification failed for ${site.domain}.`, true)
     } finally {
       setVerifyingSiteId(null)
     }
@@ -145,39 +164,38 @@ export default function BulkCore() {
     showToast(`Downloading pristine SVN release of "${fileName}" from WordPress.org...`)
 
     try {
-      await api.repairWebsiteCoreFile(site.site_id, fileName)
-      showToast(`"${fileName}" restored from WordPress.org official pristine baseline!`)
-
-      // Optimistically update local site state
+      const repairResponse = await api.repairWebsiteCoreFile(site.site_id, fileName)
+      const repairResult = repairResponse?.data || repairResponse || {}
+      if (repairResult.success !== true && !['success', 'repaired'].includes(repairResult.status)) {
+        throw new Error(repairResult.message || repairResult.error || 'WordPress origin did not confirm the core file repair.')
+      }
+      const verifyResponse = await api.verifyCoreChecksums(site.site_id)
+      const verification = verifyResponse?.data || verifyResponse || {}
+      if (!['verified', 'modified_files_detected'].includes(verification.status)) {
+        throw new Error('The repair was reported, but the follow-up integrity scan could not be verified.')
+      }
+      const modifiedFiles = verification.modified_files || []
+      const verifiedCount = verification.total_files_checked ?? 0
+      const modifiedCount = (verification.modified_files_count || 0) + (verification.missing_files_count || 0) + (verification.unknown_files_count || 0)
+      const nextState = {
+        checksum_status: verification.status,
+        files_verified_count: verifiedCount,
+        modified_files_count: modifiedCount,
+        modified_files: modifiedFiles,
+        missing_files: verification.missing_files || [],
+        unknown_files: verification.unknown_files || [],
+        checksum_verified_at: verification.verified_at
+      }
       setCoreData(prev => ({
         ...prev,
-        sites: prev.sites.map(s => {
-          if (s.site_id === site.site_id) {
-            const nextMod = (s.modified_files || []).filter(f => (typeof f === 'string' ? f : f.file) !== fileName)
-            return {
-              ...s,
-              modified_files: nextMod,
-              modified_files_count: nextMod.length,
-              checksum_status: nextMod.length === 0 ? 'verified' : 'drift_detected'
-            }
-          }
-          return s
-        })
+        sites: prev.sites.map(s => s.site_id === site.site_id ? { ...s, ...nextState } : s)
       }))
-
-      if (auditModalSite && auditModalSite.site_id === site.site_id) {
-        setAuditModalSite(prev => {
-          const nextMod = (prev.modified_files || []).filter(f => (typeof f === 'string' ? f : f.file) !== fileName)
-          return {
-            ...prev,
-            modified_files: nextMod,
-            modified_files_count: nextMod.length,
-            checksum_status: nextMod.length === 0 ? 'verified' : 'drift_detected'
-          }
-        })
+      if (auditModalSite?.site_id === site.site_id) {
+        setAuditModalSite(prev => ({ ...prev, ...nextState }))
       }
+      showToast(`"${fileName}" repair was confirmed; the follow-up scan found ${modifiedCount} remaining integrity issue(s).`, modifiedCount > 0)
     } catch (err) {
-      showToast(`"${fileName}" restored successfully from official repository.`)
+      showToast(err?.message || `Could not verify repair of "${fileName}".`, true)
     } finally {
       setRepairingFile(null)
     }
@@ -188,31 +206,36 @@ export default function BulkCore() {
     setUpdatingSiteId(site.site_id)
     try {
       const res = await api.updateWordpressCore(site.site_id)
-      const latestVer = coreData.official_info.latest_version || '7.1.4'
+      const result = res?.data || res
+      if (result?.status !== 'success' || !result.updated_version) {
+        throw new Error(result?.message || 'WordPress origin did not confirm the core update.')
+      }
+      const updatedVersion = result.updated_version
 
       setCoreData(prev => {
         const nextSites = prev.sites.map(s => s.site_id === site.site_id ? {
           ...s,
-          installed_version: latestVer,
-          update_available: false,
-          checksum_status: 'verified',
-          checksum_verified_at: 'Just now'
+          installed_version: updatedVersion,
+          update_available: null,
         } : s)
-        const upCount = nextSites.filter(s => !s.update_available).length
-        const needCount = nextSites.filter(s => s.update_available).length
+        const upCount = nextSites.filter(s => s.update_available === false).length
+        const needCount = nextSites.filter(s => s.update_available === true).length
         return {
           ...prev,
           sites: nextSites,
           up_to_date_count: upCount,
           needs_update_count: needCount,
-          fleet_integrity_pct: ((upCount / Math.max(1, nextSites.length)) * 100).toFixed(1)
+          fleet_integrity_pct: upCount + needCount
+            ? ((upCount / (upCount + needCount)) * 100).toFixed(1)
+            : null
         }
       })
 
-      showToast(`WordPress Core for ${site.domain} successfully upgraded to v${latestVer}!`)
+      showToast(result.message || `WordPress Core on ${site.domain} is now v${updatedVersion}.`)
       fetchFleet(true)
+      loadFleetCore()
     } catch (err) {
-      showToast(`Core update dispatched for ${site.domain}.`)
+      showToast(err?.message || `Could not verify the WordPress core update for ${site.domain}.`, true)
     } finally {
       setUpdatingSiteId(null)
     }
@@ -228,7 +251,7 @@ export default function BulkCore() {
       }))
       showToast(`Auto-update policy changed to "${newPolicy.toUpperCase()}" for site.`)
     } catch (err) {
-      showToast(`Updated auto-update policy locally to ${newPolicy}.`)
+      showToast(err?.message || 'Could not update the core auto-update policy.', true)
     }
   }
 
@@ -243,13 +266,17 @@ export default function BulkCore() {
     )
     try {
       const siteResults = {}
+      const failedSites = []
       for (const site of targetSites) {
         try {
           const res = await api.verifyCoreChecksums(site.site_id)
           const data = res?.data || res || {}
+          if (!['verified', 'modified_files_detected'].includes(data.status)) {
+            throw new Error(data.message || data.error || 'Checksum verification was not confirmed.')
+          }
           siteResults[site.site_id] = data
-        } catch {
-          // Continue with next
+        } catch (err) {
+          failedSites.push({ site, error: err?.message || 'Verification failed.' })
         }
       }
       setCoreData(prev => ({
@@ -258,25 +285,28 @@ export default function BulkCore() {
           const r = siteResults[s.site_id]
           if (r) {
             const modFiles = r.modified_files || []
-            const hasMod = (r.modified_files_count > 0 || modFiles.length > 0)
+            const issueCount = (r.modified_files_count ?? modFiles.length) + (r.missing_files_count || 0) + (r.unknown_files_count || 0)
             return {
               ...s,
-              checksum_status: r.status || (hasMod ? 'modified_files_detected' : 'verified'),
-              checksum_modified_count: r.modified_files_count || modFiles.length,
-              files_verified_count: r.total_official_files || s.files_verified_count,
+              checksum_status: r.status,
+              modified_files_count: issueCount,
+              files_verified_count: r.total_files_checked ?? s.files_verified_count,
               modified_files: modFiles,
-              checksum_verified_at: 'Just now'
+              missing_files: r.missing_files || [],
+              unknown_files: r.unknown_files || [],
+              checksum_verified_at: r.verified_at || s.checksum_verified_at
             }
           }
           return s
         })
       }))
-      showToast(isSingle
-        ? `Core checksum audit completed for ${targetSites[0]?.domain}!`
-        : `Fleet core checksum audit completed across ${targetSites.length} site(s)!`
-      )
-    } catch {
-      showToast('Core checksum verification finished.')
+      if (failedSites.length > 0) {
+        showToast(`Checksum verification confirmed for ${Object.keys(siteResults).length}/${targetSites.length} site(s); ${failedSites.length} failed or unavailable.`, failedSites.length === targetSites.length)
+      } else {
+        showToast(`Core checksum audit completed for ${targetSites.length} site(s).`)
+      }
+    } catch (err) {
+      showToast(err?.message || 'Core checksum verification failed.', true)
     } finally {
       setBulkVerifying(false)
     }
@@ -286,10 +316,14 @@ export default function BulkCore() {
   const handleRepairAllCoreFiles = async (site) => {
     if (!site || !site.site_id) return
     setRepairingFile('__all__')
-    showToast(`Restoring all modified core files for ${site.domain} from official WordPress.org release...`)
+    showToast(`Restoring modified or missing core files for ${site.domain} from the official WordPress.org release...`)
     try {
       const res = await api.repairAllCoreFiles(site.site_id)
       const data = res?.data || res || {}
+      if (data.errors?.length || data.final_status !== 'verified') {
+        throw new Error(data.message || `Repair could not be verified; ${data.errors?.length || 0} file(s) remain unresolved.`)
+      }
+      const verification = data.verification || {}
       showToast(data.message || `All core files for ${site.domain} restored to official WordPress release!`)
       setCoreData(prev => ({
         ...prev,
@@ -299,8 +333,11 @@ export default function BulkCore() {
               ...s,
               checksum_status: 'verified',
               checksum_modified_count: 0,
+              files_verified_count: verification.total_files_checked ?? s.files_verified_count,
               modified_files: [],
-              checksum_verified_at: 'Just now'
+              missing_files: [],
+              unknown_files: [],
+              checksum_verified_at: verification.verified_at || s.checksum_verified_at
             }
           }
           return s
@@ -311,7 +348,11 @@ export default function BulkCore() {
           ...prev,
           checksum_status: 'verified',
           checksum_modified_count: 0,
-          modified_files: []
+          files_verified_count: verification.total_files_checked ?? prev.files_verified_count,
+          modified_files: [],
+          missing_files: [],
+          unknown_files: [],
+          checksum_verified_at: verification.verified_at || prev.checksum_verified_at
         }))
       }
     } catch (err) {
@@ -324,34 +365,71 @@ export default function BulkCore() {
   // Bulk Update All Outdated Sites
   const handleBulkUpdateAll = async () => {
     setBulkUpdating(true)
-    const latestVer = coreData.official_info.latest_version || '7.1.4'
+    const latestVer = coreData.official_info.latest_version
+    if (!latestVer) {
+      showToast('The official WordPress release version is unavailable; no update was attempted.', true)
+      setBulkUpdating(false)
+      return
+    }
     showToast(`Upgrading all outdated WordPress engines to official release v${latestVer}...`)
     try {
-      await api.updateAllWordpressCore()
+      const res = await api.updateAllWordpressCore()
+      const result = res?.data || res
+      const siteResults = Array.isArray(result?.results) ? result.results : []
+      if (!siteResults.length || result?.total !== siteResults.length) {
+        throw new Error(result?.message || 'The backend did not return verifiable per-site update results.')
+      }
+      const succeeded = siteResults.filter(site => site.success === true)
       setCoreData(prev => ({
         ...prev,
-        up_to_date_count: prev.sites.length,
-        needs_update_count: 0,
-        fleet_integrity_pct: '100.0',
-        sites: prev.sites.map(s => ({
-          ...s,
-          installed_version: latestVer,
-          update_available: false,
-          checksum_status: 'verified',
-          checksum_verified_at: 'Just now'
-        }))
+        sites: prev.sites.map(site => {
+          const resultForSite = siteResults.find(item => item.website_id === site.site_id)
+          return resultForSite?.success
+            ? {
+              ...site,
+              installed_version: resultForSite.updated_version,
+              update_available: null
+            }
+            : site
+        })
       }))
-      showToast(`All fleet sites successfully updated to WordPress v${latestVer}!`)
+      if (succeeded.length !== siteResults.length || result.status !== 'success') {
+        showToast(result.message || `WordPress core update confirmed for ${succeeded.length}/${siteResults.length} site(s).`, true)
+      } else {
+        showToast(result.message || `WordPress core updates confirmed across ${succeeded.length} site(s).`)
+      }
       fetchFleet(true)
-    } catch {
-      showToast(`Fleet core upgrade command broadcasted to all connected sites.`)
+      loadFleetCore()
+    } catch (err) {
+      showToast(err?.message || 'WordPress core fleet update failed or was not confirmed.', true)
     } finally {
       setBulkUpdating(false)
     }
   }
 
-  const latestOfficialVer = coreData.official_info?.latest_version || '7.1.4'
+  const latestOfficialVer = coreData.official_info?.latest_version || 'Unavailable'
   const outdatedCount = coreData.needs_update_count || 0
+  const unknownVersionCount = coreData.unknown_version_count || 0
+  const versionDataAvailable = Boolean(coreData.official_info?.available && coreData.official_info?.latest_version)
+  const auditFindings = useMemo(() => {
+    if (!auditModalSite) return []
+    return [
+      ...(auditModalSite.modified_files || []).map(item => ({
+        ...(typeof item === 'object' ? item : {}),
+        file: typeof item === 'string' ? item : (item.file || item.path),
+        type: 'Modified'
+      })),
+      ...(auditModalSite.missing_files || []).map(item => ({
+        file: typeof item === 'string' ? item : (item.file || item.path),
+        type: 'Missing'
+      })),
+      ...(auditModalSite.unknown_files || []).map(item => ({
+        ...(typeof item === 'object' ? item : {}),
+        file: typeof item === 'string' ? item : (item.file || item.path),
+        type: 'Unknown'
+      }))
+    ].filter(item => item.file)
+  }, [auditModalSite])
 
   return (
     <div style={{ maxWidth: '1720px', margin: '0 auto', padding: '4px 0 40px' }}>
@@ -403,21 +481,25 @@ export default function BulkCore() {
             <div style={kpiCardStyle}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                 <span style={kpiHeaderLabelStyle}>OFFICIAL LATEST STABLE</span>
-                <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>WP.ORG LIVE</span>
+                <span style={badgeStyle(
+                  versionDataAvailable ? '#E8F3EC' : '#FFF4ED',
+                  versionDataAvailable ? '#2A8B68' : '#EA580C',
+                  versionDataAvailable ? '#CFE2D4' : '#FED7AA'
+                )}>{versionDataAvailable ? 'OFFICIAL DATA' : 'DATA UNAVAILABLE'}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                <span style={{ fontSize: '19px', fontWeight: '700', letterSpacing: '-0.04em', color: '#10201E', letterSpacing: '-0.02em' }}>
+                <span style={{ fontSize: '19px', fontWeight: '700', letterSpacing: '-0.02em', color: '#10201E' }}>
                   WordPress {latestOfficialVer}
                 </span>
               </div>
               <div style={{ marginTop: '8px', fontSize: '12px', color: '#60716B', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                <span>PHP {coreData.official_info?.php_required || '7.4'}+</span>
+                <span>PHP {coreData.official_info?.php_required ? `${coreData.official_info.php_required}+` : 'Requirement unavailable'}</span>
                 <span>•</span>
-                <span>MySQL {coreData.official_info?.mysql_required || '5.5.5'}+</span>
+                <span>MySQL {coreData.official_info?.mysql_required ? `${coreData.official_info.mysql_required}+` : 'Requirement unavailable'}</span>
               </div>
               <div style={{ marginTop: '12px', fontSize: '11px', color: '#889892', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <CheckCircle2 size={13} color="#2A8B68" />
-                <span>Verified via official WordPress.org Version API</span>
+                {versionDataAvailable ? <CheckCircle2 size={13} color="#2A8B68" /> : <AlertTriangle size={13} color="#EA580C" />}
+                <span>{versionDataAvailable ? 'Release data retrieved from WordPress.org' : 'Official WordPress release could not be verified'}</span>
               </div>
             </div>
 
@@ -426,30 +508,34 @@ export default function BulkCore() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                 <span style={kpiHeaderLabelStyle}>FLEET ENGINE COMPLIANCE</span>
                 <span style={badgeStyle(
-                  outdatedCount === 0 ? '#E8F3EC' : '#FFF4ED',
-                  outdatedCount === 0 ? '#2A8B68' : '#EA580C',
-                  outdatedCount === 0 ? '#CFE2D4' : '#FED7AA'
+                  outdatedCount === 0 && unknownVersionCount === 0 ? '#E8F3EC' : '#FFF4ED',
+                  outdatedCount === 0 && unknownVersionCount === 0 ? '#2A8B68' : '#EA580C',
+                  outdatedCount === 0 && unknownVersionCount === 0 ? '#CFE2D4' : '#FED7AA'
                 )}>
-                  {outdatedCount === 0 ? '100% COMPLIANT' : `${outdatedCount} SITE(S) OUTDATED`}
+                  {!versionDataAvailable
+                    ? 'VERSION DATA UNAVAILABLE'
+                    : unknownVersionCount > 0
+                    ? `${unknownVersionCount} SITE(S) UNKNOWN`
+                    : outdatedCount === 0 ? 'COMPLIANT' : `${outdatedCount} SITE(S) OUTDATED`}
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                <span style={{ fontSize: '19px', fontWeight: '700', letterSpacing: '-0.04em', color: '#10201E', letterSpacing: '-0.02em' }}>
+                <span style={{ fontSize: '19px', fontWeight: '700', letterSpacing: '-0.02em', color: '#10201E' }}>
                   {coreData.up_to_date_count} / {coreData.total_sites || displayedSites.length}
                 </span>
                 <span style={{ fontSize: '14px', fontWeight: '700', color: '#60716B' }}>Sites Updated</span>
               </div>
               <div style={{ marginTop: '10px', width: '100%', height: '6px', background: '#EAEFEB', borderRadius: '999px', overflow: 'hidden' }}>
                 <div style={{
-                  width: `${coreData.fleet_integrity_pct || 100}%`,
+                  width: `${coreData.fleet_integrity_pct ?? 0}%`,
                   height: '100%',
-                  background: outdatedCount === 0 ? '#2A8B68' : '#EA580C',
+                  background: outdatedCount === 0 && unknownVersionCount === 0 ? '#2A8B68' : '#EA580C',
                   borderRadius: '999px',
                   transition: 'width 0.4s ease'
                 }} />
               </div>
               <div style={{ marginTop: '10px', fontSize: '11px', color: '#60716B' }}>
-                {coreData.fleet_integrity_pct}% fleet compliance rate across all connected origins
+                {coreData.fleet_integrity_pct == null ? 'Fleet version compliance is unknown until site versions are verified.' : `${coreData.fleet_integrity_pct}% fleet version compliance across known origins`}
               </div>
             </div>
 
@@ -457,16 +543,16 @@ export default function BulkCore() {
             <div style={kpiCardStyle}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                 <span style={kpiHeaderLabelStyle}>OFFICIAL SVN CHECKSUMS</span>
-                <span style={badgeStyle('#F0F9FF', '#0284C7', '#BAE6FD')}>3,224 HASHES</span>
+                <span style={badgeStyle('#F0F9FF', '#0284C7', '#BAE6FD')}>OFFICIAL MANIFEST</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                <span style={{ fontSize: '19px', fontWeight: '700', letterSpacing: '-0.04em', color: '#10201E', letterSpacing: '-0.02em' }}>
+                <span style={{ fontSize: '19px', fontWeight: '700', letterSpacing: '-0.02em', color: '#10201E' }}>
                   100%
                 </span>
                 <span style={{ fontSize: '14px', fontWeight: '700', color: '#2A8B68' }}>Integrity Target</span>
               </div>
               <div style={{ marginTop: '8px', fontSize: '12px', color: '#60716B' }}>
-                Cryptographic MD5 verification against official SVN release manifests
+                File-hash comparison against official WordPress release manifests
               </div>
               <div style={{ marginTop: '12px', fontSize: '11px', color: '#889892', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <ShieldCheck size={13} color="#0284C7" />
@@ -558,7 +644,9 @@ export default function BulkCore() {
                   {displayedSites.map((site) => {
                     const isVerifying = verifyingSiteId === site.site_id
                     const isUpdating = updatingSiteId === site.site_id
-                    const hasUpdate = !!site.update_available
+                    const hasUpdate = site.update_available === true
+                    const versionKnown = site.update_available !== null && site.update_available !== undefined
+                    const repairableFileCount = (site.modified_files || []).length + (site.missing_files || []).length
 
                     return (
                       <tr key={site.site_id} style={trStyle}>
@@ -612,20 +700,22 @@ export default function BulkCore() {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <span style={{ fontWeight: '800', fontSize: '14px', color: '#10201E' }}>
-                                v{site.installed_version}
+                                {site.installed_version ? `v${site.installed_version}` : 'Version unavailable'}
                               </span>
                               {hasUpdate ? (
                                 <span style={badgeStyle('#FFF4ED', '#EA580C', '#FED7AA')}>
                                   UPDATE TO v{site.latest_version}
                                 </span>
-                              ) : (
+                              ) : versionKnown ? (
                                 <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>
-                                  LATEST
+                                  CURRENT
                                 </span>
+                              ) : (
+                                <span style={badgeStyle('#FFF4ED', '#EA580C', '#FED7AA')}>UNKNOWN</span>
                               )}
                             </div>
                             <span style={{ fontSize: '11px', color: '#889892' }}>
-                              {hasUpdate ? 'Security & feature release pending' : 'Running official release'}
+                              {hasUpdate ? 'Security & feature release pending' : versionKnown ? 'No newer official release reported' : 'Installed or official version unavailable'}
                             </span>
                           </div>
                         </td>
@@ -656,21 +746,28 @@ export default function BulkCore() {
                                 <>
                                   <CheckCircle2 size={14} color="#2A8B68" />
                                   <span style={{ fontSize: '12px', fontWeight: '700', color: '#2A8B68' }}>
-                                    3,224 Files Verified
+                                    {site.files_verified_count ? `${site.files_verified_count.toLocaleString()} Files Verified` : 'Core Integrity Verified'}
+                                  </span>
+                                </>
+                              ) : site.checksum_status === 'modified_files_detected' ? (
+                                <>
+                                  <AlertTriangle size={14} color="#EA580C" />
+                                  <span style={{ fontSize: '12px', fontWeight: '700', color: '#EA580C' }}>
+                                    {site.modified_files_count || 0} Core Integrity Issue(s)
                                   </span>
                                 </>
                               ) : (
                                 <>
-                                  <AlertTriangle size={14} color="#EA580C" />
-                                  <span style={{ fontSize: '12px', fontWeight: '700', color: '#EA580C' }}>
-                                    {site.modified_files_count || 12} Modified Files Found
+                                  <Info size={14} color="#889892" />
+                                  <span style={{ fontSize: '12px', fontWeight: '700', color: '#60716B' }}>
+                                    Not verified
                                   </span>
                                 </>
                               )}
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <span style={{ fontSize: '11px', color: '#889892' }}>
-                                Checked: {site.checksum_verified_at || 'Live'}
+                                Checked: {site.checksum_verified_at || 'Never'}
                               </span>
                               <button
                                 onClick={() => setAuditModalSite(site)}
@@ -685,7 +782,7 @@ export default function BulkCore() {
                                   textDecoration: 'underline'
                                 }}
                               >
-                                View Hashes
+                                View Audit
                               </button>
                             </div>
                           </div>
@@ -717,7 +814,7 @@ export default function BulkCore() {
                               <span>{isVerifying ? 'Checking...' : 'Verify'}</span>
                             </button>
 
-                            {(site.checksum_status === 'modified_files_detected' || (site.modified_files && site.modified_files.length > 0)) && (
+                            {repairableFileCount > 0 && (
                               <button
                                 onClick={() => handleRepairAllCoreFiles(site)}
                                 disabled={repairingFile === '__all__'}
@@ -799,7 +896,9 @@ export default function BulkCore() {
                       </code>
                     </div>
                     <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>
-                      3,224 FILES VERIFIED
+                      {auditModalSite.files_verified_count
+                        ? `${auditModalSite.files_verified_count.toLocaleString()} FILES CHECKED`
+                        : 'NOT VERIFIED'}
                     </span>
                   </div>
 
@@ -825,8 +924,8 @@ export default function BulkCore() {
                     </div>
                   </div>
 
-                  {/* Divergent / Modified Core Files Section (If Any) */}
-                  {Array.isArray(auditModalSite.modified_files) && auditModalSite.modified_files.length > 0 && (
+                  {/* Repair controls for core findings */}
+                  {((auditModalSite.modified_files || []).length > 0 || (auditModalSite.missing_files || []).length > 0) && (
                     <div style={{
                       marginBottom: '18px',
                       padding: '14px 16px',
@@ -838,7 +937,7 @@ export default function BulkCore() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <AlertTriangle size={16} color="#DC2626" />
                           <span style={{ fontSize: '13px', fontWeight: '800', color: '#991B1B' }}>
-                            Cryptographic Checksum Divergence Detected ({auditModalSite.modified_files.length} file(s))
+                            Repairable Core Findings ({(auditModalSite.modified_files || []).length + (auditModalSite.missing_files || []).length})
                           </span>
                         </div>
                         <button
@@ -859,117 +958,45 @@ export default function BulkCore() {
                           }}
                         >
                           {repairingFile === '__all__' ? <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={12} />}
-                          <span>{repairingFile === '__all__' ? 'Restoring All Files...' : `Repair All Core Files (${auditModalSite.modified_files.length})`}</span>
+                          <span>{repairingFile === '__all__' ? 'Restoring All Files...' : `Repair All Core Files (${(auditModalSite.modified_files || []).length + (auditModalSite.missing_files || []).length})`}</span>
                         </button>
                       </div>
                       <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#7F1D1D', lineHeight: '1.45' }}>
-                        The files below differ from the pristine cryptographic release on WordPress.org SVN. This may indicate an unauthorized modification, backdoor injection, or server drift.
+                        Restore missing or modified files only after reviewing the origin scan results below.
                       </p>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {auditModalSite.modified_files.map((mf, mIdx) => {
-                          const mFile = typeof mf === 'string' ? mf : (mf.file || mf.name)
-                          const mReason = typeof mf === 'object' ? (mf.reason || 'MD5 hash divergence') : 'MD5 hash divergence'
-                          const isRep = repairingFile === mFile
-
-                          return (
-                            <div
-                              key={mIdx}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                background: '#FFFFFF',
-                                border: '1px solid #FCA5A5',
-                                borderRadius: '8px',
-                                padding: '10px 14px',
-                                flexWrap: 'wrap',
-                                gap: '10px'
-                              }}
-                            >
-                              <div>
-                                <div style={{ fontFamily: 'monospace', fontWeight: '700', fontSize: '13px', color: '#991B1B' }}>
-                                  {mFile}
-                                </div>
-                                <div style={{ fontSize: '11px', color: '#B91C1C', marginTop: '2px' }}>
-                                  {mReason}
-                                </div>
-                              </div>
-
-                              <button
-                                onClick={() => handleRepairCoreFile(auditModalSite, mf)}
-                                disabled={isRep}
-                                style={{
-                                  background: '#0B2522',
-                                  color: '#FFFFFF',
-                                  border: 'none',
-                                  padding: '6px 12px',
-                                  borderRadius: '6px',
-                                  fontSize: '11px',
-                                  fontWeight: '700',
-                                  cursor: isRep ? 'not-allowed' : 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '6px'
-                                }}
-                              >
-                                {isRep ? <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={12} />}
-                                <span>{isRep ? 'Restoring...' : 'Repair from WP.org'}</span>
-                              </button>
-                            </div>
-                          )
-                        })}
-                      </div>
                     </div>
                   )}
 
-                  {/* Verified core files list */}
+                  {/* Findings from the latest origin scan */}
                   <div>
                     <div style={{ fontSize: '12px', fontWeight: '800', color: '#10201E', marginBottom: '8px' }}>
-                      Critical Core Engine Files Verified Against SVN:
+                      Core Integrity Scan Results
                     </div>
                     <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #EAEFEB', borderRadius: '8px', background: '#FAFCFB' }}>
-                      {[
-                        'index.php',
-                        'wp-login.php',
-                        'wp-settings.php',
-                        'wp-load.php',
-                        'xmlrpc.php',
-                        'wp-blog-header.php',
-                        'wp-cron.php',
-                        'wp-trackback.php',
-                        'wp-comments-post.php',
-                        'wp-includes/version.php',
-                        'wp-includes/load.php',
-                        'wp-includes/default-filters.php',
-                        'wp-includes/pluggable.php',
-                        'wp-includes/functions.php',
-                        'wp-includes/plugin.php',
-                        'wp-admin/admin.php',
-                        'wp-admin/index.php',
-                        'wp-admin/menu.php'
-                      ].map((file) => {
-                        const isModified = (auditModalSite.modified_files || []).some(m => (typeof m === 'string' ? m : m.file) === file)
-
-                        return (
-                          <div key={file} style={{ padding: '8px 12px', borderBottom: '1px solid #F0F4F2', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
-                            <span style={{ fontFamily: 'monospace', color: isModified ? '#DC2626' : '#10201E', fontWeight: isModified ? '700' : 'normal' }}>
-                              {file}
-                            </span>
-                            {isModified ? (
-                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#DC2626', fontWeight: '700', fontSize: '11px' }}>
-                                <AlertTriangle size={12} />
-                                <span>Hash Divergence</span>
-                              </span>
-                            ) : (
-                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#2A8B68', fontWeight: '700', fontSize: '11px' }}>
-                                <CheckCircle2 size={12} />
-                                <span>SVN MD5 Match</span>
-                              </span>
-                            )}
-                          </div>
-                        )
-                      })}
+                      {auditModalSite.checksum_status === 'verified' ? (
+                        <div style={{ padding: '12px', fontSize: '12px', color: '#2A8B68' }}>
+                          No integrity findings reported across {auditModalSite.files_verified_count || 0} files checked.
+                        </div>
+                      ) : auditFindings.length > 0 ? auditFindings.map((finding, index) => (
+                        <div key={`${finding.file}-${index}`} style={{ padding: '8px 12px', borderBottom: '1px solid #F0F4F2', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', gap: '8px' }}>
+                          <span style={{ fontFamily: 'monospace', color: '#DC2626', fontWeight: '700' }}>
+                            {finding.file} ({finding.type})
+                          </span>
+                          {finding.type !== 'Unknown' && (
+                            <button
+                              onClick={() => handleRepairCoreFile(auditModalSite, finding)}
+                              disabled={repairingFile === finding.file}
+                              style={actionSecondaryBtnStyle}
+                            >
+                              {repairingFile === finding.file ? 'Restoring...' : 'Repair'}
+                            </button>
+                          )}
+                        </div>
+                      )) : (
+                        <div style={{ padding: '12px', fontSize: '12px', color: '#60716B' }}>
+                          This site does not have a complete verified checksum scan yet.
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1068,7 +1095,6 @@ const secondaryFleetButtonStyle = {
 const actionPrimaryBtnStyle = {
   background: '#0B2522', border: '1px solid #0B2522',
   color: '#ffffff',
-  border: 'none',
   padding: '6px 12px',
   borderRadius: '6px',
   fontSize: '12px',

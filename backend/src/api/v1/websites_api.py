@@ -6082,74 +6082,22 @@ async def repair_website_core_file(website_id: str, body: dict = None, user=Depe
 
 
 
-    file_path = (body or {}).get("file", "")
+    file_path = str((body or {}).get("file", "")).strip()
+    if not file_path:
+        raise HTTPException(status_code=400, detail="A core file path is required")
 
-
-
-
-
-
-
-    target_url = website.get("url") or website.get("domain") or ""
-
-
-
-
-
-
-
-    if target_url and not target_url.startswith("http"):
-
-
-
-
-
-
-
-        target_url = f"https://{target_url}" if website.get("domain") not in ("localhost", "127.0.0.1") else "http://localhost"
-
-
-
-
-
-
-
-    import requests
-    api_key = website.get('api_key') or ''
-    site_token = website.get('site_token') or ''
-    result_payload = {'status': 'success', 'message': f'Core file {file_path} restored to official WordPress release.'}
-
-    # 1. Primary dispatch via robust posthack cloud sync channel
-    try:
-        dispatch_res = _dispatch_wp_posthack(website, "core_integrity_restore", extra_params={"file_path": file_path, "file": file_path}, timeout=25.0)
-        if dispatch_res.get("success") and dispatch_res.get("data", {}).get("success"):
-            result_payload = dispatch_res["data"]
-            return success(result_payload)
-    except Exception:
-        pass
-
-    # 2. Candidate fallback endpoints
-    headers = {'Content-Type': 'application/json', 'User-Agent': 'MDefender-Pro-CloudAction/1.0'}
-    if api_key:
-        headers['Authorization'] = f'Bearer {api_key}'
-        headers['X-API-Key'] = api_key
-    if site_token:
-        headers['X-Site-Token'] = site_token
-    sep = '&' if '?' in target_url else '?'
-    candidates = [
-        f"{target_url}{sep}waf_cloud_sync=1&action=repair_core_file&api_key={api_key}&site_token={site_token}",
-        f"{target_url}/index.php?waf_cloud_sync=1&action=repair_core_file&api_key={api_key}&site_token={site_token}",
-        f"{target_url}/index.php?rest_route=/waf-fw/v1/remote-scan-repair-core&waf_cloud_sync=1&api_key={api_key}&site_token={site_token}",
-        f"{target_url}/wp-json/waf-fw/v1/remote-scan-repair-core?waf_cloud_sync=1&api_key={api_key}&site_token={site_token}"
-    ]
-    for ep in candidates:
-        try:
-            r = requests.post(ep, json={'file': file_path, 'action': 'repair_core_file', 'api_key': api_key, 'site_token': site_token}, headers=headers, timeout=10.0, verify=False)
-            if r.status_code == 200:
-                result_payload = r.json()
-                break
-        except Exception:
-            pass
+    dispatch_res = _dispatch_wp_posthack(
+        website,
+        "core_integrity_restore",
+        extra_params={"file_path": file_path, "file": file_path},
+        timeout=25.0,
+    )
+    result_payload = dispatch_res.get("data") or {}
+    if not dispatch_res.get("success") or result_payload.get("success") is not True:
+        raise HTTPException(
+            status_code=502,
+            detail=result_payload.get("message") or dispatch_res.get("message") or "WordPress origin did not confirm the core file repair",
+        )
 
 
 
@@ -10246,10 +10194,6 @@ async def execute_remote_action(website_id: str, body: RemoteActionRequest, user
                             t["version"] = t["new_version"]
                 site_updates["themes"] = cur_t
 
-        if site_updates:
-            db.websites.update_one({"_id": ws["_id"]}, {"$set": site_updates})
-            ws.update(site_updates)
-
         # 2. Dispatch to remote WordPress instance with short fail-fast timeout
         target_url = ws.get("url") or ws.get("domain") or ""
         if target_url and not target_url.startswith("http"):
@@ -10260,8 +10204,8 @@ async def execute_remote_action(website_id: str, body: RemoteActionRequest, user
         site_result = {
             "website_id": str(ws["_id"]),
             "domain": ws.get("domain", ""),
-            "success": True,
-            "message": "Action applied successfully"
+            "success": False,
+            "message": "WordPress origin did not confirm the requested action."
         }
 
         sep = "&" if "?" in target_url else "?"
@@ -10318,12 +10262,23 @@ async def execute_remote_action(website_id: str, body: RemoteActionRequest, user
                 if resp.status_code == 200:
                     try:
                         resp_json = resp.json()
-                        if not isinstance(resp_json, dict) or ("status" not in resp_json and "action_result" not in resp_json):
+                        action_result = resp_json.get("action_result") if isinstance(resp_json, dict) else None
+                        if not isinstance(action_result, dict):
                             continue
                     except Exception:
                         continue
+
+                    if action_result.get("success") is not True:
+                        site_result["response"] = resp_json
+                        site_result["message"] = action_result.get("message") or "WordPress origin reported that the action failed."
+                        break
+
                     site_result["success"] = True
+                    site_result["message"] = action_result.get("message") or "Action confirmed by WordPress origin."
                     site_result["response"] = resp_json
+                    if site_updates:
+                        db.websites.update_one({"_id": ws["_id"]}, {"$set": site_updates})
+                        ws.update(site_updates)
                     inv = resp_json.get("inventory") if isinstance(resp_json, dict) else None
                     if inv and isinstance(inv, dict):
                         inv_updates = {}
@@ -10336,11 +10291,13 @@ async def execute_remote_action(website_id: str, body: RemoteActionRequest, user
                             db.websites.update_one({"_id": ws["_id"]}, {"$set": inv_updates})
                             site_result["inventory"] = inv
                     break
-            except (requests.exceptions.ConnectionError, requests.exceptions.ConnectTimeout, requests.exceptions.Timeout):
+                site_result["message"] = f"WordPress origin returned HTTP {resp.status_code}."
+            except (requests.exceptions.ConnectionError, requests.exceptions.ConnectTimeout, requests.exceptions.Timeout) as exc:
                 # Unreachable host or DNS failure - immediately break out of candidate loop
+                site_result["message"] = f"Could not connect to WordPress origin: {exc}"
                 break
-            except Exception:
-                pass
+            except Exception as exc:
+                site_result["message"] = f"Remote action dispatch failed: {exc}"
 
         return site_result
 
@@ -13330,28 +13287,31 @@ async def run_safe_update_pipeline(website_id: str, body: SafeUpdateRequest, use
         "target_type": t_type,
         "target_name": t_slug or t_file,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "status": "verified_clean",
+        "status": "failed",
         "regression_detected": False,
         "rolled_back": False,
-        "failure_reason": "",
-        "baseline_latency_ms": 32,
-        "probe_results": [
-            {"endpoint": "Frontend Homepage (/)", "status": "healthy", "http_code": 200, "latency_ms": 22},
-            {"endpoint": "WordPress Admin (/wp-admin/)", "status": "healthy", "http_code": 200, "latency_ms": 25},
-            {"endpoint": "REST API Gateway (/wp-json/)", "status": "healthy", "http_code": 200, "latency_ms": 19}
-        ],
-        "snapshot_saved": True
+        "failure_reason": "WordPress origin did not return a verified safe-update result.",
+        "baseline_latency_ms": None,
+        "probe_results": [],
+        "snapshot_saved": False
     }
 
     try:
         sep = "&" if "?" in target_url else "?"
-        remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=safe_update_pipeline&site_token={site_token}&api_key={api_key}"
-        headers = {"X-MDefender-Pro-Sync-Auth": api_key, "Content-Type": "application/json"}
+        remote_url = f"{target_url}{sep}waf_cloud_sync=1&action=safe_update_pipeline"
+        headers = {"Content-Type": "application/json"}
+        if api_key:
+            headers.update({"Authorization": f"Bearer {api_key}", "X-API-Key": api_key})
+        if site_token:
+            headers["X-Site-Token"] = site_token
         resp = requests.post(remote_url, json=payload, headers=headers, timeout=12, verify=False)
         if resp.status_code == 200:
-            res_json = resp.json().get("action_result", {})
-            if res_json:
+            response_data = resp.json()
+            res_json = response_data.get("action_result", {}) if isinstance(response_data, dict) else {}
+            if isinstance(res_json, dict) and res_json:
                 result_data.update(res_json)
+                result_data["success"] = res_json.get("success") is True
+                result_data["failure_reason"] = res_json.get("failure_reason") or ""
             else:
                 result_data["status"] = "failed"
                 result_data["failure_reason"] = "Empty action result from WordPress agent"
@@ -13363,11 +13323,17 @@ async def run_safe_update_pipeline(website_id: str, body: SafeUpdateRequest, use
         result_data["status"] = "failed"
         result_data["failure_reason"] = f"Failed to connect to origin WordPress agent: {str(e)}"
 
-    # Persist in DB
+    result_data.setdefault("success", result_data.get("status") in ("verified_clean", "no_update"))
+    result_data["history_persisted"] = False
     try:
         db.safe_updates_log.insert_one(dict(result_data))
-    except Exception:
-        pass
+        result_data["history_persisted"] = True
+    except Exception as exc:
+        logger.exception("[SafeUpdates] Failed to persist safe-update history")
+        result_data["history_error"] = str(exc)
+        if result_data.get("success"):
+            result_data["status"] = "completed_unlogged"
+            result_data["success"] = False
 
     return success(result_data)
 

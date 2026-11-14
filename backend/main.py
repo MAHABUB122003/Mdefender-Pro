@@ -136,6 +136,27 @@ def ensure_default_wordpress_site():
             }
         }
 
+        key_hash = hashlib.sha256(wp_api_key.encode()).hexdigest()
+        existing_key = _db.api_keys.find_one(
+            {'key_hash': key_hash},
+            {'_id': 1, 'website_id': 1, 'user_id': 1}
+        )
+        if existing_key and str(existing_key.get('user_id')) != admin_id:
+            raise RuntimeError('Default WordPress API key is already assigned to a different user.')
+        if existing_key and str(existing_key.get('website_id')) != site_id:
+            previous_website_id = existing_key.get('website_id')
+            previous_website_query = {
+                '$or': [
+                    {'_id': previous_website_id},
+                    {'id': str(previous_website_id)},
+                ]
+            }
+            if isinstance(previous_website_id, str) and ObjectId.is_valid(previous_website_id):
+                previous_website_query['$or'].append({'_id': ObjectId(previous_website_id)})
+            previous_website = _db.websites.find_one(previous_website_query, {'_id': 1})
+            if previous_website:
+                raise RuntimeError('Default WordPress API key is already assigned to another website.')
+
         if not site_doc:
             _db.websites.insert_one(site_fields)
         elif not site_doc.get('user_id') or site_doc.get('user_id') == admin_id:
@@ -146,19 +167,22 @@ def ensure_default_wordpress_site():
                     site_fields['wordpress_connection']['api_key'] = site_doc['api_key']
             _db.websites.update_one({'_id': site_doc['_id']}, {'$set': site_fields})
 
-        key_hash = hashlib.sha256(wp_api_key.encode()).hexdigest()
-        _db.api_keys.update_one(
-            {'website_id': site_id},
-            {'$set': {
-                'website_id': site_id,
-                'user_id': admin_id,
-                'key_hash': key_hash,
-                'label': 'WordPress Mahabub Shop',
-                'created_at': datetime.now(),
-                'status': 'active'
-            }},
-            upsert=True
-        )
+        key_record_fields = {
+            'website_id': site_id,
+            'user_id': admin_id,
+            'key_hash': key_hash,
+            'label': 'WordPress Mahabub Shop',
+            'created_at': datetime.now(),
+            'status': 'active'
+        }
+        if existing_key:
+            _db.api_keys.update_one({'_id': existing_key['_id']}, {'$set': key_record_fields})
+        else:
+            _db.api_keys.update_one(
+                {'website_id': site_id},
+                {'$set': key_record_fields},
+                upsert=True
+            )
         print("[MDefender] WordPress site 'Mahabub Shop' seeded and linked with active API key.")
     except Exception as e:
         print(f"[MDefender] Error ensuring default WordPress site: {e}")
@@ -1980,10 +2004,6 @@ async def user_get_blacklist(request: Request, user: dict = Depends(verify_user_
 @app.post("/api/user/blacklist")
 @app.post("/api/v1/user/blacklist")
 async def user_add_blacklist(request: Request, user: dict = Depends(verify_user_token_compat)):
-    import requests
-    import urllib3
-    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    
     data = await request.json()
     ip = (data.get('ip') or '').strip()
     if not ip:
@@ -1996,7 +2016,7 @@ async def user_add_blacklist(request: Request, user: dict = Depends(verify_user_
     website_id = (data.get('website_id') or 'all').strip()
     user_id_str = str(user.get('_id') or '')
 
-    all_sites = get_user_connected_wordpress_sites(user)
+    all_sites = await asyncio.to_thread(get_user_connected_wordpress_sites, user)
     target_sites = all_sites
     website_domain = 'Global Fleet'
     if website_id and website_id != 'all':
@@ -2007,25 +2027,26 @@ async def user_add_blacklist(request: Request, user: dict = Depends(verify_user_
         else:
             website_domain = website_id
 
-    # 1. Persist in Central Database (scoped to user & website)
-    db.blacklist.update_one(
-        {'ip': ip, 'website_id': website_id, '$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]},
-        {'$set': {
-            'ip': ip,
-            'reason': reason,
-            'type': duration_label,
-            'expires_at': expires_at,
-            'user_id': user_id_str,
-            'added_by_user_id': user_id_str,
-            'added_by': user.get('email', 'dashboard'),
-            'blocked_at': datetime.now(),
-            'website_id': website_id,
-            'website_domain': website_domain
-        }},
-        upsert=True
-    )
-    # Automatically remove from whitelist if blacklisted
-    db.whitelist.delete_many({'ip': ip, '$or': [{'added_by_user_id': user_id_str}, {'user_id': user_id_str}]})
+    def persist_block():
+        db.blacklist.update_one(
+            {'ip': ip, 'website_id': website_id, '$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]},
+            {'$set': {
+                'ip': ip,
+                'reason': reason,
+                'type': duration_label,
+                'expires_at': expires_at,
+                'user_id': user_id_str,
+                'added_by_user_id': user_id_str,
+                'added_by': user.get('email', 'dashboard'),
+                'blocked_at': datetime.now(),
+                'website_id': website_id,
+                'website_domain': website_domain
+            }},
+            upsert=True
+        )
+        db.whitelist.delete_many({'ip': ip, '$or': [{'added_by_user_id': user_id_str}, {'user_id': user_id_str}]})
+
+    await asyncio.to_thread(persist_block)
 
     # 2. Instant Asynchronous Push to WordPress fleet nodes (< 15ms UI response)
     push_to_fleet_async(target_sites, {
@@ -2036,13 +2057,22 @@ async def user_add_blacklist(request: Request, user: dict = Depends(verify_user_
         'expires_at': exp_str
     })
     try:
-        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-        push_instant_sync_to_wordpress(user_id=user_id_str, website_id=website_id if website_id != 'all' else None)
-    except Exception:
-        pass
+        def queue_full_sync():
+            from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+            push_instant_sync_to_wordpress(
+                user_id=user_id_str,
+                website_id=website_id if website_id != 'all' else None,
+            )
+        await asyncio.to_thread(queue_full_sync)
+    except Exception as exc:
+        import logging
+        logging.getLogger('mdefender.live_traffic').warning(
+            'Blacklist fleet sync could not be queued (%s)', type(exc).__name__
+        )
             
     try:
-        audit_svc.log(
+        await asyncio.to_thread(
+            audit_svc.log,
             user_id=user_id_str,
             action="ip_quarantined",
             ip_address=ip,
@@ -2055,11 +2085,21 @@ async def user_add_blacklist(request: Request, user: dict = Depends(verify_user_
                 "category": "security"
             }
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        import logging
+        logging.getLogger('mdefender.live_traffic').warning(
+            'Blacklist audit event could not be recorded (%s)', type(exc).__name__
+        )
 
     scope_txt = f" on {website_domain}" if website_id != 'all' else " across security fleet"
-    return {'status': 'success', 'message': f'IP {ip} blacklisted successfully{scope_txt} ({duration_label})'}
+    sync_txt = (
+        f" Synchronization was queued for {len(target_sites)} connected site(s)."
+        if target_sites else " No connected WordPress sites were available to synchronize."
+    )
+    return {
+        'status': 'success',
+        'message': f'IP {ip} was blocked centrally{scope_txt} ({duration_label}).{sync_txt}'
+    }
 
 
 @app.delete("/api/user/blacklist")
@@ -2210,44 +2250,45 @@ async def user_get_whitelist(user: dict = Depends(verify_user_token_compat)):
 @app.post("/api/user/whitelist")
 @app.post("/api/v1/user/whitelist")
 async def user_add_whitelist(request: Request, user: dict = Depends(verify_user_token_compat)):
-    import requests
-    import urllib3
-    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
     data = await request.json()
-    ip = data.get('ip', '').strip()
+    ip = str(data.get('ip') or '').strip()
     if not ip:
         return {'status': 'error', 'message': 'IP address is required'}
     reason = data.get('reason', 'Whitelisted by user from dashboard')
     user_id_str = str(user['_id'])
 
-    # 1. Save in MongoDB
-    db.whitelist.update_one(
-        {'ip': ip, '$or': [{'added_by_user_id': user_id_str}, {'user_id': user_id_str}]},
-        {'$set': {
-            'ip': ip,
-            'reason': reason,
-            'added_by': user.get('email', 'unknown'),
-            'added_by_user_id': user_id_str,
-            'user_id': user_id_str,
-            'added_at': datetime.now(),
-        }},
-        upsert=True
-    )
-    # Remove from blacklist if present
-    db.blacklist.delete_many({'ip': ip, '$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]})
+    def persist_whitelist():
+        db.whitelist.update_one(
+            {'ip': ip, '$or': [{'added_by_user_id': user_id_str}, {'user_id': user_id_str}]},
+            {'$set': {
+                'ip': ip,
+                'reason': reason,
+                'added_by': user.get('email', 'unknown'),
+                'added_by_user_id': user_id_str,
+                'user_id': user_id_str,
+                'added_at': datetime.now(),
+            }},
+            upsert=True
+        )
+        db.blacklist.delete_many({'ip': ip, '$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]})
+        return get_user_connected_wordpress_sites(user)
 
-    # 2. Asynchronously push to connected WordPress fleet nodes
-    sites = get_user_connected_wordpress_sites(user)
+    sites = await asyncio.to_thread(persist_whitelist)
     push_to_fleet_async(sites, {'action': 'add_whitelist', 'ip': ip, 'reason': reason}, full_sync=True)
     try:
-        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-        push_instant_sync_to_wordpress(user_id=user_id_str)
-    except Exception:
-        pass
+        def queue_full_sync():
+            from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+            push_instant_sync_to_wordpress(user_id=user_id_str)
+        await asyncio.to_thread(queue_full_sync)
+    except Exception as exc:
+        import logging
+        logging.getLogger('mdefender.live_traffic').warning(
+            'Whitelist fleet sync could not be queued (%s)', type(exc).__name__
+        )
 
     try:
-        audit_svc.log(
+        await asyncio.to_thread(
+            audit_svc.log,
             user_id=user_id_str,
             action="ip_whitelisted",
             ip_address=ip,
@@ -2257,10 +2298,20 @@ async def user_add_whitelist(request: Request, user: dict = Depends(verify_user_
                 "category": "security"
             }
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        import logging
+        logging.getLogger('mdefender.live_traffic').warning(
+            'Whitelist audit event could not be recorded (%s)', type(exc).__name__
+        )
 
-    return {'status': 'success', 'message': f'IP {ip} whitelisted successfully across security nodes'}
+    sync_txt = (
+        f" Synchronization was queued for {len(sites)} connected site(s)."
+        if sites else " No connected WordPress sites were available to synchronize."
+    )
+    return {
+        'status': 'success',
+        'message': f'IP {ip} was added to the central whitelist.{sync_txt}'
+    }
 
 
 @app.delete("/api/user/whitelist")
@@ -2324,39 +2375,23 @@ async def user_delete_whitelist(request: Request, user: dict = Depends(verify_us
 
 @app.get("/api/user/whois")
 async def user_whois_lookup(ip: str, user: dict = Depends(verify_user_token_compat)):
-    import requests
-    import socket
+    import dns.asyncresolver
+    import dns.resolver
+    import httpx
+    import ipaddress
+    import logging
     import re
-    from bson import ObjectId
 
     ip = (ip or '').strip()
-    if not ip:
-        return {'status': 'error', 'message': 'IP address is required'}
-
-    # 1. Reverse DNS Hostname
-    hostname = ''
     try:
-        hostname = socket.gethostbyaddr(ip)[0]
-    except Exception:
-        hostname = 'No PTR record'
+        ipaddress.ip_address(ip)
+    except ValueError:
+        return {'status': 'error', 'message': 'A valid IPv4 or IPv6 address is required'}
 
-    # 2. Rich Geolocation & Network Intelligence
+    lookup_errors = []
+    hostname = 'No PTR record'
     geo_data = {}
-    try:
-        r = requests.get(
-            f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as,asname,reverse,mobile,proxy,hosting,query",
-            timeout=4
-        )
-        if r.status_code == 200:
-            geo_data = r.json()
-    except Exception:
-        pass
-
-    if not geo_data.get('reverse') and hostname != 'No PTR record':
-        geo_data['reverse'] = hostname
-
-    # 3. Official RIR WHOIS Records & Key Extraction
-    raw_whois = "No whois record found."
+    raw_whois = 'No whois record found.'
     parsed_whois = {
         'netname': '',
         'inetnum': '',
@@ -2368,64 +2403,121 @@ async def user_whois_lookup(ip: str, user: dict = Depends(verify_user_token_comp
         'last_modified': '',
     }
 
-    try:
-        r = requests.get(f"https://stat.ripe.net/data/whois/data.json?resource={ip}", timeout=5)
-        if r.status_code == 200:
-            data = r.json()
-            records = data.get('data', {}).get('records', [])
-            output = ""
-            for rec in records:
-                for line in rec:
-                    k = (line.get('key') or '').strip().lower()
-                    v = (line.get('value') or '').strip()
-                    output += f"{line.get('key')}: {v}\n"
+    async def lookup_ptr():
+        return await dns.asyncresolver.resolve_address(ip, lifetime=2.0)
 
-                    # Auto-extract key fields
-                    if k in ('netname', 'net-name') and not parsed_whois['netname']:
-                        parsed_whois['netname'] = v
-                    elif k in ('inetnum', 'inet6num', 'cidr', 'route') and not parsed_whois['inetnum']:
-                        parsed_whois['inetnum'] = v
-                    elif k in ('abuse-mailbox', 'e-mail', 'abuse-email', 'notify') and not parsed_whois['abuse_email']:
-                        emails = re.findall(r'[\w\.-]+@[\w\.-]+\.\w+', v)
-                        if emails:
-                            parsed_whois['abuse_email'] = emails[0]
-                    elif k in ('org-name', 'organization', 'descr') and not parsed_whois['organization']:
-                        parsed_whois['organization'] = v
-                    elif k in ('country', 'country-code') and not parsed_whois['country']:
-                        parsed_whois['country'] = v.upper()
-                    elif k in ('source', 'source-rir') and not parsed_whois['source']:
-                        parsed_whois['source'] = v.upper()
-                    elif k in ('last-modified', 'changed') and not parsed_whois['last_modified']:
-                        parsed_whois['last_modified'] = v
+    async def fetch_json(client, url, params):
+        response = await client.get(url, params=params)
+        response.raise_for_status()
+        return response.json()
 
-                output += "\n" + "-"*40 + "\n\n"
+    timeout = httpx.Timeout(connect=2.0, read=4.0, write=2.0, pool=2.0)
+    geo_fields = 'status,message,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as,asname,reverse,mobile,proxy,hosting,query'
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        geo_result, whois_result, ptr_result = await asyncio.gather(
+            fetch_json(
+                client,
+                f'http://ip-api.com/json/{ip}',
+                {'fields': geo_fields},
+            ),
+            fetch_json(
+                client,
+                'https://stat.ripe.net/data/whois/data.json',
+                {'resource': ip},
+            ),
+            lookup_ptr(),
+            return_exceptions=True,
+        )
 
-            if output:
-                raw_whois = output
-    except Exception as e:
-        raw_whois = f"Whois query failed: {str(e)}"
+    log = logging.getLogger('mdefender.threat_intel')
+    if isinstance(geo_result, Exception):
+        lookup_errors.append('Geolocation lookup is currently unavailable.')
+        log.warning('Geolocation provider lookup failed (%s)', type(geo_result).__name__)
+    elif isinstance(geo_result, dict):
+        geo_data = geo_result
+        if geo_data.get('status') == 'fail':
+            lookup_errors.append(geo_data.get('message') or 'Geolocation lookup failed.')
+    else:
+        lookup_errors.append('Geolocation provider returned an invalid response.')
 
-    # 4. Local User Attack History for this IP
-    u_str = str(user['_id'])
-    user_cond = {'$or': [{'user_id': u_str}, {'added_by_user_id': u_str}]}
+    if isinstance(whois_result, Exception):
+        raw_whois = 'WHOIS registry lookup is currently unavailable.'
+        lookup_errors.append('WHOIS registry lookup is currently unavailable.')
+        log.warning('WHOIS registry lookup failed (%s)', type(whois_result).__name__)
+    elif isinstance(whois_result, dict):
+        whois_data = whois_result.get('data')
+        records = whois_data.get('records', []) if isinstance(whois_data, dict) else []
+        if not isinstance(records, list):
+            records = []
+        output = ''
+        for rec in records:
+            if not isinstance(rec, list):
+                continue
+            for line in rec:
+                if not isinstance(line, dict):
+                    continue
+                key = (line.get('key') or '').strip().lower()
+                value = (line.get('value') or '').strip()
+                output += f"{line.get('key')}: {value}\n"
 
-    attack_query = {'$and': [{'ip': ip}, user_cond]}
-    local_attacks_count = db.attacks.count_documents(attack_query)
-    recent_attacks = list(db.attacks.find(attack_query).sort('timestamp', -1).limit(5))
+                if key in ('netname', 'net-name') and not parsed_whois['netname']:
+                    parsed_whois['netname'] = value
+                elif key in ('inetnum', 'inet6num', 'cidr', 'route') and not parsed_whois['inetnum']:
+                    parsed_whois['inetnum'] = value
+                elif key in ('abuse-mailbox', 'e-mail', 'abuse-email', 'notify') and not parsed_whois['abuse_email']:
+                    emails = re.findall(r'[\w\.-]+@[\w\.-]+\.\w+', value)
+                    if emails:
+                        parsed_whois['abuse_email'] = emails[0]
+                elif key in ('org-name', 'organization', 'descr') and not parsed_whois['organization']:
+                    parsed_whois['organization'] = value
+                elif key in ('country', 'country-code') and not parsed_whois['country']:
+                    parsed_whois['country'] = value.upper()
+                elif key in ('source', 'source-rir') and not parsed_whois['source']:
+                    parsed_whois['source'] = value.upper()
+                elif key in ('last-modified', 'changed') and not parsed_whois['last_modified']:
+                    parsed_whois['last_modified'] = value
+
+            output += "\n" + "-" * 40 + "\n\n"
+
+        if output:
+            raw_whois = output
+    else:
+        lookup_errors.append('WHOIS registry returned an invalid response.')
+
+    if isinstance(ptr_result, Exception):
+        if not isinstance(ptr_result, (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer)):
+            lookup_errors.append('Reverse DNS lookup timed out or failed.')
+            log.warning('Reverse DNS lookup failed (%s)', type(ptr_result).__name__)
+    else:
+        hostname = str(ptr_result[0]).rstrip('.')
+
+    if hostname == 'No PTR record' and geo_data.get('reverse'):
+        hostname = str(geo_data['reverse'])
+
+    # Local user attack history and policy checks use synchronous database services.
+    def load_local_threat_context():
+        user_id = str(user['_id'])
+        user_cond = {'$or': [{'user_id': user_id}, {'added_by_user_id': user_id}]}
+        attack_query = {'$and': [{'ip': ip}, user_cond]}
+        attack_count = db.attacks.count_documents(attack_query)
+        recent = list(db.attacks.find(attack_query).sort('timestamp', -1).limit(5))
+        blacklisted = ip_filter.is_blacklisted(ip, user_id=user_id)
+        geo_blocked, geo_info = ip_filter.is_country_blocked(ip, user_id=user_id)
+        return attack_count, recent, blacklisted, geo_blocked, geo_info
+
+    local_attacks_count, recent_attacks, is_blacklisted, is_geo_blocked, geo_info = await asyncio.to_thread(
+        load_local_threat_context
+    )
 
     attack_history = []
-    for a in recent_attacks:
+    for attack in recent_attacks:
         attack_history.append({
-            'url': a.get('url', '/'),
-            'attack_type': a.get('attack_type', 'Attack Attempt'),
-            'status': a.get('status', 'blocked'),
-            'timestamp': a['timestamp'].strftime('%Y-%m-%d %H:%M:%S') if a.get('timestamp') and hasattr(a['timestamp'], 'strftime') else str(a.get('timestamp', '')),
-            'confidence': a.get('confidence', 1.0),
+            'url': attack.get('url', '/'),
+            'attack_type': attack.get('attack_type', 'Attack Attempt'),
+            'status': attack.get('status', 'blocked'),
+            'timestamp': attack['timestamp'].strftime('%Y-%m-%d %H:%M:%S') if attack.get('timestamp') and hasattr(attack['timestamp'], 'strftime') else str(attack.get('timestamp', '')),
+            'confidence': attack.get('confidence', 1.0),
         })
-
-    # 5. Blacklist & Geo-Block Status Checks
-    is_blacklisted = ip_filter.is_blacklisted(ip, user_id=u_str)
-    is_geo_blocked, geo_info = ip_filter.is_country_blocked(ip, user_id=u_str)
 
     # 6. Calculate Threat Score & Risk Assessment
     threat_score = 0
@@ -2468,6 +2560,7 @@ async def user_whois_lookup(ip: str, user: dict = Depends(verify_user_token_comp
         'hostname': hostname,
         'geo': geo_data,
         'parsed_whois': parsed_whois,
+        'lookup_errors': lookup_errors,
         'threat_assessment': {
             'score': threat_score,
             'level': threat_level,
@@ -2484,7 +2577,6 @@ async def user_whois_lookup(ip: str, user: dict = Depends(verify_user_token_comp
         },
         'raw': raw_whois
     }
-
 
 @app.get("/api/user/country-blocks")
 @app.get("/api/v1/user/country-blocks")

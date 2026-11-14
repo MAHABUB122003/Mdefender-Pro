@@ -239,8 +239,24 @@ export default function BulkSafeUpdates() {
 
   // Execute Safe Update Pipeline
   const runPipeline = async (targetItem, simulateRegression = false) => {
-    if (!targetSiteId) {
+    if (!targetSiteId || !targetItem) {
       showToast('Please select a connected WordPress site first.', true)
+      return
+    }
+
+    if (simulateRegression) {
+      setExecutionModal({
+        open: true,
+        step: 5,
+        target: targetItem.name,
+        logs: [
+          '[SIMULATION] No WordPress origin was contacted.',
+          '[SIMULATION] No update, snapshot, probe, or rollback was performed.'
+        ],
+        status: 'simulation',
+        result: { simulated: true }
+      })
+      showToast('Simulation completed; no origin operation was performed.')
       return
     }
 
@@ -249,10 +265,7 @@ export default function BulkSafeUpdates() {
       open: true,
       step: 1,
       target: targetItem.name,
-      logs: [
-        `[00:00] Initializing Safe Update pipeline for ${targetItem.name}...`,
-        `[00:01] Pre-update safety checks initiated on origin disk.`
-      ],
+      logs: [`Dispatching safe update to ${currentSite?.domain || 'selected WordPress site'}...`],
       status: 'running',
       result: null
     })
@@ -265,139 +278,45 @@ export default function BulkSafeUpdates() {
     }
 
     try {
-      // Step 1: Create Micro-Snapshot
-      await new Promise(r => setTimeout(r, 900))
-      appendLog(`[00:01] Creating micro-snapshot of wp-content/${targetItem.type}s/${targetItem.slug}/...`)
-      appendLog(`[00:02] Snapshot captured: mdf_safe_${Date.now().toString(16)}.zip (Targeted size: 1.4 MB).`)
-      setExecutionModal(prev => ({ ...prev, step: 2 }))
-
-      // Step 2: Baseline Telemetry Probe
-      await new Promise(r => setTimeout(r, 800))
-      appendLog(`[00:02] Probing baseline endpoints: Home (/), WP-Admin (/wp-admin/), REST (/wp-json/)...`)
-      appendLog(`[00:03] Baseline latency established: 19ms. Zero fatal errors in debug.log.`)
-      setExecutionModal(prev => ({ ...prev, step: 3 }))
-
-      // Step 3: Atomic Component Upgrader
-      await new Promise(r => setTimeout(r, 1100))
-      appendLog(`[00:04] Upgrading ${targetItem.name} ${targetItem.current_version} -> ${targetItem.new_version}...`)
-      appendLog(`[00:05] New binaries placed into disk sandbox.`)
-      setExecutionModal(prev => ({ ...prev, step: 4 }))
-
-      // Step 4: Synthetic Regression Probes
-      await new Promise(r => setTimeout(r, 1000))
-      appendLog(`[00:06] Executing synthetic post-upgrade probes on 3 isolated endpoints...`)
-
-      if (simulateRegression) {
-        // Simulated failure / Regression detected
-        await new Promise(r => setTimeout(r, 800))
-        appendLog(`[00:07] ⚠️ REGRESSION DETECTED: Synthetic probe on /wp-admin/ returned HTTP 500!`)
-        appendLog(`[00:07] PHP Fatal error detected: Call to undefined function in plugin core.`)
-        setExecutionModal(prev => ({ ...prev, step: 5 }))
-
-        await new Promise(r => setTimeout(r, 900))
-        appendLog(`[00:08] 🛡️ AUTONOMOUS INSTANT ROLLBACK ENGAGED! Restoring micro-snapshot checkpoint...`)
-        appendLog(`[00:09] Micro-snapshot restored in 1.1s. Site restored to 100% operational state (HTTP 200).`)
-
-        const failureRecord = {
-          id: `su-${Date.now()}`,
-          component_type: targetItem.type,
-          component_slug: targetItem.slug,
-          component_name: targetItem.name,
-          from_version: targetItem.current_version,
-          to_version: targetItem.new_version,
-          snapshot_file: `mdf_safe_${Date.now().toString(16)}.zip`,
-          snapshot_size_bytes: 1420500,
-          pre_latency_ms: 19,
-          post_latency_ms: 540,
-          regression_detected: true,
-          rollback_triggered: true,
-          status: 'rolled_back',
-          created_at: new Date().toISOString(),
-          probes_summary: 'Regression: HTTP 500 on /wp-admin/. Autonomous rollback executed in 1.1s.'
-        }
-        setHistory(prev => [failureRecord, ...prev])
+      appendLog('Creating snapshot, probing the origin, and running the requested WordPress update...')
+      const response = await api.runSafeUpdate(targetSiteId, {
+        target_type: targetItem.type,
+        target_slug: targetItem.slug,
+        target_file: targetItem.file || targetItem.slug
+      })
+      const result = response?.data || response
+      if (result?.success !== true) {
+        const message = result?.failure_reason || result?.history_error || 'The origin did not confirm a successful safe update.'
+        appendLog(`Origin did not confirm success: ${message}`)
         setExecutionModal(prev => ({
           ...prev,
-          status: 'rollback',
-          result: failureRecord
+          step: 5,
+          status: result?.status === 'rolled_back' ? 'rollback' : 'error',
+          result
         }))
-        showToast('Autonomous Rollback Succeeded: Website crash prevented!', false)
+        showToast(message, true)
       } else {
-        // Real API invocation to origin
-        let realData = null
-        try {
-          const res = await api.runSafeUpdate(targetSiteId, {
-            target_type: targetItem.type,
-            target_slug: targetItem.slug,
-            target_file: targetItem.file || targetItem.slug,
-            component_type: targetItem.type,
-            component_slug: targetItem.slug,
-            version: targetItem.new_version
-          })
-          realData = res?.data || res
-        } catch (netErr) {
-          appendLog(`[00:07] ❌ NETWORK ERROR: Failed to communicate with WordPress origin: ${netErr.message || 'Connection refused'}`)
-          setExecutionModal(prev => ({
-            ...prev,
-            status: 'failed',
-            error: netErr.message || 'Origin unreachable'
-          }))
-          showToast(`Safe update failed: ${netErr.message || 'Remote WordPress agent unreachable'}`, true)
-          setExecuting(false)
-          return
-        }
-
-        if (realData?.status === 'failed') {
-          appendLog(`[00:07] ❌ ORIGIN FAILURE: ${realData.failure_reason || 'Safe update execution was rejected by remote agent'}`)
-          setExecutionModal(prev => ({
-            ...prev,
-            status: 'failed',
-            error: realData.failure_reason || 'Update failed on WordPress site'
-          }))
-          showToast(realData.failure_reason || 'Safe update failed on target site.', true)
-          setExecuting(false)
-          return
-        }
-
-        const probeLatency = realData.baseline_latency_ms || realData.latency_ms || 24
-        appendLog(`[00:07] Probe Home (/): HTTP 200 OK (${probeLatency}ms)`)
-        appendLog(`[00:07] Probe Admin (/wp-admin/): HTTP 200 OK (${probeLatency + 4}ms)`)
-        appendLog(`[00:07] Probe REST API (/wp-json/): HTTP 200 OK (${Math.max(12, probeLatency - 3)}ms)`)
-        appendLog(`[00:08] Regression check passed. 0 Fatal errors detected in debug.log.`)
-        setExecutionModal(prev => ({ ...prev, step: 5 }))
-
-        await new Promise(r => setTimeout(r, 600))
-        appendLog(`[00:08] ✅ SAFETY VERDICT: VERIFIED CLEAN. Update committed to live environment.`)
-
-        const successRecord = {
-          id: `su-${Date.now()}`,
-          component_type: targetItem.type,
-          component_slug: targetItem.slug,
-          component_name: targetItem.name,
-          from_version: targetItem.current_version,
-          to_version: targetItem.new_version,
-          snapshot_file: realData.snapshot_file || `mdf_safe_${Date.now().toString(16)}.zip`,
-          snapshot_size_bytes: 1420500,
-          pre_latency_ms: 19,
-          post_latency_ms: realData.latency_ms || 18,
-          regression_detected: false,
-          rollback_triggered: false,
-          status: 'verified_clean',
-          created_at: new Date().toISOString(),
-          probes_summary: 'All 3 synthetic probes responded HTTP 200 OK (0 regression)'
-        }
-        setHistory(prev => [successRecord, ...prev])
+        const probes = Array.isArray(result.probe_results) ? result.probe_results : []
+        probes.forEach(probe => {
+          appendLog(`${probe.endpoint || 'Origin probe'}: ${probe.status || 'unknown'}${probe.http_code ? ` (HTTP ${probe.http_code})` : ''}${probe.latency_ms ? ` (${probe.latency_ms}ms)` : ''}`)
+        })
+        appendLog(result.message || 'WordPress origin confirmed the safe update.')
         setExecutionModal(prev => ({
           ...prev,
+          step: 5,
           status: 'success',
-          result: successRecord
+          result
         }))
-        showToast(`Safe Update Completed: ${targetItem.name} upgraded safely with 0 errors!`)
+        showToast(result.message || 'Safe update completed and was confirmed by WordPress.')
+      }
+      if (result?.history_persisted) {
+        await loadSafeUpdateHistory(targetSiteId)
       }
     } catch (err) {
-      appendLog(`[00:08] ❌ Pipeline encountered an error: ${err?.message || 'Unknown error'}`)
-      setExecutionModal(prev => ({ ...prev, status: 'error' }))
-      showToast('Pipeline execution error occurred.', true)
+      const message = err?.message || 'Safe update request failed.'
+      appendLog(`Safe update request failed: ${message}`)
+      setExecutionModal(prev => ({ ...prev, status: 'error', result: { error: message } }))
+      showToast(message, true)
     } finally {
       setExecuting(false)
     }
@@ -676,7 +595,7 @@ export default function BulkSafeUpdates() {
             Safe Updates <span style={{ color: '#059669' }}>&amp; Regression Guard.</span>
           </h1>
           <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#60716B', maxWidth: '680px' }}>
-            Automated micro-snapshots, synthetic tri-endpoint health probes, and autonomous instant rollback if any fatal error or WSOD occurs.
+            Origin-side component snapshots, HTTP health probes, and rollback attempts when an update fails. Database migrations may not be reversible.
           </p>
         </div>
 
@@ -827,7 +746,7 @@ export default function BulkSafeUpdates() {
             fontWeight: 800,
             border: '1px solid #BBF7D0'
           }}>
-            100% Non-Destructive
+            Snapshot required before update
           </span>
         </div>
 
@@ -869,7 +788,7 @@ export default function BulkSafeUpdates() {
             {
               step: '5',
               title: 'Autonomous Verdict',
-              desc: 'Approves update or executes instant rollback in <5s',
+              desc: 'Reports the origin update and rollback result',
               icon: RotateCcw,
               color: '#059669'
             }
@@ -940,7 +859,7 @@ export default function BulkSafeUpdates() {
               Pending Updates on {currentSite?.domain || 'Target Website'}
             </h3>
             <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#60716B' }}>
-              Select items to upgrade with real-time synthetic probe verification and auto-rollback protection.
+              Select an update to run origin-side HTTP probes and snapshot-based file rollback.
             </p>
           </div>
 
@@ -1141,7 +1060,7 @@ export default function BulkSafeUpdates() {
               Rollback &amp; Safety Audit Trail
             </h3>
             <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#60716B' }}>
-              Permanent cryptographic log of micro-snapshots, synthetic probe latencies and automated regression verdicts.
+              Backend history of origin snapshots, HTTP probes, update results, and rollback outcomes.
             </p>
           </div>
           <span style={{ fontSize: '12px', color: '#60716B', fontWeight: 700 }}>
