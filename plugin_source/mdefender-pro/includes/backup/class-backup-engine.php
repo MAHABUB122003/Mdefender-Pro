@@ -38,7 +38,9 @@ class WAF_FW_Backup_Engine {
      * Priority 2: Safe fallback to WP_CONTENT_DIR/mdefender-backups/ if root is restricted
      */
     private function resolve_backup_storage_path() {
-        $outside_root = wp_normalize_path(dirname(ABSPATH) . '/mdefender-backups/');
+        $site_host = strtolower(parse_url(home_url(), PHP_URL_HOST) ?: 'site');
+        $site_slug = sanitize_file_name($site_host);
+        $outside_root = wp_normalize_path(dirname(ABSPATH) . '/mdefender-backups/' . $site_slug . '/');
         $can_use_outside = false;
 
         if (is_dir($outside_root) && is_writable($outside_root)) {
@@ -76,8 +78,12 @@ class WAF_FW_Backup_Engine {
             str_replace('_.sql.gz', '.sql.gz', $clean_fn),
         ]);
 
+        $site_host = strtolower(parse_url(home_url(), PHP_URL_HOST) ?: 'site');
+        $site_slug = sanitize_file_name($site_host);
+
         $search_dirs = array_unique([
             $this->backup_dir,
+            wp_normalize_path(dirname(ABSPATH) . '/mdefender-backups/' . $site_slug . '/'),
             wp_normalize_path(dirname(ABSPATH) . '/mdefender-backups/'),
             wp_normalize_path(WP_CONTENT_DIR . '/mdefender-backups/'),
             wp_normalize_path(dirname(WP_CONTENT_DIR, 2) . '/mdefender-backups/'),
@@ -169,9 +175,13 @@ class WAF_FW_Backup_Engine {
             $stored = [];
         }
 
+        $site_host = strtolower(parse_url(home_url(), PHP_URL_HOST) ?: 'site');
+        $site_slug = sanitize_file_name($site_host);
+
         // Scan filesystem across all resilient storage tiers (outside root & fallback)
         $search_dirs = array_unique([
             $this->backup_dir,
+            wp_normalize_path(dirname(ABSPATH) . '/mdefender-backups/' . $site_slug . '/'),
             wp_normalize_path(dirname(ABSPATH) . '/mdefender-backups/'),
             wp_normalize_path(WP_CONTENT_DIR . '/mdefender-backups/'),
         ]);
@@ -225,13 +235,24 @@ class WAF_FW_Backup_Engine {
                 $item = $stored[$filename];
                 $item['size'] = $file_size;
                 $item['size_formatted'] = size_format($file_size, 2);
+                $item['domain'] = $site_host;
                 $catalog[$filename] = $item;
             } else {
+                // Check if this uncatalogued file belongs to this site or a different site in shared parent folder
+                $file_slug = strtolower(str_replace(['-database.zip', '.zip', '.sql.gz', '.sql'], '', $filename));
+                if (strpos($file_slug, '.') !== false) {
+                    if ($file_slug !== $site_host && $file_slug !== $site_slug && $file_slug !== str_replace('www.', '', $site_host)) {
+                        // Belongs to another website on this shared server - DO NOT INCLUDE!
+                        continue;
+                    }
+                }
+
                 // Auto-detect orphan backup file and inspect metadata
                 $type = (strpos($filename, 'db_') === 0 || strpos($filename, '.sql') !== false) ? 'database' : ((strpos($filename, 'files_') === 0) ? 'files' : 'full');
                 $catalog[$filename] = [
                     'id' => sanitize_key(pathinfo($filename, PATHINFO_FILENAME)),
                     'filename' => $filename,
+                    'domain' => $site_host,
                     'type' => $type,
                     'created_at' => date('Y-m-d H:i:s', $file_mtime),
                     'size' => $file_size,
@@ -1150,8 +1171,12 @@ class WAF_FW_Backup_Engine {
             str_replace('_.sql.gz', '.sql.gz', $clean_fn),
         ]);
 
+        $site_host = strtolower(parse_url(home_url(), PHP_URL_HOST) ?: 'site');
+        $site_slug = sanitize_file_name($site_host);
+
         $search_dirs = array_unique([
             $this->backup_dir,
+            wp_normalize_path(dirname(ABSPATH) . '/mdefender-backups/' . $site_slug . '/'),
             wp_normalize_path(dirname(ABSPATH) . '/mdefender-backups/'),
             wp_normalize_path(WP_CONTENT_DIR . '/mdefender-backups/'),
             wp_normalize_path(dirname(WP_CONTENT_DIR, 2) . '/mdefender-backups/'),

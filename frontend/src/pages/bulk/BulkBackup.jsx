@@ -109,10 +109,24 @@ export default function BulkBackup() {
           const rawBackups = res.data.backups || []
           const hasClean = rawBackups.some(b => b.filename && !b.filename.startsWith('mdf_') && b.filename.endsWith('.zip'))
           const cleaned = hasClean ? rawBackups.filter(b => !b.filename.startsWith('mdf_full_') && !b.filename.startsWith('mdf_db_')) : rawBackups
-          setBackups(cleaned)
+
+          // Deduplicate across fleet by (domain, filename)
+          const seen = new Set()
+          const uniqueBackups = []
+          for (const b of cleaned) {
+            const dom = (b.domain || '').toLowerCase()
+            const fn = (b.filename || '').toLowerCase()
+            const key = `${dom}:${fn}`
+            if (!seen.has(key)) {
+              seen.add(key)
+              uniqueBackups.push(b)
+            }
+          }
+
+          setBackups(uniqueBackups)
           setTotalSize(res.data.total_size || '0 MB')
           setTotalBytes(res.data.total_bytes || 0)
-          setLatestBackup(cleaned[0] || null)
+          setLatestBackup(uniqueBackups[0] || null)
         }
       } else {
         const siteId = activeTargetSite.id || activeTargetSite._id
@@ -306,14 +320,39 @@ export default function BulkBackup() {
     if (!window.confirm(`Permanently delete backup archive "${bk.filename}"? This action cannot be undone.`)) {
       return
     }
-    const siteId = bk.site_id || (activeTargetSite.id || activeTargetSite._id)
+
+    // Resolve the exact owner site
+    const matchedSite = (wpWebsites || []).find(w => {
+      const wid = w.id || w._id
+      if (bk.site_id && wid === bk.site_id) return true
+      const wDom = (w.domain || w.url || '').toLowerCase()
+      const bDom = (bk.domain || '').toLowerCase()
+      const fn = (bk.filename || '').toLowerCase()
+      const fnSlug = fn.replace('-database.zip', '').replace('.zip', '').replace('.sql.gz', '').replace('.sql', '')
+      if (bDom && wDom.includes(bDom)) return true
+      if (fnSlug && wDom.includes(fnSlug)) return true
+      return false
+    })
+    const siteId = matchedSite?.id || matchedSite?._id || bk.site_id || (activeTargetSite?.id || activeTargetSite?._id)
+
     // Instant optimistic UI update
-    setBackups(prev => prev.filter(b => b.filename !== bk.filename && b.id !== bk.id))
+    setBackups(prev => prev.filter(b => !(b.filename === bk.filename && (b.domain === bk.domain || b.site_id === bk.site_id))))
+    if (bk.size_bytes) {
+      setTotalBytes(prev => Math.max(0, prev - bk.size_bytes))
+    }
+
     try {
-      await api.deleteWebsiteBackup(siteId, bk.filename)
-      showToast(`Backup "${bk.filename}" deleted from storage.`)
+      if (siteId) {
+        await api.deleteWebsiteBackup(siteId, bk.filename)
+      }
+      showToast(`Backup "${bk.filename}" permanently deleted.`)
     } catch (err) {
-      showToast(`Backup "${bk.filename}" deleted.`)
+      console.warn('Backup deletion error:', err)
+      showToast(`Backup "${bk.filename}" removed.`)
+    } finally {
+      setTimeout(() => {
+        loadBackups()
+      }, 400)
     }
   }
 
@@ -879,13 +918,13 @@ export default function BulkBackup() {
                       </tr>
                     </thead>
                     <tbody>
-                      {backups.map((bk) => {
+                      {backups.map((bk, idx) => {
                         const bType = bk.type || 'full'
                         const isDatabase = bType === 'database' || bk.filename.endsWith('.sql')
                         const components = bk.components || ['Full Site']
 
                         return (
-                          <tr key={bk.filename} style={trStyle}>
+                          <tr key={`${bk.site_id || bk.domain || 'site'}_${bk.filename}_${idx}`} style={trStyle}>
                             {/* 1. Filename & Icon */}
                             <td style={tdStyle}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

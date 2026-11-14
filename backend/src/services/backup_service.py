@@ -370,6 +370,11 @@ class BackupService:
             if fname in (".htaccess", "index.php", "web.config") or fname.startswith(".") or fname.startswith("mdf_sql_") or fname.startswith("temp_"):
                 continue
 
+            # Strict domain check: ignore backups belonging to other sites in shared folder
+            f_slug = fname.replace("-database.zip", "").replace(".zip", "").replace(".sql.gz", "").replace(".sql", "").lower()
+            if "." in f_slug and f_slug != clean_name.lower():
+                continue
+
             try:
                 fstat = os.stat(fpath)
                 fsize = fstat.st_size
@@ -422,6 +427,11 @@ class BackupService:
                     if not rfn or rfn in seen_filenames or rfn.startswith("mdf_sql_") or rfn.startswith("temp_"):
                         continue
 
+                    # Strict domain check on remote discovered files
+                    r_slug = rfn.replace("-database.zip", "").replace(".zip", "").replace(".sql.gz", "").replace(".sql", "").lower()
+                    if "." in r_slug and r_slug != clean_name.lower():
+                        continue
+
                     seen_filenames.add(rfn)
                     raw_size = rb.get("size")
                     rsize_str = rb.get("size_formatted") or (self.format_size(raw_size) if isinstance(raw_size, (int, float)) else str(raw_size or "0 MB"))
@@ -453,30 +463,33 @@ class BackupService:
             except Exception as e:
                 logger.warning(f"Could not sync live backups from remote origin {domain}: {e}")
 
-        # 3. CRITICAL: Always merge existing valid DB backups from fresh site doc so created snapshots are NEVER wiped!
+        # 3. CRITICAL: Merge existing valid DB backups strictly belonging to this site
         db_backups = list(target_site.get("backups") or [])
         clean_domain_lower = clean_name.lower()
         for b in db_backups:
             if isinstance(b, dict):
-                bfn = str(b.get("filename") or "")
-                # Ignore backups that belong to a different WordPress website origin
-                b_dom = str(b.get("domain") or "").lower()
-                if b_dom and b_dom != domain.lower() and not (b_dom in domain.lower() or domain.lower() in b_dom):
+                bfn = str(b.get("filename") or "").strip()
+                if not bfn or bfn in seen_filenames:
                     continue
-                if bfn.endswith(".zip") and not bfn.startswith("mdf_") and not bfn.startswith("backup_") and not bfn.startswith("db_"):
-                    slug_part = bfn.replace("-database.zip", "").replace(".zip", "").lower()
-                    if "." in slug_part and slug_part != clean_domain_lower and slug_part not in clean_domain_lower and clean_domain_lower not in slug_part:
-                        continue
-                if bfn and bfn not in seen_filenames:
-                    bsize = b.get("size_bytes") or self.parse_size_to_bytes(b.get("size", "0 MB"))
-                    # Filter out old 1.0 KB or 1.6 KB dummy archives
-                    if bsize > 5000 or (b.get("size") and "KB" not in b.get("size") and "1." not in b.get("size")):
-                        seen_filenames.add(bfn)
-                        b_copy = dict(b)
-                        b_copy["domain"] = domain
-                        b_copy["site_id"] = site_id
-                        fresh_backups.append(b_copy)
-                        total_size_bytes += bsize
+
+                # STRICT ISOLATION: Drop backups that belong to a different domain
+                b_dom = str(b.get("domain") or "").strip().lower()
+                if b_dom and b_dom != clean_domain_lower:
+                    continue
+
+                slug_part = bfn.replace("-database.zip", "").replace(".zip", "").replace(".sql.gz", "").replace(".sql", "").lower()
+                if "." in slug_part and slug_part != clean_domain_lower:
+                    continue
+
+                bsize = b.get("size_bytes") or self.parse_size_to_bytes(b.get("size", "0 MB"))
+                # Filter out old 1.0 KB or 1.6 KB dummy archives
+                if bsize > 5000 or (b.get("size") and "KB" not in b.get("size") and "1." not in b.get("size")):
+                    seen_filenames.add(bfn)
+                    b_copy = dict(b)
+                    b_copy["domain"] = clean_domain_lower
+                    b_copy["site_id"] = site_id
+                    fresh_backups.append(b_copy)
+                    total_size_bytes += bsize
 
         # 4. If clean domain archive exists (e.g. mahabubur.shop.zip), prune obsolete legacy archives (mdf_full_... / mdf_db_...)
         has_domain_archive = any(
@@ -971,17 +984,47 @@ class BackupService:
             except Exception as e:
                 logger.warning(f"Could not dispatch delete_backup to remote site: {e}")
 
-        # 2. Remove physical file locally if present
-        if os.path.isfile(fpath):
-            try:
-                os.remove(fpath)
-            except Exception as e:
-                logger.warning(f"Could not remove physical file {fpath}: {e}")
+        # If the filename slug belongs to a specific domain in user's fleet, also notify that origin
+        clean_slug = clean_fn.replace("-database.zip", "").replace(".zip", "").replace(".sql.gz", "").replace(".sql", "").lower()
+        if "." in clean_slug:
+            user_id = website.get("user_id")
+            from bson import ObjectId
+            u_cond = [{"user_id": str(user_id)}]
+            if ObjectId.is_valid(str(user_id)):
+                u_cond.append({"user_id": ObjectId(str(user_id))})
+            all_user_sites = list(self.db.websites.find({"$or": u_cond}))
+            for osite in all_user_sites:
+                osite_slug = self.get_clean_domain_slug(osite).lower()
+                if osite_slug == clean_slug and str(osite.get("_id")) != str(website.get("_id")):
+                    try:
+                        self.dispatch_remote_wp_action(osite, {"action": "delete_backup", "filename": clean_fn}, timeout=20.0)
+                    except Exception as e:
+                        logger.warning(f"Could not dispatch delete_backup to origin {osite_slug}: {e}")
 
-        # 3. Remove from MongoDB document catalog
+        # 2. Remove physical file locally if present across all known candidate directories
+        for cdir in [
+            backup_dir,
+            r"C:\xampp\htdocs\mdefender-backups",
+            r"C:\xampp\htdocs\mahabub\wp-content\mdefender-backups",
+            "/var/www/html/wp-content/mdefender-backups",
+        ]:
+            cand = os.path.join(cdir, clean_fn)
+            if os.path.isfile(cand):
+                try:
+                    os.remove(cand)
+                except Exception as e:
+                    logger.warning(f"Could not remove physical file {cand}: {e}")
+
+        # 3. Remove from MongoDB document catalog across ALL websites owned by this user
         candidates = [clean_fn, filename, os.path.splitext(clean_fn)[0]]
-        self.db.websites.update_one(
-            {"_id": website["_id"]},
+        user_id = website.get("user_id")
+        from bson import ObjectId
+        u_cond = [{"user_id": str(user_id)}]
+        if ObjectId.is_valid(str(user_id)):
+            u_cond.append({"user_id": ObjectId(str(user_id))})
+
+        self.db.websites.update_many(
+            {"$or": u_cond},
             {"$pull": {
                 "backups": {
                     "$or": [

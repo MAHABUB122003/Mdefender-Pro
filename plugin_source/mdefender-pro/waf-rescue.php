@@ -40,16 +40,21 @@ $action = mdef_rescue_sanitize($_REQUEST['action'] ?? $pushed['action'] ?? 'ping
 $filename = mdef_rescue_sanitize($_REQUEST['filename'] ?? $pushed['filename'] ?? '');
 
 // 4. Resolve Backup Archive Storage Locations
+$site_host_sub = strtolower(preg_replace('/[^a-zA-Z0-9.\-_]/', '', $_SERVER['HTTP_HOST'] ?? ''));
 $possible_backup_dirs = array_unique(array_filter([
     $wp_content_dir . '/mdefender-backups/',
+    $wp_content_dir . '/mdefender-backups/' . $site_host_sub . '/',
     $wp_root . '/wp-content/mdefender-backups/',
     dirname($wp_root) . '/mdefender-backups/',
+    dirname($wp_root) . '/mdefender-backups/' . $site_host_sub . '/',
     $wp_root . '/../mdefender-backups/',
+    $wp_root . '/../mdefender-backups/' . $site_host_sub . '/',
     dirname($wp_content_dir) . '/mdefender-backups/',
     dirname($plugin_dir, 2) . '/mdefender-backups/',
     sys_get_temp_dir() . '/mdefender-backups/',
     defined('WP_CONTENT_DIR') ? (WP_CONTENT_DIR . '/mdefender-backups/') : '',
     defined('ABSPATH') ? (dirname(ABSPATH) . '/mdefender-backups/') : '',
+    defined('ABSPATH') ? (dirname(ABSPATH) . '/mdefender-backups/' . $site_host_sub . '/') : '',
     defined('ABSPATH') ? (ABSPATH . 'wp-content/mdefender-backups/') : '',
 ]));
 

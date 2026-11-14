@@ -11493,94 +11493,45 @@ async def get_fleet_backups(user=Depends(get_current_user)):
 
 
 
+    seen_fleet_keys = set()
+    deduped_backups = []
+
     for s in sites:
-
-
-
-
-
-
-
         res = svc.get_website_backups(s)
-
-
-
-
-
-
-
-        s_domain = s.get("domain") or s.get("url") or "website"
+        s_clean = svc.get_clean_domain_slug(s)
+        s_domain = s.get("domain") or s.get("url") or s_clean
         s_id = str(s.get("_id") or s.get("id"))
+
         for b in res.get("backups", []):
-            if not b.get("domain"):
-                b["domain"] = s_domain
-            if not b.get("site_id"):
-                b["site_id"] = s_id
-        all_backups.extend(res.get("backups", []))
+            fn = str(b.get("filename") or "").strip()
+            if not fn:
+                continue
 
+            # Check if this backup's filename indicates it belongs to a different domain
+            b_slug = fn.replace("-database.zip", "").replace(".zip", "").replace(".sql.gz", "").replace(".sql", "").lower()
+            if "." in b_slug and b_slug != s_clean.lower():
+                continue
 
+            b_dom = b.get("domain") or s_domain
+            # Deduplicate across fleet
+            key = f"{b_dom.lower()}:{fn.lower()}"
+            if key in seen_fleet_keys:
+                continue
+            seen_fleet_keys.add(key)
 
+            b["domain"] = b_dom
+            b["site_id"] = s_id
+            deduped_backups.append(b)
+            total_bytes += b.get("size_bytes", 0)
 
-
-
-
-        total_bytes += res.get("total_bytes", 0)
-
-
-
-
-
-
-
-    all_backups.sort(key=lambda x: str(x.get("created_at") or ""), reverse=True)
-
-
-
-
-
-
+    deduped_backups.sort(key=lambda x: str(x.get("created_at") or ""), reverse=True)
 
     return success({
-
-
-
-
-
-
-
-        "total_backups": len(all_backups),
-
-
-
-
-
-
-
+        "total_backups": len(deduped_backups),
         "total_size": BackupService.format_size(total_bytes),
-
-
-
-
-
-
-
         "total_bytes": total_bytes,
-
-
-
-
-
-
-
-        "latest_backup": all_backups[0] if all_backups else None,
-
-
-
-
-
-
-
-        "backups": all_backups
+        "latest_backup": deduped_backups[0] if deduped_backups else None,
+        "backups": deduped_backups
 
 
 
