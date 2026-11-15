@@ -75,11 +75,17 @@ class WAF_FW_IP_Filter {
         }
         $candidates = array_values(array_unique(array_filter($candidates)));
 
-        // Whitelisted IPs are NEVER blacklisted!
+        // Zero-Trust Anti-Bypass: If a specific candidate is whitelisted, exempt ONLY that candidate.
+        // A blacklisted attacker CANNOT bypass the blacklist by spoofing a whitelisted IP in headers!
+        $eval_candidates = [];
         foreach ($candidates as $cand) {
-            if ($this->is_whitelisted($cand)) {
-                return false;
+            if (!$this->is_whitelisted($cand)) {
+                $eval_candidates[] = $cand;
             }
+        }
+        if (empty($eval_candidates)) {
+            $this->runtime_blacklist_cache[$ip] = false;
+            return false;
         }
 
         // 1. Check ultra-fast local JSON fast-cache (0.005ms)
@@ -87,7 +93,7 @@ class WAF_FW_IP_Filter {
         if (file_exists($fast_cache_file)) {
             $fc = @json_decode(file_get_contents($fast_cache_file), true);
             if (!empty($fc['blacklist_ips']) && is_array($fc['blacklist_ips'])) {
-                foreach ($candidates as $cand) {
+                foreach ($eval_candidates as $cand) {
                     if (!empty($fc['blacklist_ips'][$cand]) || in_array($cand, $fc['blacklist_ips'], true)) {
                         $GLOBALS['waf_matched_blacklisted_ip'] = $cand;
                         $this->runtime_blacklist_cache[$ip] = true;
@@ -103,12 +109,12 @@ class WAF_FW_IP_Filter {
             foreach ($cloud_blacklist as $b_ip) {
                 $b_ip = trim((string) $b_ip);
                 if (empty($b_ip)) continue;
-                if (in_array($b_ip, $candidates, true)) {
+                if (in_array($b_ip, $eval_candidates, true)) {
                     $GLOBALS['waf_matched_blacklisted_ip'] = $b_ip;
                     $this->runtime_blacklist_cache[$ip] = true;
                     return true;
                 }
-                foreach ($candidates as $cand) {
+                foreach ($eval_candidates as $cand) {
                     if (strpos($b_ip, '/') !== false && $this->ip_in_range($cand, $b_ip)) {
                         $GLOBALS['waf_matched_blacklisted_ip'] = $cand;
                         $this->runtime_blacklist_cache[$ip] = true;
@@ -121,10 +127,10 @@ class WAF_FW_IP_Filter {
         // 3. Fallback DB lookup in a single query
         global $wpdb;
         $table = WAF_FW_DB::instance()->get_blacklist_table();
-        $placeholders = implode(',', array_fill(0, count($candidates), '%s'));
+        $placeholders = implode(',', array_fill(0, count($eval_candidates), '%s'));
         $results = $wpdb->get_results($wpdb->prepare(
             "SELECT ip, block_expires_at FROM $table WHERE ip IN ($placeholders)",
-            ...$candidates
+            ...$eval_candidates
         ));
 
         if (!empty($results)) {
