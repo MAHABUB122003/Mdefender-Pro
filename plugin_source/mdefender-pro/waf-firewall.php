@@ -3288,7 +3288,7 @@ function waf_fw_handle_cloud_sync_webhook() {
             } elseif ($action === 'get_recycle_settings') {
                 $action_result = [
                     'auto_recycle' => get_option('waf_fw_auto_recycle_logs', 'yes') === 'yes',
-                    'max_logs' => (int) get_option('waf_fw_recycle_max_logs', 2000),
+                    'max_logs' => (int) get_option('waf_fw_recycle_max_logs', 5000),
                     'retention_days' => (int) get_option('waf_fw_recycle_days', 7),
                 ];
             } elseif ($action === 'posthack_get_status' || $action === 'get_posthack_status') {
@@ -3425,7 +3425,7 @@ function waf_fw_handle_cloud_sync_webhook() {
                 $action_result = [
                     'success' => true,
                     'auto_recycle' => get_option('waf_fw_auto_recycle_logs', 'yes') === 'yes',
-                    'max_logs' => (int) get_option('waf_fw_recycle_max_logs', 2000),
+                    'max_logs' => (int) get_option('waf_fw_recycle_max_logs', 5000),
                     'retention_days' => (int) get_option('waf_fw_recycle_days', 7),
                     'message' => 'Log auto-recycle rules updated successfully on WordPress site'
                 ];
@@ -4371,7 +4371,7 @@ add_action('rest_api_init', function() {
             return new WP_REST_Response([
                 'status' => 'success',
                 'auto_recycle' => get_option('waf_fw_auto_recycle_logs', 'yes') === 'yes',
-                'max_logs' => (int) get_option('waf_fw_recycle_max_logs', 2000),
+                'max_logs' => (int) get_option('waf_fw_recycle_max_logs', 5000),
                 'retention_days' => (int) get_option('waf_fw_recycle_days', 7)
             ], 200);
         },

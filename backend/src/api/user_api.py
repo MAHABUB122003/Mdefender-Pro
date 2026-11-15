@@ -2466,7 +2466,7 @@ class UserAPI:
             'website_id': str(site['_id']) if site else None,
             'domain': site.get('domain') if site else '',
             'auto_recycle': recycle_cfg.get('auto_recycle', True),
-            'max_logs': recycle_cfg.get('max_logs', 10000),
+            'max_logs': recycle_cfg.get('max_logs', 5000),
             'retention_days': recycle_cfg.get('retention_days', 7)
         }
 
@@ -2477,7 +2477,7 @@ class UserAPI:
         website_id = data.get('website_id')
 
         auto_recycle = bool(data.get('auto_recycle', True))
-        max_logs = int(data.get('max_logs', 10000))
+        max_logs = int(data.get('max_logs', 5000))
         retention_days = int(data.get('retention_days', 7))
 
         site_query = {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}

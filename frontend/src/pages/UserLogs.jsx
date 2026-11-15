@@ -232,7 +232,7 @@ export default function UserLogs() {
   const [showRecycleModal, setShowRecycleModal] = useState(false);
   const [recycleSettings, setRecycleSettings] = useState({
     auto_recycle: true,
-    max_logs: 10000,
+    max_logs: 5000,
     retention_days: 7
   });
   const [savingRecycle, setSavingRecycle] = useState(false);
@@ -243,7 +243,7 @@ export default function UserLogs() {
       if (res && res.status === 'success') {
         setRecycleSettings({
           auto_recycle: res.auto_recycle !== false,
-          max_logs: res.max_logs || 10000,
+          max_logs: res.max_logs || 5000,
           retention_days: res.retention_days || 7
         });
       }
@@ -444,6 +444,37 @@ export default function UserLogs() {
     setDateTo('');
     setWebsiteFilter('');
     setPage(1);
+  };
+
+  const getTodayDateString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const handleQuickScope = (scope) => {
+    setPage(1);
+    if (scope === 'all') {
+      setStatusFilter('');
+      setDateFrom('');
+      setDateTo('');
+      setTypeFilter('');
+    } else if (scope === 'today') {
+      const today = getTodayDateString();
+      setDateFrom(today);
+      setDateTo(today);
+      setStatusFilter('');
+    } else if (scope === 'blocked') {
+      setStatusFilter('blocked');
+      setDateFrom('');
+      setDateTo('');
+    } else if (scope === 'allowed') {
+      setStatusFilter('allowed');
+      setDateFrom('');
+      setDateTo('');
+    }
   };
 
   const handleExportCSV = async () => {
@@ -870,7 +901,7 @@ export default function UserLogs() {
               title="Configure automated rolling log recycling to keep WordPress database lightweight"
             >
               <SlidersHorizontal size={13} color="#60716B" />
-              <span>{recycleSettings.auto_recycle ? `Auto-Recycle: ON (${recycleSettings.max_logs ? recycleSettings.max_logs.toLocaleString() : '10K'})` : 'Auto-Recycle: OFF'}</span>
+              <span>{recycleSettings.auto_recycle ? `Auto-Recycle: ON (${recycleSettings.max_logs ? recycleSettings.max_logs.toLocaleString() : '5K'})` : 'Auto-Recycle: OFF'}</span>
             </button>
 
             {/* Clear Logs Button — Clean Enterprise Secondary */}
@@ -968,6 +999,9 @@ export default function UserLogs() {
                 title={`${formatExactNumber(kpiMetrics.total)} Total Ingress Logs`}
                 style={{ fontSize: '17px', fontWeight: '700', color: '#10201E', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.03em', lineHeight: '1.1', marginTop: '1px', cursor: 'default' }}>
                 {formatMetricNumber(kpiMetrics.total)}
+                <span style={{ fontSize: '10.5px', fontWeight: '500', color: '#87948D', marginLeft: '6px' }}>
+                  ({recycleSettings?.max_logs ? `${Number(recycleSettings.max_logs).toLocaleString()} buffer cap` : '5,000 buffer cap'})
+                </span>
               </div>
             </div>
           </div>
@@ -1096,6 +1130,53 @@ export default function UserLogs() {
         marginBottom: '20px',
         boxShadow: '0 2px 10px rgba(16, 32, 30, 0.03)'
       }}>
+        {/* Quick Scope Filter Pills */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          marginBottom: '14px',
+          paddingBottom: '14px',
+          borderBottom: '1px solid #EEF2F0',
+          flexWrap: 'wrap'
+        }}>
+          <span style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em', marginRight: '4px' }}>
+            Quick Scope:
+          </span>
+          {[
+            { id: 'all', label: 'All Logs' },
+            { id: 'today', label: "Today's Traffic" },
+            { id: 'blocked', label: 'Blocked Threats (403)' },
+            { id: 'allowed', label: 'Clean Requests (200)' }
+          ].map(pill => {
+            const isActive =
+              (pill.id === 'all' && !dateFrom && !dateTo && !statusFilter) ||
+              (pill.id === 'today' && dateFrom === getTodayDateString() && dateTo === getTodayDateString()) ||
+              (pill.id === 'blocked' && statusFilter === 'blocked') ||
+              (pill.id === 'allowed' && statusFilter === 'allowed');
+            return (
+              <button
+                key={pill.id}
+                type="button"
+                onClick={() => handleQuickScope(pill.id)}
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: isActive ? '600' : '500',
+                  background: isActive ? '#0B2522' : '#F1F5F3',
+                  color: isActive ? '#FFFFFF' : '#2D3E3A',
+                  border: isActive ? '1px solid #0B2522' : '1px solid #E2E8E5',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {pill.label}
+              </button>
+            );
+          })}
+        </div>
+
         <form onSubmit={handleFilter} style={{
           display: 'flex',
           gap: '12px',
@@ -2447,10 +2528,9 @@ export default function UserLogs() {
                   }}
                 >
                   <option value={2000}>2,000 recent logs (Minimal disk footprint)</option>
-                  <option value={5000}>5,000 recent logs</option>
-                  <option value={10000}>10,000 recent logs (Recommended)</option>
-                  <option value={25000}>25,000 recent logs</option>
-                  <option value={50000}>50,000 recent logs</option>
+                  <option value={5000}>5,000 recent logs (Recommended Standard)</option>
+                  <option value={10000}>10,000 recent logs (High-traffic sites)</option>
+                  <option value={25000}>25,000 recent logs (Enterprise capacity)</option>
                 </select>
               </div>
 

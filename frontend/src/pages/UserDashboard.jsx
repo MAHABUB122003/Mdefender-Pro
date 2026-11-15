@@ -591,7 +591,7 @@ export default function UserDashboard() {
         <StatCard
           label="Requests inspected"
           value={formatMetricNumber(requestsToday)}
-          hint={`${formatMetricNumber(data?.total_requests || 0)} lifetime`}
+          hint={`${formatMetricNumber(data?.total_requests || 0)} total lifetime`}
           icon={Activity}
         />
         <StatCard
@@ -723,7 +723,10 @@ export default function UserDashboard() {
                       <td>
                         <Badge tone={protecting ? 'info' : 'neutral'}>{protecting ? 'Protect' : (site.waf_mode || 'monitor')}</Badge>
                       </td>
-                      <td style={{ fontVariantNumeric: 'tabular-nums' }}>{Number(site.requests_today || 0).toLocaleString()}</td>
+                      <td style={{ fontVariantNumeric: 'tabular-nums' }}>
+                        <div style={{ fontWeight: 600 }}>{Number(site.requests_today || 0).toLocaleString()} <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--md-ink-3)' }}>today</span></div>
+                        <div style={{ fontSize: 11, color: 'var(--md-ink-3)' }}>{Number(site.total_requests || 0).toLocaleString()} lifetime</div>
+                      </td>
                       <td style={{ fontSize: 11.5, color: 'var(--md-ink-3)' }}>{site.plugin_version ? `v${site.plugin_version}` : 'Not installed'}</td>
                       <td>
                         <Link to="/user/websites" style={{ fontSize: 11.5, color: 'var(--md-ink-2)', textDecoration: 'none' }}>

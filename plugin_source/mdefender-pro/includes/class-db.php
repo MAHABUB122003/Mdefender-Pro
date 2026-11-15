@@ -605,13 +605,13 @@ class WAF_FW_DB {
 
     public static function cleanup_old_logs() {
         global $wpdb;
-        $days = (int) get_option('waf_fw_log_retention_days', 7);
-        if ($days <= 0 || $days > 7) {
+        $days = (int) get_option('waf_fw_recycle_days', get_option('waf_fw_log_retention_days', 7));
+        if ($days <= 0 || $days > 30) {
             $days = 7;
         }
-        $max_logs = (int) get_option('waf_fw_recycle_max_logs', 2000);
-        if ($max_logs <= 0 || $max_logs > 2000) {
-            $max_logs = 2000;
+        $max_logs = (int) get_option('waf_fw_recycle_max_logs', 5000);
+        if ($max_logs <= 0 || $max_logs > 25000) {
+            $max_logs = 5000;
         }
 
         $attacks_table = $wpdb->prefix . (defined('WAF_FW_TABLE_ATTACKS') ? WAF_FW_TABLE_ATTACKS : 'waf_attacks');
