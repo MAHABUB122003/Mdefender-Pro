@@ -37,7 +37,6 @@ import {
   X,
   Activity,
   Zap,
-  SlidersHorizontal,
   Compass,
   FileText,
   Download
@@ -228,50 +227,6 @@ export default function UserLogs() {
   const [selectedCleanRange, setSelectedCleanRange] = useState('7');
   const [exportingCsv, setExportingCsv] = useState(false);
 
-  // Auto-recycle and retention controls for client WordPress sites
-  const [showRecycleModal, setShowRecycleModal] = useState(false);
-  const [recycleSettings, setRecycleSettings] = useState({
-    auto_recycle: true,
-    max_logs: 5000,
-    retention_days: 7
-  });
-  const [savingRecycle, setSavingRecycle] = useState(false);
-
-  const fetchRecycleSettings = useCallback(async () => {
-    try {
-      const res = await api.getLogRecycleSettings(websiteFilter);
-      if (res && res.status === 'success') {
-        setRecycleSettings({
-          auto_recycle: res.auto_recycle !== false,
-          max_logs: res.max_logs || 5000,
-          retention_days: res.retention_days || 7
-        });
-      }
-    } catch (e) {
-      console.warn('Could not load recycle settings:', e);
-    }
-  }, [websiteFilter]);
-
-  useEffect(() => {
-    fetchRecycleSettings();
-  }, [fetchRecycleSettings]);
-
-  const handleSaveRecycleSettings = async () => {
-    setSavingRecycle(true);
-    try {
-      const res = await api.updateLogRecycleSettings({
-        website_id: websiteFilter,
-        ...recycleSettings
-      });
-      alert(res?.message || 'Auto-recycle settings saved successfully!');
-      setShowRecycleModal(false);
-    } catch (err) {
-      alert('Failed to save settings: ' + (err?.message || String(err)));
-    } finally {
-      setSavingRecycle(false);
-    }
-  };
-
   const perPage = 20;
   const userPlan = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || 'free') : 'free').toLowerCase();
   const isPaidUser = true; // All tiers can inspect and manage live ingress telemetry
@@ -444,37 +399,6 @@ export default function UserLogs() {
     setDateTo('');
     setWebsiteFilter('');
     setPage(1);
-  };
-
-  const getTodayDateString = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const handleQuickScope = (scope) => {
-    setPage(1);
-    if (scope === 'all') {
-      setStatusFilter('');
-      setDateFrom('');
-      setDateTo('');
-      setTypeFilter('');
-    } else if (scope === 'today') {
-      const today = getTodayDateString();
-      setDateFrom(today);
-      setDateTo(today);
-      setStatusFilter('');
-    } else if (scope === 'blocked') {
-      setStatusFilter('blocked');
-      setDateFrom('');
-      setDateTo('');
-    } else if (scope === 'allowed') {
-      setStatusFilter('allowed');
-      setDateFrom('');
-      setDateTo('');
-    }
   };
 
   const handleExportCSV = async () => {
@@ -876,33 +800,6 @@ export default function UserLogs() {
               <span>{exportingCsv ? 'Exporting...' : 'Export CSV'}</span>
             </button>
 
-            {/* Auto-Recycle Status / Settings Button — Clean Enterprise Secondary */}
-            <button
-              type="button"
-              onClick={() => {
-                fetchRecycleSettings();
-                setShowRecycleModal(true);
-              }}
-              style={{
-                fontSize: '13px',
-                fontWeight: '600',
-                padding: '8px 14px',
-                borderRadius: '8px',
-                border: '1px solid #D9E1DC',
-                background: '#FFFFFF',
-                color: '#10201E',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                boxShadow: '0 1px 3px rgba(11, 37, 34, 0.04)',
-                transition: 'all 0.15s ease'
-              }}
-              title="Configure automated rolling log recycling to keep WordPress database lightweight"
-            >
-              <SlidersHorizontal size={13} color="#60716B" />
-              <span>{recycleSettings.auto_recycle ? `Auto-Recycle: ON (${recycleSettings.max_logs ? recycleSettings.max_logs.toLocaleString() : '5K'})` : 'Auto-Recycle: OFF'}</span>
-            </button>
 
             {/* Clear Logs Button — Clean Enterprise Secondary */}
             <button
@@ -999,9 +896,6 @@ export default function UserLogs() {
                 title={`${formatExactNumber(kpiMetrics.total)} Total Ingress Logs`}
                 style={{ fontSize: '17px', fontWeight: '700', color: '#10201E', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.03em', lineHeight: '1.1', marginTop: '1px', cursor: 'default' }}>
                 {formatMetricNumber(kpiMetrics.total)}
-                <span style={{ fontSize: '10.5px', fontWeight: '500', color: '#87948D', marginLeft: '6px' }}>
-                  ({recycleSettings?.max_logs ? `${Number(recycleSettings.max_logs).toLocaleString()} buffer cap` : '5,000 buffer cap'})
-                </span>
               </div>
             </div>
           </div>
@@ -1130,53 +1024,6 @@ export default function UserLogs() {
         marginBottom: '20px',
         boxShadow: '0 2px 10px rgba(16, 32, 30, 0.03)'
       }}>
-        {/* Quick Scope Filter Pills */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          marginBottom: '14px',
-          paddingBottom: '14px',
-          borderBottom: '1px solid #EEF2F0',
-          flexWrap: 'wrap'
-        }}>
-          <span style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em', marginRight: '4px' }}>
-            Quick Scope:
-          </span>
-          {[
-            { id: 'all', label: 'All Logs' },
-            { id: 'today', label: "Today's Traffic" },
-            { id: 'blocked', label: 'Blocked Threats (403)' },
-            { id: 'allowed', label: 'Clean Requests (200)' }
-          ].map(pill => {
-            const isActive =
-              (pill.id === 'all' && !dateFrom && !dateTo && !statusFilter) ||
-              (pill.id === 'today' && dateFrom === getTodayDateString() && dateTo === getTodayDateString()) ||
-              (pill.id === 'blocked' && statusFilter === 'blocked') ||
-              (pill.id === 'allowed' && statusFilter === 'allowed');
-            return (
-              <button
-                key={pill.id}
-                type="button"
-                onClick={() => handleQuickScope(pill.id)}
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  fontWeight: isActive ? '600' : '500',
-                  background: isActive ? '#0B2522' : '#F1F5F3',
-                  color: isActive ? '#FFFFFF' : '#2D3E3A',
-                  border: isActive ? '1px solid #0B2522' : '1px solid #E2E8E5',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                {pill.label}
-              </button>
-            );
-          })}
-        </div>
-
         <form onSubmit={handleFilter} style={{
           display: 'flex',
           gap: '12px',
@@ -2356,255 +2203,6 @@ export default function UserLogs() {
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* 5B. AUTOMATED ROLLING LOG RECYCLE MODAL                                   */}
-      {/* ========================================================================= */}
-      {showRecycleModal && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(16, 32, 30, 0.65)',
-          backdropFilter: 'blur(5px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 99999,
-          padding: '20px'
-        }} onClick={() => setShowRecycleModal(false)}>
-          <div style={{
-            background: '#FFFFFF',
-            borderRadius: '20px',
-            width: '100%',
-            maxWidth: '520px',
-            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-            border: '1px solid #D9E1DC',
-            overflow: 'hidden'
-          }} onClick={e => e.stopPropagation()}>
-            {/* Modal Header */}
-            <div style={{
-              padding: '20px 24px',
-              borderBottom: '1px solid #EAEFEA',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              background: '#FAFBF9'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '10px',
-                  background: '#ECFDF5',
-                  border: '1px solid #A7F3D0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#059669'
-                }}>
-                  <SlidersHorizontal size={18} />
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#10201E' }}>
-                    Auto-Recycle &amp; Log Retention Rules
-                  </h3>
-                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#87948D' }}>
-                    Protects client WordPress databases from bloat and disk full crashes
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowRecycleModal(false)}
-                style={{ background: 'none', border: 'none', color: '#87948D', cursor: 'pointer', padding: '4px' }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div style={{ padding: '24px' }}>
-              {/* Toggle Switch */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '14px 16px',
-                borderRadius: '12px',
-                background: recycleSettings.auto_recycle ? '#F0FDF4' : '#F8FAFC',
-                border: recycleSettings.auto_recycle ? '1px solid #BBF7D0' : '1px solid #E2E8F0',
-                marginBottom: '18px'
-              }}>
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: '800', color: '#10201E' }}>
-                    Automated Rolling Log Recycling
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
-                    {recycleSettings.auto_recycle
-                      ? 'Enabled: WordPress plugin automatically purges stale records'
-                      : 'Disabled: Logs accumulate until manually cleared from dashboard'}
-                  </div>
-                </div>
-                <label style={{ position: 'relative', display: 'inline-block', width: '48px', height: '26px', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={recycleSettings.auto_recycle}
-                    onChange={e => setRecycleSettings({ ...recycleSettings, auto_recycle: e.target.checked })}
-                    style={{ opacity: 0, width: 0, height: 0 }}
-                  />
-                  <span style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background: recycleSettings.auto_recycle ? '#10B981' : '#CBD5E1',
-                    borderRadius: '999px',
-                    transition: 'all 0.2s ease'
-                  }}>
-                    <span style={{
-                      position: 'absolute',
-                      height: '20px',
-                      width: '20px',
-                      left: recycleSettings.auto_recycle ? '24px' : '3px',
-                      bottom: '3px',
-                      background: '#FFFFFF',
-                      borderRadius: '50%',
-                      transition: 'all 0.2s ease',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                    }} />
-                  </span>
-                </label>
-              </div>
-
-              {/* Retention Days */}
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
-                  Historical Retention Window
-                </label>
-                <select
-                  value={recycleSettings.retention_days}
-                  onChange={e => setRecycleSettings({ ...recycleSettings, retention_days: Number(e.target.value) })}
-                  disabled={!recycleSettings.auto_recycle}
-                  style={{
-                    width: '100%',
-                    padding: '9px 12px',
-                    borderRadius: '10px',
-                    border: '1px solid #D9E1DC',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    background: recycleSettings.auto_recycle ? '#FFFFFF' : '#F1F5F9',
-                    color: '#10201E',
-                    cursor: recycleSettings.auto_recycle ? 'pointer' : 'not-allowed',
-                    outline: 'none',
-                    boxSizing: 'border-box'
-                  }}
-                >
-                  <option value={1}>Keep past 24 Hours (Ultra-lightweight / High-traffic sites)</option>
-                  <option value={3}>Keep past 3 Days</option>
-                  <option value={7}>Keep past 7 Days (Recommended standard)</option>
-                  <option value={14}>Keep past 14 Days (Two weeks)</option>
-                  <option value={30}>Keep past 30 Days (One month)</option>
-                </select>
-              </div>
-
-              {/* Max Logs Capacity */}
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
-                  Maximum Log Buffer Ceiling (Rows)
-                </label>
-                <select
-                  value={recycleSettings.max_logs}
-                  onChange={e => setRecycleSettings({ ...recycleSettings, max_logs: Number(e.target.value) })}
-                  disabled={!recycleSettings.auto_recycle}
-                  style={{
-                    width: '100%',
-                    padding: '9px 12px',
-                    borderRadius: '10px',
-                    border: '1px solid #D9E1DC',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    background: recycleSettings.auto_recycle ? '#FFFFFF' : '#F1F5F9',
-                    color: '#10201E',
-                    cursor: recycleSettings.auto_recycle ? 'pointer' : 'not-allowed',
-                    outline: 'none',
-                    boxSizing: 'border-box'
-                  }}
-                >
-                  <option value={2000}>2,000 recent logs (Minimal disk footprint)</option>
-                  <option value={5000}>5,000 recent logs (Recommended Standard)</option>
-                  <option value={10000}>10,000 recent logs (High-traffic sites)</option>
-                  <option value={25000}>25,000 recent logs (Enterprise capacity)</option>
-                </select>
-              </div>
-
-              {/* Explanation Note */}
-              <div style={{
-                padding: '12px 14px',
-                borderRadius: '10px',
-                background: '#F0FDF4',
-                border: '1px solid #BBF7D0',
-                fontSize: '12px',
-                color: '#166534',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '8px'
-              }}>
-                <CheckCircle2 size={16} color="#166534" style={{ flexShrink: 0, marginTop: '1px' }} />
-                <span>
-                  <strong>Server-Safe Scalability:</strong> When active, the WordPress plugin silently trims oldest logs exceeding your limit every 10 minutes. If disabled, you can manually clear logs using the "Clear Retention Logs" button whenever needed.
-                </span>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div style={{
-              padding: '14px 24px',
-              borderTop: '1px solid #EAEFEA',
-              background: '#FAFBF9',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'flex-end',
-              gap: '10px'
-            }}>
-              <button
-                type="button"
-                onClick={() => setShowRecycleModal(false)}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #D9E1DC',
-                  background: '#FFFFFF',
-                  color: '#475569',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveRecycleSettings}
-                disabled={savingRecycle}
-                style={{
-                  padding: '8px 20px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: '#10201E',
-                  color: '#FFFFFF',
-                  fontSize: '13px',
-                  fontWeight: '700',
-                  cursor: savingRecycle ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  boxShadow: '0 2px 6px rgba(16, 32, 30, 0.2)'
-                }}
-              >
-                {savingRecycle ? <RotateCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Check size={13} />}
-                <span>{savingRecycle ? 'Syncing Fleet...' : 'Save Settings'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* 6. BLACKLIST ATTACK IP MODAL                                              */}
