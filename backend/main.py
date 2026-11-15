@@ -1659,19 +1659,6 @@ async def user_clean_logs(request: Request, user: dict = Depends(verify_user_tok
         data = {}
     return await asyncio.to_thread(user_api.clean_user_logs, user, data)
 
-@app.get("/api/user/log-recycle-settings")
-async def user_get_log_recycle_settings(request: Request, user: dict = Depends(verify_user_token_compat)):
-    website_id = request.query_params.get('website_id')
-    return await asyncio.to_thread(user_api.get_log_recycle_settings, user, website_id=website_id)
-
-@app.post("/api/user/log-recycle-settings")
-async def user_update_log_recycle_settings(request: Request, user: dict = Depends(verify_user_token_compat)):
-    try:
-        data = await request.json()
-    except Exception:
-        data = {}
-    return await asyncio.to_thread(user_api.update_log_recycle_settings, user, data)
-
 @app.post("/api/user/reset-stats")
 async def user_reset_stats(request: Request, user: dict = Depends(verify_user_token_compat)):
     try:

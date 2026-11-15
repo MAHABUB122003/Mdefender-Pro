@@ -6,20 +6,13 @@ import copyToClipboard from '../utils/clipboard';
 import { formatMetricNumber, formatExactNumber } from '../utils/formatters';
 import { getLiveTrafficMetrics, isBlockedTrafficLog, normalizeLiveTrafficResponse } from '../utils/liveTraffic';
 import {
-  Shield,
   ShieldCheck,
   ShieldAlert,
   Globe,
-  Radio,
-  Clock,
-  ArrowRight,
   Lock,
   Crown,
-  CheckCircle2,
-  XCircle,
   Crosshair,
   Server,
-  Terminal,
   Copy,
   Check,
   Search,
@@ -27,18 +20,11 @@ import {
   RotateCw,
   Trash2,
   Ban,
-  ExternalLink,
-  ChevronDown,
-  ChevronUp,
   Eye,
   AlertTriangle,
   FileCode,
-  Calendar,
   X,
-  Activity,
-  Zap,
   Compass,
-  FileText,
   Download
 } from 'lucide-react';
 
@@ -244,7 +230,7 @@ export default function UserLogs() {
         try {
           userStore.set('websites', data);
           userStore.set('dashboard', data);
-        } catch {}
+        } catch { }
       }
     } catch (err) {
       console.error('Error loading websites:', err);
@@ -280,7 +266,7 @@ export default function UserLogs() {
             try {
               userStore.remove(cacheKey);
               userStore.remove('logs_p1');
-            } catch {}
+            } catch { }
             setLoading(true);
           }
         } else {
@@ -312,7 +298,7 @@ export default function UserLogs() {
         if (page === 1 && !search && !ipFilter && !typeFilter && !statusFilter && !websiteFilter) {
           userStore.set('logs_p1', normalizedData);
         }
-      } catch {}
+      } catch { }
     } catch (err) {
       console.error('Error fetching logs:', err);
       setLogsError(err?.message || 'Live traffic could not be refreshed.');
@@ -380,7 +366,7 @@ export default function UserLogs() {
             }));
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     });
   }, [logs?.logs]);
 
@@ -528,7 +514,7 @@ export default function UserLogs() {
         website_id: websiteFilter,
         days: selectedCleanRange
       });
-      try { userStore.clear(); } catch {}
+      try { userStore.clear(); } catch { }
       setPage(1);
       await fetchLogs(true);
       setShowCleanModal(false);
@@ -546,7 +532,7 @@ export default function UserLogs() {
     const name = countryName || cc;
     const targetSiteObj = websites.find(w => String(w.id || w._id) === String(websiteFilter));
     const scopeLabel = websiteFilter && targetSiteObj ? `website ${targetSiteObj.domain || targetSiteObj.name}` : 'all connected websites in your security fleet';
-    
+
     if (!confirm(`Confirm Country Quarantine: Do you want to block all incoming traffic from ${name} (${cc}) for ${scopeLabel}?`)) {
       return;
     }
@@ -1659,8 +1645,8 @@ export default function UserLogs() {
                                     {copyingItem === `json-${log?.id || log?.ip}`
                                       ? 'Copying...'
                                       : copyFailureItem === `json-${log?.id || log?.ip}`
-                                      ? 'Copy failed'
-                                      : copiedItem === `json-${log?.id || log?.ip}` ? 'Copied' : 'JSON'}
+                                        ? 'Copy failed'
+                                        : copiedItem === `json-${log?.id || log?.ip}` ? 'Copied' : 'JSON'}
                                   </span>
                                 </button>
 

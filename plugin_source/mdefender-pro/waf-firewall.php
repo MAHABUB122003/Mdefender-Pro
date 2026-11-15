@@ -3406,29 +3406,7 @@ function waf_fw_handle_cloud_sync_webhook() {
                 }
                 echo json_encode(['status' => 'success', 'data' => $res, 'action_result' => $res]);
                 exit;
-            } elseif ($action === 'update_recycle_settings') {
-                $auto_rec = $_REQUEST['auto_recycle'] ?? $pushed_data['auto_recycle'] ?? null;
-                if ($auto_rec !== null) {
-                    update_option('waf_fw_auto_recycle_logs', ($auto_rec === 'yes' || $auto_rec === true || $auto_rec === '1' || $auto_rec === 1) ? 'yes' : 'no');
-                }
-                $max_l = $_REQUEST['max_logs'] ?? $pushed_data['max_logs'] ?? null;
-                if ($max_l !== null) {
-                    update_option('waf_fw_recycle_max_logs', max(500, (int)$max_l));
-                }
-                $ret_d = $_REQUEST['retention_days'] ?? $pushed_data['retention_days'] ?? null;
-                if ($ret_d !== null) {
-                    update_option('waf_fw_recycle_days', max(1, (int)$ret_d));
-                }
-                if (class_exists('WAF_FW_Logger')) {
-                    WAF_FW_Logger::instance()->auto_recycle_if_needed(true);
-                }
-                $action_result = [
-                    'success' => true,
-                    'auto_recycle' => get_option('waf_fw_auto_recycle_logs', 'yes') === 'yes',
-                    'max_logs' => (int) get_option('waf_fw_recycle_max_logs', 5000),
-                    'retention_days' => (int) get_option('waf_fw_recycle_days', 7),
-                    'message' => 'Log auto-recycle rules updated successfully on WordPress site'
-                ];
+
             } elseif ($action === 'get_blacklist') {
                 global $wpdb;
                 $tbl = $wpdb->prefix . WAF_FW_TABLE_BLACKLIST;
@@ -4349,34 +4327,6 @@ add_action('rest_api_init', function() {
         'permission_callback' => 'waf_fw_remote_rest_permission_callback'
     ]);
 
-    register_rest_route('waf-fw/v1', '/remote-recycle-settings', [
-        'methods' => ['GET', 'POST'],
-        'callback' => function($request) {
-            if ($request->get_method() === 'POST') {
-                $params = array_merge($request->get_query_params(), (array)$request->get_json_params());
-                if (isset($params['auto_recycle'])) {
-                    $ar = $params['auto_recycle'];
-                    update_option('waf_fw_auto_recycle_logs', ($ar === true || $ar === 'yes' || $ar === '1' || $ar === 1) ? 'yes' : 'no');
-                }
-                if (isset($params['max_logs'])) {
-                    update_option('waf_fw_recycle_max_logs', max(500, (int)$params['max_logs']));
-                }
-                if (isset($params['retention_days'])) {
-                    update_option('waf_fw_recycle_days', max(1, (int)$params['retention_days']));
-                }
-                if (class_exists('WAF_FW_Logger')) {
-                    WAF_FW_Logger::instance()->auto_recycle_if_needed(true);
-                }
-            }
-            return new WP_REST_Response([
-                'status' => 'success',
-                'auto_recycle' => get_option('waf_fw_auto_recycle_logs', 'yes') === 'yes',
-                'max_logs' => (int) get_option('waf_fw_recycle_max_logs', 5000),
-                'retention_days' => (int) get_option('waf_fw_recycle_days', 7)
-            ], 200);
-        },
-        'permission_callback' => 'waf_fw_remote_rest_permission_callback'
-    ]);
 
     // =========================================================================
     // REMOTE MALWARE SCANNER EXECUTION & THREAT TELEMETRY ENDPOINT
