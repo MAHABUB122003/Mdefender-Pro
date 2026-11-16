@@ -194,7 +194,7 @@ export default function BulkBlacklist() {
                 </span>
               </div>
               <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#576563', wordBreak: 'break-word' }}>
-                Audited Hostname: <strong style={{ color: '#10201E' }}>{auditData?.domain || currentSite?.domain || 'Target Domain'}</strong> • Last Audited: <span style={{ color: '#10201E' }}>{auditData?.last_audited_at || 'Just now'}</span>
+                Audited Hostname: <strong style={{ color: '#10201E' }}>{auditData?.domain || currentSite?.domain || 'Target Domain'}</strong> • Last Audited: <span style={{ color: '#10201E' }}>{loading && !auditData ? 'Verifying live...' : (auditData?.last_audited_at || 'Just now')}</span>
               </p>
             </div>
           </div>

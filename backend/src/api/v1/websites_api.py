@@ -13530,12 +13530,37 @@ async def get_website_reputation_status(website_id: str, user=Depends(get_curren
 
     rep_svc = ReputationService()
     db = MongoDB()
-    cached = db.domain_reputation.find_one({"$or": [{"site_id": website_id}, {"domain": rep_svc._clean_domain(domain)}]})
-    if cached:
+    clean_d = rep_svc._clean_domain(domain)
+    cached = db.domain_reputation.find_one(
+        {"$or": [{"site_id": website_id}, {"domain": clean_d}]},
+        sort=[("last_audited_at", -1), ("_id", -1)]
+    )
+
+    # Validate freshness & purge legacy false-positive caches
+    needs_live_refresh = False
+    if not cached:
+        needs_live_refresh = True
+    else:
+        # Check freshness window (2 hours TTL for continuous real-world posture)
+        last_str = str(cached.get("last_audited_at", "")).replace(" UTC", "").strip()
+        try:
+            audit_dt = datetime.strptime(last_str, "%Y-%m-%d %H:%M:%S")
+            if (datetime.utcnow() - audit_dt).total_seconds() > 7200:  # 2 hours
+                needs_live_refresh = True
+        except Exception:
+            needs_live_refresh = True
+
+        # Check if legacy false-positive Spamhaus flag exists
+        for auth in cached.get("authorities", []):
+            if auth.get("authority") == "Spamhaus DBL" and auth.get("status") == "flagged":
+                needs_live_refresh = True
+                break
+
+    if cached and not needs_live_refresh:
         cached["_id"] = str(cached.get("_id", ""))
         return success(cached)
 
-    audit_data = rep_svc.audit_domain(domain, site_id=website_id)
+    audit_data = rep_svc.audit_domain(clean_d, site_id=website_id)
     if "_id" in audit_data:
         audit_data["_id"] = str(audit_data["_id"])
     return success(audit_data)
@@ -13573,11 +13598,33 @@ async def get_fleet_reputation(user=Depends(get_current_user)):
         sid = str(s.get("_id") or s.get("id"))
         domain = s.get("domain") or s.get("url") or ""
         clean_d = rep_svc._clean_domain(domain)
-        cached = db.domain_reputation.find_one({"$or": [{"site_id": sid}, {"domain": clean_d}]}) if clean_d else None
-        if cached:
+        if not clean_d:
+            continue
+        cached = db.domain_reputation.find_one(
+            {"$or": [{"site_id": sid}, {"domain": clean_d}]},
+            sort=[("last_audited_at", -1), ("_id", -1)]
+        )
+        needs_live_refresh = False
+        if not cached:
+            needs_live_refresh = True
+        else:
+            last_str = str(cached.get("last_audited_at", "")).replace(" UTC", "").strip()
+            try:
+                audit_dt = datetime.strptime(last_str, "%Y-%m-%d %H:%M:%S")
+                if (datetime.utcnow() - audit_dt).total_seconds() > 7200:
+                    needs_live_refresh = True
+            except Exception:
+                needs_live_refresh = True
+
+            for auth in cached.get("authorities", []):
+                if auth.get("authority") == "Spamhaus DBL" and auth.get("status") == "flagged":
+                    needs_live_refresh = True
+                    break
+
+        if cached and not needs_live_refresh:
             cached["_id"] = str(cached.get("_id", ""))
             results.append(cached)
-        elif clean_d:
+        else:
             audit_data = rep_svc.audit_domain(clean_d, site_id=sid)
             if "_id" in audit_data:
                 audit_data["_id"] = str(audit_data["_id"])

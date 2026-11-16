@@ -527,20 +527,20 @@ class ReputationService:
             "last_audited_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
         }
 
-        # Cache or persist to MongoDB
+        # Cache or persist to MongoDB (Unify by domain & site_id, eliminate duplicates)
         try:
-            if site_id:
-                self.db.domain_reputation.update_one(
-                    {"site_id": site_id},
-                    {"$set": record},
-                    upsert=True
-                )
-            elif domain:
-                self.db.domain_reputation.update_one(
-                    {"domain": domain},
-                    {"$set": record},
-                    upsert=True
-                )
+            filter_query = {"$or": [{"domain": domain}, {"site_id": site_id}]} if site_id else {"domain": domain}
+            # Upsert canonical document
+            existing = self.db.domain_reputation.find_one(filter_query)
+            if existing:
+                self.db.domain_reputation.update_one({"_id": existing["_id"]}, {"$set": record})
+                # Delete any other duplicate documents for this domain
+                self.db.domain_reputation.delete_many({
+                    "$or": [{"domain": domain}, {"site_id": site_id} if site_id else {"domain": domain}],
+                    "_id": {"$ne": existing["_id"]}
+                })
+            else:
+                self.db.domain_reputation.insert_one(record)
         except Exception as exc:
             logger.warning(f"Failed to persist reputation record to MongoDB: {exc}")
 
