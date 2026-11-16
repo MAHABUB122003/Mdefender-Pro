@@ -184,14 +184,9 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
         return 14;
       })() : 14);
 
-  const planLabel = {
-    free: 'Free Plan',
-    go: 'Developer Go',
-    pro: 'Enterprise Pro',
-    enterprise: 'Dedicated Enterprise',
-    ultra: 'Ultra Enterprise',
-    premium: 'Enterprise Pro'
-  }[userPlan] || 'Enterprise Pro';
+  const planLabel = isPro
+    ? 'Pro Plan'
+    : (trialDays > 0 ? `${trialDays}d Free Trial` : 'Free Plan');
 
   // Active domain display label (exact format matching user request)
   const activeDomainObj = selectedSiteId !== 'all'
@@ -577,7 +572,7 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
           </div>
         )}
 
-        {/* Gemini-Style Luxury PRO User Avatar */}
+        {/* Minimalist Professional Outline User Avatar */}
         <div style={{ position: 'relative' }}>
           <button
             type="button"
@@ -591,71 +586,59 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
               width: '36px',
               height: '36px',
               borderRadius: '50%',
-              background: '#0B2522',
-              border: isPro ? '1.5px solid #10B981' : '1.5px solid #164E48',
+              background: showDropdown ? '#E2E8F0' : '#F8FAFC',
+              border: '1.5px solid #CBD5E1',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              color: '#FFFFFF',
-              boxShadow: isPro ? '0 1px 4px rgba(16, 185, 129, 0.25)' : '0 1px 3px rgba(11, 37, 34, 0.15)',
-              transition: 'all 0.2s ease',
+              color: '#0F172A',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.06)',
+              transition: 'all 0.15s ease',
               outline: 'none',
               position: 'relative'
             }}
+            onMouseEnter={(e) => {
+              if (!showDropdown) e.currentTarget.style.background = '#E2E8F0';
+            }}
+            onMouseLeave={(e) => {
+              if (!showDropdown) e.currentTarget.style.background = '#F8FAFC';
+            }}
             aria-label="User Account Menu"
-            title={isPro ? "MDefender PRO Active" : "Account Profile & Settings"}
+            title="Account Profile & Settings"
           >
-            <User size={16} strokeWidth={2.3} color="#FFFFFF" />
-            {isPro && (
-              <span style={{
-                position: 'absolute',
-                bottom: '-2px',
-                right: '-3px',
-                background: '#10B981',
-                color: '#081D1A',
-                fontSize: '8px',
-                fontWeight: 900,
-                padding: '1px 3.5px',
-                borderRadius: '3px',
-                letterSpacing: '0.4px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                lineHeight: 1
-              }}>
-                PRO
-              </span>
-            )}
+            <User size={18} strokeWidth={2} color="#0F172A" />
           </button>
 
           <div className={`dropdown-menu ${showDropdown ? 'show' : ''}`} style={{ right: 0, maxWidth: 'calc(100vw - 24px)' }}>
-            <div style={{ padding: '8px 14px', borderBottom: '1px solid #E2E8F0', marginBottom: '4px' }}>
+            <div style={{ padding: '10px 14px 11px', borderBottom: '1px solid #E2E8F0', marginBottom: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E' }}>{userName}</div>
+                <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#0F172A' }}>{userName}</div>
                 {isPro && (
                   <span style={{
-                    background: 'linear-gradient(135deg, #6366F1, #EC4899)',
-                    color: '#fff',
-                    fontSize: '9px',
-                    fontWeight: 900,
-                    padding: '1px 5px',
+                    background: '#0F172A',
+                    color: '#F8FAFC',
+                    fontSize: '9.5px',
+                    fontWeight: 700,
+                    padding: '1.5px 6px',
                     borderRadius: '4px',
-                    letterSpacing: '0.5px'
+                    letterSpacing: '0.04em'
                   }}>
                     PRO
                   </span>
                 )}
               </div>
-              <div style={{ fontSize: '11px', color: '#87948D', textTransform: 'capitalize' }}>{planLabel}</div>
+              <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '2px', fontWeight: 500 }}>{planLabel}</div>
             </div>
             <Link to="/" onClick={() => setShowDropdown(false)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Globe size={14} />
               <span>Website Homepage</span>
             </Link>
-            <Link to="/user/settings" onClick={() => setShowDropdown(false)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Link to="/user/settings?tab=profile" onClick={() => setShowDropdown(false)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <User size={14} />
               <span>Account Profile</span>
             </Link>
-            <Link to="/user/settings" onClick={() => setShowDropdown(false)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Link to="/user/settings?tab=mfa" onClick={() => setShowDropdown(false)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Settings size={14} />
               <span>Security Settings</span>
             </Link>
