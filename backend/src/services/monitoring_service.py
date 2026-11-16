@@ -818,8 +818,102 @@ class MonitoringService:
             }
 
     # -------------------------------------------------------------------------
-    # 3. Real Mobile & Desktop Performance Audit & Core Web Vitals
+    # 3. Real Mobile & Desktop Performance Audit & Core Web Vitals (Zero Fake Telemetry)
     # -------------------------------------------------------------------------
+    def _get_domain_response_history(self, hostname: str, current_ttfb: float = 0.0) -> Dict[str, Any]:
+        """Aggregate authentic response time telemetry from real monitoring probes."""
+        now = datetime.now()
+        thirty_days_ago = now - timedelta(days=30)
+
+        history_points = []
+        all_averages = []
+
+        try:
+            pipeline = [
+                {
+                    "$match": {
+                        "domain": hostname,
+                        "checked_at": {"$gte": thirty_days_ago},
+                        "response_time_ms": {"$gt": 0}
+                    }
+                },
+                {
+                    "$group": {
+                        "_id": {
+                            "$dateToString": {"format": "%Y-%m-%d", "date": "$checked_at"}
+                        },
+                        "avg_ms": {"$avg": "$response_time_ms"},
+                        "min_ms": {"$min": "$response_time_ms"},
+                        "max_ms": {"$max": "$response_time_ms"},
+                        "count": {"$sum": 1}
+                    }
+                },
+                {"$sort": {"_id": 1}}
+            ]
+            daily_records = list(self.db.monitoring_probes.aggregate(pipeline))
+        except Exception as e:
+            logger.debug(f"[Monitoring] Error aggregating response history: {e}")
+            daily_records = []
+
+        curr_ms_rounded = round(current_ttfb) if current_ttfb > 0 else 0
+        today_str = now.strftime("%Y-%m-%d")
+        today_label = now.strftime("%d %b")
+
+        if daily_records:
+            has_today = False
+            for rec in daily_records:
+                day_str = rec.get("_id", "")
+                try:
+                    dt = datetime.strptime(day_str, "%Y-%m-%d")
+                    date_label = dt.strftime("%d %b")
+                except Exception:
+                    date_label = day_str
+
+                avg_ms = round(rec.get("avg_ms", 0))
+                if day_str == today_str:
+                    has_today = True
+                    if curr_ms_rounded > 0:
+                        avg_ms = round((avg_ms + curr_ms_rounded) / 2)
+
+                all_averages.append(avg_ms)
+                history_points.append({
+                    "date": date_label,
+                    "ms": avg_ms,
+                    "status": "fast" if avg_ms < 800 else ("average" if avg_ms <= 1800 else "slow")
+                })
+
+            if not has_today and curr_ms_rounded > 0:
+                history_points.append({
+                    "date": today_label,
+                    "ms": curr_ms_rounded,
+                    "status": "fast" if curr_ms_rounded < 800 else ("average" if curr_ms_rounded <= 1800 else "slow")
+                })
+                all_averages.append(curr_ms_rounded)
+        elif curr_ms_rounded > 0:
+            history_points.append({
+                "date": today_label,
+                "ms": curr_ms_rounded,
+                "status": "fast" if curr_ms_rounded < 800 else ("average" if curr_ms_rounded <= 1800 else "slow")
+            })
+            all_averages.append(curr_ms_rounded)
+
+        if all_averages:
+            fastest_ms = min(all_averages)
+            slowest_ms = max(all_averages)
+            avg_30d_ms = round(sum(all_averages) / len(all_averages))
+        else:
+            fastest_ms = curr_ms_rounded
+            slowest_ms = curr_ms_rounded
+            avg_30d_ms = curr_ms_rounded
+
+        return {
+            "thirty_day_avg_ms": avg_30d_ms,
+            "fastest_day_ms": fastest_ms,
+            "slowest_day_ms": slowest_ms,
+            "current_ms": curr_ms_rounded,
+            "history": history_points
+        }
+
     def run_performance_audit(self, site_or_url: Any, strategy: str = "desktop", force: bool = False) -> Dict[str, Any]:
         """Run an authentic performance audit for Mobile or Desktop.
         
@@ -834,16 +928,26 @@ class MonitoringService:
         site_id = target["site_id"]
         now = datetime.now()
 
-        # Check cached audit if not forced (cache valid for 15 minutes)
+        # Check cached audit if not forced (cache valid for 15 minutes ONLY IF site is online)
         if not force:
             cached = self.db.monitoring_audits.find_one({
                 "domain": hostname,
                 "strategy": strategy,
-                "audited_at": {"$gte": now - timedelta(minutes=15)}
+                "$or": [
+                    {"audited_at_dt": {"$gte": now - timedelta(minutes=15)}},
+                    {"audited_at": {"$gte": (now - timedelta(minutes=15)).isoformat()}}
+                ]
             })
             if cached:
-                cached.pop("_id", None)
-                return cached
+                # If cached record says score > 0, make sure the site hasn't been probed down recently
+                recent_outage = self.db.monitoring_probes.find_one({
+                    "domain": hostname,
+                    "is_online": False,
+                    "checked_at": {"$gte": now - timedelta(minutes=10)}
+                })
+                if not recent_outage:
+                    cached.pop("_id", None)
+                    return cached
 
         # Device-specific User-Agents and simulated network characteristics
         if strategy == "mobile":
@@ -888,7 +992,9 @@ class MonitoringService:
             except Exception:
                 pass
             is_turnstile = "mdef" in error_body.lower() or "turnstile" in error_body.lower() or "challenge" in error_body.lower() or e.code == 403
-            return {
+            
+            resp_stats = self._get_domain_response_history(hostname, ttfb_ms)
+            err_doc = {
                 "site_id": site_id,
                 "domain": hostname,
                 "url": url,
@@ -909,6 +1015,7 @@ class MonitoringService:
                     "inp_ms": 0,
                     "total_duration_ms": ttfb_ms
                 },
+                "response_time_stats": resp_stats,
                 "page_composition": {
                     "page_size_kb": round(len(error_body) / 1024, 1),
                     "external_scripts_count": 0,
@@ -925,10 +1032,22 @@ class MonitoringService:
                     "description": "Your website origin is currently protected by MDefender Bot Shield / Turnstile challenge. Network connection and TLS speed are verified; temporarily pause Under Attack Mode or add your IP to allowlist to audit deep page assets." if is_turnstile else f"Origin web server returned error {e.code}: {e.reason}"
                 }],
                 "error": "MDefender Bot Shield Challenge Active (HTTP 403)" if is_turnstile else f"HTTP Error {e.code}: {e.reason}",
-                "audited_at": now.isoformat()
+                "audit_status_text": "Origin challenge active (HTTP 403)" if is_turnstile else f"Server returned HTTP {e.code}",
+                "audited_at": now.isoformat(),
+                "audited_at_dt": now
             }
+            try:
+                self.db.monitoring_audits.update_one(
+                    {"domain": hostname, "strategy": strategy},
+                    {"$set": err_doc},
+                    upsert=True
+                )
+            except Exception:
+                pass
+            return err_doc
         except Exception as e:
-            return {
+            resp_stats = self._get_domain_response_history(hostname, 0.0)
+            err_doc = {
                 "site_id": site_id,
                 "domain": hostname,
                 "url": url,
@@ -938,6 +1057,7 @@ class MonitoringService:
                 "rating": "UNREACHABLE",
                 "grade": "F",
                 "badge_color": "#B91C1C",
+                "status_code": 0,
                 "metrics": {
                     "ttfb_ms": 0,
                     "fcp_ms": 0,
@@ -947,6 +1067,7 @@ class MonitoringService:
                     "inp_ms": 0,
                     "total_duration_ms": 0
                 },
+                "response_time_stats": resp_stats,
                 "page_composition": {
                     "page_size_kb": 0,
                     "external_scripts_count": 0,
@@ -957,14 +1078,25 @@ class MonitoringService:
                     "has_browser_caching": False
                 },
                 "recommendations": [{
-                    "title": "Check Origin Web Server Connectivity",
+                    "title": "Origin Web Server Offline or Unreachable",
                     "impact": "HIGH",
                     "savings": "Restore website availability",
-                    "description": f"The audit engine encountered a connection issue: {str(e)}"
+                    "description": f"The audit engine could not establish a connection to {url}: {str(e)}"
                 }],
                 "error": f"Failed to audit origin: {str(e)}",
-                "audited_at": now.isoformat()
+                "audit_status_text": "Audit failed: Origin server unreachable",
+                "audited_at": now.isoformat(),
+                "audited_at_dt": now
             }
+            try:
+                self.db.monitoring_audits.update_one(
+                    {"domain": hostname, "strategy": strategy},
+                    {"$set": err_doc},
+                    upsert=True
+                )
+            except Exception:
+                pass
+            return err_doc
 
         # Real HTML Analysis
         html_size_bytes = len(body)
@@ -1110,35 +1242,9 @@ class MonitoringService:
                 "description": "Combine modular theme and plugin stylesheets into concatenated bundles to reduce HTTP round-trips."
             })
 
-        # Historical response time tracking & 30-day benchmarks
-        base_ttfb = max(20, round(ttfb_ms))
-        history_points = []
-        # 9 days of consistent response tracking
-        offsets_multipliers = [
-            (8, 4.8),  # 8 days ago peak e.g. 751ms
-            (7, 0.95), # 7 days ago
-            (6, 1.05),
-            (5, 0.88),
-            (4, 1.1),
-            (3, 0.92),
-            (2, 0.24), # fastest day e.g. 38ms
-            (1, 1.08),
-            (0, 1.0)   # today e.g. 155ms
-        ]
-        for offset, mult in offsets_multipliers:
-            dt = now - timedelta(days=offset)
-            date_label = dt.strftime("%d %b")
-            pt_ms = round(max(35, base_ttfb * mult))
-            history_points.append({
-                "date": date_label,
-                "ms": pt_ms,
-                "status": "fast" if pt_ms < 800 else ("average" if pt_ms <= 1800 else "slow")
-            })
-
-        all_ms = [p["ms"] for p in history_points]
-        fastest_ms = min(all_ms)
-        slowest_ms = max(all_ms)
-        avg_30d_ms = round(sum(all_ms) / len(all_ms))
+        # Historical response time tracking & 30-day benchmarks (Zero synthetic multipliers)
+        base_ttfb = max(10, round(ttfb_ms))
+        resp_stats = self._get_domain_response_history(hostname, ttfb_ms)
 
         audit_doc = {
             "site_id": site_id,
@@ -1160,13 +1266,7 @@ class MonitoringService:
                 "tbt_ms": tbt_ms,
                 "total_duration_ms": total_duration_ms
             },
-            "response_time_stats": {
-                "thirty_day_avg_ms": avg_30d_ms,
-                "fastest_day_ms": fastest_ms,
-                "slowest_day_ms": slowest_ms,
-                "current_ms": base_ttfb,
-                "history": history_points
-            },
+            "response_time_stats": resp_stats,
             "page_composition": {
                 "page_size_kb": html_size_kb,
                 "external_scripts_count": len(external_scripts),
@@ -1178,7 +1278,8 @@ class MonitoringService:
             },
             "recommendations": recommendations,
             "audited_at": now.isoformat(),
-            "audit_status_text": "Last audit recently, next one in 2 days"
+            "audited_at_dt": now,
+            "audit_status_text": f"Audit completed {now.strftime('%d %b, %H:%M')}"
         }
 
         # Save to DB
@@ -1188,6 +1289,10 @@ class MonitoringService:
                 {"$set": audit_doc},
                 upsert=True
             )
+            # Also insert into historical audit archive
+            archive_doc = dict(audit_doc)
+            archive_doc.pop("_id", None)
+            self.db.monitoring_audits_history.insert_one(archive_doc)
         except Exception as e:
             logger.debug(f"[Monitoring] Error persisting audit: {e}")
 
@@ -1552,21 +1657,25 @@ class MonitoringService:
             with urllib.request.urlopen(req, timeout=8, context=ctx) as resp:
                 import json
                 data = json.loads(resp.read().decode("utf-8")).get("action_result", {})
-                if data:
+                if data and isinstance(data, dict):
+                    data["connected"] = True
+                    data["success"] = True
                     return data
         except Exception as e:
             logger.debug(f"[Monitoring] Origin telemetry fetch failed: {e}")
 
-        # Fallback simulated baseline if plugin sync is offline
+        # When plugin sync is offline or unreachable, return honest disconnected state
         return {
-            "success": True,
-            "php_version": "8.1+",
-            "php_memory_usage": "78 MB",
-            "php_memory_limit": "256M",
-            "mysql_version": "8.0",
-            "db_size_mb": 18.5,
-            "opcache_active": True,
-            "active_plugins_count": 8,
+            "success": False,
+            "connected": False,
+            "message": "Origin WordPress plugin telemetry offline or unreachable",
+            "php_version": None,
+            "php_memory_usage": None,
+            "php_memory_limit": None,
+            "mysql_version": None,
+            "db_size_mb": None,
+            "opcache_active": False,
+            "active_plugins_count": None,
             "active_redirects_count": 0,
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }

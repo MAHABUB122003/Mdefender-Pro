@@ -621,44 +621,49 @@ function BulkPerformanceContent() {
   const currentAudit = primarySiteId ? (perfData[`${primarySiteId}_${strategy}`] || null) : null
   const hasAudit = Boolean(currentAudit && typeof currentAudit?.score === 'number')
 
-  // Real extracted metrics
-  const score = hasAudit ? currentAudit.score : 100
+  // Real unreachable / challenged state detection
+  const isUnreachable = Boolean(currentAudit && (currentAudit.rating === 'UNREACHABLE' || (currentAudit.score === 0 && !currentAudit.is_challenged)))
+  const isChallenged = Boolean(currentAudit && currentAudit.is_challenged)
+  const isHealthy = hasAudit && !isUnreachable && !isChallenged && currentAudit.score > 0
+
+  // Real extracted metrics (Zero synthetic fallbacks)
+  const score = hasAudit ? currentAudit.score : 0
   const metrics = (currentAudit && typeof currentAudit.metrics === 'object' && currentAudit.metrics) || {}
   const composition = (currentAudit && typeof currentAudit.page_composition === 'object' && currentAudit.page_composition) || {}
   const rawRecs = currentAudit?.recommendations
   const recommendations = Array.isArray(rawRecs) ? rawRecs : []
   const responseStats = currentAudit?.response_time_stats || {}
 
-  // 5 Core Web Vitals Values (Exact format from reference image)
-  const fcpValue = typeof metrics?.fcp_ms === 'number' && metrics.fcp_ms > 0
-    ? `${(metrics.fcp_ms / 1000).toFixed(1)} s`
-    : '0.2 s'
+  // 5 Core Web Vitals Values (Truthful: formatted real measurements or N/A)
+  const fcpValue = isUnreachable
+    ? 'N/A'
+    : (typeof metrics?.fcp_ms === 'number' && metrics.fcp_ms > 0 ? `${(metrics.fcp_ms / 1000).toFixed(1)} s` : (hasAudit ? 'N/A' : '—'))
 
-  const lcpValue = typeof metrics?.lcp_ms === 'number' && metrics.lcp_ms > 0
-    ? `${(metrics.lcp_ms / 1000).toFixed(1)} s`
-    : '0.3 s'
+  const lcpValue = isUnreachable
+    ? 'N/A'
+    : (typeof metrics?.lcp_ms === 'number' && metrics.lcp_ms > 0 ? `${(metrics.lcp_ms / 1000).toFixed(1)} s` : (hasAudit ? 'N/A' : '—'))
 
-  const tbtValue = typeof metrics?.tbt_ms === 'number'
-    ? `${metrics.tbt_ms} ms`
-    : '0 ms'
+  const tbtValue = isUnreachable
+    ? 'N/A'
+    : (typeof metrics?.tbt_ms === 'number' && metrics.tbt_ms >= 0 && score > 0 ? `${metrics.tbt_ms} ms` : (hasAudit ? 'N/A' : '—'))
 
-  const clsValue = typeof metrics?.cls === 'number'
-    ? `${metrics.cls}`
-    : '0'
+  const clsValue = isUnreachable
+    ? 'N/A'
+    : (typeof metrics?.cls === 'number' && score > 0 ? `${metrics.cls}` : (hasAudit ? 'N/A' : '—'))
 
-  const speedIndexValue = typeof metrics?.speed_index_ms === 'number' && metrics.speed_index_ms > 0
-    ? `${(metrics.speed_index_ms / 1000).toFixed(1)} s`
-    : '0.6 s'
+  const speedIndexValue = isUnreachable
+    ? 'N/A'
+    : (typeof metrics?.speed_index_ms === 'number' && metrics.speed_index_ms > 0 ? `${(metrics.speed_index_ms / 1000).toFixed(1)} s` : (hasAudit ? 'N/A' : '—'))
 
-  // Response Time Stats
-  const avg30dMs = responseStats.thirty_day_avg_ms || Math.round(metrics?.ttfb_ms || 155)
-  const fastestDayMs = responseStats.fastest_day_ms || 38
-  const slowestDayMs = responseStats.slowest_day_ms || 751
-  const currentResponseMs = responseStats.current_ms || Math.round(metrics?.ttfb_ms || 155)
+  // Response Time Stats (Truthful numbers from real probes)
+  const avg30dMs = responseStats.thirty_day_avg_ms || (isUnreachable ? 0 : Math.round(metrics?.ttfb_ms || 0))
+  const fastestDayMs = responseStats.fastest_day_ms || (isUnreachable ? 0 : Math.round(metrics?.ttfb_ms || 0))
+  const slowestDayMs = responseStats.slowest_day_ms || (isUnreachable ? 0 : Math.round(metrics?.ttfb_ms || 0))
+  const currentResponseMs = isUnreachable ? 0 : (responseStats.current_ms || Math.round(metrics?.ttfb_ms || 0))
   const historyData = Array.isArray(responseStats.history) ? responseStats.history : []
 
   // Audit freshness text
-  const auditStatusText = currentAudit?.audit_status_text || 'Last audit 9 days ago, next one in 2 days'
+  const auditStatusText = currentAudit?.audit_status_text || (hasAudit ? (currentAudit?.audited_at ? `Audit completed ${new Date(currentAudit.audited_at).toLocaleDateString()}` : 'Audit recorded') : 'No audit on record yet')
 
   if (!hasWebsites) {
     return (
@@ -796,6 +801,102 @@ function BulkPerformanceContent() {
         </div>
       </div>
 
+      {/* UNREACHABLE / OFFLINE ORIGIN OUTAGE BANNER */}
+      {isUnreachable && (
+        <div style={{
+          background: '#FEF2F2',
+          border: '1px solid #FECACA',
+          borderRadius: '10px',
+          padding: '14px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+          boxShadow: '0 1px 3px rgba(220, 38, 38, 0.05)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '34px',
+              height: '34px',
+              borderRadius: '8px',
+              background: '#FEE2E2',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              color: '#DC2626'
+            }}>
+              <AlertTriangle size={18} />
+            </div>
+            <div>
+              <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#991B1B' }}>
+                Website Origin Server Offline / Unreachable (Score 0)
+              </div>
+              <div style={{ fontSize: '12px', color: '#B91C1C', marginTop: '1px' }}>
+                {currentAudit?.error || 'Origin web server failed to respond or rejected connection. Core Web Vitals cannot be computed while offline.'}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => fetchAudit(primarySiteId, strategy, true, true)}
+            disabled={loadingAudit}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 13px',
+              borderRadius: '7px',
+              background: '#DC2626',
+              color: '#FFFFFF',
+              border: 'none',
+              fontSize: '11.5px',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
+          >
+            <RefreshCw size={12} style={{ animation: loadingAudit ? 'spin 1s linear infinite' : 'none' }} />
+            <span>Verify &amp; Retry</span>
+          </button>
+        </div>
+      )}
+
+      {/* BOT SHIELD / TURNSTILE CHALLENGE BANNER */}
+      {isChallenged && (
+        <div style={{
+          background: '#FFFBEB',
+          border: '1px solid #FDE68A',
+          borderRadius: '10px',
+          padding: '14px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          boxShadow: '0 1px 3px rgba(217, 119, 6, 0.05)'
+        }}>
+          <div style={{
+            width: '34px',
+            height: '34px',
+            borderRadius: '8px',
+            background: '#FEF3C7',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            color: '#D97706'
+          }}>
+            <AlertTriangle size={18} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#92400E' }}>
+              MDefender Bot Shield / Turnstile Challenge Active (HTTP 403)
+            </div>
+            <div style={{ fontSize: '12px', color: '#B45309', marginTop: '1px' }}>
+              Network latency and TLS connection are healthy. HTML payload is protected behind an anti-bot challenge. Allowlist probe IP to analyze DOM assets.
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ===================================================================== */}
       {/* SECTION 1: PAGE SPEED (CIRCULAR GAUGE + 5 METRIC CARDS)               */}
       {/* ===================================================================== */}
@@ -867,7 +968,11 @@ function BulkPerformanceContent() {
         <div className="mdf-perf-speed-layout">
           {/* Left Circular Gauge */}
           <div className="mdf-perf-gauge-box">
-            <CircularScoreGauge score={score} />
+            {loadingAudit && !hasAudit ? (
+              <div className="mdf-shimmer" style={{ width: '76px', height: '76px', borderRadius: '50%' }} />
+            ) : (
+              <CircularScoreGauge score={score} />
+            )}
           </div>
 
           {/* Right 5 Metric Cards (Compact single row on wide screens) */}
@@ -875,70 +980,90 @@ function BulkPerformanceContent() {
             {/* Metric 1: First Contentful Paint */}
             <div style={metricCardStyle}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
-                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981', flexShrink: 0 }} />
+                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: isUnreachable ? '#EF4444' : '#10B981', flexShrink: 0 }} />
                 <span style={{ fontSize: '11px', fontWeight: '600', color: '#334155' }}>First Contentful Paint</span>
               </div>
-              <div style={{ fontSize: '17px', fontWeight: '800', color: '#0F172A', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
-                {fcpValue}
-              </div>
+              {loadingAudit && !hasAudit ? (
+                <div className="mdf-shimmer" style={{ width: '45px', height: '20px', borderRadius: '4px', margin: '3px 0' }} />
+              ) : (
+                <div style={{ fontSize: '17px', fontWeight: '800', color: isUnreachable ? '#DC2626' : '#0F172A', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
+                  {fcpValue}
+                </div>
+              )}
               <div style={{ fontSize: '10px', color: '#64748B', marginTop: '2px', lineHeight: 1.25 }}>
-                When the first text or image is displayed.
+                {isUnreachable ? 'Server unreachable' : 'When first text/image appears.'}
               </div>
             </div>
 
             {/* Metric 2: Largest Contentful Paint */}
             <div style={metricCardStyle}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
-                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981', flexShrink: 0 }} />
+                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: isUnreachable ? '#EF4444' : '#10B981', flexShrink: 0 }} />
                 <span style={{ fontSize: '11px', fontWeight: '600', color: '#334155' }}>Largest Contentful Paint</span>
               </div>
-              <div style={{ fontSize: '17px', fontWeight: '800', color: '#0F172A', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
-                {lcpValue}
-              </div>
+              {loadingAudit && !hasAudit ? (
+                <div className="mdf-shimmer" style={{ width: '45px', height: '20px', borderRadius: '4px', margin: '3px 0' }} />
+              ) : (
+                <div style={{ fontSize: '17px', fontWeight: '800', color: isUnreachable ? '#DC2626' : '#0F172A', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
+                  {lcpValue}
+                </div>
+              )}
               <div style={{ fontSize: '10px', color: '#64748B', marginTop: '2px', lineHeight: 1.25 }}>
-                When the largest element is displayed.
+                {isUnreachable ? 'Server unreachable' : 'When main content has loaded.'}
               </div>
             </div>
 
             {/* Metric 3: Total Blocking Time */}
             <div style={metricCardStyle}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
-                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981', flexShrink: 0 }} />
+                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: isUnreachable ? '#EF4444' : '#10B981', flexShrink: 0 }} />
                 <span style={{ fontSize: '11px', fontWeight: '600', color: '#334155' }}>Total Blocking Time</span>
               </div>
-              <div style={{ fontSize: '17px', fontWeight: '800', color: '#0F172A', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
-                {tbtValue}
-              </div>
+              {loadingAudit && !hasAudit ? (
+                <div className="mdf-shimmer" style={{ width: '45px', height: '20px', borderRadius: '4px', margin: '3px 0' }} />
+              ) : (
+                <div style={{ fontSize: '17px', fontWeight: '800', color: isUnreachable ? '#DC2626' : '#0F172A', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
+                  {tbtValue}
+                </div>
+              )}
               <div style={{ fontSize: '10px', color: '#64748B', marginTop: '2px', lineHeight: 1.25 }}>
-                Time spent on tasks longer than 50ms.
+                {isUnreachable ? 'Server unreachable' : 'Time spent on tasks > 50ms.'}
               </div>
             </div>
 
             {/* Metric 4: Cumulative Layout Shift */}
             <div style={metricCardStyle}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
-                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981', flexShrink: 0 }} />
+                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: isUnreachable ? '#EF4444' : '#10B981', flexShrink: 0 }} />
                 <span style={{ fontSize: '11px', fontWeight: '600', color: '#334155' }}>Cumulative Layout Shift</span>
               </div>
-              <div style={{ fontSize: '17px', fontWeight: '800', color: '#0F172A', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
-                {clsValue}
-              </div>
+              {loadingAudit && !hasAudit ? (
+                <div className="mdf-shimmer" style={{ width: '45px', height: '20px', borderRadius: '4px', margin: '3px 0' }} />
+              ) : (
+                <div style={{ fontSize: '17px', fontWeight: '800', color: isUnreachable ? '#DC2626' : '#0F172A', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
+                  {clsValue}
+                </div>
+              )}
               <div style={{ fontSize: '10px', color: '#64748B', marginTop: '2px', lineHeight: 1.25 }}>
-                How much visible elements move around.
+                {isUnreachable ? 'Server unreachable' : 'Visual element movement.'}
               </div>
             </div>
 
             {/* Metric 5: Speed Index */}
             <div style={metricCardStyle}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
-                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981', flexShrink: 0 }} />
+                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: isUnreachable ? '#EF4444' : '#10B981', flexShrink: 0 }} />
                 <span style={{ fontSize: '11px', fontWeight: '600', color: '#334155' }}>Speed Index</span>
               </div>
-              <div style={{ fontSize: '17px', fontWeight: '800', color: '#0F172A', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
-                {speedIndexValue}
-              </div>
+              {loadingAudit && !hasAudit ? (
+                <div className="mdf-shimmer" style={{ width: '45px', height: '20px', borderRadius: '4px', margin: '3px 0' }} />
+              ) : (
+                <div style={{ fontSize: '17px', fontWeight: '800', color: isUnreachable ? '#DC2626' : '#0F172A', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
+                  {speedIndexValue}
+                </div>
+              )}
               <div style={{ fontSize: '10px', color: '#64748B', marginTop: '2px', lineHeight: 1.25 }}>
-                How quickly contents are visibly filled.
+                {isUnreachable ? 'Server unreachable' : 'Visual fill velocity.'}
               </div>
             </div>
           </div>
@@ -982,13 +1107,13 @@ function BulkPerformanceContent() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span style={{ width: '12px', height: '0px', borderTop: '2px dashed #6366F1' }} />
-              <span>30-day average <strong style={{ color: '#0F172A' }}>{avg30dMs}ms</strong></span>
+              <span>30-day average <strong style={{ color: '#0F172A' }}>{avg30dMs > 0 ? `${avg30dMs}ms` : (isUnreachable ? '0ms' : '—')}</strong></span>
             </div>
             <div>
-              <span>Fastest day <strong style={{ color: '#0F172A' }}>{fastestDayMs}ms</strong></span>
+              <span>Fastest day <strong style={{ color: '#0F172A' }}>{fastestDayMs > 0 ? `${fastestDayMs}ms` : (isUnreachable ? '0ms' : '—')}</strong></span>
             </div>
             <div>
-              <span>Slowest day <strong style={{ color: '#0F172A' }}>{slowestDayMs}ms</strong></span>
+              <span>Slowest day <strong style={{ color: '#0F172A' }}>{slowestDayMs > 0 ? `${slowestDayMs}ms` : (isUnreachable ? '0ms' : '—')}</strong></span>
             </div>
           </div>
         </div>
@@ -1024,11 +1149,11 @@ function BulkPerformanceContent() {
               borderRadius: '6px',
               fontSize: '11px',
               fontWeight: '700',
-              background: '#F0FDF4',
-              color: '#15803D',
-              border: '1px solid #DCFCE7'
+              background: originTelemetry?.connected ? '#F0FDF4' : '#F8FAFC',
+              color: originTelemetry?.connected ? '#15803D' : '#64748B',
+              border: `1px solid ${originTelemetry?.connected ? '#DCFCE7' : '#E2E8F0'}`
             }}>
-              LIVE PLUGIN TELEMETRY
+              {originTelemetry?.connected ? 'LIVE PLUGIN TELEMETRY' : 'PLUGIN SYNC OFFLINE'}
             </span>
           </div>
           <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '14px' }}>
@@ -1042,10 +1167,12 @@ function BulkPerformanceContent() {
                 <span>PHP Memory Usage</span>
               </div>
               <div style={{ fontSize: '16px', fontWeight: '700', color: '#0F172A', marginTop: '4px' }}>
-                {originTelemetry?.php_memory_usage || '92 MB'}
-                <span style={{ fontSize: '11px', color: '#64748B', fontWeight: '400', marginLeft: '6px' }}>
-                  / {originTelemetry?.php_memory_limit || '512M'}
-                </span>
+                {originTelemetry?.connected ? (originTelemetry.php_memory_usage || '—') : 'N/A'}
+                {originTelemetry?.connected && originTelemetry?.php_memory_limit && (
+                  <span style={{ fontSize: '11px', color: '#64748B', fontWeight: '400', marginLeft: '6px' }}>
+                    / {originTelemetry.php_memory_limit}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -1055,10 +1182,16 @@ function BulkPerformanceContent() {
                 <span>Database Engine</span>
               </div>
               <div style={{ fontSize: '16px', fontWeight: '700', color: '#0F172A', marginTop: '4px' }}>
-                v{originTelemetry?.mysql_version || '10.4.32'}
-                <span style={{ fontSize: '11px', color: '#64748B', fontWeight: '400', marginLeft: '6px' }}>
-                  ({originTelemetry?.db_size_mb || 29.9} MB)
-                </span>
+                {originTelemetry?.connected ? (
+                  <>
+                    v{originTelemetry.mysql_version || '—'}
+                    {originTelemetry.db_size_mb && (
+                      <span style={{ fontSize: '11px', color: '#64748B', fontWeight: '400', marginLeft: '6px' }}>
+                        ({originTelemetry.db_size_mb} MB)
+                      </span>
+                    )}
+                  </>
+                ) : 'N/A'}
               </div>
             </div>
 
@@ -1068,7 +1201,7 @@ function BulkPerformanceContent() {
                 <span>PHP Version</span>
               </div>
               <div style={{ fontSize: '16px', fontWeight: '700', color: '#0F172A', marginTop: '4px' }}>
-                PHP {originTelemetry?.php_version || '8.2'}
+                {originTelemetry?.connected ? `PHP ${originTelemetry.php_version || '—'}` : 'N/A'}
               </div>
             </div>
 
@@ -1078,7 +1211,7 @@ function BulkPerformanceContent() {
                 <span>Active Plugins</span>
               </div>
               <div style={{ fontSize: '16px', fontWeight: '700', color: '#0F172A', marginTop: '4px' }}>
-                {originTelemetry?.active_plugins_count || 3} Loaded
+                {originTelemetry?.connected ? (typeof originTelemetry.active_plugins_count === 'number' ? `${originTelemetry.active_plugins_count} Loaded` : '—') : 'N/A'}
               </div>
             </div>
           </div>
@@ -1093,8 +1226,8 @@ function BulkPerformanceContent() {
             fontSize: '12px',
             color: '#64748B'
           }}>
-            <span>OPcache Acceleration: <strong style={{ color: originTelemetry?.opcache_active ? '#15803D' : '#64748B' }}>{originTelemetry?.opcache_active ? 'Active' : 'FastCGI / Standard'}</strong></span>
-            <span>Max Execution: <strong>{originTelemetry?.php_max_execution_time || 120}s</strong></span>
+            <span>OPcache Acceleration: <strong style={{ color: originTelemetry?.connected && originTelemetry?.opcache_active ? '#15803D' : '#64748B' }}>{originTelemetry?.connected ? (originTelemetry.opcache_active ? 'Active' : 'FastCGI / Standard') : 'Offline'}</strong></span>
+            <span>Max Execution: <strong>{originTelemetry?.connected && originTelemetry?.php_max_execution_time ? `${originTelemetry.php_max_execution_time}s` : '—'}</strong></span>
           </div>
         </div>
 
@@ -1110,26 +1243,24 @@ function BulkPerformanceContent() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F1F5F9', paddingBottom: '7px' }}>
               <span style={{ fontSize: '13px', color: '#475569' }}>Total HTML Payload:</span>
-              <span style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A' }}>{composition.page_size_kb || 28} KB</span>
+              <span style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A' }}>{isUnreachable ? '0 KB' : (hasAudit ? `${composition.page_size_kb || 0} KB` : '—')}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F1F5F9', paddingBottom: '7px' }}>
               <span style={{ fontSize: '13px', color: '#475569' }}>External JavaScript Tags:</span>
-              <span style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A' }}>{composition.external_scripts_count || 4} scripts</span>
+              <span style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A' }}>{isUnreachable ? '0 scripts' : (hasAudit ? `${composition.external_scripts_count || 0} scripts` : '—')}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F1F5F9', paddingBottom: '7px' }}>
               <span style={{ fontSize: '13px', color: '#475569' }}>Linked CSS Stylesheets:</span>
-              <span style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A' }}>{composition.stylesheets_count || 8} files</span>
+              <span style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A' }}>{isUnreachable ? '0 files' : (hasAudit ? `${composition.stylesheets_count || 0} files` : '—')}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F1F5F9', paddingBottom: '7px' }}>
               <span style={{ fontSize: '13px', color: '#475569' }}>Image Elements (DOM):</span>
-              <span style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A' }}>{composition.images_count || 6} images</span>
+              <span style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A' }}>{isUnreachable ? '0 images' : (hasAudit ? `${composition.images_count || 0} images` : '—')}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ fontSize: '13px', color: '#475569' }}>Text Compression Header:</span>
-              <span style={{ fontSize: '13px', fontWeight: '700', color: composition?.is_compressed ? '#16A34A' : '#15803D' }}>
-                {typeof composition?.compression_type === 'string' && composition.compression_type && composition.compression_type.toLowerCase() !== 'none'
-                  ? composition.compression_type.toUpperCase()
-                  : (composition?.is_compressed ? 'GZIP ACTIVE' : 'OPTIMIZED')}
+              <span style={{ fontSize: '13px', fontWeight: '700', color: isUnreachable ? '#64748B' : (composition?.is_compressed ? '#16A34A' : '#D97706') }}>
+                {isUnreachable ? 'N/A (Server Down)' : (composition?.is_compressed ? (composition.compression_type && composition.compression_type.toLowerCase() !== 'none' ? composition.compression_type.toUpperCase() : 'GZIP ACTIVE') : (hasAudit ? 'UNCOMPRESSED' : '—'))}
               </span>
             </div>
           </div>
@@ -1162,17 +1293,19 @@ function BulkPerformanceContent() {
               width: '36px',
               height: '36px',
               borderRadius: '50%',
-              background: '#F0FDF4',
-              color: '#16A34A',
+              background: hasAudit ? '#F0FDF4' : '#F1F5F9',
+              color: hasAudit ? '#16A34A' : '#64748B',
               marginBottom: '8px'
             }}>
-              <CheckCircle2 size={18} />
+              {hasAudit ? <CheckCircle2 size={18} /> : <Zap size={18} />}
             </div>
             <div style={{ fontSize: '14px', fontWeight: '600', color: '#0F172A' }}>
-              Origin Speed Optimized (Score 100/100)
+              {hasAudit ? (isUnreachable ? 'No Diagnostics Available (Server Offline)' : 'Origin Speed Optimized') : 'No Performance Audit Recorded Yet'}
             </div>
             <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
-              All Core Web Vitals are within Google&apos;s fast thresholds. No critical bottlenecks detected.
+              {hasAudit
+                ? (isUnreachable ? 'The server did not respond. Check connectivity and retry.' : 'All Core Web Vitals are within Google\'s fast thresholds. No critical bottlenecks detected.')
+                : 'Click "Rescan performance" above to measure Core Web Vitals and discover diagnostic recommendations.'}
             </div>
           </div>
         ) : (
