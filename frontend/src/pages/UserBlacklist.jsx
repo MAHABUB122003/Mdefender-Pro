@@ -153,8 +153,14 @@ export default function UserBlacklist({ activeMode }) {
   }, [activeMode, location.pathname, searchParams])
 
   // ── IP Blacklist State ──────────────────────────────────────────────────────
-  const [entries, setEntries] = useState(() => userStore.get('blacklist') || [])
-  const [loading, setLoading] = useState(() => !userStore.get('blacklist'))
+  const [entries, setEntries] = useState(() => {
+    const c = userStore.get('blacklist')
+    return Array.isArray(c) ? c : []
+  })
+  const [loading, setLoading] = useState(() => {
+    const c = userStore.get('blacklist')
+    return !(Array.isArray(c) && c.length > 0)
+  })
   const [refreshing, setRefreshing] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ ip: '', reason: '', duration: '1d' })
@@ -178,16 +184,28 @@ export default function UserBlacklist({ activeMode }) {
   })
 
   // ── IP Whitelist State ──────────────────────────────────────────────────────
-  const [whitelistEntries, setWhitelistEntries] = useState(() => userStore.get('whitelist') || [])
-  const [whitelistLoading, setWhitelistLoading] = useState(() => !userStore.get('whitelist'))
+  const [whitelistEntries, setWhitelistEntries] = useState(() => {
+    const c = userStore.get('whitelist')
+    return Array.isArray(c) ? c : []
+  })
+  const [whitelistLoading, setWhitelistLoading] = useState(() => {
+    const c = userStore.get('whitelist')
+    return !(Array.isArray(c) && c.length > 0)
+  })
   const [showWhitelistModal, setShowWhitelistModal] = useState(false)
   const [whitelistForm, setWhitelistForm] = useState({ ip: '', reason: '', website_id: 'all' })
   const [submittingWhitelist, setSubmittingWhitelist] = useState(false)
   const [whitelistSearch, setWhitelistSearch] = useState('')
 
   // ── Country Blacklist State ─────────────────────────────────────────────────
-  const [countryBlocks, setCountryBlocks] = useState(() => userStore.get('country_blocks') || [])
-  const [countryLoading, setCountryLoading] = useState(() => !userStore.get('country_blocks'))
+  const [countryBlocks, setCountryBlocks] = useState(() => {
+    const c = userStore.get('country_blocks')
+    return Array.isArray(c) ? c : []
+  })
+  const [countryLoading, setCountryLoading] = useState(() => {
+    const c = userStore.get('country_blocks')
+    return !(Array.isArray(c) && c.length > 0)
+  })
   const [selectedCountry, setSelectedCountry] = useState('CN')
   const [selectedRegion, setSelectedRegion] = useState('All')
   const [blockReason, setBlockReason] = useState('')

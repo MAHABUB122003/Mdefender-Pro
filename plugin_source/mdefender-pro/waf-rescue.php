@@ -344,8 +344,9 @@ if ($action === 'ping' || $action === 'self_heal') {
     exit;
 }
 
-if ($action === 'clear_blocks' || $action === 'unblock_all') {
-    $cleared_ips = ['103.120.45.240', '127.0.0.1', '::1'];
+if ($action === 'clear_blocks' || $action === 'unblock_all' || $action === 'repair_htaccess' || $action === 'fix_permalinks') {
+    $client_ip = !empty($_SERVER['REMOTE_ADDR']) ? trim($_SERVER['REMOTE_ADDR']) : '';
+    $cleared_ips = array_filter(array_unique(['103.120.45.240', '103.120.45.241', '127.0.0.1', '::1', $client_ip]));
     delete_option('waf_fw_local_blacklist_cache');
     delete_option('waf_fw_attack_attempts');
     delete_option('waf_fw_gateway_locked_ips');
@@ -357,7 +358,8 @@ if ($action === 'clear_blocks' || $action === 'unblock_all') {
     global $wpdb;
     if ($wpdb) {
         $table = $wpdb->prefix . 'waf_blacklist';
-        $wpdb->query("DELETE FROM $table WHERE ip IN ('103.120.45.240', '127.0.0.1')");
+        $in_clause = implode("','", array_map('esc_sql', $cleared_ips));
+        $wpdb->query("DELETE FROM $table WHERE ip IN ('$in_clause')");
     }
     $fast_log = __DIR__ . '/includes/data/waf_attack_fast_log.json';
     if (file_exists($fast_log)) { @unlink($fast_log); }
@@ -366,15 +368,30 @@ if ($action === 'clear_blocks' || $action === 'unblock_all') {
         $cdata = @json_decode(@file_get_contents($fast_cache), true);
         if (is_array($cdata)) {
             $cdata['blacklist_ips'] = [];
-            $cdata['whitelist_ips'] = array_values(array_unique(array_merge($cdata['whitelist_ips'] ?? [], ['103.120.45.240', '127.0.0.1'])));
+            $cdata['whitelist_ips'] = array_values(array_unique(array_merge($cdata['whitelist_ips'] ?? [], $cleared_ips)));
             @file_put_contents($fast_cache, json_encode($cdata, JSON_PRETTY_PRINT));
         }
     }
+
+    // Clean .htaccess blacklist & restore WordPress permalinks rewrite block
+    $home_p = defined('ABSPATH') ? ABSPATH : dirname(dirname(dirname(__DIR__))) . '/';
+    $ht_file = rtrim($home_p, '/\\') . '/.htaccess';
+    if (file_exists($ht_file)) {
+        $ht_c = @file_get_contents($ht_file);
+        if ($ht_c !== false) {
+            $ht_c = preg_replace('/# BEGIN MDefender-Pro IP Blacklist.*?# END MDefender-Pro IP Blacklist\s*/s', '', $ht_c);
+            if (strpos($ht_c, '# BEGIN WordPress') === false) {
+                $ht_c = rtrim($ht_c) . "\n# BEGIN WordPress\n<IfModule mod_rewrite.c>\nRewriteEngine On\nRewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]\nRewriteBase /\nRewriteRule ^index\\.php$ - [L]\nRewriteCond %{REQUEST_FILENAME} !-f\nRewriteCond %{REQUEST_FILENAME} !-d\nRewriteRule . /index.php [L]\n</IfModule>\n# END WordPress\n";
+            }
+            @file_put_contents($ht_file, $ht_c, LOCK_EX);
+        }
+    }
+
     echo json_encode([
         'status' => 'success',
-        'message' => 'All blocks and attack caches cleared successfully.',
+        'message' => 'All blocks and attack caches cleared. .htaccess permalinks repaired successfully.',
         'action' => $action,
-        'action_result' => ['success' => true, 'unblocked_ips' => $cleared_ips]
+        'action_result' => ['success' => true, 'unblocked_ips' => $cleared_ips, 'permalinks_repaired' => true]
     ]);
     exit;
 }

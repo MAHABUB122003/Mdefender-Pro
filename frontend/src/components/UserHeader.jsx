@@ -26,7 +26,8 @@ import {
   LogOut,
   BellOff,
   Check,
-  ArrowRight
+  ArrowRight,
+  RotateCw
 } from 'lucide-react';
 import useBulkFleet from '../pages/bulk/useBulkFleet';
 import api from '../api/api';
@@ -83,6 +84,8 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showDomainMenu, setShowDomainMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [headerNotifs, setHeaderNotifs] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const storedName = localStorage.getItem('mdefender_user_name') || 'User';
@@ -185,8 +188,21 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
     ? (activeDomainObj.domain || activeDomainObj.name || activeDomainObj.url || 'Selected Site')
     : (wpWebsites.length > 0 ? `Global Fleet (${wpWebsites.length} Sites)` : 'No Connected Sites');
 
+  const handleRequestLogout = () => {
+    setShowDropdown(false);
+    setShowLogoutConfirm(true);
+  };
+
+  const handlePerformLogout = async () => {
+    setIsSigningOut(true);
+    await new Promise(r => setTimeout(r, 450));
+    if (onLogout) {
+      onLogout();
+    }
+  };
+
   useEffect(() => {
-    window.__doLogout = onLogout;
+    window.__doLogout = handleRequestLogout;
     return () => { delete window.__doLogout; };
   }, [onLogout]);
 
@@ -630,13 +646,90 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
               <span>Security Settings</span>
             </Link>
             <div className="divider"></div>
-            <button onClick={onLogout} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#DC2626' }}>
+            <button onClick={handleRequestLogout} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#DC2626' }}>
               <LogOut size={14} />
               <span>Sign Out</span>
             </button>
           </div>
         </div>
       </div>
+
+      {/* ── Sign Out Confirmation Modal ── */}
+      {showLogoutConfirm && (
+        <div
+          onClick={(e) => { e.stopPropagation(); }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 99999,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '16px', animation: 'mdfFadeIn 0.2s ease-out'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#FFFFFF', borderRadius: '16px', maxWidth: '420px', width: '100%',
+              padding: '28px 24px', boxShadow: '0 20px 40px -15px rgba(0,0,0,0.2)',
+              border: '1px solid #E2E8F0', textAlign: 'center'
+            }}
+          >
+            <div style={{
+              width: '52px', height: '52px', borderRadius: '14px',
+              background: '#FEE2E2', color: '#DC2626',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 16px'
+            }}>
+              <LogOut size={24} />
+            </div>
+            <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#0F172A', marginBottom: '8px' }}>
+              Sign out of MDefender Pro?
+            </h3>
+            <p style={{ fontSize: '14px', color: '#64748B', lineHeight: '1.5', marginBottom: '24px' }}>
+              Your current security session and local tokens will be safely cleared.
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                disabled={isSigningOut}
+                onClick={() => setShowLogoutConfirm(false)}
+                style={{
+                  flex: 1, padding: '10px 16px', borderRadius: '10px',
+                  border: '1px solid #CBD5E1', background: '#FFFFFF',
+                  color: '#475569', fontSize: '14px', fontWeight: '600',
+                  cursor: isSigningOut ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSigningOut}
+                onClick={handlePerformLogout}
+                style={{
+                  flex: 1, padding: '10px 16px', borderRadius: '10px',
+                  border: 'none', background: '#DC2626',
+                  color: '#FFFFFF', fontSize: '14px', fontWeight: '600',
+                  cursor: isSigningOut ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                }}
+              >
+                {isSigningOut ? (
+                  <>
+                    <RotateCw size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                    <span>Signing out...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogOut size={14} />
+                    <span>Sign Out</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

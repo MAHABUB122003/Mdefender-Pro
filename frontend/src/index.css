@@ -4053,6 +4053,42 @@ body {
   }
 }
 
+/* ==========================================================================
+   MDefender Pro Global Skeleton Shimmer Animation
+   Hardware-accelerated CSS shimmer placeholders for all dashboard views
+   ========================================================================== */
+@keyframes mdfShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes mdfFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mdf-shimmer {
+  background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%) !important;
+  background-size: 200% 100% !important;
+  animation: mdfShimmer 1.5s infinite ease-in-out !important;
+  pointer-events: none !important;
+}
+
+.mdf-tab-pane {
+  animation: mdfFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+
 
 
 

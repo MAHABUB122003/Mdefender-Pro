@@ -5521,3 +5521,38 @@ function mdf_build_18_domains_status($scan_results, $findings) {
     }
     return $domains;
 }
+
+// Self-Healing Core Permalinks & Apache/LiteSpeed .htaccess Guard
+add_action('init', 'waf_fw_ensure_core_permalinks_health', 99);
+function waf_fw_ensure_core_permalinks_health() {
+    static $checked = false;
+    if ($checked) return;
+    $checked = true;
+
+    if (function_exists('get_home_path')) {
+        $home_p = get_home_path();
+        $ht = rtrim($home_p, '/\\') . DIRECTORY_SEPARATOR . '.htaccess';
+        if (file_exists($ht) && is_writable($ht)) {
+            $c = @file_get_contents($ht);
+            if ($c !== false && strpos($c, '# BEGIN WordPress') === false) {
+                if (class_exists('WAF_FW_Website_Hardening')) {
+                    WAF_FW_Website_Hardening::ensure_wordpress_core_rewrite($ht);
+                } else {
+                    $wp_rewrite = "\n# BEGIN WordPress\n" .
+                                  "<IfModule mod_rewrite.c>\n" .
+                                  "RewriteEngine On\n" .
+                                  "RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]\n" .
+                                  "RewriteBase /\n" .
+                                  "RewriteRule ^index\\.php$ - [L]\n" .
+                                  "RewriteCond %{REQUEST_FILENAME} !-f\n" .
+                                  "RewriteCond %{REQUEST_FILENAME} !-d\n" .
+                                  "RewriteRule . /index.php [L]\n" .
+                                  "</IfModule>\n" .
+                                  "# END WordPress\n";
+                    @file_put_contents($ht, rtrim($c) . "\n" . $wp_rewrite, LOCK_EX);
+                }
+            }
+        }
+    }
+}
+

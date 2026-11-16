@@ -32,11 +32,11 @@ class WAF_FW_Turnstile {
 
         $this->initialized = true;
 
-        $mode = get_option('waf_fw_turnstile_mode', get_option('waf_turnstile_mode', 'site_wide'));
+        $mode = get_option('waf_fw_turnstile_mode', get_option('waf_turnstile_mode', 'forms'));
         $hold_press_active = get_option('waf_hold_press_enabled', 'no') === 'yes';
 
         // 1. Hook into WordPress Login Form ONLY IF Biometric Press & Hold is NOT enabled
-        if (!$hold_press_active && ($mode === 'login_only' || $mode === 'all' || $mode === 'site_wide')) {
+        if (!$hold_press_active && ($mode === 'login_only' || $mode === 'all' || $mode === 'forms' || $mode === 'site_wide')) {
             add_action('login_form', [$this, 'render_login_widget']);
             add_filter('authenticate', [$this, 'validate_login_turnstile'], 5, 3);
         }
@@ -65,8 +65,8 @@ class WAF_FW_Turnstile {
         add_action('wp_ajax_nopriv_waf_turnstile_verify', [$this, 'ajax_verify_solution']);
 
         // 4. Site-Wide Visitor Verification Gate (Cloudflare Architecture)
-        // By default runs for all modes (site_wide, forms, all) unless strictly restricted to login_only or forms_only
-        if ($mode === 'site_wide' || $mode === 'all') {
+        // Runs ONLY when specifically configured to site_wide mode
+        if ($mode === 'site_wide') {
             add_action('init', [$this, 'handle_sitewide_challenge'], 1);
         }
 
@@ -298,10 +298,19 @@ class WAF_FW_Turnstile {
             return false;
         }
 
-        // Anti-Token Replay Attack: Cryptographically bind clearance cookie to client IP
+        // Anti-Token Replay Attack: Cryptographically bind clearance cookie to client IP / subnet
         $client_ip = $this->get_client_ip();
         if ($ip !== $client_ip && $ip !== '127.0.0.1' && $client_ip !== '127.0.0.1') {
-            return false;
+            // Check if both IPv4 IPs share the same /24 subnet (handling dynamic mobile carrier CGNAT rotation)
+            $ip_parts = explode('.', $ip);
+            $client_parts = explode('.', $client_ip);
+            if (count($ip_parts) === 4 && count($client_parts) === 4) {
+                if ($ip_parts[0] !== $client_parts[0] || $ip_parts[1] !== $client_parts[1] || $ip_parts[2] !== $client_parts[2]) {
+                    return false;
+                }
+            } else {
+                return false;
+            }
         }
 
         return true;
@@ -325,8 +334,20 @@ class WAF_FW_Turnstile {
 
         $res = $this->verify_solution($token, $solution, $telemetry);
         if ($res['valid']) {
-            // Set clearance cookie (24 hours)
-            setcookie('__mdef_challenge_token', $res['clearance_token'], time() + 86400, '/', '', false, true);
+            // Set clearance cookie (24 hours) with secure & SameSite support
+            $secure = is_ssl();
+            if (PHP_VERSION_ID >= 70300) {
+                setcookie('__mdef_challenge_token', $res['clearance_token'], [
+                    'expires' => time() + 86400,
+                    'path' => '/',
+                    'domain' => '',
+                    'secure' => $secure,
+                    'httponly' => true,
+                    'samesite' => 'Lax'
+                ]);
+            } else {
+                setcookie('__mdef_challenge_token', $res['clearance_token'], time() + 86400, '/; SameSite=Lax', '', $secure, true);
+            }
             wp_send_json_success(['clearance_token' => $res['clearance_token']]);
         } else {
             wp_send_json_error(['message' => $res['message']]);

@@ -687,6 +687,25 @@ class WAF_FW_IP_Filter {
             $new_content = ltrim($cleaned_content);
         }
 
+        // Guarantee core WordPress permalinks rewrite block is NEVER omitted
+        if (strpos($new_content, '# BEGIN WordPress') === false) {
+            $wp_rewrite = "\n# BEGIN WordPress\n" .
+                          "# The directives (lines) between \"BEGIN WordPress\" and \"END WordPress\" are\n" .
+                          "# dynamically generated, and should only be modified via WordPress filters.\n" .
+                          "# Any changes to the directives between these markers will be overwritten.\n" .
+                          "<IfModule mod_rewrite.c>\n" .
+                          "RewriteEngine On\n" .
+                          "RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]\n" .
+                          "RewriteBase /\n" .
+                          "RewriteRule ^index\\.php$ - [L]\n" .
+                          "RewriteCond %{REQUEST_FILENAME} !-f\n" .
+                          "RewriteCond %{REQUEST_FILENAME} !-d\n" .
+                          "RewriteRule . /index.php [L]\n" .
+                          "</IfModule>\n" .
+                          "# END WordPress\n";
+            $new_content = rtrim($new_content) . "\n" . $wp_rewrite;
+        }
+
         // Only write if file already existed or if we have valid IPs to write
         if (file_exists($htaccess_file) || !empty($valid_ips)) {
             @file_put_contents($htaccess_file, $new_content, LOCK_EX);

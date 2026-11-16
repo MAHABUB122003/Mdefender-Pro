@@ -1955,13 +1955,55 @@ class WAF_FW_Website_Hardening {
 
         if ($create && !file_exists($htaccess)) {
             @file_put_contents($htaccess, $rule_info['code']);
+            self::ensure_wordpress_core_rewrite($htaccess);
             return true;
         }
         if (!file_exists($htaccess)) return false;
         $content = @file_get_contents($htaccess);
         if ($content === false) return false;
-        if (strpos($content, $rule_info['tag']) !== false) return true;
-        return @file_put_contents($htaccess, rtrim($content) . "\n" . $rule_info['code'], LOCK_EX);
+        if (strpos($content, $rule_info['tag']) !== false) {
+            self::ensure_wordpress_core_rewrite($htaccess);
+            return true;
+        }
+        $written = @file_put_contents($htaccess, rtrim($content) . "\n" . $rule_info['code'], LOCK_EX);
+        self::ensure_wordpress_core_rewrite($htaccess);
+        return $written;
+    }
+
+    /**
+     * Guarantees that root .htaccess retains WordPress core permalink rewrite directives
+     * to eliminate 404 permalink routing failures on LiteSpeed / Apache web servers.
+     */
+    public static function ensure_wordpress_core_rewrite($htaccess) {
+        if (!file_exists($htaccess)) return;
+        $content = @file_get_contents($htaccess);
+        if ($content === false) return;
+        
+        // If # BEGIN WordPress is already present, nothing to add
+        if (strpos($content, '# BEGIN WordPress') !== false) {
+            return;
+        }
+
+        $wp_rewrite = "\n# BEGIN WordPress\n" .
+                      "# The directives (lines) between \"BEGIN WordPress\" and \"END WordPress\" are\n" .
+                      "# dynamically generated, and should only be modified via WordPress filters.\n" .
+                      "# Any changes to the directives between these markers will be overwritten.\n" .
+                      "<IfModule mod_rewrite.c>\n" .
+                      "RewriteEngine On\n" .
+                      "RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]\n" .
+                      "RewriteBase /\n" .
+                      "RewriteRule ^index\\.php$ - [L]\n" .
+                      "RewriteCond %{REQUEST_FILENAME} !-f\n" .
+                      "RewriteCond %{REQUEST_FILENAME} !-d\n" .
+                      "RewriteRule . /index.php [L]\n" .
+                      "</IfModule>\n" .
+                      "# END WordPress\n";
+
+        @file_put_contents($htaccess, rtrim($content) . "\n" . $wp_rewrite, LOCK_EX);
+
+        if (function_exists('save_mod_rewrite_rules')) {
+            save_mod_rewrite_rules();
+        }
     }
 
     private function restore_htaccess_backup() {

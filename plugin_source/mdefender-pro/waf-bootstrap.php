@@ -589,6 +589,8 @@ if (!$is_blocked) {
 // 7. Comprehensive 18-Module Threat Ingress Filter (< 0.1ms Pre-Flight Neutralization)
 if (!$is_blocked && $has_attack_marker) {
     $eval_payload = $deobfuscated . ' ' . $deobfuscated_stripped . ' ' . $deobfuscated_spaced . ' ' . $eval_uri;
+    $raw_no_ua = urldecode($_SERVER['REQUEST_URI'] ?? '') . ' ' . urldecode($_SERVER['QUERY_STRING'] ?? '') . ' ' . $mdefender_post_flat . ' ' . $mdefender_raw_body . ' ' . $mdefender_json_flat . ' ' . $mdefender_cookie_flat;
+    $eval_payload_no_ua = $raw_no_ua . ' ' . preg_replace('/\/\*.*?\*\//s', ' ', $raw_no_ua);
 
     // Check Module 1: SQL Injection (Classic, Union, Blind, Error, Stacked, DB functions, NoSQL)
     if (preg_match('@(?:\bunion\b(?:\s+all)?\s+\bselect\b|\bdrop\b\s+\btable\b|\btruncate\b\s+\btable\b|(?:\b(?:or|and)\b\s+[\x27\x22]?\w+[\x27\x22]?\s*=\s*[\x27\x22]?\w+[\x27\x22]?)|(?:\b(?:or|and)\b\s+\d+\s*=\s*\d+\b)|(?:\b(?:or|and)\b\s+\x271\x27\s*=\s*\x271\x27)|(?:\x27|\x22|%27)\s*(?:--|#|\/\*|\bor\b|\band\b|\bunion\b|;)|(?:\b(?:sleep|benchmark|waitfor\s+delay|load_file|into\s+outfile|pg_sleep)\s*\()|\binformation_schema\b|(?:[\x27\x22]?\$(?:gt|ne|gte|nin|regex|where|in)[\x27\x22]?\s*:))@i', $eval_payload)) {
@@ -604,8 +606,8 @@ if (!$is_blocked && $has_attack_marker) {
         $rule_name = 'Pre-Flight WAAP: Script Tag & Event Handler Guard';
         $block_reason = 'Cross-Site Scripting (XSS) payload intercepted by Pre-Flight WAAP.';
     }
-    // Check Module 3: Command & Remote Code Execution (RCE) / Log4j / SSTI
-    elseif (preg_match('@(?:\b(?:system|exec|shell_exec|passthru|popen|proc_open|eval|assert|base64_decode)\s*[\(\[]|`[^`]+`|\$\([^\)]+\)|\b(?:bash\s+-i|dev\/tcp\/|nc\s+-e|powershell\s+-(?:enc|nop|c))|(?:;|&&|\|\|)\s*(?:cat|ls|dir|whoami|id|uname|wget|curl|chmod|nc|bash|sh|powershell|cmd)\b(?!\=)|(?:\|)\s*(?:cat|ls|dir|whoami|uname|wget|curl|chmod|nc|bash|powershell)\s+|\$\{\s*(?:jndi|ldap|rmi|dns)\s*:[^\}]+\}|\{\{\s*(?:[0-9\+\-\*\/]{3,}|(?:phpinfo|system|exec|passthru|shell_exec|eval|assert|_self|\$smarty|config)\b)|\$\{\s*[0-9\+\-\*\/]+\s*\})@i', $eval_payload)) {
+    // Check Module 3: Command & Remote Code Execution (RCE) / Log4j / SSTI (Evaluated on body & URI to avoid mobile UA false positives)
+    elseif (preg_match('@(?:\b(?:system|exec|shell_exec|passthru|popen|proc_open|eval|assert|base64_decode)\s*[\(\[]|`[^`]+`|\$\([^\)]+\)|\b(?:bash\s+-i|dev\/tcp\/|nc\s+-e|powershell\s+-(?:enc|nop|c))|(?:;|&&|\|\|)\s*(?:cat|ls|dir|whoami|id|uname|wget|curl|chmod|nc|bash|sh|powershell|cmd)\b(?!\=)|(?:\|)\s*(?:cat|ls|dir|whoami|uname|wget|curl|chmod|nc|bash|powershell)\s+|\$\{\s*(?:jndi|ldap|rmi|dns)\s*:[^\}]+\}|\{\{\s*(?:[0-9\+\-\*\/]{3,}|(?:phpinfo|system|exec|passthru|shell_exec|eval|assert|_self|\$smarty|config)\b)|\$\{\s*[0-9\+\-\*\/]+\s*\})@i', $eval_payload_no_ua)) {
         $is_blocked = true;
         $attack_name = 'Remote Code Execution (RCE)';
         $rule_name = 'Pre-Flight WAAP: PHP Shell, Command, SSTI & JNDI Guard';
