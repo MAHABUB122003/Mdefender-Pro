@@ -31,12 +31,88 @@ import EmptyFleetState from './EmptyFleetState'
 import useBulkFleet from './useBulkFleet'
 import api from '../../api/api'
 
+// ── Shimmer Loading Skeleton for Hardening ──────────────────────────────────
+const HardeningSkeleton = () => (
+  <div style={{ animation: 'mdfFadeIn 0.2s ease-out' }}>
+    {/* Banner Skeleton */}
+    <div style={{
+      background: '#ffffff',
+      border: '1px solid #E2E8F0',
+      borderRadius: '12px',
+      padding: '16px 22px',
+      marginBottom: '20px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+      gap: '16px',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div className="mdf-shimmer" style={{ width: '68px', height: '68px', borderRadius: '50%', flexShrink: 0 }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="mdf-shimmer" style={{ width: '160px', height: '18px', borderRadius: '4px' }} />
+            <div className="mdf-shimmer" style={{ width: '120px', height: '18px', borderRadius: '6px' }} />
+          </div>
+          <div className="mdf-shimmer" style={{ width: '280px', height: '13px', borderRadius: '4px' }} />
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div className="mdf-shimmer" style={{ width: '100px', height: '34px', borderRadius: '6px' }} />
+        <div className="mdf-shimmer" style={{ width: '95px', height: '34px', borderRadius: '6px' }} />
+        <div className="mdf-shimmer" style={{ width: '120px', height: '34px', borderRadius: '6px' }} />
+      </div>
+    </div>
+
+    {/* 8 Cards Grid Skeleton */}
+    <div className="mdf-hardening-grid">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div
+          key={i}
+          style={{
+            background: '#ffffff',
+            border: '1px solid #E2E8F0',
+            borderLeft: '4px solid #E2E8F0',
+            borderRadius: '10px',
+            padding: '16px 18px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <div className="mdf-shimmer" style={{ width: '34px', height: '34px', borderRadius: '8px', flexShrink: 0 }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div className="mdf-shimmer" style={{ width: '180px', height: '15px', borderRadius: '4px' }} />
+                <div className="mdf-shimmer" style={{ width: '90px', height: '12px', borderRadius: '4px' }} />
+              </div>
+            </div>
+            <div className="mdf-shimmer" style={{ width: '40px', height: '22px', borderRadius: '22px' }} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div className="mdf-shimmer" style={{ width: '95%', height: '12px', borderRadius: '3px' }} />
+            <div className="mdf-shimmer" style={{ width: '75%', height: '12px', borderRadius: '3px' }} />
+          </div>
+          <div style={{ display: 'flex', gap: '6px', marginTop: 'auto', paddingTop: '4px' }}>
+            <div className="mdf-shimmer" style={{ width: '75px', height: '18px', borderRadius: '4px' }} />
+            <div className="mdf-shimmer" style={{ width: '85px', height: '18px', borderRadius: '4px' }} />
+            <div className="mdf-shimmer" style={{ width: '65px', height: '18px', borderRadius: '4px' }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)
+
 export default function BulkHardening() {
   const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite } = useBulkFleet()
 
   // Selected site
   const [chosenSiteId, setChosenSiteId] = useState(() => {
-    return typeof localStorage !== 'undefined' ? (localStorage.getItem('mdf_bulk_selected_site') || null) : null
+    return typeof localStorage !== 'undefined' ? (localStorage.getItem('mdf_bulk_selected_site') || localStorage.getItem('mdefender_selected_site') || null) : null
   })
 
   const currentSite = useMemo(() => {
@@ -53,18 +129,35 @@ export default function BulkHardening() {
 
   const targetSiteId = currentSite?.id || currentSite?._id
 
-  const handleSelectSite = (newId) => {
-    setChosenSiteId(newId)
+  // 8 High-Level Master Security Shields with Instant Cache (0ms latency for returning visits)
+  const getInitialCachedShields = () => {
     try {
-      localStorage.setItem('mdf_bulk_selected_site', newId)
-      window.dispatchEvent(new Event('mdf_bulk_domain_changed'))
+      const initialSiteId = typeof localStorage !== 'undefined'
+        ? (localStorage.getItem('mdf_bulk_selected_site') || localStorage.getItem('mdefender_selected_site') || null)
+        : null
+      if (initialSiteId && initialSiteId !== 'all') {
+        const cached = localStorage.getItem(`mdf_hardening_shields_${initialSiteId}`)
+        if (cached) return JSON.parse(cached)
+      }
     } catch {}
-    loadHardeningOverview(newId)
+    return null
   }
 
-  // Component state
-  const [loading, setLoading] = useState(false)
-  const [overview, setOverview] = useState(null)
+  const initialCached = getInitialCachedShields()
+  const [hasLoaded, setHasLoaded] = useState(() => !!initialCached)
+  const [loading, setLoading] = useState(() => !initialCached)
+  const [overview, setOverview] = useState(() => {
+    try {
+      const initialSiteId = typeof localStorage !== 'undefined'
+        ? (localStorage.getItem('mdf_bulk_selected_site') || localStorage.getItem('mdefender_selected_site') || null)
+        : null
+      if (initialSiteId && initialSiteId !== 'all') {
+        const cached = localStorage.getItem(`mdf_hardening_overview_${initialSiteId}`)
+        if (cached) return JSON.parse(cached)
+      }
+    } catch {}
+    return null
+  })
   const [toastMsg, setToastMsg] = useState(null)
   const [savingChanges, setSavingChanges] = useState(false)
   const [togglingShield, setTogglingShield] = useState(null)
@@ -72,27 +165,40 @@ export default function BulkHardening() {
   const [purgingLog, setPurgingLog] = useState(false)
   const [expandedShield, setExpandedShield] = useState(null)
 
-  // 8 High-Level Master Security Shields with Instant Cache (0ms latency)
-  const [shields, setShields] = useState(() => {
-    try {
-      const initialSiteId = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdf_bulk_selected_site') || null) : null
-      if (initialSiteId) {
-        const cached = localStorage.getItem(`mdf_hardening_shields_${initialSiteId}`)
-        if (cached) return JSON.parse(cached)
-      }
-    } catch {}
-    // Default for connected websites in enterprise WAF is armed (true)
-    return {
-      virtual_patching_shield: true,
-      filesystem_lockdown: true,
-      attack_surface_guard: true,
-      identity_login_shield: true,
-      security_headers_shield: true,
-      database_secrets_shield: true,
-      environment_debug_shield: true,
-      fim_persistence_shield: true
-    }
+  // Default initial shields state: if no cache, all false (so user is NEVER flashed false 8/8)
+  const [shields, setShields] = useState(() => initialCached || {
+    virtual_patching_shield: false,
+    filesystem_lockdown: false,
+    attack_surface_guard: false,
+    identity_login_shield: false,
+    security_headers_shield: false,
+    database_secrets_shield: false,
+    environment_debug_shield: false,
+    fim_persistence_shield: false
   })
+
+  const handleSelectSite = (newId) => {
+    setChosenSiteId(newId)
+    try {
+      localStorage.setItem('mdf_bulk_selected_site', newId)
+      window.dispatchEvent(new Event('mdf_bulk_domain_changed'))
+    } catch {}
+
+    try {
+      const cached = localStorage.getItem(`mdf_hardening_shields_${newId}`)
+      if (cached) {
+        setShields(JSON.parse(cached))
+        setHasLoaded(true)
+      } else {
+        setHasLoaded(false)
+        setLoading(true)
+      }
+    } catch {
+      setHasLoaded(false)
+      setLoading(true)
+    }
+    loadHardeningOverview(newId)
+  }
 
   // Live Verification Modal
   const [verifyModal, setVerifyModal] = useState({
@@ -148,8 +254,8 @@ export default function BulkHardening() {
           identity_login_shield: !!enabledMap.admin_protect || !!enabledMap.login_protect,
           security_headers_shield: !!enabledMap.security_headers,
           database_secrets_shield: !!enabledMap.user_accounts,
-          environment_debug_shield: enabledMap.environment_debug !== undefined ? !!enabledMap.environment_debug : true,
-          fim_persistence_shield: enabledMap.fim_persistence !== undefined ? !!enabledMap.fim_persistence : true
+          environment_debug_shield: enabledMap.environment_debug !== undefined ? !!enabledMap.environment_debug : false,
+          fim_persistence_shield: enabledMap.fim_persistence !== undefined ? !!enabledMap.fim_persistence : false
         }
       }
 
@@ -164,6 +270,7 @@ export default function BulkHardening() {
       console.warn('Failed to load hardening overview:', err)
     } finally {
       setLoading(false)
+      setHasLoaded(true)
     }
   }
 
@@ -174,6 +281,7 @@ export default function BulkHardening() {
         const cached = localStorage.getItem(`mdf_hardening_shields_${targetSiteId}`)
         if (cached) {
           setShields(JSON.parse(cached))
+          setHasLoaded(true)
         }
         const cachedOverview = localStorage.getItem(`mdf_hardening_overview_${targetSiteId}`)
         if (cachedOverview) {
@@ -520,21 +628,41 @@ export default function BulkHardening() {
         badge="Zero-Trust Shield"
       />
 
-      {/* INTERACTIVE CIRCULAR SECURITY BALL (ORB) & EXECUTIVE STATUS BANNER */}
-      <div style={{
-        background: '#ffffff',
-        border: `1px solid ${isFullSecurity ? '#A7F3D0' : '#E2E8F0'}`,
-        borderRadius: '12px',
-        padding: '16px 22px',
-        marginBottom: '20px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '16px',
-        boxShadow: isFullSecurity ? '0 4px 14px rgba(16, 185, 129, 0.08)' : '0 1px 3px rgba(0,0,0,0.02)',
-        transition: 'all 0.3s ease'
-      }}>
+      <style>{`
+        @keyframes mdfShimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        @keyframes mdfFadeIn {
+          from { opacity: 0; transform: translateY(4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .mdf-shimmer {
+          background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
+          background-size: 200% 100%;
+          animation: mdfShimmer 1.5s infinite ease-in-out;
+        }
+      `}</style>
+
+      {!hasLoaded ? (
+        <HardeningSkeleton />
+      ) : (
+        <div style={{ animation: 'mdfFadeIn 0.22s ease-out' }}>
+          {/* INTERACTIVE CIRCULAR SECURITY BALL (ORB) & EXECUTIVE STATUS BANNER */}
+          <div style={{
+            background: '#ffffff',
+            border: `1px solid ${isFullSecurity ? '#A7F3D0' : '#E2E8F0'}`,
+            borderRadius: '12px',
+            padding: '16px 22px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '16px',
+            boxShadow: isFullSecurity ? '0 4px 14px rgba(16, 185, 129, 0.08)' : '0 1px 3px rgba(0,0,0,0.02)',
+            transition: 'all 0.3s ease'
+          }}>
         {/* Left: The Animated Circular Security Ball (Orb) & Progress Info */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           {/* Circular SVG Ball / Meter */}
@@ -1016,6 +1144,8 @@ export default function BulkHardening() {
           )
         })}
       </div>
+    </div>
+  )}
 
       {/* LIVE PROBE MODAL */}
       {verifyModal.open && (
