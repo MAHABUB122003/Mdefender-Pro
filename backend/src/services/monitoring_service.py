@@ -387,6 +387,7 @@ class MonitoringService:
             "tls_handshake_ms": round(tls_ms, 1),
             "ttfb_ms": calc_ttfb,
             "total_latency_ms": calc_total,
+            "response_time_ms": calc_total,
             "waterfall": waterfall,
             "regions": regions,
             "consensus": consensus,
@@ -407,6 +408,7 @@ class MonitoringService:
                 "url": url,
                 "is_online": is_online,
                 "status_code": status_code,
+                "response_time_ms": result["total_latency_ms"],
                 "ttfb_ms": result["ttfb_ms"],
                 "total_latency_ms": result["total_latency_ms"],
                 "checked_at": now
