@@ -796,7 +796,13 @@ class WAF_FW_Login_Protector {
      */
     public function validate_login_challenge($user, $username, $password) {
         if (defined('DOING_CRON') && DOING_CRON) return $user;
-        if (defined('XMLRPC_REQUEST') && XMLRPC_REQUEST) return $user;
+        if (defined('XMLRPC_REQUEST') && XMLRPC_REQUEST) {
+            $hold_press_enabled = get_option('waf_hold_press_enabled', 'no') === 'yes';
+            if ($hold_press_enabled) {
+                return new WP_Error('waf_hold_xmlrpc_denied', '<strong>Security Verification Required:</strong> Biometric verification is enforced on this site. Direct XML-RPC login is denied.');
+            }
+            return $user;
+        }
         if (empty($_POST) || !isset($_POST['log'])) {
             return $user;
         }
@@ -811,6 +817,18 @@ class WAF_FW_Login_Protector {
                 remove_filter('authenticate', 'wp_authenticate_username_password', 20);
                 remove_filter('authenticate', 'wp_authenticate_email_password', 20);
                 return new WP_Error('waf_hold_fail', '<strong>Bot Verification Required:</strong> Please press and hold the security button to authenticate as a human.');
+            }
+
+            // Verify physical hold duration proof
+            $proof_decoded = base64_decode($proof_raw);
+            if ($proof_decoded && strpos($proof_decoded, '|') !== false) {
+                list($proof_elapsed, $proof_jitter) = explode('|', $proof_decoded);
+                $min_allowed_ms = intval(get_option('waf_hold_press_duration_ms', 2000)) * 0.9;
+                if (intval($proof_elapsed) < $min_allowed_ms) {
+                    remove_filter('authenticate', 'wp_authenticate_username_password', 20);
+                    remove_filter('authenticate', 'wp_authenticate_email_password', 20);
+                    return new WP_Error('waf_hold_fail', '<strong>Bot Detected:</strong> Biometric physical hold duration insufficient.');
+                }
             }
 
             $decoded = base64_decode($token_raw);

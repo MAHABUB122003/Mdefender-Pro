@@ -185,7 +185,7 @@ class WAF_FW_Turnstile {
      */
     public function generate_challenge($domain = '') {
         $domain = $domain ?: ($_SERVER['HTTP_HOST'] ?? 'localhost');
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        $ip = $this->get_client_ip();
         $nonce = bin2hex(random_bytes(16));
         $salt = bin2hex(random_bytes(8));
         $exp = time() + 180;
@@ -273,47 +273,79 @@ class WAF_FW_Turnstile {
     }
 
     /**
-     * Verifies if a visitor has a valid clearance token cookie
+     * Verifies if a visitor has a valid clearance token cookie (Unified across Bot Shield & Under Attack Mode)
      */
     public function is_visitor_cleared() {
-        $cookie = $_COOKIE['__mdef_challenge_token'] ?? $_COOKIE['__mdef_clearance'] ?? '';
+        $cookie = $_COOKIE['__mdef_challenge_token'] ?? $_COOKIE['__mdef_clearance'] ?? $_COOKIE['mdf_clearance'] ?? '';
+        $client_ip = $this->get_client_ip();
+
+        // 1. Direct cross-engine clearance check with Under Attack Shield
+        if (class_exists('WAF_FW_Under_Attack_Shield') && method_exists('WAF_FW_Under_Attack_Shield', 'instance')) {
+            if (WAF_FW_Under_Attack_Shield::instance()->has_valid_clearance($client_ip)) {
+                return true;
+            }
+        }
+
         if (empty($cookie)) {
             return false;
         }
 
-        $decoded = base64_decode(str_replace(' ', '+', $cookie));
+        $decoded = base64_decode(urldecode(str_replace(' ', '+', $cookie)));
         if (!$decoded) return false;
 
         $parts = explode('|', $decoded);
-        if (count($parts) !== 5) return false;
 
-        list($domain, $ip, $exp_str, $entropy, $sig) = $parts;
-        $exp = (int)$exp_str;
+        // 2. Turnstile clearance token (5 parts: domain|ip|exp|entropy|sig)
+        if (count($parts) === 5) {
+            list($domain, $ip, $exp_str, $entropy, $sig) = $parts;
+            $exp = (int)$exp_str;
 
-        if (time() > $exp) return false;
-
-        $payload = "{$domain}|{$ip}|{$exp}|{$entropy}";
-        $expected_sig = hash_hmac('sha256', $payload, $this->get_turnstile_secret());
-        if (!hash_equals($expected_sig, $sig)) {
-            return false;
-        }
-
-        // Anti-Token Replay Attack: Cryptographically bind clearance cookie to client IP / subnet
-        $client_ip = $this->get_client_ip();
-        if ($ip !== $client_ip && $ip !== '127.0.0.1' && $client_ip !== '127.0.0.1') {
-            // Check if both IPv4 IPs share the same /24 subnet (handling dynamic mobile carrier CGNAT rotation)
-            $ip_parts = explode('.', $ip);
-            $client_parts = explode('.', $client_ip);
-            if (count($ip_parts) === 4 && count($client_parts) === 4) {
-                if ($ip_parts[0] !== $client_parts[0] || $ip_parts[1] !== $client_parts[1] || $ip_parts[2] !== $client_parts[2]) {
-                    return false;
+            if (time() <= $exp) {
+                $payload = "{$domain}|{$ip}|{$exp}|{$entropy}";
+                $expected_sig = hash_hmac('sha256', $payload, $this->get_turnstile_secret());
+                if (hash_equals($expected_sig, $sig)) {
+                    // Anti-Token Replay Attack: Cryptographically bind clearance cookie to client IP / subnet
+                    if ($ip === $client_ip || $ip === '127.0.0.1' || $client_ip === '127.0.0.1') {
+                        return true;
+                    }
+                    // Subnet match for mobile carrier CGNAT / dynamic cellular rotation
+                    $ip_parts = explode('.', $ip);
+                    $client_parts = explode('.', $client_ip);
+                    if (count($ip_parts) === 4 && count($client_parts) === 4) {
+                        if ($ip_parts[0] === $client_parts[0] && $ip_parts[1] === $client_parts[1] && $ip_parts[2] === $client_parts[2]) {
+                            return true;
+                        }
+                    }
                 }
-            } else {
-                return false;
             }
         }
 
-        return true;
+        // 3. Under Attack Shield clearance token (3 parts: ip|exp|hmac)
+        if (count($parts) === 3) {
+            list($ip, $exp_str, $sig) = $parts;
+            $exp = (int)$exp_str;
+            if (time() <= $exp) {
+                $uat_secret = get_option('waf_fw_site_token', '');
+                if (empty($uat_secret)) {
+                    $uat_secret = defined('AUTH_KEY') ? AUTH_KEY : 'mdefender_fallback_secret_key_2026';
+                }
+                $expected_sig = hash_hmac('sha256', $ip . '|' . $exp, $uat_secret);
+                if (hash_equals($expected_sig, $sig)) {
+                    if ($ip === $client_ip || $ip === '127.0.0.1' || $client_ip === '127.0.0.1') {
+                        return true;
+                    }
+                    $ip_parts = explode('.', $ip);
+                    $client_parts = explode('.', $client_ip);
+                    if (count($ip_parts) === 4 && count($client_parts) === 4) {
+                        if ($ip_parts[0] === $client_parts[0] && $ip_parts[1] === $client_parts[1] && $ip_parts[2] === $client_parts[2]) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -334,19 +366,23 @@ class WAF_FW_Turnstile {
 
         $res = $this->verify_solution($token, $solution, $telemetry);
         if ($res['valid']) {
-            // Set clearance cookie (24 hours) with secure & SameSite support
+            // Set clearance cookies (24 hours) with secure & SameSite support across both standard names
             $secure = is_ssl();
+            $expires = time() + 86400;
             if (PHP_VERSION_ID >= 70300) {
-                setcookie('__mdef_challenge_token', $res['clearance_token'], [
-                    'expires' => time() + 86400,
+                $cookie_opts = [
+                    'expires' => $expires,
                     'path' => '/',
                     'domain' => '',
                     'secure' => $secure,
                     'httponly' => true,
                     'samesite' => 'Lax'
-                ]);
+                ];
+                setcookie('__mdef_challenge_token', $res['clearance_token'], $cookie_opts);
+                setcookie('__mdef_clearance', $res['clearance_token'], $cookie_opts);
             } else {
-                setcookie('__mdef_challenge_token', $res['clearance_token'], time() + 86400, '/; SameSite=Lax', '', $secure, true);
+                setcookie('__mdef_challenge_token', $res['clearance_token'], $expires, '/; SameSite=Lax', '', $secure, true);
+                setcookie('__mdef_clearance', $res['clearance_token'], $expires, '/; SameSite=Lax', '', $secure, true);
             }
             wp_send_json_success(['clearance_token' => $res['clearance_token']]);
         } else {
@@ -626,7 +662,12 @@ class WAF_FW_Turnstile {
             return;
         }
 
-        // 4. Intercept all unverified visitors at the gate (Cloudflare Architecture)
+        // 4. Defer to Under Attack Mode if actively defending to prevent duplicate double challenges
+        if (class_exists('WAF_FW_Under_Attack_Shield') && WAF_FW_Under_Attack_Shield::instance()->is_active()) {
+            return;
+        }
+
+        // 5. Intercept all unverified visitors at the gate (Cloudflare Architecture)
         if (!$this->is_visitor_cleared()) {
             $this->render_interstitial_page();
             exit;
@@ -1362,8 +1403,8 @@ class WAF_FW_Turnstile {
                 if (title) title.textContent = 'Connection Verified';
                 if (desc) desc.innerHTML = 'Your connection is secure. Redirecting to <strong><?php echo esc_js($domain); ?></strong> in a moment...';
                 setTimeout(function() {
-                    window.location.reload();
-                }, 400);
+                    window.location.replace(window.location.href);
+                }, 350);
             });
             </script>
         </body>

@@ -1007,7 +1007,13 @@ Report Generated: ${new Date().toISOString()}`
     setDemoStatus('idle')
   }
 
+  const isSavingHoldPressRef = useRef(false)
+  const isSavingBotShieldRef = useRef(false)
+
   const handleToggleHoldPress = async () => {
+    if (isSavingHoldPressRef.current) return
+    isSavingHoldPressRef.current = true
+    const prevConfig = securityConfig
     const nextVal = !securityConfig.hold_press_enabled
     const updated = { ...securityConfig, hold_press_enabled: nextVal }
     setSecurityConfig(updated)
@@ -1035,14 +1041,21 @@ Report Generated: ${new Date().toISOString()}`
         }
         setTimeout(() => setAdminLoginFeedback(''), 3000)
       } else {
+        setSecurityConfig(prevConfig)
         setAdminLoginFeedback(res?.message || 'Failed to sync.')
       }
     } catch (err) {
+      setSecurityConfig(prevConfig)
       setAdminLoginFeedback(err.message || 'Error updating.')
+    } finally {
+      isSavingHoldPressRef.current = false
     }
   }
 
   const handleToggleVisitorBotShield = async () => {
+    if (isSavingBotShieldRef.current) return
+    isSavingBotShieldRef.current = true
+    const prevConfig = securityConfig
     const nextVal = !securityConfig.turnstile_enabled
     const updated = { ...securityConfig, turnstile_enabled: nextVal }
     setSecurityConfig(updated)
@@ -1071,10 +1084,14 @@ Report Generated: ${new Date().toISOString()}`
         }
         setTimeout(() => setVisitorBotFeedback(''), 3000)
       } else {
+        setSecurityConfig(prevConfig)
         setVisitorBotFeedback(res?.message || 'Failed to sync.')
       }
     } catch (err) {
+      setSecurityConfig(prevConfig)
       setVisitorBotFeedback(err.message || 'Error updating.')
+    } finally {
+      isSavingBotShieldRef.current = false
     }
   }
 

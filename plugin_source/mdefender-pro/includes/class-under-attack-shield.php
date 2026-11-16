@@ -138,15 +138,15 @@ class WAF_FW_Under_Attack_Shield {
     }
 
     /**
-     * Checks if current visitor has a valid cryptographic clearance cookie.
+     * Checks if current visitor has a valid cryptographic clearance cookie (Unified across Under Attack & Bot Shield).
      */
     public function has_valid_clearance($ip) {
-        $raw_cookie = $_COOKIE[$this->cookie_name] ?? $_COOKIE['__mdef_clearance'] ?? $_COOKIE['__mdef_challenge_token'] ?? '';
+        $raw_cookie = $_COOKIE[$this->cookie_name] ?? $_COOKIE['__mdef_clearance'] ?? $_COOKIE['__mdef_challenge_token'] ?? $_COOKIE['mdf_clearance'] ?? '';
         if (empty($raw_cookie)) {
             return false;
         }
 
-        $raw = base64_decode(urldecode($raw_cookie));
+        $raw = base64_decode(urldecode(str_replace(' ', '+', $raw_cookie)));
         if (!$raw || strpos($raw, '|') === false) {
             return false;
         }
@@ -156,19 +156,56 @@ class WAF_FW_Under_Attack_Shield {
             return false;
         }
 
-        list($cookie_ip, $expires, $hmac) = $parts;
-        $expires = (int) $expires;
+        // 1. Under Attack Shield clearance token (3 parts: ip|expires|hmac)
+        if (count($parts) === 3) {
+            list($cookie_ip, $expires, $hmac) = $parts;
+            $expires = (int) $expires;
 
-        // Check if expired
-        if (time() > $expires) {
-            return false;
+            if (time() <= $expires) {
+                $secret = $this->get_signing_secret();
+                $expected_hmac = hash_hmac('sha256', $cookie_ip . '|' . $expires, $secret);
+
+                if (hash_equals($expected_hmac, $hmac)) {
+                    if ($cookie_ip === $ip || $cookie_ip === '127.0.0.1' || $ip === '127.0.0.1') {
+                        return true;
+                    }
+                    $ip_parts = explode('.', $cookie_ip);
+                    $client_parts = explode('.', $ip);
+                    if (count($ip_parts) === 4 && count($client_parts) === 4) {
+                        if ($ip_parts[0] === $client_parts[0] && $ip_parts[1] === $client_parts[1] && $ip_parts[2] === $client_parts[2]) {
+                            return true;
+                        }
+                    }
+                }
+            }
         }
 
-        // Verify HMAC signature
-        $secret = $this->get_signing_secret();
-        $expected_hmac = hash_hmac('sha256', $cookie_ip . '|' . $expires, $secret);
+        // 2. Cross-engine check: Turnstile Bot Shield clearance token (5 parts: domain|ip|exp|entropy|sig)
+        if (count($parts) === 5) {
+            list($domain, $cookie_ip, $exp_str, $entropy, $sig) = $parts;
+            $exp = (int) $exp_str;
+            if (time() <= $exp) {
+                $ts_secret = get_option('waf_fw_turnstile_secret', get_option('waf_turnstile_secret', ''));
+                if (!empty($ts_secret)) {
+                    $payload = "{$domain}|{$cookie_ip}|{$exp}|{$entropy}";
+                    $expected_sig = hash_hmac('sha256', $payload, $ts_secret);
+                    if (hash_equals($expected_sig, $sig)) {
+                        if ($cookie_ip === $ip || $cookie_ip === '127.0.0.1' || $ip === '127.0.0.1') {
+                            return true;
+                        }
+                        $ip_parts = explode('.', $cookie_ip);
+                        $client_parts = explode('.', $ip);
+                        if (count($ip_parts) === 4 && count($client_parts) === 4) {
+                            if ($ip_parts[0] === $client_parts[0] && $ip_parts[1] === $client_parts[1] && $ip_parts[2] === $client_parts[2]) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
-        return hash_equals($expected_hmac, $hmac);
+        return false;
     }
 
     /**

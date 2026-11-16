@@ -420,9 +420,9 @@ $challenge_json = json_encode($challenge_data);
                         if (json.data && json.data.redirect) {
                             window.location.href = json.data.redirect;
                         } else {
-                            window.location.reload();
+                            window.location.replace(window.location.href);
                         }
-                    }, 400);
+                    }, 350);
                 } else {
                     var errMsg = (json && json.data && json.data.message) ? json.data.message : 'Verification rejected';
                     console.warn('PoW rejected by server:', errMsg);
