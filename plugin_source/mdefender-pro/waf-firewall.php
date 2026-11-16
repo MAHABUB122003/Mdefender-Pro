@@ -5189,9 +5189,16 @@ function waf_fw_analyze_request() {
     $result = $engine->analyze_current_request();
 
     if ($result['status'] === 'blocked') {
-        $atype = $result['attack_type'] ?? '';
-        $rule_m = $result['rule_matched'] ?? '';
+        $attack_type = $result['attack_type'] ?? 'Web Application Attack';
+        $rule_name = $result['rule_matched'] ?? $attack_type;
+        $reference_id = $result['reference_id'] ?? ('MDEF-' . strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 8)));
+        $client_ip = $eval_ip;
+        $site_host = $_SERVER['HTTP_HOST'] ?? 'localhost';
         $msg = $result['message'] ?? '';
+        $block_reason = !empty($msg) ? $msg : 'Access restricted by security policy.';
+
+        $atype = $attack_type;
+        $rule_m = $rule_name;
 
         $is_ip_bl = ($atype === 'Blacklisted IP' || stripos($atype, 'Blacklist') !== false || stripos($rule_m, 'Blacklist') !== false || stripos($msg, 'blacklist') !== false);
         $is_country_bl = ($atype === 'Country Blocked' || stripos($atype, 'Country') !== false || stripos($atype, 'Geograph') !== false || stripos($atype, 'GeoIP') !== false || stripos($rule_m, 'Country') !== false || stripos($rule_m, 'GeoIP') !== false || stripos($msg, 'country') !== false);
