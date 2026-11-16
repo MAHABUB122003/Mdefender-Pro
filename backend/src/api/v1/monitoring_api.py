@@ -31,11 +31,24 @@ async def get_monitoring_overview(user=Depends(get_current_user)):
 
 
 @router.get("/{website_id}/probe")
+@router.post("/{website_id}/probe")
 async def probe_single_website(website_id: str, user=Depends(get_current_user)):
     """Run an immediate real-time HTTP health & latency probe against target website."""
     website = get_owned_website(user, website_id)
     probe_res = monitoring_svc.probe_website_health(website)
     return success(probe_res)
+
+
+@router.get("/{website_id}/uptime-history")
+async def get_website_uptime_history(
+    website_id: str,
+    window: str = Query("24h", regex="^(24h|7d|30d|90d)$"),
+    user=Depends(get_current_user)
+):
+    """Retrieve actual aggregated SLA uptime history for target website."""
+    website = get_owned_website(user, website_id)
+    history = monitoring_svc.get_uptime_history(website, time_window=window)
+    return success(history)
 
 
 @router.get("/{website_id}/performance")

@@ -777,7 +777,8 @@ export const api = {
 
   // Real-Time Fleet Performance, SSL & Uptime Monitoring
   getMonitoringOverview: () => apiCall('/api/v1/monitoring/overview'),
-  probeWebsiteHealth: (websiteId) => apiCall(`/api/v1/monitoring/${websiteId}/probe`),
+  probeWebsiteHealth: (websiteId) => apiCall(`/api/v1/monitoring/${websiteId}/probe`, { method: 'POST' }),
+  getWebsiteUptimeHistory: (websiteId, window = '24h') => apiCall(`/api/v1/monitoring/${websiteId}/uptime-history?window=${window}`),
   getWebsitePerformance: (websiteId, strategy = 'desktop') => apiCall(`/api/v1/monitoring/${websiteId}/performance?strategy=${strategy}`),
   runPerformanceAudit: (websiteId, strategy = 'all', force = true) => apiCall(`/api/v1/monitoring/${websiteId}/performance/audit`, { method: 'POST', body: JSON.stringify({ strategy, force }) }),
   getWebsiteSslMonitoring: (websiteId) => apiCall(`/api/v1/monitoring/${websiteId}/ssl`),

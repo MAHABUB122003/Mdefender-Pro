@@ -189,8 +189,8 @@ def ensure_default_wordpress_site():
         print(f"[MDefender] Error ensuring default WordPress site: {e}")
 
 async def _uptime_monitor_loop():
-    """Lightweight background uptime & SSL watchdog for connected WordPress sites."""
-    await asyncio.sleep(45)
+    """Smart lightweight background uptime & SSL watchdog for connected WordPress sites."""
+    await asyncio.sleep(30)
     while True:
         try:
             def _run_cycle():
@@ -203,8 +203,8 @@ async def _uptime_monitor_loop():
                             "wordpress_connection.connected": True,
                             "status": {"$nin": ["disconnected", "paused", "deleted"]},
                         },
-                        {"_id": 1, "id": 1, "domain": 1, "url": 1, "name": 1, "api_key": 1},
-                    ).limit(100)
+                        {"_id": 1, "id": 1, "domain": 1, "url": 1, "name": 1, "api_key": 1, "last_heartbeat": 1},
+                    ).limit(50)
                 )
                 valid_sites = [
                     s for s in sites
@@ -212,14 +212,14 @@ async def _uptime_monitor_loop():
                 ]
                 if not valid_sites:
                     return
-                with ThreadPoolExecutor(max_workers=6) as pool:
+                with ThreadPoolExecutor(max_workers=5) as pool:
                     for site in valid_sites:
-                        pool.submit(svc.probe_website_health, site, 5.0)
+                        pool.submit(svc.probe_website_health, site, 4.0)
 
             await asyncio.to_thread(_run_cycle)
         except Exception as e:
             print(f"[Uptime Watchdog] Cycle notice: {e}")
-        await asyncio.sleep(300)
+        await asyncio.sleep(60)
 
 
 async def _report_scheduler_loop():

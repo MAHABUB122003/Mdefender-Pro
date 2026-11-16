@@ -30,6 +30,13 @@ logger = logging.getLogger("mdefender.monitoring_service")
 class MonitoringService:
     def __init__(self):
         self.db = MongoDB()
+        try:
+            self.db.monitoring_probes.create_index([("site_id", 1), ("checked_at", -1)])
+            self.db.monitoring_probes.create_index([("domain", 1), ("checked_at", -1)])
+            self.db.monitoring_probes.create_index("checked_at", expireAfterSeconds=90*86400)
+            self.db.monitoring_incidents.create_index([("domain", 1), ("status", 1)])
+        except Exception:
+            pass
 
     # -------------------------------------------------------------------------
     # Helper: Normalize URL and Target Origin
@@ -259,9 +266,15 @@ class MonitoringService:
             ttfb_ms = elapsed_ms
             total_ms = elapsed_ms
             status_code = e.code
-            is_online = (status_code < 500)
+            is_online = (200 <= status_code < 400)
             headers_dict = dict(e.headers) if hasattr(e, "headers") else {}
             error_msg = f"HTTP {e.code}: {e.reason}"
+        except urllib.error.URLError as e:
+            is_online = False
+            status_code = 0
+            ttfb_ms = 0.0
+            total_ms = round(dns_ms + tcp_ms + tls_ms, 1)
+            error_msg = f"Network Connection Failed: {e.reason}"
         except Exception as e:
             is_online = False
             status_code = status_code or 0
@@ -274,17 +287,37 @@ class MonitoringService:
         has_hsts = "strict-transport-security" in [k.lower() for k in headers_dict.keys()]
         has_csp = "content-security-policy" in [k.lower() for k in headers_dict.keys()]
 
-        # Generate clean status text without redundant 'HTTP' prefixes
+        # Generate clean status text with authentic HTTP meaning
         if status_code == 200:
             status_text = "200 OK"
+        elif 300 <= status_code < 400:
+            status_text = f"HTTP {status_code} Redirect"
+        elif status_code == 401:
+            status_text = "401 Unauthorized"
         elif status_code == 403:
-            status_text = "403 Protected (Bot Shield)"
+            status_text = "403 Forbidden"
+        elif status_code == 404:
+            status_text = "404 Not Found"
+        elif status_code == 500:
+            status_text = "500 Internal Server Error"
+        elif status_code == 502:
+            status_text = "502 Bad Gateway"
         elif status_code == 503:
             status_text = "503 Service Unavailable"
+        elif status_code == 504:
+            status_text = "504 Gateway Timeout"
         elif status_code:
             status_text = f"HTTP {status_code}"
         else:
-            status_text = "Unreachable"
+            err_lower = (error_msg or "").lower()
+            if "getaddrinfo" in err_lower or "dns" in err_lower or "11001" in err_lower:
+                status_text = "DNS Lookup Failed"
+            elif "connection refused" in err_lower or "10061" in err_lower:
+                status_text = "Connection Refused (Server Down)"
+            elif "timed out" in err_lower:
+                status_text = "Connection Timed Out"
+            else:
+                status_text = "Unreachable"
 
         if 'content_assertion' not in locals():
             content_assertion = {
@@ -483,6 +516,93 @@ class MonitoringService:
                     )
         except Exception:
             pass
+
+    def get_uptime_history(self, site_id_or_domain: str, time_window: str = "24h") -> Dict[str, Any]:
+        """Aggregate authentic time-series SLA availability points from monitoring_probes."""
+        target = self._normalize_target(site_id_or_domain)
+        hostname = target["hostname"]
+        site_id = target["site_id"]
+        now = datetime.now()
+
+        or_clauses = []
+        if site_id:
+            or_clauses.extend([{"site_id": site_id}, {"domain": hostname}])
+        if hostname:
+            clean_host = hostname.replace("https://", "").replace("http://", "").strip().rstrip("/")
+            or_clauses.extend([{"domain": hostname}, {"domain": clean_host}])
+
+        if time_window == "24h":
+            hours = 24
+            start_time = now - timedelta(hours=hours)
+            query = {"$and": [{"$or": or_clauses}, {"checked_at": {"$gte": start_time}}]} if or_clauses else {"checked_at": {"$gte": start_time}}
+            probes = list(self.db.monitoring_probes.find(query).sort("checked_at", 1))
+
+            buckets = []
+            for i in range(hours - 1, -1, -1):
+                b_start = now - timedelta(hours=i+1)
+                b_end = now - timedelta(hours=i)
+                label = f"{b_end.hour}:00"
+
+                b_probes = [p for p in probes if b_start <= p.get("checked_at", datetime.min) < b_end]
+                if b_probes:
+                    online_count = sum(1 for p in b_probes if p.get("is_online"))
+                    pct = round((online_count / len(b_probes)) * 100, 1)
+                    avg_lat = round(sum(p.get("total_latency_ms", 50) for p in b_probes) / len(b_probes))
+                    status = "operational" if pct >= 99 else ("degraded" if pct >= 80 else "outage")
+                else:
+                    pct = 100.0
+                    avg_lat = 0
+                    status = "unmonitored"
+
+                buckets.append({
+                    "date": label,
+                    "uptime": pct,
+                    "latency": avg_lat,
+                    "status": status,
+                    "probe_count": len(b_probes)
+                })
+        else:
+            days = 7 if time_window == "7d" else (30 if time_window == "30d" else 90)
+            start_time = now - timedelta(days=days)
+            query = {"$and": [{"$or": or_clauses}, {"checked_at": {"$gte": start_time}}]} if or_clauses else {"checked_at": {"$gte": start_time}}
+            probes = list(self.db.monitoring_probes.find(query).sort("checked_at", 1))
+
+            buckets = []
+            for i in range(days - 1, -1, -1):
+                d = now - timedelta(days=i)
+                date_str = d.strftime("%Y-%m-%d")
+                d_start = datetime(d.year, d.month, d.day, 0, 0, 0)
+                d_end = datetime(d.year, d.month, d.day, 23, 59, 59)
+
+                d_probes = [p for p in probes if d_start <= p.get("checked_at", datetime.min) <= d_end]
+                if d_probes:
+                    online_count = sum(1 for p in d_probes if p.get("is_online"))
+                    pct = round((online_count / len(d_probes)) * 100, 1)
+                    avg_lat = round(sum(p.get("total_latency_ms", 50) for p in d_probes) / len(d_probes))
+                    status = "operational" if pct >= 99 else ("degraded" if pct >= 80 else "outage")
+                else:
+                    pct = 100.0
+                    avg_lat = 0
+                    status = "unmonitored"
+
+                buckets.append({
+                    "date": date_str,
+                    "uptime": pct,
+                    "latency": avg_lat,
+                    "status": status,
+                    "probe_count": len(d_probes)
+                })
+
+        monitored = [b for b in buckets if b["status"] != "unmonitored"]
+        overall_sla = round(sum(b["uptime"] for b in monitored) / len(monitored), 1) if monitored else 100.0
+
+        return {
+            "site_id": site_id,
+            "domain": hostname,
+            "window": time_window,
+            "overall_sla": overall_sla,
+            "buckets": buckets
+        }
 
     # -------------------------------------------------------------------------
     # 2. Real SSL Certificate Lifecycle & Security Inspection
