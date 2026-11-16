@@ -95,6 +95,7 @@ export default function UserSidebar({ isOpen, onClose }) {
   const rawName = cachedProfile.name || cachedProfile.full_name || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_name') : null)
   const userName = rawName || 'SecOps Lead Operator'
   const userEmail = cachedProfile.email || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_email') : '') || 'operator@mdefender.io'
+  const userAvatar = cachedProfile.avatar || cachedProfile.picture || cachedProfile.photo_url || (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_avatar') || localStorage.getItem('mdefender_user_photo')) : null)
 
   const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
   const testTrialParam = urlParams ? urlParams.get('test_trial_days') : null
@@ -779,51 +780,58 @@ export default function UserSidebar({ isOpen, onClose }) {
               }}
             >
               {/* Popover Header: Circular Avatar & Identity (Gemini-Style Minimalist Standard) */}
-              <div style={{ padding: '10px 10px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ padding: '12px 12px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '11px' }}>
                   {/* Circular Avatar */}
                   <div style={{
-                    width: '42px',
-                    height: '42px',
+                    width: '38px',
+                    height: '38px',
                     borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #10B981 0%, #064E3B 100%)',
-                    border: '1.5px solid rgba(16, 185, 129, 0.4)',
-                    boxShadow: '0 0 0 3px rgba(16, 185, 129, 0.12), 0 2px 8px rgba(0,0,0,0.3)',
+                    overflow: 'hidden',
+                    background: userAvatar ? '#1E293B' : 'linear-gradient(135deg, #1A73E8 0%, #1557B0 100%)',
+                    border: '1px solid rgba(255, 255, 255, 0.16)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                     color: '#ffffff',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '14px',
-                    fontWeight: 800,
-                    letterSpacing: '0.03em',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    letterSpacing: '0.02em',
                     flexShrink: 0
                   }}>
-                    {userInitials}
+                    {userAvatar ? (
+                      <img src={userAvatar} alt={userName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      userInitials
+                    )}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1, textAlign: 'left' }}>
                     <span style={{
-                      fontSize: '13.5px',
-                      fontWeight: 700,
-                      color: '#FFFFFF',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      color: '#F8FAFC',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
-                      lineHeight: 1.25
+                      lineHeight: 1.25,
+                      letterSpacing: '-0.01em'
                     }}>
                       {userName}
                     </span>
                     <span style={{
                       fontSize: '11.5px',
-                      fontWeight: 600,
-                      color: isPaid ? '#10B981' : (trialDays > 0 ? '#10B981' : '#94A3B8'),
+                      fontWeight: 400,
+                      color: '#94A3B8',
                       lineHeight: 1.2,
-                      marginTop: '2px'
+                      marginTop: '2px',
+                      letterSpacing: '0.01em'
                     }}>
                       {isPaid ? 'Pro' : (trialDays > 0 ? `${trialDays}d Trial` : 'Free')}
                     </span>
                     <span style={{
-                      fontSize: '10.5px',
-                      color: '#80928F',
+                      fontSize: '11px',
+                      color: '#64748B',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -972,58 +980,52 @@ export default function UserSidebar({ isOpen, onClose }) {
             aria-label="User profile and account options"
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
-              {/* Circular Avatar with Live Status Ring */}
-              <div style={{ position: 'relative', flexShrink: 0 }}>
-                <div style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #10B981 0%, #064E3B 100%)',
-                  border: '1.5px solid rgba(16, 185, 129, 0.4)',
-                  boxShadow: '0 0 0 2px rgba(16, 185, 129, 0.1)',
-                  color: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '12px',
-                  fontWeight: 800,
-                  letterSpacing: '0.04em'
-                }}>
-                  {userInitials}
-                </div>
-                {/* Live Online Dot */}
-                <span style={{
-                  position: 'absolute',
-                  bottom: '0px',
-                  right: '0px',
-                  width: '9px',
-                  height: '9px',
-                  borderRadius: '50%',
-                  background: '#10B981',
-                  border: '2px solid #0c1615',
-                  boxShadow: '0 0 6px rgba(16, 185, 129, 0.8)'
-                }} />
+              {/* Circular Avatar (Gemini-Style Clean Circle with Google Blue Dark Mode Tone) */}
+              <div style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '50%',
+                overflow: 'hidden',
+                background: userAvatar ? '#1E293B' : 'linear-gradient(135deg, #1A73E8 0%, #1557B0 100%)',
+                border: '1px solid rgba(255, 255, 255, 0.16)',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.35)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px',
+                fontWeight: 600,
+                letterSpacing: '0.02em',
+                flexShrink: 0
+              }}>
+                {userAvatar ? (
+                  <img src={userAvatar} alt={userName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  userInitials
+                )}
               </div>
 
               {/* Name & Plan (Gemini-Style Minimalist 2-line layout) */}
               <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1, textAlign: 'left' }}>
                 <span style={{
-                  fontSize: '12.5px',
-                  fontWeight: 700,
+                  fontSize: '13px',
+                  fontWeight: 500,
                   color: '#F8FAFC',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
-                  lineHeight: 1.25
+                  lineHeight: 1.25,
+                  letterSpacing: '-0.01em'
                 }}>
                   {userName}
                 </span>
                 <span style={{
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  color: isPaid ? '#10B981' : (trialDays > 0 ? '#10B981' : '#94A3B8'),
+                  fontSize: '11.5px',
+                  fontWeight: 400,
+                  color: '#94A3B8',
                   lineHeight: 1.2,
-                  marginTop: '2px'
+                  marginTop: '2px',
+                  letterSpacing: '0.01em'
                 }}>
                   {isPaid ? 'Pro' : (trialDays > 0 ? `${trialDays}d Trial` : 'Free')}
                 </span>
@@ -1034,7 +1036,7 @@ export default function UserSidebar({ isOpen, onClose }) {
             <ChevronsUpDown
               size={14}
               style={{
-                color: showProfileMenu ? '#10B981' : '#6A7D78',
+                color: showProfileMenu ? '#CBD5E1' : '#94A3B8',
                 flexShrink: 0,
                 transition: 'all 0.18s ease',
                 transform: showProfileMenu ? 'rotate(180deg)' : 'none'
