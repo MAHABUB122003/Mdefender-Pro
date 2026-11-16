@@ -560,53 +560,55 @@ export default function UserBulkManagement() {
               </button>
             </div>
 
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  <th style={{ padding: '10px 14px' }}>Domain / Site</th>
-                  <th style={{ padding: '10px 14px' }}>Status</th>
-                  <th style={{ padding: '10px 14px' }}>Traffic &amp; Protection</th>
-                  <th style={{ padding: '10px 14px' }}>WAF Mode</th>
-                  <th style={{ padding: '10px 14px' }}>SSL Security</th>
-                  <th style={{ padding: '10px 14px' }}>Last Activity</th>
-                </tr>
-              </thead>
-              <tbody>
-                {wpWebsites.map((w, idx) => {
-                  const isOnline = w.status !== 'offline';
-                  const siteName = w.domain || w.name || w.url || 'Connected Site';
-                  return (
-                    <tr key={idx} style={{ borderBottom: '1px solid #F1F5F3' }}>
-                      <td style={{ padding: '14px', fontWeight: '700', color: '#10201E' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: isOnline ? '#10B981' : '#EF4444' }} />
-                          <span>{siteName}</span>
-                        </div>
-                      </td>
-                      <td style={{ padding: '14px' }}>
-                        <span style={isOnline ? badgeStyle('#ECFDF5', '#059669', '#A7F3D0') : badgeStyle('#FEF2F2', '#DC2626', '#FECACA')}>
-                          {isOnline ? 'ONLINE (200 OK)' : 'OFFLINE'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '14px', fontWeight: '700' }}>
-                        {(w.requests_today || 0).toLocaleString()} req ({(w.blocked_today || 0).toLocaleString()} blocked)
-                      </td>
-                      <td style={{ padding: '14px' }}>
-                        <span style={badgeStyle('#F0FDF4', '#15803D', '#DCFCE7')}>
-                          {(w.waf_mode || 'protect').toUpperCase()}
-                        </span>
-                      </td>
-                      <td style={{ padding: '14px', color: '#059669', fontWeight: '600' }}>
-                        {w.ssl_active !== false ? 'Active (TLS 1.3)' : 'Edge Auto-Managed'}
-                      </td>
-                      <td style={{ padding: '14px', color: '#60716B' }}>
-                        {formatRelativeTime(w.last_activity || w.last_heartbeat || w.added_at)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table style={{ width: '100%', minWidth: '680px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    <th style={{ padding: '10px 14px' }}>Domain / Site</th>
+                    <th style={{ padding: '10px 14px' }}>Status</th>
+                    <th style={{ padding: '10px 14px' }}>Traffic &amp; Protection</th>
+                    <th style={{ padding: '10px 14px' }}>WAF Mode</th>
+                    <th style={{ padding: '10px 14px' }}>SSL Security</th>
+                    <th style={{ padding: '10px 14px' }}>Last Activity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {wpWebsites.map((w, idx) => {
+                    const isOnline = w.status !== 'offline';
+                    const siteName = w.domain || w.name || w.url || 'Connected Site';
+                    return (
+                      <tr key={idx} style={{ borderBottom: '1px solid #F1F5F3' }}>
+                        <td style={{ padding: '14px', fontWeight: '700', color: '#10201E' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: isOnline ? '#10B981' : '#EF4444' }} />
+                            <span>{siteName}</span>
+                          </div>
+                        </td>
+                        <td style={{ padding: '14px' }}>
+                          <span style={isOnline ? badgeStyle('#ECFDF5', '#059669', '#A7F3D0') : badgeStyle('#FEF2F2', '#DC2626', '#FECACA')}>
+                            {isOnline ? 'ONLINE (200 OK)' : 'OFFLINE'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '14px', fontWeight: '700' }}>
+                          {(w.requests_today || 0).toLocaleString()} req ({(w.blocked_today || 0).toLocaleString()} blocked)
+                        </td>
+                        <td style={{ padding: '14px' }}>
+                          <span style={badgeStyle('#F0FDF4', '#15803D', '#DCFCE7')}>
+                            {(w.waf_mode || 'protect').toUpperCase()}
+                          </span>
+                        </td>
+                        <td style={{ padding: '14px', color: '#059669', fontWeight: '600' }}>
+                          {w.ssl_active !== false ? 'Active (TLS 1.3)' : 'Edge Auto-Managed'}
+                        </td>
+                        <td style={{ padding: '14px', color: '#60716B' }}>
+                          {formatRelativeTime(w.last_activity || w.last_heartbeat || w.added_at)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -647,66 +649,68 @@ export default function UserBulkManagement() {
               </div>
             </div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  <th style={{ padding: '10px 14px' }}>Plugin Name</th>
-                  <th style={{ padding: '10px 14px' }}>Installed Version</th>
-                  <th style={{ padding: '10px 14px' }}>Latest Version</th>
-                  <th style={{ padding: '10px 14px' }}>Status</th>
-                  <th style={{ padding: '10px 14px' }}>Update Status</th>
-                  <th style={{ padding: '10px 14px', textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pluginsList.map(plugin => (
-                  <tr key={plugin.id} style={{ borderBottom: '1px solid #F1F5F3' }}>
-                    <td style={{ padding: '14px', fontWeight: '700', color: '#10201E' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#F1F5F3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0B2522' }}>
-                          <Sliders size={16} />
-                        </div>
-                        <div>
-                          <div>{plugin.name}</div>
-                          <div style={{ fontSize: '11px', color: '#60716B', fontWeight: '500' }}>Active on {plugin.siteCount} sites</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ padding: '14px', fontFamily: 'monospace' }}>v{plugin.currentVersion}</td>
-                    <td style={{ padding: '14px', fontFamily: 'monospace' }}>v{plugin.latestVersion}</td>
-                    <td style={{ padding: '14px' }}>
-                      <span style={plugin.status === 'active' ? badgeStyle('#ECFDF5', '#059669', '#A7F3D0') : badgeStyle('#F8FAFC', '#64748B', '#E2E8F0')}>
-                        {plugin.status.toUpperCase()}
-                      </span>
-                    </td>
-                    <td style={{ padding: '14px' }}>
-                      {plugin.updateAvailable ? (
-                        <span style={badgeStyle('#FFF4ED', '#D97706', '#FCD3B6')}>
-                          UPDATE AVAILABLE
-                        </span>
-                      ) : (
-                        <span style={badgeStyle('#ECFDF5', '#059669', '#A7F3D0')}>
-                          UP TO DATE
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ padding: '14px', textAlign: 'right' }}>
-                      {plugin.updateAvailable && (
-                        <button
-                          onClick={() => {
-                            setPluginsList(prev => prev.map(p => p.id === plugin.id ? { ...p, currentVersion: p.latestVersion, updateAvailable: false } : p))
-                            showToast(`Updated ${plugin.name} to v${plugin.latestVersion}!`)
-                          }}
-                          style={{ ...secondaryButtonStyle, padding: '5px 10px', fontSize: '11px' }}
-                        >
-                          Update
-                        </button>
-                      )}
-                    </td>
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table style={{ width: '100%', minWidth: '680px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    <th style={{ padding: '10px 14px' }}>Plugin Name</th>
+                    <th style={{ padding: '10px 14px' }}>Installed Version</th>
+                    <th style={{ padding: '10px 14px' }}>Latest Version</th>
+                    <th style={{ padding: '10px 14px' }}>Status</th>
+                    <th style={{ padding: '10px 14px' }}>Update Status</th>
+                    <th style={{ padding: '10px 14px', textAlign: 'right' }}>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {pluginsList.map(plugin => (
+                    <tr key={plugin.id} style={{ borderBottom: '1px solid #F1F5F3' }}>
+                      <td style={{ padding: '14px', fontWeight: '700', color: '#10201E' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#F1F5F3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0B2522' }}>
+                            <Sliders size={16} />
+                          </div>
+                          <div>
+                            <div>{plugin.name}</div>
+                            <div style={{ fontSize: '11px', color: '#60716B', fontWeight: '500' }}>Active on {plugin.siteCount} sites</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px', fontFamily: 'monospace' }}>v{plugin.currentVersion}</td>
+                      <td style={{ padding: '14px', fontFamily: 'monospace' }}>v{plugin.latestVersion}</td>
+                      <td style={{ padding: '14px' }}>
+                        <span style={plugin.status === 'active' ? badgeStyle('#ECFDF5', '#059669', '#A7F3D0') : badgeStyle('#F8FAFC', '#64748B', '#E2E8F0')}>
+                          {plugin.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px' }}>
+                        {plugin.updateAvailable ? (
+                          <span style={badgeStyle('#FFF4ED', '#D97706', '#FCD3B6')}>
+                            UPDATE AVAILABLE
+                          </span>
+                        ) : (
+                          <span style={badgeStyle('#ECFDF5', '#059669', '#A7F3D0')}>
+                            UP TO DATE
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: '14px', textAlign: 'right' }}>
+                        {plugin.updateAvailable && (
+                          <button
+                            onClick={() => {
+                              setPluginsList(prev => prev.map(p => p.id === plugin.id ? { ...p, currentVersion: p.latestVersion, updateAvailable: false } : p))
+                              showToast(`Updated ${plugin.name} to v${plugin.latestVersion}!`)
+                            }}
+                            style={{ ...secondaryButtonStyle, padding: '5px 10px', fontSize: '11px' }}
+                          >
+                            Update
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
@@ -835,40 +839,42 @@ export default function UserBulkManagement() {
               </div>
             </div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  <th style={{ padding: '10px 14px' }}>Snapshot Name</th>
-                  <th style={{ padding: '10px 14px' }}>Target Site</th>
-                  <th style={{ padding: '10px 14px' }}>Size</th>
-                  <th style={{ padding: '10px 14px' }}>Type</th>
-                  <th style={{ padding: '10px 14px' }}>Created Date</th>
-                  <th style={{ padding: '10px 14px', textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {backups.map(bk => (
-                  <tr key={bk.id} style={{ borderBottom: '1px solid #F1F5F3' }}>
-                    <td style={{ padding: '14px', fontWeight: '700', color: '#10201E' }}>{bk.name}</td>
-                    <td style={{ padding: '14px', color: '#60716B' }}>{bk.siteDomain}</td>
-                    <td style={{ padding: '14px', fontFamily: 'monospace' }}>{bk.size}</td>
-                    <td style={{ padding: '14px' }}>
-                      <span style={badgeStyle('#F0F9FF', '#0284C7', '#BAE6FD')}>{bk.type}</span>
-                    </td>
-                    <td style={{ padding: '14px', color: '#60716B' }}>{bk.date}</td>
-                    <td style={{ padding: '14px', textAlign: 'right' }}>
-                      <button
-                        onClick={() => showToast(`Restoring ${bk.name}... Site state reverted safely!`)}
-                        style={{ ...secondaryButtonStyle, padding: '5px 10px', fontSize: '12px' }}
-                      >
-                        <RotateCcw size={12} />
-                        <span>Restore</span>
-                      </button>
-                    </td>
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table style={{ width: '100%', minWidth: '680px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    <th style={{ padding: '10px 14px' }}>Snapshot Name</th>
+                    <th style={{ padding: '10px 14px' }}>Target Site</th>
+                    <th style={{ padding: '10px 14px' }}>Size</th>
+                    <th style={{ padding: '10px 14px' }}>Type</th>
+                    <th style={{ padding: '10px 14px' }}>Created Date</th>
+                    <th style={{ padding: '10px 14px', textAlign: 'right' }}>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {backups.map(bk => (
+                    <tr key={bk.id} style={{ borderBottom: '1px solid #F1F5F3' }}>
+                      <td style={{ padding: '14px', fontWeight: '700', color: '#10201E' }}>{bk.name}</td>
+                      <td style={{ padding: '14px', color: '#60716B' }}>{bk.siteDomain}</td>
+                      <td style={{ padding: '14px', fontFamily: 'monospace' }}>{bk.size}</td>
+                      <td style={{ padding: '14px' }}>
+                        <span style={badgeStyle('#F0F9FF', '#0284C7', '#BAE6FD')}>{bk.type}</span>
+                      </td>
+                      <td style={{ padding: '14px', color: '#60716B' }}>{bk.date}</td>
+                      <td style={{ padding: '14px', textAlign: 'right' }}>
+                        <button
+                          onClick={() => showToast(`Restoring ${bk.name}... Site state reverted safely!`)}
+                          style={{ ...secondaryButtonStyle, padding: '5px 10px', fontSize: '12px' }}
+                        >
+                          <RotateCcw size={12} />
+                          <span>Restore</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}

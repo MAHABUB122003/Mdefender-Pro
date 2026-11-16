@@ -586,7 +586,7 @@ export default function BulkPlugins() {
           {/* Header Controls */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
                   Installed Plugins ({plugins.length})
                 </h3>
@@ -746,9 +746,9 @@ export default function BulkPlugins() {
             </div>
           </div>
 
-          {/* Plugins Table */}
-          <div style={{ overflowX: 'auto', minHeight: '340px', paddingBottom: '60px' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+          {/* Plugins Desktop Table */}
+          <div className="mdf-wp-desktop-table" style={{ overflowX: 'auto', minHeight: '340px', paddingBottom: '60px' }}>
+            <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                   <th style={{ padding: '12px 14px', width: '38px', textAlign: 'center' }}>
@@ -1146,6 +1146,358 @@ export default function BulkPlugins() {
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* Plugins Mobile Stream View (Zero Horizontal Scrolling) */}
+          <div className="mdf-wp-mobile-list" style={{ paddingBottom: '30px' }}>
+            {/* Mobile Select All Bar */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '10px 14px',
+              background: '#F8FAF9',
+              borderRadius: '8px',
+              border: '1px solid #D9E1DC',
+              fontSize: '12px',
+              color: '#60716B'
+            }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 700, color: '#10201E' }}>
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={handleToggleSelectAll}
+                  style={{ cursor: 'pointer', accentColor: '#0B2522', width: '16px', height: '16px' }}
+                />
+                <span>Select All ({plugins.length})</span>
+              </label>
+              {selectedPlugins.length > 0 && (
+                <span style={{ fontWeight: 700, color: '#059669' }}>
+                  {selectedPlugins.length} selected
+                </span>
+              )}
+            </div>
+
+            {/* Plugin Cards */}
+            {plugins.map((plugin) => {
+              const isActionLoading = actionLoadingId === plugin.id
+              const isSelected = selectedPlugins.includes(plugin.id)
+              const isMenuOpen = openMenuId === `mob-${plugin.id}`
+
+              return (
+                <div
+                  key={plugin.id}
+                  style={{
+                    background: isSelected ? '#F0FDF4' : '#FFFFFF',
+                    border: `1px solid ${isSelected ? '#86EFAC' : '#D9E1DC'}`,
+                    borderRadius: '10px',
+                    padding: '12px 14px',
+                    boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
+                  }}
+                >
+                  {/* Top: Checkbox, Icon, Title, Official WAF badge, and Status */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', minWidth: 0, flex: 1 }}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelectOne(plugin.id)}
+                        disabled={plugin.id === 'mdefender-pro'}
+                        style={{
+                          cursor: plugin.id === 'mdefender-pro' ? 'not-allowed' : 'pointer',
+                          accentColor: '#0B2522',
+                          width: '16px',
+                          height: '16px',
+                          marginTop: '2px',
+                          flexShrink: 0
+                        }}
+                      />
+                      <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '8px',
+                        background: plugin.status === 'active' ? '#0B2522' : '#F1F5F9',
+                        color: plugin.status === 'active' ? '#FFFFFF' : '#64748B',
+                        border: `1px solid ${plugin.status === 'active' ? '#0B2522' : '#E2E8F0'}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        <Sliders size={15} />
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: '700', color: '#10201E', fontSize: '13px', wordBreak: 'break-word' }}>
+                            {plugin.name}
+                          </span>
+                          {plugin.verified && (
+                            <span style={badgeStyle('#0B2522', '#FFFFFF', '#0B2522')}>
+                              OFFICIAL WAF
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#87948D', marginTop: '2px' }}>
+                          by {plugin.author || 'WordPress Community'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <span style={{
+                      ...badgeStyle(
+                        plugin.status === 'active' ? '#0B2522' : '#F8FAFC',
+                        plugin.status === 'active' ? '#FFFFFF' : '#64748B',
+                        plugin.status === 'active' ? '#0B2522' : '#E2E8F0'
+                      ),
+                      flexShrink: 0
+                    }}>
+                      {plugin.status === 'active' ? 'ACTIVE' : 'INACTIVE'}
+                    </span>
+                  </div>
+
+                  {/* Middle: Versions & Auto-Update */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '8px',
+                    padding: '6px 10px',
+                    background: '#FAFBF9',
+                    borderRadius: '8px',
+                    border: '1px solid #E6ECE9',
+                    fontSize: '11.5px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      <span style={{ color: '#60716B' }}>Version:</span>
+                      <code style={{ background: '#FFFFFF', padding: '2px 6px', borderRadius: '4px', border: '1px solid #D9E1DC', fontWeight: '600', color: '#10201E' }}>
+                        v{plugin.currentVersion}
+                      </code>
+                      {plugin.updateAvailable && (
+                        <span style={badgeStyle('#FFFBEB', '#B45309', '#FEF3C7')}>
+                          UPDATE: v{plugin.latestVersion}
+                        </span>
+                      )}
+                    </div>
+
+                    {plugin.id === 'mdefender-pro' ? (
+                      <span style={badgeStyle('#E8F5E9', '#15803D', '#BBF7D0')}>
+                        AUTO: LOCKED
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleToggleAutoUpdate(plugin)}
+                        disabled={actionLoadingId === `auto-${plugin.id}`}
+                        style={{
+                          background: plugin.autoUpdate ? '#F0FDF4' : '#F8FAFC',
+                          border: `1px solid ${plugin.autoUpdate ? '#86EFAC' : '#E2E8F0'}`,
+                          color: plugin.autoUpdate ? '#166534' : '#64748B',
+                          padding: '3px 8px',
+                          borderRadius: '20px',
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <span style={{
+                          width: '6px',
+                          height: '6px',
+                          borderRadius: '50%',
+                          background: plugin.autoUpdate ? '#22C55E' : '#94A3B8'
+                        }} />
+                        <span>{actionLoadingId === `auto-${plugin.id}` ? '...' : (plugin.autoUpdate ? 'Auto: ON' : 'Auto: OFF')}</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Bottom: Scope & Action buttons */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <span style={{ fontSize: '11px', color: '#60716B' }}>
+                      {selectedSiteId === 'all'
+                        ? `${plugin.siteCount} Site(s)`
+                        : (plugin.status === 'active' ? 'Installed & Active' : 'Standby')}
+                    </span>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {plugin.updateAvailable && (
+                        <button
+                          onClick={() => handleSafeUpdate(plugin)}
+                          disabled={isActionLoading}
+                          style={{
+                            background: '#0B2522',
+                            border: '1px solid #0B2522',
+                            padding: '5px 10px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            color: '#FFFFFF',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <Sparkles size={11} color="#F59E0B" />
+                          <span>Update</span>
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => handleToggleStatus(plugin.id)}
+                        disabled={isActionLoading || plugin.id === 'mdefender-pro'}
+                        style={{
+                          background: 'transparent',
+                          border: '1px solid #D9E1DC',
+                          padding: '5px 10px',
+                          borderRadius: '6px',
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          cursor: plugin.id === 'mdefender-pro' ? 'not-allowed' : 'pointer',
+                          color: plugin.status === 'active' ? '#B91C1C' : '#0B2522',
+                          opacity: plugin.id === 'mdefender-pro' ? 0.6 : 1
+                        }}
+                      >
+                        {isActionLoading ? 'Saving...' : plugin.status === 'active' ? 'Deactivate' : 'Activate'}
+                      </button>
+
+                      {/* Three-dots menu */}
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setOpenMenuId(isMenuOpen ? null : `mob-${plugin.id}`)
+                          }}
+                          disabled={isActionLoading}
+                          style={{
+                            background: isMenuOpen ? '#E2E8F0' : '#F1F5F3',
+                            border: '1px solid #D9E1DC',
+                            padding: '5px 7px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            cursor: 'pointer',
+                            color: '#10201E',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <MoreVertical size={14} />
+                        </button>
+
+                        {isMenuOpen && (
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              position: 'absolute',
+                              right: 0,
+                              bottom: '100%',
+                              marginBottom: '6px',
+                              background: '#FFFFFF',
+                              border: '1px solid #D9E1DC',
+                              borderRadius: '10px',
+                              boxShadow: '0 12px 30px -4px rgba(0,0,0,0.18)',
+                              zIndex: 9999,
+                              minWidth: '200px',
+                              padding: '6px',
+                              textAlign: 'left'
+                            }}
+                          >
+                            <div style={{ padding: '6px 10px', borderBottom: '1px solid #F0F4F2', marginBottom: '4px' }}>
+                              <div style={{ fontSize: '11px', fontWeight: '700', color: '#10201E' }}>{plugin.name}</div>
+                              <div style={{ fontSize: '10px', color: '#60716B' }}>v{plugin.currentVersion} • {plugin.status.toUpperCase()}</div>
+                            </div>
+
+                            {plugin.updateAvailable && (
+                              <button
+                                onClick={() => {
+                                  setOpenMenuId(null)
+                                  handleSafeUpdate(plugin)
+                                }}
+                                style={{
+                                  width: '100%',
+                                  textAlign: 'left',
+                                  padding: '7px 10px',
+                                  fontSize: '12px',
+                                  fontWeight: '600',
+                                  background: 'transparent',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  color: '#059669'
+                                }}
+                              >
+                                <Sparkles size={13} color="#059669" />
+                                <span>Safe Update (Rollback Guard)</span>
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => {
+                                setOpenMenuId(null)
+                                handleSyncPlugins()
+                              }}
+                              style={{
+                                width: '100%',
+                                textAlign: 'left',
+                                padding: '7px 10px',
+                                fontSize: '12px',
+                                fontWeight: '500',
+                                background: 'transparent',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                color: '#10201E'
+                              }}
+                            >
+                              <RefreshCw size={13} />
+                              <span>Re-sync Plugin Telemetry</span>
+                            </button>
+
+                            <div style={{ height: '1px', background: '#F0F4F2', margin: '4px 0' }} />
+                            <button
+                              onClick={() => {
+                                setOpenMenuId(null)
+                                handleDeletePlugin(plugin)
+                              }}
+                              style={{
+                                width: '100%',
+                                textAlign: 'left',
+                                padding: '7px 10px',
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                background: 'transparent',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                color: '#DC2626'
+                              }}
+                            >
+                              <Trash2 size={13} color="#DC2626" />
+                              <span>{plugin.id === 'mdefender-pro' ? 'Uninstall & Delete Agent' : 'Uninstall & Delete'}</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

@@ -1313,10 +1313,17 @@ class WAF_FW_Website_Hardening {
 
     public function send_security_headers() {
         if (headers_sent()) return;
-        $list = get_option('waf_harden_security_headers_list', []);
+        $list = get_option('waf_harden_security_headers_list', null);
+        if (!is_array($list) || empty($list)) {
+            $list = [
+                'X-Content-Type-Options' => 'nosniff',
+                'X-Frame-Options' => 'SAMEORIGIN',
+                'Referrer-Policy' => 'strict-origin-when-cross-origin',
+            ];
+        }
         if (is_array($list)) {
             foreach ($list as $name => $value) {
-                header("{$name}: {$value}");
+                @header("{$name}: {$value}");
             }
         }
     }

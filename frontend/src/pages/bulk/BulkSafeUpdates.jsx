@@ -381,6 +381,8 @@ export default function BulkSafeUpdates() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '10px',
         marginBottom: '20px',
         padding: '10px 16px',
         background: '#ffffff',
@@ -388,7 +390,7 @@ export default function BulkSafeUpdates() {
         border: '1px solid #D9E1DC',
         boxShadow: '0 2px 8px rgba(11, 37, 34, 0.02)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <div style={{
             width: '24px',
             height: '24px',
@@ -399,7 +401,8 @@ export default function BulkSafeUpdates() {
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '12px',
-            fontWeight: 800
+            fontWeight: 800,
+            flexShrink: 0
           }}>
             M
           </div>
@@ -410,7 +413,7 @@ export default function BulkSafeUpdates() {
           <strong style={{ fontSize: '13px', color: '#0B2522', fontWeight: 800 }}>Safe Updates Engine</strong>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           <span style={{
             width: '8px',
             height: '8px',
@@ -455,7 +458,7 @@ export default function BulkSafeUpdates() {
             <span>SELECT WEBSITE:</span>
           </div>
 
-          <div style={{ position: 'relative', minWidth: '280px' }}>
+          <div style={{ position: 'relative', minWidth: '200px', flex: '1 1 auto', maxWidth: '100%' }}>
             <select
               value={targetSiteId || ''}
               onChange={(e) => handleSelectSite(e.target.value)}
@@ -648,12 +651,7 @@ export default function BulkSafeUpdates() {
       </div>
 
       {/* 4 TOP KPI CARDS */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: '16px',
-        marginBottom: '14px'
-      }}>
+      <div className="mdf-safeupdates-kpi-grid">
         {/* KPI 1: Posture */}
         <div style={{ background: '#ffffff', border: '1px solid #D9E1DC', borderRadius: '14px', padding: '12px 16px', boxShadow: '0 2px 8px rgba(11,37,34,0.02)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
@@ -750,12 +748,7 @@ export default function BulkSafeUpdates() {
           </span>
         </div>
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(5, 1fr)',
-          gap: '12px',
-          position: 'relative'
-        }}>
+        <div className="mdf-safeupdates-pipeline-grid">
           {[
             {
               step: '1',
@@ -891,8 +884,8 @@ export default function BulkSafeUpdates() {
         </div>
 
         {/* Updates Table */}
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: '100%', minWidth: '680px', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #E6ECE9', background: '#F8FAF9' }}>
                 <th style={{ padding: '12px 14px', width: '40px' }}>
@@ -1075,8 +1068,8 @@ export default function BulkSafeUpdates() {
             <p style={{ margin: '4px 0 0', fontSize: '12px' }}>When you run safe updates, micro-snapshots and probe audits will appear here.</p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: '680px', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #E6ECE9', background: '#F8FAF9' }}>
                   <th style={{ padding: '12px 14px', fontSize: '11px', fontWeight: 800, color: '#60716B' }}>TIMESTAMP</th>

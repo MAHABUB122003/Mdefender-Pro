@@ -138,7 +138,7 @@ function DashboardSkeleton({ userName }) {
       />
 
       {/* Posture Banner Skeleton */}
-      <div className="mdf-ud-posture" style={{ background: '#fff', border: '1px solid #e2e5de', borderRadius: 14, padding: '18px 20px', display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr) auto', gap: 20, alignItems: 'center' }}>
+      <div className="mdf-ud-posture" style={{ background: '#fff', border: '1px solid #e2e5de', borderRadius: 14, padding: '18px 20px', alignItems: 'center' }}>
         <div className="mdf-skel" style={{ width: 64, height: 64, borderRadius: '50%', flexShrink: 0 }} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -491,7 +491,7 @@ export default function UserDashboard() {
         .mdf-ud-task { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--md-ink-2); text-decoration: none; }
         .mdf-ud-task:hover { color: var(--md-amber); }
         .mdf-ud-chart { height: 220px; position: relative; }
-        .mdf-ud-legend { display: flex; gap: 16px; align-items: center; margin-top: 10px; font-size: 11.5px; color: var(--md-ink-3); }
+        .mdf-ud-legend { display: flex; gap: 10px 16px; align-items: center; margin-top: 10px; font-size: 11.5px; color: var(--md-ink-3); flex-wrap: wrap; }
         .mdf-ud-legend i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 5px; }
         .mdf-ud-actions { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
         .mdf-ud-action {
@@ -504,14 +504,23 @@ export default function UserDashboard() {
         .mdf-ud-site { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--md-ink); text-decoration: none; }
         .mdf-ud-site:hover { color: var(--md-amber); }
         .mdf-ud-scope { font-size: 11px; color: var(--md-ink-3); }
-        .mdf-ud-activity { display: flex; align-items: center; gap: 10px; padding: 10px 20px; border-bottom: 1px solid var(--md-line); }
+        .mdf-ud-activity { display: flex; align-items: center; gap: 10px; padding: 10px 18px; border-bottom: 1px solid var(--md-line); min-width: 0; }
         .mdf-ud-activity:last-child { border-bottom: 0; }
-        .mdf-ud-activity .meta { min-width: 0; flex: 1; }
+        .mdf-ud-activity .meta { min-width: 0; flex: 1; overflow: hidden; }
         .mdf-ud-activity .title { font-size: 12px; font-weight: 600; color: var(--md-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .mdf-ud-activity .sub { font-size: 11px; color: var(--md-ink-3); margin-top: 2px; display: flex; gap: 8px; flex-wrap: wrap; }
+        .mdf-ud-activity .sub { font-size: 11px; color: var(--md-ink-3); margin-top: 2px; display: flex; gap: 6px 10px; flex-wrap: wrap; word-break: break-all; overflow-wrap: anywhere; }
+        .mdf-ud-activity .sub span { word-break: break-all; overflow-wrap: anywhere; }
+        .mdf-ud-details-link { font-size: 11.5px; color: var(--md-ink-3); text-decoration: none; flex-shrink: 0; margin-left: auto; padding-left: 6px; }
+        .mdf-ud-details-link:hover { color: var(--md-amber); }
         @media (max-width: 900px) {
           .mdf-ud-posture { grid-template-columns: auto minmax(0,1fr); }
           .mdf-ud-posture > :last-child { grid-column: 1 / -1; }
+        }
+        @media (max-width: 600px) {
+          .mdf-ud-posture { grid-template-columns: 1fr; justify-items: center; text-align: center; gap: 14px; padding: 16px; }
+          .mdf-ud-tasks { justify-content: center; }
+          .mdf-ud-actions { grid-template-columns: 1fr; }
+          .mdf-ud-activity { padding: 10px 12px; gap: 8px; }
         }
       `}</style>
 
@@ -692,8 +701,8 @@ export default function UserDashboard() {
         flush
       >
         {sites.length ? (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="mdui-table">
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table className="mdui-table" style={{ minWidth: '600px' }}>
               <thead>
                 <tr>
                   <th scope="col">Site</th>
@@ -767,7 +776,7 @@ export default function UserDashboard() {
                         <span>{timeAgo(event.timestamp)}</span>
                       </div>
                     </div>
-                    <Link to="/user/logs" style={{ fontSize: 11.5, color: 'var(--md-ink-3)', textDecoration: 'none' }}>Details</Link>
+                    <Link to="/user/logs" className="mdf-ud-details-link">Details</Link>
                   </div>
                 );
               })}

@@ -21,11 +21,14 @@ export default function EmptyFleetState({
       background: '#ffffff',
       borderRadius: '16px',
       border: '1px solid #D9E1DC',
-      padding: '48px 32px',
+      padding: 'clamp(24px, 5vw, 48px) clamp(16px, 4vw, 32px)',
       boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)',
       textAlign: 'center',
       marginTop: '12px',
-      marginBottom: '32px'
+      marginBottom: '32px',
+      width: '100%',
+      minWidth: 0,
+      boxSizing: 'border-box'
     }}>
       {/* Icon Badge */}
       <div style={{
@@ -73,7 +76,8 @@ export default function EmptyFleetState({
         alignItems: 'center',
         gap: '12px',
         flexWrap: 'wrap',
-        marginBottom: '40px'
+        marginBottom: '40px',
+        minWidth: 0
       }}>
         <Link
           to="/user/websites"
@@ -89,7 +93,13 @@ export default function EmptyFleetState({
             fontSize: '13px',
             textDecoration: 'none',
             boxShadow: '0 2px 10px rgba(16, 32, 30, 0.2)',
-            transition: 'all 0.15s ease'
+            transition: 'all 0.15s ease',
+            maxWidth: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box',
+            justifyContent: 'center',
+            whiteSpace: 'normal',
+            textAlign: 'center'
           }}
         >
           <Plus size={16} />
@@ -111,7 +121,13 @@ export default function EmptyFleetState({
             fontWeight: '700',
             fontSize: '13px',
             textDecoration: 'none',
-            transition: 'all 0.15s ease'
+            transition: 'all 0.15s ease',
+            maxWidth: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box',
+            justifyContent: 'center',
+            whiteSpace: 'normal',
+            textAlign: 'center'
           }}
         >
           <Download size={16} color="#E8792F" />

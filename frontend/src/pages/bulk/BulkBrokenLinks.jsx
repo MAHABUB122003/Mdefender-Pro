@@ -335,7 +335,7 @@ export default function BulkBrokenLinks() {
           </div>
 
           {/* Search Box */}
-          <div style={{ position: 'relative', width: '260px' }}>
+          <div className="mdf-broken-search" style={{ position: 'relative' }}>
             <input
               type="text"
               placeholder="Search link URL or anchor..."
@@ -347,7 +347,8 @@ export default function BulkBrokenLinks() {
                 borderRadius: '8px',
                 border: '1px solid #CBD5E1',
                 fontSize: '12px',
-                outline: 'none'
+                outline: 'none',
+                boxSizing: 'border-box'
               }}
             />
             <Search size={14} style={{ position: 'absolute', left: '10px', top: '10px', color: '#94A3B8' }} />
@@ -396,8 +397,8 @@ export default function BulkBrokenLinks() {
             </div>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #E2E8F0', color: '#64748B' }}>
                   <th style={{ padding: '10px 12px', fontWeight: '600' }}>Target Link (Destination)</th>

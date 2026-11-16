@@ -642,14 +642,14 @@ export default function BulkHardening() {
         </div>
 
         {/* Right: Quick Action Buttons & Site Picker */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        <div className="mdf-hardening-banner-actions">
           {/* Site Selector if multiple */}
           {wpWebsites.length > 1 && (
             <select
               value={targetSiteId || ''}
               onChange={(e) => handleSelectSite(e.target.value)}
               style={{
-                padding: '6px 10px',
+                padding: '7px 10px',
                 borderRadius: '6px',
                 border: '1px solid #CBD5E1',
                 fontSize: '12px',
@@ -674,7 +674,7 @@ export default function BulkHardening() {
               background: '#ffffff',
               color: '#334155',
               border: '1px solid #CBD5E1',
-              padding: '6px 12px',
+              padding: '7px 12px',
               borderRadius: '6px',
               fontSize: '12px',
               fontWeight: 600,
@@ -694,7 +694,7 @@ export default function BulkHardening() {
               background: '#ffffff',
               color: '#334155',
               border: '1px solid #CBD5E1',
-              padding: '6px 12px',
+              padding: '7px 12px',
               borderRadius: '6px',
               fontSize: '12px',
               fontWeight: 600,
@@ -712,11 +712,12 @@ export default function BulkHardening() {
             <button
               onClick={handleArmAllShields}
               disabled={savingChanges}
+              className="mdf-btn-full"
               style={{
                 background: '#ECFDF5',
                 color: '#059669',
                 border: '1px solid #A7F3D0',
-                padding: '6px 12px',
+                padding: '7px 12px',
                 borderRadius: '6px',
                 fontSize: '12px',
                 fontWeight: 700,
@@ -734,11 +735,12 @@ export default function BulkHardening() {
           <button
             onClick={handleSaveAllShields}
             disabled={savingChanges}
+            className="mdf-btn-full"
             style={{
               background: '#0F172A',
               color: '#ffffff',
               border: 'none',
-              padding: '6px 14px',
+              padding: '8px 14px',
               borderRadius: '6px',
               fontSize: '12px',
               fontWeight: 700,
@@ -759,11 +761,7 @@ export default function BulkHardening() {
       </div>
 
       {/* 8 MASTER SECURITY SHIELDS (2-COLUMN ENTERPRISE GRID) */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(540px, 1fr))',
-        gap: '14px'
-      }}>
+      <div className="mdf-hardening-grid">
         {masterShields.map((shield) => {
           const Icon = shield.icon
           const isEnabled = !!shields[shield.id]
@@ -778,27 +776,25 @@ export default function BulkHardening() {
                 border: '1px solid #E2E8F0',
                 borderLeft: `4px solid ${isEnabled ? '#10B981' : '#CBD5E1'}`,
                 borderRadius: '10px',
-                padding: '16px 20px',
+                padding: '16px 18px',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
                 transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
                 display: 'flex',
                 flexDirection: 'column',
-                justifyContent: 'space-between'
+                gap: '10px'
               }}
             >
-              {/* Shield Row */}
+              {/* TOP HEADER: Icon + Title & Category on Left, Actions & Toggle on Right */}
               <div style={{
                 display: 'flex',
-                alignItems: 'center',
+                alignItems: 'flex-start',
                 justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '14px'
+                gap: '12px'
               }}>
-                {/* Left: Icon, Title & Summary */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', minWidth: 0, flex: 1 }}>
                   <div style={{
-                    width: '36px',
-                    height: '36px',
+                    width: '34px',
+                    height: '34px',
                     borderRadius: '8px',
                     background: shield.iconBg,
                     color: shield.iconColor,
@@ -808,14 +804,14 @@ export default function BulkHardening() {
                     flexShrink: 0,
                     marginTop: '2px'
                   }}>
-                    <Icon size={18} />
+                    <Icon size={17} />
                   </div>
 
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A' }}>
-                        {shield.name}
-                      </span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A', wordBreak: 'break-word', lineHeight: '1.25' }}>
+                      {shield.name}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '3px' }}>
                       <span style={{
                         fontSize: '10px',
                         fontWeight: 700,
@@ -844,56 +840,11 @@ export default function BulkHardening() {
                         {isEnabled ? 'Active' : 'Disabled'}
                       </span>
                     </div>
-
-                    <p style={{ margin: '4px 0 6px', fontSize: '13px', color: '#64748B', lineHeight: '1.45' }}>
-                      {shield.desc}
-                    </p>
-
-                    {/* Capabilities Tags */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                      {shield.tags.map((t, idx) => (
-                        <span
-                          key={idx}
-                          style={{
-                            fontSize: '11px',
-                            fontWeight: 600,
-                            padding: '1px 6px',
-                            borderRadius: '4px',
-                            background: '#F8FAFC',
-                            color: '#475569',
-                            border: '1px solid #E2E8F0'
-                          }}
-                        >
-                          {t}
-                        </span>
-                      ))}
-
-                      {/* Expandable Disclosure Button */}
-                      <button
-                        onClick={() => setExpandedShield(isExpanded ? null : shield.id)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          padding: '1px 4px',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          color: '#2563EB',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '2px',
-                          marginLeft: '4px'
-                        }}
-                      >
-                        <span>{isExpanded ? 'Hide sub-rules' : 'View sub-rules (4)'}</span>
-                        {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                      </button>
-                    </div>
                   </div>
                 </div>
 
                 {/* Right: Actions & ON/OFF Toggle Switch */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, marginTop: '2px' }}>
                   {/* Inline Action (e.g. Rotate Salts or Purge Log) */}
                   {shield.hasAction === 'rotate_salts' && (
                     <button
@@ -903,7 +854,7 @@ export default function BulkHardening() {
                         background: '#ffffff',
                         border: '1px solid #CBD5E1',
                         borderRadius: '6px',
-                        padding: '5px 10px',
+                        padding: '4px 8px',
                         fontSize: '11px',
                         fontWeight: 600,
                         color: '#334155',
@@ -926,7 +877,7 @@ export default function BulkHardening() {
                         background: '#ffffff',
                         border: '1px solid #CBD5E1',
                         borderRadius: '6px',
-                        padding: '5px 10px',
+                        padding: '4px 8px',
                         fontSize: '11px',
                         fontWeight: 600,
                         color: '#334155',
@@ -942,18 +893,16 @@ export default function BulkHardening() {
                   )}
 
                   {/* Clean 1-Click Toggle Switch */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{
-                      fontSize: '12px',
+                      fontSize: '11px',
                       fontWeight: 700,
-                      color: isEnabled ? '#059669' : '#94A3B8',
-                      width: '46px',
-                      textAlign: 'right'
+                      color: isEnabled ? '#059669' : '#94A3B8'
                     }}>
                       {isEnabled ? 'ON' : 'OFF'}
                     </span>
 
-                    <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', flexShrink: 0 }}>
+                    <label style={{ position: 'relative', display: 'inline-block', width: '40px', height: '22px', flexShrink: 0 }}>
                       <input
                         type="checkbox"
                         checked={isEnabled}
@@ -969,15 +918,15 @@ export default function BulkHardening() {
                         right: 0,
                         bottom: 0,
                         backgroundColor: isEnabled ? '#0F172A' : '#CBD5E1',
-                        borderRadius: '24px',
+                        borderRadius: '22px',
                         transition: '0.15s ease'
                       }}>
                         <span style={{
                           position: 'absolute',
                           content: '""',
-                          height: '18px',
-                          width: '18px',
-                          left: isEnabled ? '23px' : '3px',
+                          height: '16px',
+                          width: '16px',
+                          left: isEnabled ? '21px' : '3px',
                           bottom: '3px',
                           backgroundColor: '#ffffff',
                           borderRadius: '50%',
@@ -988,6 +937,52 @@ export default function BulkHardening() {
                     </label>
                   </div>
                 </div>
+              </div>
+
+              {/* MIDDLE: Description */}
+              <p style={{ margin: 0, fontSize: '12.5px', color: '#64748B', lineHeight: '1.45' }}>
+                {shield.desc}
+              </p>
+
+              {/* BOTTOM: Capabilities Tags & Sub-rules Button */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: 'auto', paddingTop: '2px' }}>
+                {shield.tags.map((t, idx) => (
+                  <span
+                    key={idx}
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      padding: '1px 6px',
+                      borderRadius: '4px',
+                      background: '#F8FAFC',
+                      color: '#475569',
+                      border: '1px solid #E2E8F0'
+                    }}
+                  >
+                    {t}
+                  </span>
+                ))}
+
+                {/* Expandable Disclosure Button */}
+                <button
+                  onClick={() => setExpandedShield(isExpanded ? null : shield.id)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: '1px 4px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: '#2563EB',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '2px',
+                    marginLeft: '4px'
+                  }}
+                >
+                  <span>{isExpanded ? 'Hide sub-rules' : 'View sub-rules (4)'}</span>
+                  {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                </button>
               </div>
 
               {/* Sub-rules Details Disclosure (Accordion) */}

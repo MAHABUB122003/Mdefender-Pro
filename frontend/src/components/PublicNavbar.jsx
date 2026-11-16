@@ -1,11 +1,32 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
-import { Shield, ChevronDown, ArrowRight, Menu, X, ExternalLink, LayoutDashboard } from 'lucide-react';
+import {
+  Shield,
+  ChevronDown,
+  ChevronRight,
+  ChevronLeft,
+  ArrowRight,
+  Menu,
+  X,
+  ExternalLink,
+  LayoutDashboard,
+  Zap,
+  Lock,
+  Cpu,
+  Layers,
+  Terminal,
+  Database,
+  Globe,
+  Server,
+  AlertOctagon,
+  ShieldCheck,
+} from 'lucide-react';
 
 export default function PublicNavbar() {
   const loc = useLocation();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileSubMenu, setMobileSubMenu] = useState(null); // 'products' | 'solutions' | null
   const [productsOpen, setProductsOpen] = useState(false);
   const [solutionsOpen, setSolutionsOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -75,11 +96,24 @@ export default function PublicNavbar() {
 
   useEffect(() => {
     setMobileOpen(false);
+    setMobileSubMenu(null);
     setProductsOpen(false);
     setSolutionsOpen(false);
     if (productsTimeoutRef.current) clearTimeout(productsTimeoutRef.current);
     if (solutionsTimeoutRef.current) clearTimeout(solutionsTimeoutRef.current);
   }, [loc.pathname]);
+
+  // Auto-close mobile drawer when viewport expands to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768) {
+        setMobileOpen(false);
+        setMobileSubMenu(null);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Unified click outside handler
   useEffect(() => {
@@ -103,6 +137,7 @@ export default function PublicNavbar() {
 
   const handleHomeClick = (e) => {
     setMobileOpen(false);
+    setMobileSubMenu(null);
     setProductsOpen(false);
     setSolutionsOpen(false);
     if (loc.pathname === '/') {
@@ -149,22 +184,26 @@ export default function PublicNavbar() {
         desc: 'Sub-millisecond L7 DFA edge inspection & proxy',
         to: '/products/waf',
         badge: '<0.12ms',
+        icon: Zap,
       },
       {
         title: 'Volumetric DDoS Shield',
         desc: 'Automated Layer 3/4/7 flood scrubbing & BGP mesh',
         to: '/products/ddos',
         badge: 'Unmetered',
+        icon: Shield,
       },
       {
         title: 'Zero-Trust Turnstile & Bots',
         desc: 'Invisible PoW scalper, scraper & carding defense',
         to: '/products/turnstile',
+        icon: Lock,
       },
       {
         title: 'AI Prompt & LLM Gateway',
         desc: 'OWASP Top 10 for LLMs & prompt injection guard',
         to: '/products/ai-gateway',
+        icon: Cpu,
       },
     ],
     fleet: [
@@ -174,21 +213,25 @@ export default function PublicNavbar() {
         to: '/products/wordpress',
         badge: 'Fleet SaaS',
         highlight: true,
+        icon: Layers,
       },
       {
         title: 'Deep Malware & Integrity Scanner',
         desc: '5.32M+ WordPress core & plugin checksums, AST webshell hunter',
         to: '/products/neural-engine',
+        icon: ShieldCheck,
       },
       {
         title: 'RASP Runtime Host Shield',
         desc: 'PHP memory-level monitoring & instant zero-day quarantine',
         to: '/products/wordpress',
+        icon: Terminal,
       },
       {
         title: 'Smart Custom Rules Engine',
         desc: 'Author regex & DFA policies with instant fleet sync',
         to: '/products/rules',
+        icon: Database,
       },
     ],
   };
@@ -200,21 +243,25 @@ export default function PublicNavbar() {
         desc: 'Manage 10 to 100+ client WordPress sites from one cloud console',
         to: '/solutions/agencies',
         badge: 'Multi-Site Fleet',
+        icon: Globe,
       },
       {
         title: 'High-Velocity E-Commerce',
         desc: 'Shield WooCommerce flash sales from scalper bots with 0.08ms latency',
         to: '/solutions/ecommerce',
+        icon: Zap,
       },
       {
         title: 'SaaS Platforms & Cloud APIs',
         desc: 'AST syntactic normalization & BOLA defense for REST/GraphQL',
         to: '/solutions/saas',
+        icon: Server,
       },
       {
         title: 'WordPress Sovereign Defense',
         desc: 'Priority 1 in-memory RASP & 5.2M+ official checksum integrity',
         to: '/solutions/wordpress',
+        icon: Shield,
       },
     ],
     objective: [
@@ -223,21 +270,25 @@ export default function PublicNavbar() {
         desc: 'Semantic prompt injection barrier & model denial-of-wallet guard',
         to: '/solutions/ai',
         badge: 'OWASP LLM',
+        icon: Cpu,
       },
       {
         title: 'FinTech & Regulated Workloads',
         desc: 'PCI-DSS 4.0 Sec 6.4, SOC2, HIPAA & sovereign geo-fenced scrubbing',
         to: '/solutions/fintech',
+        icon: Lock,
       },
       {
         title: 'Fleet-Wide Safe Updates',
         desc: '1-click bulk updates with automated snapshot & safe rollback',
         to: '/solutions/agencies',
+        icon: ShieldCheck,
       },
       {
         title: 'Directory & Ingress Matrix',
         desc: 'Explore all 6 enterprise architecture portals & ingress patterns',
         to: '/solutions',
+        icon: Layers,
       },
     ],
   };
@@ -275,15 +326,18 @@ export default function PublicNavbar() {
           <Link
             to="/"
             onClick={handleLogoClick}
+            className="public-navbar-brand"
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
               textDecoration: 'none',
               cursor: 'pointer',
+              minWidth: 0,
             }}
           >
             <div
+              className="public-navbar-brand-mark"
               style={{
                 width: '34px',
                 height: '34px',
@@ -303,6 +357,7 @@ export default function PublicNavbar() {
               />
             </div>
             <span
+              className="public-navbar-brand-text"
               style={{
                 fontSize: '16px',
                 fontWeight: 700,
@@ -311,6 +366,7 @@ export default function PublicNavbar() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',
+                whiteSpace: 'nowrap',
               }}
             >
               MDefender <span style={{ color: '#E8792F', fontWeight: 800 }}>Pro</span>
@@ -318,14 +374,7 @@ export default function PublicNavbar() {
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '24px',
-            }}
-            className="hidden md:flex"
-          >
+          <nav className="mdf-public-nav-desktop">
             {/* Products Mega-Dropdown */}
             <div
               ref={dropdownRef}
@@ -691,6 +740,27 @@ export default function PublicNavbar() {
               Threat Intelligence
             </Link>
 
+            {/* 7. About Us Link */}
+            <Link
+              to="/about"
+              style={{
+                fontSize: '13.5px',
+                fontWeight: 600,
+                color: loc.pathname === '/about' ? '#E8792F' : '#10201E',
+                textDecoration: 'none',
+                padding: '6px 2px',
+                transition: 'color 0.18s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = '#E8792F';
+              }}
+              onMouseLeave={(e) => {
+                if (loc.pathname !== '/about') e.currentTarget.style.color = '#10201E';
+              }}
+            >
+              About
+            </Link>
+
             {isLoggedIn && (
               <Link
                 to="/user/dashboard"
@@ -724,14 +794,7 @@ export default function PublicNavbar() {
           </nav>
 
           {/* Desktop Right Action CTA */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-            }}
-            className="hidden md:flex"
-          >
+          <div className="mdf-public-cta-desktop">
             {isLoggedIn ? (
               <Link
                 to="/user/dashboard"
@@ -826,7 +889,7 @@ export default function PublicNavbar() {
           </div>
 
           {/* Mobile Hamburger Button */}
-          <div className="flex md:hidden">
+          <div className="mdf-public-mobile-btn">
             <button
               type="button"
               onClick={() => setMobileOpen((prev) => !prev)}
@@ -845,198 +908,514 @@ export default function PublicNavbar() {
         </div>
       </header>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Drawer (Cloudflare-style Drilldown in MDefender Pro Theme) */}
       {mobileOpen && (
         <div
-          className="public-navbar-drawer md:hidden"
+          className="public-navbar-drawer"
           style={{
             position: 'fixed',
             left: 0,
             right: 0,
             bottom: 0,
             background: 'rgba(247, 246, 241, 0.98)',
-            backdropFilter: 'blur(16px)',
-            padding: '24px',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
             zIndex: 99,
-            display: 'flex',
             flexDirection: 'column',
-            gap: '18px',
-            overflowY: 'auto',
             borderTop: '1px solid #D9E1DC',
+            overflow: 'hidden',
           }}
         >
-          <div style={{ fontSize: '11px', fontWeight: 800, color: '#E8792F', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
-            Products
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '8px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#6A7D78', textTransform: 'uppercase' }}>Edge Cloud Defense</div>
-            {productCategories.edge.map((item, idx) => (
-              <Link
-                key={idx}
-                to={item.to}
-                onClick={() => setMobileOpen(false)}
-                onTouchStart={() => prefetch('products')}
-                style={{
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: '#10201E',
-                  textDecoration: 'none',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <span>{item.title}</span>
-                {item.badge && <span style={{ fontSize: '10px', color: '#15803D', fontWeight: 700 }}>{item.badge}</span>}
-              </Link>
-            ))}
-
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#6A7D78', textTransform: 'uppercase', marginTop: '6px' }}>WordPress Fleet SaaS</div>
-            {productCategories.fleet.map((item, idx) => (
-              <Link
-                key={idx}
-                to={item.to}
-                onClick={() => setMobileOpen(false)}
-                onTouchStart={() => prefetch('products')}
-                style={{
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: item.highlight ? '#E8792F' : '#10201E',
-                  textDecoration: 'none',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <span>{item.title}</span>
-                {item.badge && <span style={{ fontSize: '10px', background: '#E8792F', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 700 }}>{item.badge}</span>}
-              </Link>
-            ))}
-
-            <Link
-              to="/products"
-              onClick={() => setMobileOpen(false)}
-              onTouchStart={() => prefetch('products')}
-              style={{
-                fontSize: '13px',
-                fontWeight: 700,
-                color: '#E8792F',
-                textDecoration: 'none',
-                marginTop: '4px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}
-            >
-              <span>Explore All Products &amp; Matrix</span>
-              <ArrowRight size={13} strokeWidth={2.2} />
-            </Link>
-          </div>
-
-          <hr style={{ border: 'none', borderTop: '1px solid #D9E1DC', margin: '4px 0' }} />
-
-          <Link
-            to="/solutions"
-            onClick={() => setMobileOpen(false)}
-            onTouchStart={() => prefetch('solutions')}
-            style={{
-              fontSize: '15px',
-              fontWeight: 600,
-              color: (loc.pathname === '/solutions' || loc.pathname === '/about') ? '#E8792F' : '#10201E',
-              textDecoration: 'none',
-            }}
-          >
-            Solutions &amp; Use Cases
-          </Link>
-          <Link
-            to="/docs"
-            onClick={() => setMobileOpen(false)}
-            onTouchStart={() => prefetch('docs')}
-            style={{ fontSize: '15px', fontWeight: 600, color: loc.pathname === '/docs' ? '#E8792F' : '#10201E', textDecoration: 'none' }}
-          >
-            Docs
-          </Link>
-          <Link
-            to="/pricing"
-            onClick={() => setMobileOpen(false)}
-            onTouchStart={() => prefetch('pricing')}
-            style={{ fontSize: '15px', fontWeight: 600, color: loc.pathname === '/pricing' ? '#E8792F' : '#10201E', textDecoration: 'none' }}
-          >
-            Pricing
-          </Link>
-          <Link
-            to="/threat-intelligence"
-            onClick={() => setMobileOpen(false)}
-            onTouchStart={() => prefetch('threat')}
-            style={{ fontSize: '15px', fontWeight: 600, color: (loc.pathname.startsWith('/threat-intelligence') || loc.pathname.startsWith('/blog')) ? '#E8792F' : '#10201E', textDecoration: 'none' }}
-          >
-            Threat Intelligence
-          </Link>
-
-          <hr style={{ border: 'none', borderTop: '1px solid #D9E1DC', margin: '8px 0' }} />
-
-          {isLoggedIn ? (
-            <Link
-              to="/user/dashboard"
-              onClick={() => setMobileOpen(false)}
+          {/* ================= LEVEL 1: MAIN NAVIGATION ================= */}
+          {mobileSubMenu === null && (
+            <div
               style={{
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                padding: '13px',
-                borderRadius: '10px',
-                background: '#0B2522',
-                textAlign: 'center',
-                fontSize: '14px',
-                fontWeight: 700,
-                color: '#ffffff',
-                textDecoration: 'none',
-                boxShadow: '0 2px 8px rgba(11, 37, 34, 0.15)',
+                flexDirection: 'column',
+                height: '100%',
+                justifyContent: 'space-between',
+                padding: '16px 20px 24px',
+                overflowY: 'auto',
               }}
             >
-              <LayoutDashboard size={16} />
-              <span>Go to Dashboard</span>
-              <ArrowRight size={14} />
-            </Link>
-          ) : (
-            <>
-              <Link
-                to="/user/login"
-                onClick={() => setMobileOpen(false)}
-                style={{
-                  padding: '12px',
-                  borderRadius: '10px',
-                  border: '1px solid #D9E1DC',
-                  textAlign: 'center',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: '#10201E',
-                  background: '#ffffff',
-                  textDecoration: 'none',
-                }}
-              >
-                Sign in
-              </Link>
+              {/* Primary Nav List */}
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {/* 1. Products (Sub-menu trigger) */}
+                <button
+                  type="button"
+                  onClick={() => setMobileSubMenu('products')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '16px 4px',
+                    border: 'none',
+                    borderBottom: '1px solid #E2E8E4',
+                    background: 'transparent',
+                    fontSize: '17px',
+                    fontWeight: 700,
+                    color: '#10201E',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    width: '100%',
+                  }}
+                >
+                  <span>Products</span>
+                  <ChevronRight size={18} color="#8EA29C" strokeWidth={2.4} />
+                </button>
 
-              <Link
-                to="/register"
-                onClick={() => setMobileOpen(false)}
+                {/* 2. Solutions (Sub-menu trigger) */}
+                <button
+                  type="button"
+                  onClick={() => setMobileSubMenu('solutions')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '16px 4px',
+                    border: 'none',
+                    borderBottom: '1px solid #E2E8E4',
+                    background: 'transparent',
+                    fontSize: '17px',
+                    fontWeight: 700,
+                    color: '#10201E',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    width: '100%',
+                  }}
+                >
+                  <span>Solutions</span>
+                  <ChevronRight size={18} color="#8EA29C" strokeWidth={2.4} />
+                </button>
+
+                {/* 3. Docs (Direct Link) */}
+                <Link
+                  to="/docs"
+                  onClick={() => setMobileOpen(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '16px 4px',
+                    borderBottom: '1px solid #E2E8E4',
+                    textDecoration: 'none',
+                    fontSize: '17px',
+                    fontWeight: 700,
+                    color: '#10201E',
+                  }}
+                >
+                  <span>Docs</span>
+                </Link>
+
+                {/* 4. Pricing (Direct Link) */}
+                <Link
+                  to="/pricing"
+                  onClick={() => setMobileOpen(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '16px 4px',
+                    borderBottom: '1px solid #E2E8E4',
+                    textDecoration: 'none',
+                    fontSize: '17px',
+                    fontWeight: 700,
+                    color: '#10201E',
+                  }}
+                >
+                  <span>Pricing</span>
+                </Link>
+
+                {/* 5. Threat Intelligence (Direct Link) */}
+                <Link
+                  to="/threat-intelligence"
+                  onClick={() => setMobileOpen(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '16px 4px',
+                    borderBottom: '1px solid #E2E8E4',
+                    textDecoration: 'none',
+                    fontSize: '17px',
+                    fontWeight: 700,
+                    color: '#10201E',
+                  }}
+                >
+                  <span>Threat Intelligence</span>
+                </Link>
+
+                {/* 6. About Us (Direct Link) */}
+                <Link
+                  to="/about"
+                  onClick={() => setMobileOpen(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '16px 4px',
+                    textDecoration: 'none',
+                    fontSize: '17px',
+                    fontWeight: 700,
+                    color: '#10201E',
+                  }}
+                >
+                  <span>About Us</span>
+                </Link>
+              </div>
+
+              {/* Bottom Sticky Action Buttons */}
+              <div
                 style={{
-                  padding: '12px',
-                  borderRadius: '10px',
-                  background: '#0B2522',
-                  textAlign: 'center',
-                  fontSize: '14px',
-                  fontWeight: 700,
-                  color: '#ffffff',
-                  textDecoration: 'none',
-                  boxShadow: '0 2px 8px rgba(11, 37, 34, 0.15)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                  paddingTop: '24px',
+                  marginTop: 'auto',
                 }}
               >
-                Get started free
-              </Link>
-            </>
+                {isLoggedIn ? (
+                  <Link
+                    to="/user/dashboard"
+                    onClick={() => setMobileOpen(false)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      padding: '13px',
+                      borderRadius: '10px',
+                      background: '#0B2522',
+                      textAlign: 'center',
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      color: '#ffffff',
+                      textDecoration: 'none',
+                      boxShadow: '0 2px 8px rgba(11, 37, 34, 0.15)',
+                    }}
+                  >
+                    <LayoutDashboard size={16} />
+                    <span>Go to Dashboard</span>
+                    <ArrowRight size={14} />
+                  </Link>
+                ) : (
+                  <>
+                    <Link
+                      to="/user/login"
+                      onClick={() => setMobileOpen(false)}
+                      style={{
+                        padding: '12px',
+                        borderRadius: '10px',
+                        border: '1px solid #D9E1DC',
+                        textAlign: 'center',
+                        fontSize: '14px',
+                        fontWeight: 650,
+                        color: '#10201E',
+                        background: '#ffffff',
+                        textDecoration: 'none',
+                        boxShadow: '0 1px 3px rgba(11, 37, 34, 0.04)',
+                      }}
+                    >
+                      Login
+                    </Link>
+
+                    <Link
+                      to="/register"
+                      onClick={() => setMobileOpen(false)}
+                      style={{
+                        padding: '13px',
+                        borderRadius: '10px',
+                        background: '#E8792F',
+                        textAlign: 'center',
+                        fontSize: '14px',
+                        fontWeight: 750,
+                        color: '#ffffff',
+                        textDecoration: 'none',
+                        boxShadow: '0 3px 10px rgba(232, 121, 47, 0.28)',
+                      }}
+                    >
+                      Start 14-Day Free Trial
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ================= LEVEL 2: PRODUCTS SUB-MENU ================= */}
+          {mobileSubMenu === 'products' && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                height: '100%',
+                overflowY: 'auto',
+                padding: '14px 18px 24px',
+              }}
+            >
+              {/* Sub-Header: Back & Direct Link */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingBottom: '14px',
+                  marginBottom: '10px',
+                  borderBottom: '1px solid #D9E1DC',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setMobileSubMenu(null)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    background: 'none',
+                    border: 'none',
+                    color: '#E8792F',
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    padding: '4px 0',
+                  }}
+                >
+                  <ChevronLeft size={18} strokeWidth={2.4} />
+                  <span>Back</span>
+                </button>
+
+                <Link
+                  to="/products"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    setMobileSubMenu(null);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    color: '#E8792F',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                  }}
+                >
+                  <span>All products</span>
+                  <ExternalLink size={12} strokeWidth={2.4} />
+                </Link>
+              </div>
+
+              {/* Minimalist Professional Product List */}
+              <div style={{ fontSize: '11px', fontWeight: 800, color: '#6A7D78', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px', paddingLeft: '4px' }}>
+                Products &amp; Security Engines
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {[
+                  ...productCategories.edge,
+                  {
+                    title: 'Deep Malware & Integrity Scanner',
+                    to: '/products/neural-engine',
+                    icon: ShieldCheck,
+                  },
+                  {
+                    title: 'RASP Runtime Host Shield',
+                    to: '/products/wordpress',
+                    icon: Terminal,
+                  },
+                  {
+                    title: 'Smart Custom Rules Engine',
+                    to: '/products/rules',
+                    icon: Database,
+                  },
+                ].map((item, idx) => {
+                  const Icon = item.icon || Shield;
+                  return (
+                    <Link
+                      key={idx}
+                      to={item.to}
+                      onClick={() => {
+                        setMobileOpen(false);
+                        setMobileSubMenu(null);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '13px 4px',
+                        textDecoration: 'none',
+                        borderBottom: '1px solid #EEF2F0',
+                        transition: 'background 0.15s ease',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            background: '#F2F6F3',
+                            border: '1px solid #D9E1DC',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#28745D',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Icon size={16} strokeWidth={2.2} />
+                        </div>
+                        <span style={{ fontSize: '14px', fontWeight: 650, color: '#10201E' }}>
+                          {item.title}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {item.badge && (
+                          <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: '#E8EEE8', color: '#15803D' }}>
+                            {item.badge}
+                          </span>
+                        )}
+                        <ChevronRight size={15} color="#8EA29C" strokeWidth={2.2} />
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ================= LEVEL 3: SOLUTIONS SUB-MENU ================= */}
+          {mobileSubMenu === 'solutions' && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                height: '100%',
+                overflowY: 'auto',
+                padding: '14px 18px 24px',
+              }}
+            >
+              {/* Sub-Header: Back & Direct Link */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingBottom: '14px',
+                  marginBottom: '10px',
+                  borderBottom: '1px solid #D9E1DC',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setMobileSubMenu(null)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    background: 'none',
+                    border: 'none',
+                    color: '#E8792F',
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    padding: '4px 0',
+                  }}
+                >
+                  <ChevronLeft size={18} strokeWidth={2.4} />
+                  <span>Back</span>
+                </button>
+
+                <Link
+                  to="/solutions"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    setMobileSubMenu(null);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    color: '#E8792F',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                  }}
+                >
+                  <span>All solutions</span>
+                  <ExternalLink size={12} strokeWidth={2.4} />
+                </Link>
+              </div>
+
+              {/* Minimalist Professional Solution List */}
+              <div style={{ fontSize: '11px', fontWeight: 800, color: '#6A7D78', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px', paddingLeft: '4px' }}>
+                Solutions &amp; Use Cases
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {[
+                  {
+                    title: 'WordPress Fleet SaaS',
+                    to: '/products/wordpress',
+                    badge: 'Fleet SaaS',
+                    icon: Layers,
+                  },
+                  ...solutionCategories.industry,
+                  ...solutionCategories.objective,
+                ].map((item, idx) => {
+                  const Icon = item.icon || Globe;
+                  return (
+                    <Link
+                      key={idx}
+                      to={item.to}
+                      onClick={() => {
+                        setMobileOpen(false);
+                        setMobileSubMenu(null);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '13px 4px',
+                        textDecoration: 'none',
+                        borderBottom: '1px solid #EEF2F0',
+                        transition: 'background 0.15s ease',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            background: '#F2F6F3',
+                            border: '1px solid #D9E1DC',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#28745D',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Icon size={16} strokeWidth={2.2} />
+                        </div>
+                        <span style={{ fontSize: '14px', fontWeight: 650, color: '#10201E' }}>
+                          {item.title}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {item.badge && (
+                          <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: '#E8EEE8', color: '#15803D' }}>
+                            {item.badge}
+                          </span>
+                        )}
+                        <ChevronRight size={15} color="#8EA29C" strokeWidth={2.2} />
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -1047,6 +1426,36 @@ export default function PublicNavbar() {
         }
         .public-navbar-drawer {
           top: 76px;
+          display: none !important;
+        }
+        .mdf-public-nav-desktop {
+          display: flex;
+          align-items: center;
+          gap: 24px;
+        }
+        .mdf-public-cta-desktop {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .mdf-public-mobile-btn {
+          display: none;
+        }
+        .public-navbar-brand {
+          min-width: 0;
+          flex-shrink: 1;
+        }
+        .public-navbar-brand-mark {
+          flex-shrink: 0;
+        }
+        .public-navbar-brand-text {
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        @media (min-width: 769px) {
+          .public-navbar-drawer {
+            display: none !important;
+          }
         }
         @media (max-width: 768px) {
           .public-navbar-header {
@@ -1054,6 +1463,34 @@ export default function PublicNavbar() {
           }
           .public-navbar-drawer {
             top: 68px;
+            display: flex !important;
+          }
+          .mdf-public-nav-desktop {
+            display: none !important;
+          }
+          .mdf-public-cta-desktop {
+            display: none !important;
+          }
+          .mdf-public-mobile-btn {
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+          }
+          .public-navbar-brand {
+            max-width: calc(100% - 52px);
+          }
+          .public-navbar-brand-text {
+            font-size: 15px !important;
+          }
+        }
+        @media (max-width: 360px) {
+          .public-navbar-brand-text {
+            font-size: 13.5px !important;
+            letter-spacing: -0.01em !important;
+          }
+          .public-navbar-brand-mark {
+            width: 28px !important;
+            height: 28px !important;
           }
         }
         @keyframes dropdownFadeIn {

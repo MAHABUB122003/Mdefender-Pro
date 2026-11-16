@@ -508,12 +508,7 @@ export default function BulkLoginGateway() {
           {/* ========================================================================= */}
           {/* ROW 1: CONFIGURATION CARDS (EQUAL HEIGHT, EQUAL PADDING)                  */}
           {/* ========================================================================= */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))',
-            gap: '20px',
-            alignItems: 'stretch'
-          }}>
+          <div className="mdf-two-col-grid" style={{ alignItems: 'stretch' }}>
             
             {/* 1A: WP Admin Hide Configuration Card */}
             <div style={{
@@ -590,7 +585,10 @@ export default function BulkLoginGateway() {
                       alignItems: 'center',
                       borderRight: '1px solid #E2E8F0',
                       whiteSpace: 'nowrap',
-                      fontWeight: 600
+                      fontWeight: 600,
+                      maxWidth: '120px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
                     }}>
                       {targetDomainName}/
                     </span>
@@ -861,12 +859,7 @@ export default function BulkLoginGateway() {
           {/* ========================================================================= */}
           {/* ROW 2: ACTIVE FLEET REGISTRY CARDS (EQUAL HEIGHT, EQUAL PADDING)          */}
           {/* ========================================================================= */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))',
-            gap: '20px',
-            alignItems: 'stretch'
-          }}>
+          <div className="mdf-two-col-grid" style={{ alignItems: 'stretch' }}>
 
             {/* 1B: Active Secret Login Gateways & Fleet Registry (Dedicated Card) */}
             <div style={{
@@ -992,107 +985,172 @@ export default function BulkLoginGateway() {
                   </p>
                 </div>
               ) : (
-                <div style={{ overflowX: 'auto', maxHeight: '340px', overflowY: 'auto', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
-                    <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#F8FAFC' }}>
-                      <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                        <th style={{ padding: '8px 12px', fontWeight: 700, color: '#64748B', fontSize: '11px', textTransform: 'uppercase' }}>Target Website</th>
-                        <th style={{ padding: '8px 12px', fontWeight: 700, color: '#64748B', fontSize: '11px', textTransform: 'uppercase' }}>Login Gateway Slug</th>
-                        <th style={{ padding: '8px 12px', fontWeight: 700, color: '#64748B', fontSize: '11px', textTransform: 'uppercase' }}>Direct URL</th>
-                        <th style={{ padding: '8px 12px', fontWeight: 700, color: '#64748B', fontSize: '11px', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredSecretGateways.map((site, idx) => {
-                        const effectiveSlug = site.custom_login_slug || site.hardening?.custom_login_slug || ''
-                        const activeUrl = getComputedLoginUrl(site, effectiveSlug)
-                        const siteKey = site.id || site._id || idx
+                <>
+                  <div className="mdf-gateway-desktop-table" style={{ overflowX: 'auto', maxHeight: '340px', overflowY: 'auto', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
+                      <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#F8FAFC' }}>
+                        <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                          <th style={{ padding: '8px 12px', fontWeight: 700, color: '#64748B', fontSize: '11px', textTransform: 'uppercase' }}>Target Website</th>
+                          <th style={{ padding: '8px 12px', fontWeight: 700, color: '#64748B', fontSize: '11px', textTransform: 'uppercase' }}>Login Gateway Slug</th>
+                          <th style={{ padding: '8px 12px', fontWeight: 700, color: '#64748B', fontSize: '11px', textTransform: 'uppercase' }}>Direct URL</th>
+                          <th style={{ padding: '8px 12px', fontWeight: 700, color: '#64748B', fontSize: '11px', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredSecretGateways.map((site, idx) => {
+                          const effectiveSlug = site.custom_login_slug || site.hardening?.custom_login_slug || ''
+                          const activeUrl = getComputedLoginUrl(site, effectiveSlug)
+                          const siteKey = site.id || site._id || idx
 
-                        return (
-                          <tr key={siteKey} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                            <td style={{ padding: '8px 12px', fontWeight: 700, color: '#0F172A' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <Globe size={13} color="#2A8B68" />
-                                <span>{site.domain || site.url || 'Connected Site'}</span>
-                              </div>
-                            </td>
-                            <td style={{ padding: '8px 12px' }}>
-                              <code style={{ fontSize: '11.5px', fontWeight: 700, color: '#059669', background: '#ECFDF5', padding: '2px 8px', borderRadius: '4px' }}>
-                                /{effectiveSlug}
-                              </code>
-                            </td>
-                            <td style={{ padding: '8px 12px', color: '#64748B', fontFamily: 'monospace', fontSize: '11.5px' }}>
-                              {activeUrl}
-                            </td>
-                            <td style={{ padding: '8px 12px', textAlign: 'right' }}>
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                <button
-                                  type="button"
-                                  onClick={() => copyLoginUrl(activeUrl, siteKey)}
-                                  title="Copy URL"
-                                  style={{ padding: '4px 8px', borderRadius: '5px', border: '1px solid #CBD5E1', background: '#FFFFFF', cursor: 'pointer', fontSize: '11px', color: '#0F172A', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
-                                >
-                                  {copiedId === siteKey ? <Check size={11} color="#059669" /> : <Copy size={11} />}
-                                  <span>{copiedId === siteKey ? 'Copied' : 'Copy'}</span>
-                                </button>
-                                <a
-                                  href={activeUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  title="Open in new tab"
-                                  style={{ padding: '4px 8px', borderRadius: '5px', border: '1px solid #CBD5E1', background: '#FFFFFF', color: '#0F172A', fontSize: '11px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
-                                >
-                                  <ExternalLink size={11} />
-                                  <span>Test</span>
-                                </a>
-                                <button
-                                  type="button"
-                                  onClick={() => handleResetLoginGateway(site)}
-                                  disabled={resettingSecretSiteId === siteKey}
-                                  title="Remove secret slug & restore /wp-login.php"
-                                  className="mdef-remove-btn"
-                                  style={{
-                                    padding: '4px 9px',
-                                    borderRadius: '5px',
-                                    border: '1px solid #FECACA',
-                                    background: '#FEF2F2',
-                                    color: '#DC2626',
-                                    cursor: resettingSecretSiteId === siteKey ? 'wait' : 'pointer',
-                                    fontSize: '11px',
-                                    fontWeight: 700,
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    transition: 'all 0.15s ease'
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    if (resettingSecretSiteId !== siteKey) {
-                                      e.currentTarget.style.background = '#DC2626'
-                                      e.currentTarget.style.color = '#FFFFFF'
-                                      e.currentTarget.style.borderColor = '#B91C1C'
-                                      e.currentTarget.style.boxShadow = '0 2px 6px rgba(220, 38, 38, 0.35)'
-                                      e.currentTarget.style.transform = 'translateY(-1px)'
-                                    }
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = '#FEF2F2'
-                                    e.currentTarget.style.color = '#DC2626'
-                                    e.currentTarget.style.borderColor = '#FECACA'
-                                    e.currentTarget.style.boxShadow = 'none'
-                                    e.currentTarget.style.transform = 'none'
-                                  }}
-                                >
-                                  <Trash2 size={11} />
-                                  <span>{resettingSecretSiteId === siteKey ? 'Removing...' : 'Remove'}</span>
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                          return (
+                            <tr key={siteKey} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                              <td style={{ padding: '8px 12px', fontWeight: 700, color: '#0F172A' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <Globe size={13} color="#2A8B68" />
+                                  <span>{site.domain || site.url || 'Connected Site'}</span>
+                                </div>
+                              </td>
+                              <td style={{ padding: '8px 12px' }}>
+                                <code style={{ fontSize: '11.5px', fontWeight: 700, color: '#059669', background: '#ECFDF5', padding: '2px 8px', borderRadius: '4px' }}>
+                                  /{effectiveSlug}
+                                </code>
+                              </td>
+                              <td style={{ padding: '8px 12px', color: '#64748B', fontFamily: 'monospace', fontSize: '11.5px' }}>
+                                {activeUrl}
+                              </td>
+                              <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => copyLoginUrl(activeUrl, siteKey)}
+                                    title="Copy URL"
+                                    style={{ padding: '4px 8px', borderRadius: '5px', border: '1px solid #CBD5E1', background: '#FFFFFF', cursor: 'pointer', fontSize: '11px', color: '#0F172A', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                                  >
+                                    {copiedId === siteKey ? <Check size={11} color="#059669" /> : <Copy size={11} />}
+                                    <span>{copiedId === siteKey ? 'Copied' : 'Copy'}</span>
+                                  </button>
+                                  <a
+                                    href={activeUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title="Open in new tab"
+                                    style={{ padding: '4px 8px', borderRadius: '5px', border: '1px solid #CBD5E1', background: '#FFFFFF', color: '#0F172A', fontSize: '11px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                                  >
+                                    <ExternalLink size={11} />
+                                    <span>Test</span>
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleResetLoginGateway(site)}
+                                    disabled={resettingSecretSiteId === siteKey}
+                                    title="Remove secret slug & restore /wp-login.php"
+                                    className="mdef-remove-btn"
+                                    style={{
+                                      padding: '4px 9px',
+                                      borderRadius: '5px',
+                                      border: '1px solid #FECACA',
+                                      background: '#FEF2F2',
+                                      color: '#DC2626',
+                                      cursor: resettingSecretSiteId === siteKey ? 'wait' : 'pointer',
+                                      fontSize: '11px',
+                                      fontWeight: 700,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      transition: 'all 0.15s ease'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      if (resettingSecretSiteId !== siteKey) {
+                                        e.currentTarget.style.background = '#DC2626'
+                                        e.currentTarget.style.color = '#FFFFFF'
+                                        e.currentTarget.style.borderColor = '#B91C1C'
+                                        e.currentTarget.style.boxShadow = '0 2px 6px rgba(220, 38, 38, 0.35)'
+                                        e.currentTarget.style.transform = 'translateY(-1px)'
+                                      }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.background = '#FEF2F2'
+                                      e.currentTarget.style.color = '#DC2626'
+                                      e.currentTarget.style.borderColor = '#FECACA'
+                                      e.currentTarget.style.boxShadow = 'none'
+                                      e.currentTarget.style.transform = 'none'
+                                    }}
+                                  >
+                                    <Trash2 size={11} />
+                                    <span>{resettingSecretSiteId === siteKey ? 'Removing...' : 'Remove'}</span>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile View: Clean cards */}
+                  <div className="mdf-gateway-mobile-list">
+                    {filteredSecretGateways.map((site, idx) => {
+                      const effectiveSlug = site.custom_login_slug || site.hardening?.custom_login_slug || ''
+                      const activeUrl = getComputedLoginUrl(site, effectiveSlug)
+                      const siteKey = site.id || site._id || idx
+
+                      return (
+                        <div key={siteKey} style={{
+                          background: '#FFFFFF',
+                          border: '1px solid #E2E8F0',
+                          borderRadius: '8px',
+                          padding: '10px 12px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                              <Globe size={13} color="#2A8B68" style={{ flexShrink: 0 }} />
+                              <strong style={{ fontSize: '13px', color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {site.domain || site.url || 'Connected Site'}
+                              </strong>
+                            </div>
+                            <code style={{ fontSize: '11px', fontWeight: 700, color: '#059669', background: '#ECFDF5', padding: '1px 6px', borderRadius: '4px', flexShrink: 0 }}>
+                              /{effectiveSlug}
+                            </code>
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#64748B', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                            {activeUrl}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingTop: '4px', borderTop: '1px solid #F1F5F9' }}>
+                            <button
+                              type="button"
+                              onClick={() => copyLoginUrl(activeUrl, siteKey)}
+                              style={{ flex: 1, padding: '5px 8px', borderRadius: '5px', border: '1px solid #CBD5E1', background: '#FFFFFF', cursor: 'pointer', fontSize: '11px', color: '#0F172A', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                            >
+                              {copiedId === siteKey ? <Check size={11} color="#059669" /> : <Copy size={11} />}
+                              <span>{copiedId === siteKey ? 'Copied' : 'Copy URL'}</span>
+                            </button>
+                            <a
+                              href={activeUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ flex: 1, padding: '5px 8px', borderRadius: '5px', border: '1px solid #CBD5E1', background: '#FFFFFF', color: '#0F172A', fontSize: '11px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                            >
+                              <ExternalLink size={11} />
+                              <span>Test</span>
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => handleResetLoginGateway(site)}
+                              disabled={resettingSecretSiteId === siteKey}
+                              style={{ padding: '5px 10px', borderRadius: '5px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#DC2626', cursor: resettingSecretSiteId === siteKey ? 'wait' : 'pointer', fontSize: '11px', fontWeight: 700 }}
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
               )}
             </div>
 
@@ -1220,89 +1278,151 @@ export default function BulkLoginGateway() {
                   </p>
                 </div>
               ) : (
-                <div style={{ overflowX: 'auto', maxHeight: '340px', overflowY: 'auto', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
-                    <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#F8FAFC' }}>
-                      <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                        <th style={{ padding: '8px 12px', fontWeight: 700, color: '#64748B', fontSize: '11px', textTransform: 'uppercase' }}>Authorized IP / Subnet</th>
-                        <th style={{ padding: '8px 12px', fontWeight: 700, color: '#64748B', fontSize: '11px', textTransform: 'uppercase' }}>Target Scope</th>
-                        <th style={{ padding: '8px 12px', fontWeight: 700, color: '#64748B', fontSize: '11px', textTransform: 'uppercase' }}>Access Status</th>
-                        <th style={{ padding: '8px 12px', fontWeight: 700, color: '#64748B', fontSize: '11px', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredIpRules.map(({ ip, site }, idx) => {
-                        const isCurrent = detectedClientIp && ip === detectedClientIp
-                        const ruleKey = `${site?.id || site?.domain || idx}-${ip}`
+                <>
+                  <div className="mdf-gateway-desktop-table" style={{ overflowX: 'auto', maxHeight: '340px', overflowY: 'auto', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
+                      <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#F8FAFC' }}>
+                        <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                          <th style={{ padding: '8px 12px', fontWeight: 700, color: '#64748B', fontSize: '11px', textTransform: 'uppercase' }}>Authorized IP / Subnet</th>
+                          <th style={{ padding: '8px 12px', fontWeight: 700, color: '#64748B', fontSize: '11px', textTransform: 'uppercase' }}>Target Scope</th>
+                          <th style={{ padding: '8px 12px', fontWeight: 700, color: '#64748B', fontSize: '11px', textTransform: 'uppercase' }}>Access Status</th>
+                          <th style={{ padding: '8px 12px', fontWeight: 700, color: '#64748B', fontSize: '11px', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredIpRules.map(({ ip, site }, idx) => {
+                          const isCurrent = detectedClientIp && ip === detectedClientIp
+                          const ruleKey = `${site?.id || site?.domain || idx}-${ip}`
 
-                        return (
-                          <tr key={ruleKey} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                            <td style={{ padding: '8px 12px', fontWeight: 700, color: '#0F172A' }}>
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                                <span style={{ fontFamily: 'monospace', fontSize: '12.5px' }}>{ip}</span>
-                                {isCurrent && (
-                                  <span style={{ fontSize: '9.5px', fontWeight: 800, background: '#E8F3EC', color: '#2A8B68', border: '1px solid #CFE2D4', padding: '1px 6px', borderRadius: '4px' }}>
-                                    You
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td style={{ padding: '8px 12px', color: '#64748B' }}>
+                          return (
+                            <tr key={ruleKey} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                              <td style={{ padding: '8px 12px', fontWeight: 700, color: '#0F172A' }}>
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                  <span style={{ fontFamily: 'monospace', fontSize: '12.5px' }}>{ip}</span>
+                                  {isCurrent && (
+                                    <span style={{ fontSize: '9.5px', fontWeight: 800, background: '#E8F3EC', color: '#2A8B68', border: '1px solid #CFE2D4', padding: '1px 6px', borderRadius: '4px' }}>
+                                      You
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td style={{ padding: '8px 12px', color: '#64748B' }}>
+                                {site?.domain || 'Global Fleet'}
+                              </td>
+                              <td style={{ padding: '8px 12px' }}>
+                                <span style={{ fontSize: '11px', fontWeight: 700, color: '#059669', background: '#ECFDF5', padding: '2px 8px', borderRadius: '4px' }}>
+                                  ✓ Allowed
+                                </span>
+                              </td>
+                              <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveAllowedIp(ip, site)}
+                                  disabled={deletingIp === ip}
+                                  title="Remove IP"
+                                  className="mdef-remove-btn"
+                                  style={{
+                                    padding: '4px 9px',
+                                    borderRadius: '5px',
+                                    border: '1px solid #FECACA',
+                                    background: '#FEF2F2',
+                                    cursor: deletingIp === ip ? 'wait' : 'pointer',
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    color: '#DC2626',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    if (deletingIp !== ip) {
+                                      e.currentTarget.style.background = '#DC2626'
+                                      e.currentTarget.style.color = '#FFFFFF'
+                                      e.currentTarget.style.borderColor = '#B91C1C'
+                                      e.currentTarget.style.boxShadow = '0 2px 6px rgba(220, 38, 38, 0.35)'
+                                      e.currentTarget.style.transform = 'translateY(-1px)'
+                                    }
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = '#FEF2F2'
+                                    e.currentTarget.style.color = '#DC2626'
+                                    e.currentTarget.style.borderColor = '#FECACA'
+                                    e.currentTarget.style.boxShadow = 'none'
+                                    e.currentTarget.style.transform = 'none'
+                                  }}
+                                >
+                                  <Trash2 size={11} />
+                                  <span>{deletingIp === ip ? 'Removing...' : 'Remove'}</span>
+                                </button>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile View: Clean cards */}
+                  <div className="mdf-gateway-mobile-list">
+                    {filteredIpRules.map(({ ip, site }, idx) => {
+                      const isCurrent = detectedClientIp && ip === detectedClientIp
+                      const ruleKey = `${site?.id || site?.domain || idx}-${ip}`
+
+                      return (
+                        <div key={ruleKey} style={{
+                          background: '#FFFFFF',
+                          border: '1px solid #E2E8F0',
+                          borderRadius: '8px',
+                          padding: '10px 12px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                              <span style={{ fontFamily: 'monospace', fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>{ip}</span>
+                              {isCurrent && (
+                                <span style={{ fontSize: '9.5px', fontWeight: 800, background: '#E8F3EC', color: '#2A8B68', border: '1px solid #CFE2D4', padding: '1px 6px', borderRadius: '4px' }}>
+                                  You
+                                </span>
+                              )}
+                            </div>
+                            <span style={{ fontSize: '11px', fontWeight: 700, color: '#059669', background: '#ECFDF5', padding: '2px 8px', borderRadius: '4px' }}>
+                              ✓ Allowed
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', paddingTop: '4px', borderTop: '1px solid #F1F5F9' }}>
+                            <div style={{ fontSize: '12px', color: '#64748B' }}>
                               {site?.domain || 'Global Fleet'}
-                            </td>
-                            <td style={{ padding: '8px 12px' }}>
-                              <span style={{ fontSize: '11px', fontWeight: 700, color: '#059669', background: '#ECFDF5', padding: '2px 8px', borderRadius: '4px' }}>
-                                ✓ Allowed
-                              </span>
-                            </td>
-                            <td style={{ padding: '8px 12px', textAlign: 'right' }}>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveAllowedIp(ip, site)}
-                                disabled={deletingIp === ip}
-                                title="Remove IP"
-                                className="mdef-remove-btn"
-                                style={{
-                                  padding: '4px 9px',
-                                  borderRadius: '5px',
-                                  border: '1px solid #FECACA',
-                                  background: '#FEF2F2',
-                                  cursor: deletingIp === ip ? 'wait' : 'pointer',
-                                  fontSize: '11px',
-                                  fontWeight: 700,
-                                  color: '#DC2626',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  transition: 'all 0.15s ease'
-                                }}
-                                onMouseEnter={(e) => {
-                                  if (deletingIp !== ip) {
-                                    e.currentTarget.style.background = '#DC2626'
-                                    e.currentTarget.style.color = '#FFFFFF'
-                                    e.currentTarget.style.borderColor = '#B91C1C'
-                                    e.currentTarget.style.boxShadow = '0 2px 6px rgba(220, 38, 38, 0.35)'
-                                    e.currentTarget.style.transform = 'translateY(-1px)'
-                                  }
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.background = '#FEF2F2'
-                                  e.currentTarget.style.color = '#DC2626'
-                                  e.currentTarget.style.borderColor = '#FECACA'
-                                  e.currentTarget.style.boxShadow = 'none'
-                                  e.currentTarget.style.transform = 'none'
-                                }}
-                              >
-                                <Trash2 size={11} />
-                                <span>{deletingIp === ip ? 'Removing...' : 'Remove'}</span>
-                              </button>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveAllowedIp(ip, site)}
+                              disabled={deletingIp === ip}
+                              style={{
+                                padding: '4px 9px',
+                                borderRadius: '5px',
+                                border: '1px solid #FECACA',
+                                background: '#FEF2F2',
+                                cursor: deletingIp === ip ? 'wait' : 'pointer',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                color: '#DC2626',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <Trash2 size={11} />
+                              <span>{deletingIp === ip ? 'Removing...' : 'Remove'}</span>
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
               )}
             </div>
 

@@ -38,7 +38,8 @@ import {
   CreditCard,
   Laptop,
   ChevronRight,
-  LifeBuoy
+  LifeBuoy,
+  X
 } from 'lucide-react'
 
 // Hardware-accelerated CSS Grid Accordion: never destroys DOM nodes, zero jitter
@@ -350,7 +351,7 @@ export default function UserSidebar({ isOpen, onClose }) {
         {/* ========================================================================= */}
         {/* BRAND LOGO HEADER                                                         */}
         {/* ========================================================================= */}
-        <div className="sidebar-brand" style={{ padding: '22px 18px 18px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        <div className="sidebar-brand" style={{ padding: '22px 18px 18px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Link
             to="/"
             title="Return to Website Homepage"
@@ -362,7 +363,8 @@ export default function UserSidebar({ isOpen, onClose }) {
               gap: '11px',
               textDecoration: 'none',
               cursor: 'pointer',
-              transition: 'opacity 0.2s ease'
+              transition: 'opacity 0.2s ease',
+              minWidth: 0
             }}
             onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
             onMouseLeave={e => e.currentTarget.style.opacity = '1'}
@@ -385,6 +387,32 @@ export default function UserSidebar({ isOpen, onClose }) {
               <span style={{ fontSize: '10px', color: '#E8792F', fontWeight: 700, letterSpacing: '0.9px', textTransform: 'uppercase' }}>Enterprise WAF</span>
             </div>
           </Link>
+
+          {/* Mobile / Tablet Drawer Close Button */}
+          <button
+            type="button"
+            className="sidebar-close-btn"
+            onClick={onClose}
+            aria-label="Close Navigation Sidebar"
+            style={{
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: 'none',
+              color: '#94a3b8',
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              display: 'none',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              flexShrink: 0
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.color = '#fff'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = '#94a3b8'; }}
+          >
+            <X size={18} />
+          </button>
         </div>
 
         {/* ========================================================================= */}

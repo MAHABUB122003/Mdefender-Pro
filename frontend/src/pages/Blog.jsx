@@ -538,16 +538,51 @@ export default function Blog() {
           border-color: #E8792F !important;
           color: #E8792F !important;
         }
+        .article-body-content * { max-width: 100%; }
+        .article-body-content p,
+        .article-body-content li,
+        .article-body-content div,
+        .article-body-content h3,
+        .article-body-content code,
+        .article-body-content pre,
+        .article-body-content table {
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+        .article-detail-grid,
+        .article-detail-main-panel,
+        .article-toc-sticky,
+        .article-image-hero,
+        .article-detail-breadcrumb,
+        .article-detail-header,
+        .article-footer-nav {
+          min-width: 0;
+        }
         @media (max-width: 900px) {
           .hero-grid-two-col { grid-template-columns: 1fr !important; gap: 28px !important; }
           .featured-card-grid { grid-template-columns: 1fr !important; }
           .featured-img-box { min-height: 220px !important; }
           .research-grid-three-col { grid-template-columns: repeat(2, 1fr) !important; }
-          .article-detail-grid { grid-template-columns: 1fr !important; }
-          .article-toc-sticky { position: static !important; width: 100% !important; margin-bottom: 24px !important; }
+          .article-detail-grid { grid-template-columns: 1fr !important; gap: 20px !important; }
+          .article-toc-sticky { position: static !important; width: 100% !important; margin-bottom: 0 !important; }
+          .article-detail-breadcrumb { flex-wrap: wrap !important; }
+          .article-detail-breadcrumb .crumb-title { max-width: 180px !important; }
+          .article-detail-header { max-width: 100% !important; }
+          .article-footer-nav { grid-template-columns: 1fr !important; }
         }
         @media (max-width: 620px) {
           .research-grid-three-col { grid-template-columns: 1fr !important; }
+          .article-detail-breadcrumb { gap: 4px !important; }
+          .article-detail-breadcrumb .crumb-title { max-width: 130px !important; }
+          .article-image-hero { height: 220px !important; }
+          .article-stats-row { justify-content: center !important; }
+          .article-detail-main-panel { padding: 20px 18px !important; }
+        }
+        @media (max-width: 900px) {
+          .blog-footer-grid { grid-template-columns: 1fr 1fr !important; }
+        }
+        @media (max-width: 540px) {
+          .blog-footer-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
 
@@ -568,6 +603,7 @@ export default function Blog() {
           >
             {/* Top Breadcrumb & Return Action */}
             <div
+              className="article-detail-breadcrumb"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -577,7 +613,7 @@ export default function Blog() {
                 marginBottom: '28px',
               }}
             >
-              <nav aria-label="Breadcrumb" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#6A7E7A' }}>
+              <nav aria-label="Breadcrumb" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#6A7E7A', flexWrap: 'wrap', minWidth: 0 }}>
                 <button
                   type="button"
                   onClick={handleBackToHub}
@@ -603,7 +639,7 @@ export default function Blog() {
                 <span>/</span>
                 <span style={{ color: '#4A5D5A' }}>{activeArticle.category}</span>
                 <span>/</span>
-                <span style={{ color: '#10201E', fontWeight: 600, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '240px' }}>
+                <span className="crumb-title" style={{ color: '#10201E', fontWeight: 600, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '240px' }}>
                   {activeArticle.title}
                 </span>
               </nav>
@@ -635,6 +671,7 @@ export default function Blog() {
 
             {/* Centered Article Header */}
             <header
+              className="article-detail-header"
               style={{
                 maxWidth: '780px',
                 margin: '0 auto 28px',
@@ -642,6 +679,7 @@ export default function Blog() {
               }}
             >
               <div
+                className="article-header-tag"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -688,6 +726,7 @@ export default function Blog() {
               </p>
 
               <div
+                className="article-stats-row"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -743,6 +782,7 @@ export default function Blog() {
             {/* High-Resolution Article Banner Image */}
             {activeArticle.image && (
               <div
+                className="article-image-hero"
                 style={{
                   maxWidth: '820px',
                   margin: '0 auto 36px',
@@ -829,6 +869,7 @@ export default function Blog() {
 
               {/* Main Content Box */}
               <div
+                className="article-detail-main-panel"
                 style={{
                   background: '#FFFFFF',
                   borderRadius: '16px',
@@ -844,6 +885,7 @@ export default function Blog() {
 
             {/* Bottom Prev / Next Nav */}
             <div
+              className="article-footer-nav"
               style={{
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr',
@@ -1753,6 +1795,7 @@ export default function Blog() {
           }}
         >
           <div
+            className="blog-footer-grid"
             style={{
               display: 'grid',
               gridTemplateColumns: '1.4fr 1fr 1fr 1fr',

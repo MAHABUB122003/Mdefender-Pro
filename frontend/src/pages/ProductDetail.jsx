@@ -1069,7 +1069,7 @@ export default function ProductDetail() {
         </section>
 
         {/* 4 Rings of Defense */}
-        <section style={{ maxWidth: 1240, margin: '0 auto 100px', padding: '0 24px' }}>
+        <section style={{ maxWidth: 1240, margin: '0 auto 100px', padding: '0 clamp(16px, 4vw, 24px)' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
             {rings.map((ring, idx) => (
               <div
@@ -1078,7 +1078,7 @@ export default function ProductDetail() {
                   background: '#FFFFFF',
                   borderRadius: 20,
                   border: '1px solid #D9E1DC',
-                  padding: '36px',
+                  padding: 'clamp(20px, 4vw, 36px)',
                   boxShadow: '0 4px 20px -2px rgba(16, 32, 30, 0.05)'
                 }}
               >
@@ -1090,7 +1090,7 @@ export default function ProductDetail() {
                   {ring.role}
                 </p>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 20 }}>
                   {ring.products.map(prod => (
                     <div
                       key={prod.slug}
@@ -1230,10 +1230,10 @@ export default function ProductDetail() {
         {/* HERO SECTION (NON-WORDPRESS MODULES)                                      */}
         {/* ========================================================================= */}
         {!isWordpress && (
-        <section style={{ padding: '0 24px 40px', maxWidth: 1240, margin: '0 auto', position: 'relative' }}>
+        <section style={{ padding: '0 clamp(16px, 4vw, 24px) 40px', maxWidth: 1240, margin: '0 auto', position: 'relative' }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
           gap: 36,
           alignItems: 'center'
         }}>
@@ -1281,7 +1281,7 @@ export default function ProductDetail() {
             {/* Key Metric Highlights Strip */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 130px), 1fr))',
               gap: 12,
               marginBottom: 32
             }}>
@@ -1632,7 +1632,7 @@ export default function ProductDetail() {
       {/* ========================================================================= */}
       {/* SECTION 1: THE REAL-WORLD ATTACK REALITY VS MDEFENDER SHIELD              */}
       {/* ========================================================================= */}
-      <section style={{ maxWidth: 1240, margin: '0 auto 80px', padding: '0 24px' }}>
+      <section style={{ maxWidth: 1240, margin: '0 auto 80px', padding: '0 clamp(16px, 4vw, 24px)' }}>
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
           <span style={{ fontSize: 12, fontWeight: 800, color: '#E8792F', textTransform: 'uppercase', letterSpacing: '1px' }}>
             Mission-Critical Purpose
@@ -1642,7 +1642,7 @@ export default function ProductDetail() {
           </h2>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 24 }}>
           {/* Problem Card */}
           <div style={{
             background: '#FEF2F2',
@@ -2365,7 +2365,7 @@ export default function ProductDetail() {
       {/* ========================================================================= */}
       {/* SECTION 5: READY-TO-DEPLOY CODE SNIPPETS & QUICKSTART                     */}
       {/* ========================================================================= */}
-      <section style={{ maxWidth: 1100, margin: '0 auto 80px', padding: '0 24px' }}>
+      <section style={{ maxWidth: 1100, margin: '0 auto 80px', padding: '0 clamp(16px, 4vw, 24px)' }}>
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
           <span style={{ fontSize: 12, fontWeight: 800, color: '#E8792F', textTransform: 'uppercase', letterSpacing: '1px' }}>
             Production Integration
@@ -2387,11 +2387,13 @@ export default function ProductDetail() {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 8,
             borderBottom: '1px solid #1E3732',
-            padding: '8px 18px',
+            padding: '8px 14px',
             background: 'rgba(0,0,0,0.2)'
           }}>
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {Object.keys(activeProduct.codeSnippets).map(lang => (
                 <button
                   key={lang}
@@ -2431,12 +2433,13 @@ export default function ProductDetail() {
 
           <pre style={{
             margin: 0,
-            padding: '24px 28px',
+            padding: '20px 16px',
             color: '#E9EEE8',
-            fontSize: 13.5,
+            fontSize: 13,
             lineHeight: 1.6,
             fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
             overflowX: 'auto',
+            maxWidth: '100%',
             maxHeight: 460
           }}>
             <code>{activeProduct.codeSnippets[activeCodeTab] || Object.values(activeProduct.codeSnippets)[0]}</code>
@@ -2447,7 +2450,7 @@ export default function ProductDetail() {
       {/* ========================================================================= */}
       {/* SECTION 6: CAPABILITIES GRID                                              */}
       {/* ========================================================================= */}
-      <section style={{ maxWidth: 1240, margin: '0 auto 80px', padding: '0 24px' }}>
+      <section style={{ maxWidth: 1240, margin: '0 auto 80px', padding: '0 clamp(16px, 4vw, 24px)' }}>
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
           <span style={{ fontSize: 12, fontWeight: 800, color: '#E8792F', textTransform: 'uppercase', letterSpacing: '1px' }}>
             Comprehensive Shielding
@@ -2457,7 +2460,7 @@ export default function ProductDetail() {
           </h2>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 20 }}>
           {activeProduct.capabilities.map((cap, cIdx) => {
             const IconComp = cap.icon;
             return (

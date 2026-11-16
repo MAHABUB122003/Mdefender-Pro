@@ -342,20 +342,18 @@ export default function Docs3DArchitecture() {
         style={{
           background: '#10221F',
           borderRadius: '10px',
-          padding: '12px 18px',
+          padding: '12px 14px',
           border: '1px solid #233B36',
           fontFamily: "'SF Mono', Monaco, monospace",
           fontSize: '12px',
           position: 'relative',
           zIndex: 2,
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
+          flexDirection: 'column',
           gap: '10px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, width: '100%', flexWrap: 'wrap' }}>
           <span
             style={{
               padding: '2px 8px',
@@ -365,18 +363,19 @@ export default function Docs3DArchitecture() {
               fontSize: '10px',
               fontWeight: '800',
               letterSpacing: '0.04em',
+              flexShrink: 0,
             }}
           >
             {selectedVector.status}
           </span>
-          <span style={{ color: '#87948D', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <span style={{ color: '#87948D', wordBreak: 'break-all', fontSize: '11.5px' }}>
             Payload: <strong style={{ color: '#F8F8F4' }}>{selectedVector.payload}</strong>
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', width: '100%', borderTop: '1px solid #1a2f2b', paddingTop: '6px' }}>
           <span style={{ color: '#B7C6C2', fontSize: '11px' }}>{selectedVector.engine}</span>
-          <span style={{ color: '#28745D', fontWeight: '800', fontSize: '11px' }}>&Delta; 0.12ms</span>
+          <span style={{ color: '#28745D', fontWeight: '800', fontSize: '11px', flexShrink: 0 }}>&Delta; 0.12ms</span>
         </div>
       </div>
     </div>

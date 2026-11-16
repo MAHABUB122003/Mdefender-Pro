@@ -2905,13 +2905,7 @@ async def update_website(website_id: str, body: WebsiteUpdate, user=Depends(get_
 
 
 async def delete_website(website_id: str, user=Depends(get_current_user)):
-
-
-
-
-
-
-
+    website = get_owned_website(user, website_id)
     from src.api.user_api import UserAPI
 
 

@@ -303,17 +303,19 @@ export default function UserSupport() {
                       background: '#ffffff',
                       border: '1px solid #e2e8f0',
                       borderRadius: '10px',
-                      padding: '18px 24px',
+                      padding: 'clamp(14px, 3.5vw, 18px) clamp(14px, 3.5vw, 24px)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '12px',
                       boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
                       transition: 'border-color 0.15s ease'
                     }}
                   >
-                    <div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>
+                        <span style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a', wordBreak: 'break-word' }}>
                           {t.subject}
                         </span>
                         <span style={{ fontSize: '13px', fontWeight: '600', color: '#64748b', fontFamily: 'monospace' }}>

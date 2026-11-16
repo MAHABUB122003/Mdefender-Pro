@@ -893,24 +893,12 @@ export default function BulkScanner() {
       </div>
 
       {/* MAIN RADAR HUD HERO CARD */}
-      <div style={{
-        background: '#ffffff',
-        borderRadius: '16px',
-        border: '1px solid #D9E1DC',
-        padding: '28px 32px',
-        boxShadow: '0 4px 20px rgba(11, 37, 34, 0.03)',
-        marginBottom: '24px'
-      }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '360px 1fr',
-          gap: '36px',
-          alignItems: 'center'
-        }}>
+      <div className="mdf-scanner-hud-card">
+        <div className="mdf-scanner-hud-grid">
 
           {/* Left Column: Autonomous Holographic Cyber Radar HUD */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div style={{ position: 'relative', width: '340px', height: '340px' }}>
+            <div className="mdf-scanner-radar-box">
               <canvas ref={canvasRef} width={340} height={340} style={{ display: 'block' }} />
 
               {/* Radar Center Score Target Overlay */}
@@ -977,11 +965,7 @@ export default function BulkScanner() {
 
           {/* Right Column: Real-Time Telemetry Metrics Grid */}
           <div>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '16px'
-            }}>
+            <div className="mdf-scanner-metrics-grid">
 
               {/* Metric 1: Security Health Score */}
               <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '10px', padding: '12px 14px' }}>
@@ -1176,7 +1160,7 @@ export default function BulkScanner() {
             </div>
 
             {/* Multi-Domain Progress Breakdown (5 stages matching plugin) */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '14px' }}>
+            <div className="mdf-scanner-breakdown-grid">
               {[
                 { name: '1. Filesystem', pct: Math.min(100, scanProgressPct * 1.6) },
                 { name: '2. Malware & ML', pct: Math.min(100, Math.max(0, (scanProgressPct - 20) * 1.5)) },

@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState, useEffect, useCallback } from 'react'
+import { lazy, Suspense, useState, useEffect, useCallback } from 'react'
 import { Routes, Route, Navigate, useSearchParams } from 'react-router-dom'
 import { ScrollToTop } from './components/RouteTransitions'
 
@@ -22,7 +22,6 @@ const Connect = lazy(() => import('./pages/Connect'))
 const BlockPage = lazy(() => import('./pages/BlockPage'))
 const Layout = lazy(() => import('./components/Layout'))
 const UserLayout = lazy(() => import('./components/UserLayout'))
-const About = lazy(() => import('./pages/About'))
 const Solutions = lazy(() => import('./pages/Solutions'))
 const SolutionDetail = lazy(() => import('./pages/SolutionDetail'))
 const ProductDetail = lazy(() => import('./pages/ProductDetail'))
@@ -36,8 +35,6 @@ const UserLogs = lazy(() => import('./pages/UserLogs'))
 const UserSettings = lazy(() => import('./pages/UserSettings'))
 const UserPricing = lazy(() => import('./pages/UserPricing'))
 const UserBlacklist = lazy(() => import('./pages/UserBlacklist'))
-const UserBulkManagement = lazy(() => import('./pages/UserBulkManagement'))
-const BulkMonitoring = lazy(() => import('./pages/bulk/BulkMonitoring'))
 const BulkUptime = lazy(() => import('./pages/bulk/BulkUptime'))
 const BulkPerformance = lazy(() => import('./pages/bulk/BulkPerformance'))
 const BulkBrokenLinks = lazy(() => import('./pages/bulk/BulkBrokenLinks'))
@@ -66,7 +63,6 @@ const VerifyEmail = lazy(() => import('./pages/auth/VerifyEmail'))
 const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword'))
 const ResetPassword = lazy(() => import('./pages/auth/ResetPassword'))
 const GoogleCallback = lazy(() => import('./pages/auth/GoogleCallback'))
-const SessionsPage = lazy(() => import('./pages/auth/Sessions'))
 const PaymentSuccess = lazy(() => import('./pages/PaymentSuccess'))
 const UserOnboarding = lazy(() => import('./pages/auth/UserOnboarding'))
 
@@ -165,7 +161,9 @@ function App() {
       try {
         const p = userStore.get('profile');
         if (p) setUserState(prev => ({ ...(prev || {}), ...p }));
-      } catch {}
+      } catch (error) {
+        console.warn('User profile sync error:', error)
+      }
     };
     window.addEventListener('storage', handleStorageUpdate);
     window.addEventListener('mdefender_user_update', handleStorageUpdate);
@@ -202,10 +200,7 @@ function App() {
     const hasToken = typeof localStorage !== 'undefined' && (
       localStorage.getItem('mdefender_access') || localStorage.getItem('mdefender_refresh')
     )
-    if (!hasToken) {
-      setAuthChecking(false)
-      return
-    }
+    if (!hasToken) return
 
     api.getMe().then(data => {
       const user = data.user

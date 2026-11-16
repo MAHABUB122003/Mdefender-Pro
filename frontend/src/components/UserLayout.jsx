@@ -49,6 +49,18 @@ export default function UserLayout({ children, onLogout }) {
     setSidebarOpen(false)
   }, [location.pathname])
 
+  // Lock body scroll on mobile when sidebar drawer is open
+  useEffect(() => {
+    if (sidebarOpen && typeof window !== 'undefined' && window.innerWidth < 1024) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [sidebarOpen])
+
   // Idle prefetch all user dashboard page chunks so sidebar navigation is 100% instant on first click
   useEffect(() => {
     const prefetchRoutes = () => {
@@ -159,9 +171,7 @@ export default function UserLayout({ children, onLogout }) {
           <UserHeader onToggleSidebar={() => setSidebarOpen(prev => !prev)} onLogout={onLogout} />
           <TrialPaywallModal />
           <Suspense fallback={<InnerContentFallback />}>
-            <div key={location.pathname} className="dashboard-page-enter">
-              {children || <Outlet />}
-            </div>
+            {children || <Outlet />}
           </Suspense>
         </div>
       </MalwareScanProvider>

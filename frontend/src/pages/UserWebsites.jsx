@@ -974,7 +974,7 @@ export default function UserWebsites() {
 
       {/* ========================================================================= */}
 
-      <div style={{
+      <div className="mdf-websites-hero-card" style={{
 
         background: '#FFFFFF',
 
@@ -994,7 +994,7 @@ export default function UserWebsites() {
 
         {/* Top Integration Summary Banner */}
 
-        <div style={{
+        <div className="mdf-websites-banner" style={{
 
           background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBF9 60%, #F5F9F6 100%)',
 
@@ -1201,7 +1201,9 @@ export default function UserWebsites() {
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
             {/* Monospace Key Display with Mask Toggle */}
             <div style={{
-              flex: '1 1 360px',
+              flex: '1 1 240px',
+              minWidth: 0,
+              maxWidth: '100%',
               background: '#F8FAFC',
               border: '1px solid #CBD5E1',
               borderRadius: '7px',
@@ -1316,7 +1318,7 @@ export default function UserWebsites() {
 
       }}>
 
-        <div style={{
+        <div className="mdf-websites-list-header" style={{
 
           padding: '18px 24px',
 
@@ -1464,6 +1466,8 @@ export default function UserWebsites() {
 
                 key={w.id || w._id || i}
 
+                className="mdf-website-row"
+
                 style={{
 
                   display: 'flex',
@@ -1488,7 +1492,7 @@ export default function UserWebsites() {
 
                 {/* Left: Authentic Vector WordPress Logo + Domain Telemetry */}
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: '260px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0, maxWidth: '100%' }}>
 
                   <div style={{
 
@@ -1741,7 +1745,7 @@ export default function UserWebsites() {
 
                 {/* Right: Quick Actions */}
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <div className="mdf-website-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
 
                   {/* Under Attack Toggle */}
 
@@ -2538,7 +2542,7 @@ export default function UserWebsites() {
               {/* Status Metadata Strip */}
               <div style={{
                 marginTop: '16px',
-                display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px'
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 130px), 1fr))', gap: '10px'
               }}>
                 <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '10px 12px' }}>
                   <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Integration</div>

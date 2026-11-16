@@ -409,30 +409,34 @@ body {
   display: none !important;
 }
 
-/* Butter-smooth Dashboard Content Transition */
-@keyframes dashboardFadeIn {
-  0% {
-    opacity: 0.4;
-  }
-  100% {
-    opacity: 1;
-  }
+
+
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 999;
 }
 
-.dashboard-page-enter {
-  animation: dashboardFadeIn 0.12s ease-out forwards;
-  will-change: opacity;
+/* Universal Responsive Table & Scroll Protection */
+div[style*="overflow-x: auto"],
+div[style*="overflowX: 'auto'"],
+div[style*="overflowX: auto"],
+div[style*="overflow: auto"],
+div[style*="overflow: 'auto'"] {
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .mdefender-page-enter,
-  .dashboard-page-enter {
-    animation: none !important;
-    transform: none !important;
+@media (max-width: 768px) {
+  div[style*="overflow-x: auto"] > table:not([style*="min-width"]):not([style*="minWidth"]),
+  div[style*="overflowX: 'auto'"] > table:not([style*="min-width"]):not([style*="minWidth"]),
+  div[style*="overflowX: auto"] > table:not([style*="min-width"]):not([style*="minWidth"]) {
+    min-width: 620px;
   }
 }
-
-.sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 999; }
 
 /* ===== MAIN CONTENT ===== */
 .main-content {
@@ -442,6 +446,7 @@ body {
   min-height: 100vh;
   width: calc(100% - 272px);
   box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 /* ===== HEADER ===== */
@@ -455,19 +460,38 @@ body {
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   border: 1px solid #e2e8f0;
+  min-height: 54px;
 }
-.header-left { display: flex; align-items: center; gap: 14px; }
+.header-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .header-left .menu-toggle {
   display: none;
-  background: none;
-  border: none;
-  font-size: 18px;
-  color: #64748b;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #334155;
   cursor: pointer;
-  padding: 4px;
+  padding: 6px;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
 }
-.header-left h1 { font-size: 19px; font-weight: 600; color: #0f172a; }
-.header-left .breadcrumb { font-size: 13px; color: #94a3b8; }
+.header-left .menu-toggle:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+.header-left h1 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+.header-left .breadcrumb { font-size: 13px; color: #94a3b8; white-space: nowrap; }
 .header-left .breadcrumb span { color: #64748b; }
 .header-title-group { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .header-page-icon {
@@ -478,7 +502,10 @@ body {
   color: white; font-size: 15px;
   flex-shrink: 0;
 }
-.header-right { display: flex; align-items: center; gap: 16px; }
+.header-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.header-domain-btn { max-width: 180px; flex-shrink: 1; }
+.header-domain-text { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
+.sidebar-close-btn { display: none; }
 .header-threat-badge {
   display: flex;
   align-items: center;
@@ -1322,21 +1349,54 @@ input:checked + .slider:before { transform: translateX(24px); }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 1024px) {
+  .sidebar {
+    transform: translateX(-100%);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.45);
+    z-index: 1000;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  .sidebar-overlay.active {
+    display: block;
+  }
+  .sidebar-close-btn {
+    display: flex !important;
+  }
+  .main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100vw;
+    padding: 14px 16px 24px;
+  }
+  .header-left .menu-toggle {
+    display: inline-flex !important;
+  }
+  .header-left .breadcrumb {
+    display: none;
+  }
+  .header-threat-badge {
+    display: none;
+  }
   .charts-grid { grid-template-columns: 1fr; }
   .quick-actions-section { grid-template-columns: 1fr; }
   .scanner-section, .ml-user-section { grid-template-columns: 1fr; }
-  .header-threat-badge { display: none; }
 }
+
 @media (max-width: 768px) {
-  .sidebar { transform: translateX(-100%); }
-  .sidebar.open { transform: translateX(0); }
-  .sidebar-overlay.active { display: block; }
-  .main-content { margin-left: 0; width: 100%; padding: 14px 16px 24px; }
-  .header-left .menu-toggle { display: block; }
-  .header-left .breadcrumb { display: none; }
-  .header-left .header-page-icon { display: none; }
+  .header {
+    padding: 8px 12px;
+    margin-bottom: 12px;
+  }
+  .header-left { gap: 10px; }
+  .header-left h1 { font-size: 16px; }
+  .header-left .header-page-icon { width: 32px; height: 32px; }
+  .header-right { gap: 8px; }
   .header-right .user-pill .user-name { display: none; }
   .header-clock { display: none; }
+  .header-trial-badge .header-trial-text { display: none; }
+  .header-domain-btn { max-width: 140px; padding: 6px 8px !important; }
+  .header-domain-text { max-width: 90px; font-size: 12px; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .quick-actions-grid { grid-template-columns: 1fr 1fr; }
   .system-grid { grid-template-columns: 1fr; }
@@ -1360,20 +1420,51 @@ input:checked + .slider:before { transform: translateX(24px); }
   .filter-form { flex-direction: column; }
   .filter-form input, .filter-form select { width: 100%; }
   .log-actions-bar { flex-wrap: wrap; }
-  .notification-panel { width: 260px; right: -60px; }
+  .notification-panel { width: 320px; max-width: calc(100vw - 24px); right: 0; }
   .chart-card { padding: 14px; }
   .attack-progress .progress-bar { max-width: 80px; }
   .scan-metrics { grid-template-columns: repeat(2, 1fr); }
 }
+
+@media (max-width: 580px) {
+  .header-left .header-title-group { display: none !important; }
+  .header-trial-badge { display: none !important; }
+  .header-domain-btn { max-width: 140px; padding: 6px 10px !important; }
+  .header-domain-text { max-width: 90px; font-size: 12px; }
+  .notification-panel {
+    position: fixed !important;
+    top: 60px !important;
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+    max-width: calc(100vw - 24px) !important;
+    z-index: 1200 !important;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.2) !important;
+  }
+}
+
 @media (max-width: 480px) {
+  .main-content {
+    padding: 10px 10px 24px !important;
+  }
+  .header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  .header-left { gap: 8px; min-width: 0; flex-shrink: 0; }
+  .header-right { gap: 6px; }
+  .header-trial-badge { display: none !important; }
+  .header-domain-btn { max-width: 130px; padding: 5px 8px !important; }
+  .header-domain-text { max-width: 80px; font-size: 11.5px; }
   .stats-grid { grid-template-columns: 1fr; }
   .quick-actions-grid { grid-template-columns: 1fr; }
-  .header { flex-direction: column; gap: 10px; align-items: flex-start; }
-  .header-right { width: 100%; justify-content: flex-end; }
   .header-clock { display: none; }
   .top-attackers, .recent-activity { padding: 14px; }
   .activity-item .activity-time { min-width: 50px; font-size: 10px; }
-  .activity-item .activity-payload { max-width: 200px; }
+  .activity-item .activity-payload { max-width: 180px; }
   .flow-diagram { padding: 14px 10px; gap: 4px; flex-wrap: wrap; justify-content: center; }
   .flow-arrow { display: none; }
   .flow-node { padding: 8px 12px; font-size: 11px; }
@@ -3210,4 +3301,764 @@ body {
   .admin-fleet-badge .badge-text { display: none !important; }
   .admin-global-search kbd { display: none !important; }
 }
+
+/* =========================================================================
+   ENTERPRISE GRID & BLACKLIST RESPONSIVE UTILITIES
+   Ensures strict 2-column desktop layouts never collapse into cramped 4 columns
+   while gracefully transforming into 1 full-width column on mobile/tablet.
+   ========================================================================= */
+.mdf-hardening-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+@media (max-width: 1024px) {
+  .mdf-hardening-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mdf-two-col-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+@media (max-width: 1024px) {
+  .mdf-two-col-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Bulk Blacklist Responsive Banner & Controls */
+.mdf-blacklist-banner {
+  background: #ffffff;
+  border: 1px solid #D9E1DC;
+  border-radius: 16px;
+  padding: 26px 30px;
+  margin-bottom: 26px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+}
+.mdf-blacklist-banner-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #F0F4F2;
+}
+.mdf-blacklist-title-group {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.mdf-blacklist-action-group {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.mdf-blacklist-callout {
+  margin-top: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: #576563;
+  line-height: 1.5;
+}
+.mdf-blacklist-callout svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+@media (max-width: 768px) {
+  .mdf-blacklist-banner {
+    padding: 18px 16px;
+    margin-bottom: 18px;
+  }
+  .mdf-blacklist-banner-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  .mdf-blacklist-title-group {
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .mdf-blacklist-title-group h3 {
+    font-size: 16px !important;
+  }
+  .mdf-blacklist-action-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    width: 100%;
+  }
+  .mdf-blacklist-score {
+    text-align: left !important;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #F8FAF9;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid #E6ECE9;
+  }
+  .mdf-blacklist-score .score-val {
+    margin-top: 0 !important;
+  }
+  .mdf-blacklist-action-group button {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 20px !important;
+  }
+}
+
+/* =========================================================================
+   USER LOGS (LIVE TRAFFIC) RESPONSIVE UTILITIES
+   ========================================================================= */
+.mdf-logs-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.mdf-logs-filter-form {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.mdf-logs-filter-search {
+  position: relative;
+  flex: 1 1 200px;
+  min-width: 200px;
+}
+.mdf-logs-filter-dates {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mdf-logs-desktop-table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.mdf-logs-mobile-cards {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mdf-logs-desktop-table {
+    display: none !important;
+  }
+  .mdf-logs-mobile-cards {
+    display: flex !important;
+    flex-direction: column;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+  .mdf-logs-card-item {
+    background: #FFFFFF;
+    border: none !important;
+    border-bottom: 1px solid #F1F5F9 !important;
+    border-radius: 0 !important;
+    padding: 9px 12px !important;
+    box-shadow: none !important;
+    transition: background-color 0.15s ease;
+  }
+  .mdf-logs-card-item:hover,
+  .mdf-logs-card-item:active {
+    background: #F8FAFC !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .mdf-logs-actions-bar {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+  .mdf-logs-actions-bar button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+  .mdf-logs-filter-form {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  .mdf-logs-filter-search {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: 1 1 100% !important;
+  }
+  .mdf-logs-filter-form > div {
+    width: 100% !important;
+  }
+  .mdf-logs-filter-form select {
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .mdf-logs-filter-dates {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+  .mdf-logs-filter-dates input {
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .mdf-logs-filter-submit {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+/* ===== MONITORING: UPTIME SENTINEL RESPONSIVE STYLES ===== */
+.mdf-uptime-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.28fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+
+@media (max-width: 1024px) {
+  .mdf-uptime-workspace-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+}
+
+.mdf-socket-chips-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+@media (max-width: 480px) {
+  .mdf-socket-chips-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* ===== MONITORING: PERFORMANCE RESPONSIVE STYLES ===== */
+.mdf-perf-speed-layout {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.mdf-perf-gauge-box {
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+.mdf-perf-metrics-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 6px;
+}
+
+.mdf-perf-response-layout {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.mdf-perf-speedometer-box {
+  padding: 2px 10px 2px 0;
+  border-right: 1px solid #F1F5F9;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .mdf-perf-speed-layout {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 14px !important;
+  }
+  .mdf-perf-gauge-box {
+    margin: 0 auto !important;
+  }
+  .mdf-perf-metrics-grid {
+    width: 100% !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .mdf-perf-response-layout {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 12px !important;
+  }
+  .mdf-perf-speedometer-box {
+    border-right: none !important;
+    border-bottom: 1px solid #F1F5F9 !important;
+    padding: 0 0 10px 0 !important;
+    margin: 0 auto !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .mdf-perf-metrics-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ===== MONITORING: BROKEN LINKS RESPONSIVE STYLES ===== */
+.mdf-broken-search {
+  width: 260px;
+}
+@media (max-width: 640px) {
+  .mdf-broken-search {
+    width: 100% !important;
+  }
+}
+
+/* ===== WORDPRESS MANAGEMENT RESPONSIVE STYLES ===== */
+/* Safe Updates KPI Grid */
+.mdf-safeupdates-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 14px;
+}
+@media (max-width: 1100px) {
+  .mdf-safeupdates-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .mdf-safeupdates-kpi-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+/* Safe Updates 5-Stage Pipeline */
+.mdf-safeupdates-pipeline-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  position: relative;
+}
+@media (max-width: 1200px) {
+  .mdf-safeupdates-pipeline-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 768px) {
+  .mdf-safeupdates-pipeline-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 520px) {
+  .mdf-safeupdates-pipeline-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+/* Scanner Radar HUD Card & Grid */
+.mdf-scanner-hud-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #D9E1DC;
+  padding: 28px 32px;
+  box-shadow: 0 4px 20px rgba(11, 37, 34, 0.03);
+  margin-bottom: 24px;
+}
+.mdf-scanner-hud-grid {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 36px;
+  align-items: center;
+}
+.mdf-scanner-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.mdf-scanner-breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.mdf-scanner-radar-box {
+  position: relative;
+  width: 340px;
+  height: 340px;
+  max-width: 100%;
+}
+.mdf-scanner-radar-box canvas {
+  width: 100% !important;
+  height: auto !important;
+  max-width: 340px;
+  max-height: 340px;
+  display: block;
+}
+
+@media (max-width: 1024px) {
+  .mdf-scanner-hud-card {
+    padding: 20px 18px;
+  }
+  .mdf-scanner-hud-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .mdf-scanner-metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .mdf-scanner-breakdown-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .mdf-scanner-hud-card {
+    padding: 14px 12px;
+  }
+  .mdf-scanner-metrics-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .mdf-scanner-breakdown-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .mdf-scanner-radar-box {
+    width: 270px;
+    height: 270px;
+  }
+}
+
+/* WordPress Plugins, Themes & Core: Desktop Table vs Mobile Cards */
+.mdf-wp-desktop-table {
+  display: block;
+}
+.mdf-wp-mobile-list {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mdf-wp-desktop-table {
+    display: none !important;
+  }
+  .mdf-wp-mobile-list {
+    display: flex !important;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+}
+
+/* Database Optimizer: Desktop Table vs Mobile Cards */
+.mdf-db-desktop-table {
+  display: block;
+}
+.mdf-db-mobile-list {
+  display: none;
+}
+@media (max-width: 768px) {
+  .mdf-db-desktop-table {
+    display: none !important;
+  }
+  .mdf-db-mobile-list {
+    display: flex !important;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+}
+
+/* Security Hardening Top Banner Actions */
+.mdf-hardening-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+@media (max-width: 640px) {
+  .mdf-hardening-banner-actions {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .mdf-hardening-banner-actions select {
+    grid-column: span 2 !important;
+    width: 100% !important;
+  }
+  .mdf-hardening-banner-actions button {
+    justify-content: center !important;
+  }
+  .mdf-hardening-banner-actions .mdf-btn-full {
+    grid-column: span 2 !important;
+    width: 100% !important;
+  }
+}
+
+/* Login Gateway: Desktop Tables vs Mobile Cards */
+.mdf-gateway-desktop-table {
+  display: block;
+}
+.mdf-gateway-mobile-list {
+  display: none;
+}
+@media (max-width: 768px) {
+  .mdf-gateway-desktop-table {
+    display: none !important;
+  }
+  .mdf-gateway-mobile-list {
+    display: flex !important;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+/* Post-Hack Recovery: Desktop Table vs Mobile Cards */
+.mdf-posthack-desktop-table {
+  display: block;
+}
+.mdf-posthack-mobile-list {
+  display: none;
+}
+@media (max-width: 768px) {
+  .mdf-posthack-desktop-table {
+    display: none !important;
+  }
+  .mdf-posthack-mobile-list {
+    display: flex !important;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+@media (max-width: 640px) {
+  .mdf-posthack-card {
+    padding: 14px 12px !important;
+  }
+}
+
+/* Backup & Recovery: Desktop Table vs Mobile Cards */
+.mdf-backup-desktop-table {
+  display: block;
+}
+.mdf-backup-mobile-list {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mdf-backup-desktop-table {
+    display: none !important;
+  }
+  .mdf-backup-mobile-list {
+    display: flex !important;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+.mdf-backup-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 1024px) {
+  .mdf-backup-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .mdf-backup-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .mdf-backup-form-card {
+    padding: 14px 12px !important;
+  }
+}
+
+/* Access & Geo-Blocking: Desktop Tables vs Mobile Responsive Cards */
+.mdf-access-desktop-table,
+.mdf-country-desktop-table,
+.mdf-whitelist-desktop-table {
+  display: block;
+}
+
+.mdf-access-mobile-list,
+.mdf-country-mobile-list,
+.mdf-whitelist-mobile-list {
+  display: none;
+}
+
+.mdf-access-card {
+  padding: 24px 28px;
+}
+
+@media (max-width: 768px) {
+  .mdf-access-desktop-table,
+  .mdf-country-desktop-table,
+  .mdf-whitelist-desktop-table {
+    display: none !important;
+  }
+  .mdf-access-mobile-list,
+  .mdf-country-mobile-list,
+  .mdf-whitelist-mobile-list {
+    display: flex !important;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 640px) {
+  .mdf-access-card {
+    padding: 14px 12px !important;
+  }
+}
+
+/* Breach Intelligence: Desktop Table vs Mobile Cards */
+.mdf-breach-desktop-table {
+  display: block;
+}
+.mdf-breach-mobile-list {
+  display: none;
+}
+@media (max-width: 768px) {
+  .mdf-breach-desktop-table {
+    display: none !important;
+  }
+  .mdf-breach-mobile-list {
+    display: flex !important;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 0;
+  }
+}
+
+/* WordPress Sites: Mobile & Tablet Responsiveness */
+@media (max-width: 768px) {
+  .mdf-websites-hero-card {
+    padding: 16px 14px !important;
+  }
+  .mdf-websites-banner {
+    padding: 14px 12px !important;
+  }
+  .mdf-websites-list-header {
+    padding: 14px 14px !important;
+  }
+  .mdf-website-row {
+    padding: 14px 12px !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  .mdf-website-actions {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  .mdf-website-actions > button,
+  .mdf-website-actions > a {
+    flex: 1 1 auto !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+  .mdf-website-actions .site-actions-menu-container {
+    flex: 0 0 auto !important;
+  }
+}
+
+/* Team Members: Desktop Table vs Mobile Cards */
+.mdf-team-desktop-table {
+  display: block;
+}
+.mdf-team-mobile-list {
+  display: none;
+}
+@media (max-width: 768px) {
+  .mdf-team-desktop-table {
+    display: none !important;
+  }
+  .mdf-team-mobile-list {
+    display: flex !important;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+  }
+  .mdf-team-tabs {
+    padding: 10px 12px !important;
+  }
+  .mdf-team-tabs-list {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+  }
+  .mdf-team-tab-btn {
+    padding: 9px 8px !important;
+    border-radius: 7px !important;
+    border: 1px solid #D9E1DC !important;
+    font-size: 11px !important;
+    justify-content: center !important;
+    text-align: center !important;
+    background: #FFFFFF !important;
+  }
+  .mdf-team-tab-btn.active {
+    background: #10201E !important;
+    color: #FFFFFF !important;
+    border-color: #10201E !important;
+  }
+}
+
+/* Security Reports: Desktop Tables vs Mobile Cards */
+.mdf-reports-incidents-desktop,
+.mdf-reports-fleet-desktop {
+  display: block;
+}
+.mdf-reports-incidents-mobile,
+.mdf-reports-fleet-mobile {
+  display: none;
+}
+@media (max-width: 768px) {
+  .mdf-reports-incidents-desktop,
+  .mdf-reports-fleet-desktop {
+    display: none !important;
+  }
+  .mdf-reports-incidents-mobile,
+  .mdf-reports-fleet-mobile {
+    display: flex !important;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 0;
+  }
+}
+
+
+
+
+
+
+
+
+
 

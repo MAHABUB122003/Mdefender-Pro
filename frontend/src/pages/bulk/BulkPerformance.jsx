@@ -864,24 +864,14 @@ function BulkPerformanceContent() {
         </div>
 
         {/* Content Layout: Left Gauge + Right 5 Metrics Grid */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '14px',
-          flexWrap: 'wrap'
-        }}>
+        <div className="mdf-perf-speed-layout">
           {/* Left Circular Gauge */}
-          <div style={{ padding: '0 2px' }}>
+          <div className="mdf-perf-gauge-box">
             <CircularScoreGauge score={score} />
           </div>
 
           {/* Right 5 Metric Cards (Compact single row on wide screens) */}
-          <div style={{
-            flex: 1,
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))',
-            gap: '6px'
-          }}>
+          <div className="mdf-perf-metrics-grid">
             {/* Metric 1: First Contentful Paint */}
             <div style={metricCardStyle}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
@@ -1004,22 +994,14 @@ function BulkPerformanceContent() {
         </div>
 
         {/* Content Layout: Left Speedometer + Right Trend Chart */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '14px',
-          flexWrap: 'wrap'
-        }}>
+        <div className="mdf-perf-response-layout">
           {/* Left Speedometer Gauge */}
-          <div style={{
-            padding: '2px 10px 2px 0',
-            borderRight: '1px solid #F1F5F9'
-          }}>
+          <div className="mdf-perf-speedometer-box">
             <SpeedometerGauge responseTimeMs={currentResponseMs} />
           </div>
 
           {/* Right Smooth Response Timeline Curve */}
-          <div style={{ flex: 1, minWidth: '280px' }}>
+          <div style={{ flex: 1, minWidth: '240px', width: '100%' }}>
             <ResponseTimeTimelineChart history={historyData} avgMs={avg30dMs} />
           </div>
         </div>

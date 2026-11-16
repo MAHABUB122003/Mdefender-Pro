@@ -799,11 +799,7 @@ export default function Rules({ token }) {
 
       {/* TAB 3: ATTACK EVASION LAB & RAPID BLOCKER */}
       {activeTab === 'evasion' && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
-          gap: '24px'
-        }}>
+        <div className="mdf-two-col-grid" style={{ gap: '24px' }}>
           {/* Left Panel: Request Input */}
           <div style={{
             background: '#FFFFFF',

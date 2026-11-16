@@ -355,7 +355,7 @@ export default function UserAlerts() {
       )}
 
       {/* TOP 4 COMPACT ENTERPRISE KPI CHIPS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '10px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: '10px' }}>
         <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '8px', padding: '8px 12px', boxShadow: '0 1px 3px rgba(11,37,34,0.02)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
             <span style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active Watchdogs</span>
@@ -451,7 +451,7 @@ export default function UserAlerts() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '12px' }}>
           {/* Primary Channel: Registered Email */}
           <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', padding: '12px 14px', background: '#F8FAFC' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -521,7 +521,7 @@ export default function UserAlerts() {
               </span>
             </div>
 
-            <div style={{ fontSize: '11.5px', color: '#64748B', background: '#FFFFFF', padding: '8px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', marginBottom: '10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: '11.5px', color: '#64748B', background: '#FFFFFF', padding: '8px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', marginBottom: '10px', wordBreak: 'break-word' }}>
               {webhookSettings.url ? (
                 <span>Endpoint: <strong style={{ color: '#0F172A', fontFamily: 'monospace' }}>{webhookSettings.url}</strong></span>
               ) : (
@@ -585,7 +585,7 @@ export default function UserAlerts() {
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '10px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '10px' }}>
           {alertPolicies.map(policy => {
             const Icon = policy.icon
             return (

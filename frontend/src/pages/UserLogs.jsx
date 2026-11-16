@@ -25,7 +25,9 @@ import {
   FileCode,
   X,
   Compass,
-  Download
+  Download,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 const severityBadgeStyles = {
@@ -704,7 +706,7 @@ export default function UserLogs() {
           </div>
 
           {/* Quick Actions — Clean Unified Enterprise Secondary Buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <div className="mdf-logs-actions-bar">
             {/* Auto Poll Toggle */}
             <button
               type="button"
@@ -846,7 +848,7 @@ export default function UserLogs() {
         {/* 4 Dynamic KPI Cards - High-Density Enterprise Row */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
           gap: '8px'
         }}>
           {/* KPI 1: Total Logs */}
@@ -1010,18 +1012,9 @@ export default function UserLogs() {
         marginBottom: '20px',
         boxShadow: '0 2px 10px rgba(16, 32, 30, 0.03)'
       }}>
-        <form onSubmit={handleFilter} style={{
-          display: 'flex',
-          gap: '12px',
-          flexWrap: 'wrap',
-          alignItems: 'center'
-        }}>
+        <form onSubmit={handleFilter} className="mdf-logs-filter-form">
           {/* Search Query */}
-          <div style={{
-            position: 'relative',
-            flex: '1 1 200px',
-            minWidth: '200px'
-          }}>
+          <div className="mdf-logs-filter-search">
             <Search size={14} color="#87948D" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
             <input
               type="text"
@@ -1137,43 +1130,45 @@ export default function UserLogs() {
             </select>
           </div>
 
-          {/* Date Range From */}
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={e => setDateFrom(e.target.value)}
-            title="Date From"
-            style={{
-              padding: '8px 12px',
-              borderRadius: '10px',
-              border: '1px solid #D9E1DC',
-              background: '#FAFBF9',
-              fontSize: '12px',
-              color: '#10201E',
-              outline: 'none'
-            }}
-          />
+          {/* Date Range Controls */}
+          <div className="mdf-logs-filter-dates">
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              title="Date From"
+              style={{
+                padding: '8px 12px',
+                borderRadius: '10px',
+                border: '1px solid #D9E1DC',
+                background: '#FAFBF9',
+                fontSize: '12px',
+                color: '#10201E',
+                outline: 'none'
+              }}
+            />
 
-          {/* Date Range To */}
-          <input
-            type="date"
-            value={dateTo}
-            onChange={e => setDateTo(e.target.value)}
-            title="Date To"
-            style={{
-              padding: '8px 12px',
-              borderRadius: '10px',
-              border: '1px solid #D9E1DC',
-              background: '#FAFBF9',
-              fontSize: '12px',
-              color: '#10201E',
-              outline: 'none'
-            }}
-          />
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => setDateTo(e.target.value)}
+              title="Date To"
+              style={{
+                padding: '8px 12px',
+                borderRadius: '10px',
+                border: '1px solid #D9E1DC',
+                background: '#FAFBF9',
+                fontSize: '12px',
+                color: '#10201E',
+                outline: 'none'
+              }}
+            />
+          </div>
 
           {/* Filter Action Buttons */}
           <button
             type="submit"
+            className="mdf-logs-filter-submit"
             style={{
               padding: '9px 18px',
               background: '#0B2522',
@@ -1292,8 +1287,10 @@ export default function UserLogs() {
         pointerEvents: 'auto',
         userSelect: 'auto'
       }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+        {/* DESKTOP TABLE VIEW (Visible on screens > 768px) */}
+        <div className="mdf-logs-desktop-table">
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: '100%', minWidth: '820px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
             <thead>
               <tr style={{
                 background: '#FBFCFA',
@@ -1854,6 +1851,264 @@ export default function UserLogs() {
               })}
             </tbody>
           </table>
+        </div>
+        </div>
+
+        {/* MOBILE INCIDENT STREAM VIEW (Ultra-Compact, Exact Desktop Color Match, <= 768px) */}
+        <div className="mdf-logs-mobile-cards">
+          {/* Header Strip matching Desktop Table Header */}
+          <div style={{
+            background: '#FBFCFA',
+            borderBottom: '1px solid #D9E1DC',
+            padding: '9px 12px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            fontSize: '11px',
+            fontWeight: '700',
+            color: '#60716B',
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em'
+          }}>
+            <span>Live Ingress Stream</span>
+            <span>{logsList.length} Records</span>
+          </div>
+
+          {loading ? (
+            <div style={{ textAlign: 'center', color: '#64748B', padding: '30px 14px' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '600' }}>
+                <RotateCw size={16} style={{ animation: 'spin 1s linear infinite', color: '#E8792F' }} />
+                <span>Streaming Ingress Telemetry...</span>
+              </div>
+            </div>
+          ) : logsList.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '30px 14px', color: '#64748B' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#FEF3EB', border: '1px solid #FCD8BF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px', color: '#D97735' }}>
+                <ShieldCheck size={22} />
+              </div>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: '#10201E' }}>No matching attack or ingress records found</div>
+              <p style={{ fontSize: '11.5px', color: '#87948D', margin: '3px 0 0' }}>All inbound traffic is currently clean or filters returned zero matches.</p>
+            </div>
+          ) : (
+            logsList.map((log, i) => {
+              const isBlocked = isBlockedTrafficLog(log);
+              const loc = getLoc(log);
+              const logUniqueId = String(log?.id || log?.reference_id || `${log?.ip || 'ip'}_${log?.timestamp || ''}_${log?.url || log?.uri || i}`);
+              const isExpanded = expandedLogId === logUniqueId;
+              const urlStr = String(log?.url || log?.uri || log?.path || '/');
+              const timeInfo = formatLogTime(log?.timestamp);
+              const domainName = log?.domain || (websites && websites.length > 0 && (websites[0]?.domain || websites[0]?.name)) || 'mahabubur.shop';
+              const attackTitle = formatAttackType(log?.attack_type, isBlocked);
+
+              return (
+                <div
+                  key={`m-${log?.id || logUniqueId || i}`}
+                  className="mdf-logs-card-item"
+                  style={{
+                    background: isExpanded ? '#FAFBF9' : '#FFFFFF',
+                    borderBottom: '1px solid #F1F5F9',
+                    padding: '8px 12px',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.15s ease'
+                  }}
+                  onClick={() => setExpandedLogId(isExpanded ? null : logUniqueId)}
+                >
+                  {/* Row 1: Badges + Response Code + Time + Eye Icon */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      {/* TYPE BADGE (100% Desktop Color Match) */}
+                      {isBlocked ? (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          background: '#E8EEE8',
+                          color: '#0B2522',
+                          border: '1px solid #D9E1DC',
+                          borderRadius: '9999px',
+                          padding: '2px 8px',
+                          fontSize: '10.5px',
+                          fontWeight: '700'
+                        }}>
+                          <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#0B2522', flexShrink: 0 }} />
+                          <span>{attackTitle}</span>
+                        </span>
+                      ) : (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          background: '#FAFBF9',
+                          color: '#10201E',
+                          border: '1px solid #D9E1DC',
+                          borderRadius: '9999px',
+                          padding: '2px 8px',
+                          fontSize: '10.5px',
+                          fontWeight: '600'
+                        }}>
+                          <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#60716B', flexShrink: 0 }} />
+                          <span>Clean Traffic</span>
+                        </span>
+                      )}
+
+                      {/* WEBSITE BADGE (100% Desktop Match) */}
+                      <span style={{
+                        background: '#F1F5F9',
+                        color: '#1E293B',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: '4px',
+                        padding: '1px 6px',
+                        fontSize: '10.5px',
+                        fontWeight: '700'
+                      }}>
+                        {domainName}
+                      </span>
+
+                      {/* RESPONSE CODE (100% Desktop Match: Plain bold number) */}
+                      <span style={{
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        color: isBlocked ? '#DC2626' : '#1E293B'
+                      }}>
+                        {log.status_code || (isBlocked ? '403' : '200')}
+                      </span>
+                    </div>
+
+                    {/* Right: Time + Eye View Icon */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                      <span style={{ fontSize: '10.5px', color: '#64748B', whiteSpace: 'nowrap' }}>
+                        {timeInfo.main}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedLogId(isExpanded ? null : logUniqueId);
+                        }}
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          border: isExpanded ? '1px solid #0F172A' : '1px solid #CBD5E1',
+                          background: isExpanded ? '#0F172A' : '#FFFFFF',
+                          color: isExpanded ? '#FFFFFF' : '#475569',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          padding: 0
+                        }}
+                        title={isExpanded ? "Collapse" : "Details"}
+                      >
+                        <Eye size={12} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Row 2: Method + URL (Clean, unboxed, matching desktop styling) */}
+                  <div style={{
+                    marginTop: '4px',
+                    fontFamily: "'JetBrains Mono', Menlo, Monaco, Consolas, monospace",
+                    fontSize: '11px',
+                    color: '#334155',
+                    wordBreak: 'break-all',
+                    overflowWrap: 'anywhere',
+                    lineHeight: '1.3'
+                  }}>
+                    <strong style={{ color: isBlocked ? '#DC2626' : '#10201E', marginRight: '5px' }}>
+                      {log?.method || 'GET'}
+                    </strong>
+                    <span>{urlStr}</span>
+                  </div>
+
+                  {/* Row 3: Flag + IP + Origin Name */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '3px', fontSize: '10.5px', color: '#64748B' }}>
+                    <img
+                      src={loc.flagUrl}
+                      alt=""
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                      style={{ width: '14px', height: '10px', borderRadius: '1.5px', objectFit: 'cover' }}
+                    />
+                    <code style={{ fontFamily: 'monospace', fontWeight: '700', color: '#0F172A', fontSize: '11px' }}>
+                      {log?.ip || '127.0.0.1'}
+                    </code>
+                    <span>&bull;</span>
+                    <span style={{ color: '#475569' }}>{loc.name}</span>
+                  </div>
+
+                  {/* Expanded Forensics Details on Mobile (Compact & Matching Desktop Colors) */}
+                  {isExpanded && (
+                    <div
+                      style={{
+                        marginTop: '8px',
+                        padding: '8px 10px',
+                        background: '#F8FAFC',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: '8px',
+                        fontSize: '11px',
+                        color: '#475569',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px'
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                        <div>
+                          Signature: <code style={{ color: '#10201E', fontWeight: '700', background: '#FFFFFF', border: '1px solid #D9E1DC', padding: '1px 5px', borderRadius: '4px' }}>{log?.rule_matched || (isBlocked ? 'WAF-L7-EXPLOIT' : 'CLEAN-PASS')}</code>
+                        </div>
+                        <div style={{ display: 'flex', gap: '5px' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyJson(log)}
+                            style={{
+                              fontSize: '10.5px',
+                              fontWeight: '600',
+                              padding: '2px 7px',
+                              borderRadius: '4px',
+                              border: '1px solid #D9E1DC',
+                              background: '#FFFFFF',
+                              color: '#10201E',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            JSON
+                          </button>
+                          <Link
+                            to={`/user/security/threat-intelligence?ip=${encodeURIComponent(log?.ip || '')}`}
+                            style={{
+                              fontSize: '10.5px',
+                              fontWeight: '600',
+                              padding: '2px 7px',
+                              borderRadius: '4px',
+                              border: '1px solid #D9E1DC',
+                              background: '#FFFFFF',
+                              color: '#10201E',
+                              textDecoration: 'none'
+                            }}
+                          >
+                            WHOIS
+                          </Link>
+                        </div>
+                      </div>
+
+                      {log?.user_agent && (
+                        <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', padding: '4px 6px', borderRadius: '4px', wordBreak: 'break-all', fontSize: '10px', color: '#64748B' }}>
+                          <strong style={{ color: '#0F172A' }}>UA:</strong> {log.user_agent}
+                        </div>
+                      )}
+
+                      {log?.query_params && Object.keys(log.query_params).length > 0 && (
+                        <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', padding: '4px 6px', borderRadius: '4px', wordBreak: 'break-all', fontSize: '10px', color: '#64748B' }}>
+                          <strong style={{ color: '#0F172A' }}>Query:</strong> {JSON.stringify(log.query_params)}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
 
         {/* Pagination Strip */}

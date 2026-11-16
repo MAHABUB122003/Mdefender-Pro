@@ -495,7 +495,7 @@ export default function BulkBreachIntelligence() {
 
       {/* TAB 1: PASSWORD BREACH SHIELD */}
       {activeTab === 'password' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '20px' }}>
+        <div className="mdf-two-col-grid">
           {/* Left Card: Input & Test */}
           <div
             style={{
@@ -973,8 +973,8 @@ export default function BulkBreachIntelligence() {
                     </button>
                   </div>
 
-                  {/* Admins Table */}
-                  <div style={{ overflowX: 'auto' }}>
+                  {/* Admins Table: Desktop View */}
+                  <div className="mdf-breach-desktop-table" style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                       <thead>
                         <tr style={{ background: '#FFFFFF', borderBottom: '1px solid #F1F5F9' }}>
@@ -1084,6 +1084,100 @@ export default function BulkBreachIntelligence() {
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Admins Table: Mobile Stream Cards View */}
+                  <div className="mdf-breach-mobile-list">
+                    {site.admins && site.admins.length > 0 ? (
+                      site.admins.map((adm, idx) => (
+                        <div key={idx} style={{
+                          background: '#FFFFFF',
+                          border: '1px solid #E2E8F0',
+                          borderRadius: '8px',
+                          padding: '10px 12px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                              <div style={{
+                                width: '26px',
+                                height: '26px',
+                                borderRadius: '50%',
+                                background: '#0D9488',
+                                color: '#FFFFFF',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 800,
+                                fontSize: '11px',
+                                flexShrink: 0
+                              }}>
+                                {(adm.user_login || 'A')[0].toUpperCase()}
+                              </div>
+                              <strong style={{ fontSize: '13px', color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {adm.user_login}
+                              </strong>
+                            </div>
+                            <span style={{
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              background: adm.risk_rating === 'HIGH' ? '#FEF2F2' : adm.risk_rating === 'MEDIUM' ? '#FEF3C7' : '#F1F5F9',
+                              color: adm.risk_rating === 'HIGH' ? '#DC2626' : adm.risk_rating === 'MEDIUM' ? '#D97706' : '#475569',
+                              flexShrink: 0
+                            }}>
+                              {adm.risk_rating || 'LOW'} RISK
+                            </span>
+                          </div>
+
+                          <div style={{ fontSize: '11px', color: '#475569', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                            {adm.user_email || '—'}
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', paddingTop: '4px', borderTop: '1px solid #F1F5F9', fontSize: '11px' }}>
+                            <span style={{
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              background: adm.has_2fa ? '#ECFDF5' : '#FEF3C7',
+                              color: adm.has_2fa ? '#059669' : '#D97706'
+                            }}>
+                              {adm.has_2fa ? '✓ Protected' : '⚠ Missing 2FA'}
+                            </span>
+                            <span style={{ color: '#64748B' }}>
+                              {adm.active_sessions || 0} session(s)
+                            </span>
+                            {adm.user_email && (
+                              <a
+                                href={`https://haveibeenpwned.com/account/${encodeURIComponent(adm.user_email)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px',
+                                  color: '#0D9488',
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  textDecoration: 'none'
+                                }}
+                              >
+                                <span>HIBP</span>
+                                <ExternalLink size={10} />
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ padding: '16px', textAlign: 'center', color: '#64748B', fontSize: '12px' }}>
+                        No administrator accounts found.
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -1149,7 +1243,7 @@ export default function BulkBreachIntelligence() {
               <p style={{ margin: '4px 0 0', fontSize: '12px' }}>Try searching for another service or clear the search query.</p>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: '16px' }}>
               {breachesList.map((breach, idx) => (
                 <div
                   key={idx}

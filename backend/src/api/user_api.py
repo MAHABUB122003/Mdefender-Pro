@@ -96,8 +96,8 @@ class UserAPI:
     def clear_cache(cls):
         cls._stats_cache.clear()
 
-    def __init__(self):
-        self.db = MongoDB()
+    def __init__(self, db=None):
+        self.db = db if db is not None else MongoDB()
         self.rule_engine = RuleEngine()
         self.password_service = PasswordService()
         self.email_service = EmailService()

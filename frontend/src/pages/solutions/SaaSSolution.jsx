@@ -100,7 +100,7 @@ export default function SaaSSolution() {
         background: 'radial-gradient(ellipse 90% 50% at 50% 0%, rgba(232, 121, 47, 0.07), transparent 70%), #F7F6F1',
         borderBottom: '1px solid #D9E1DC'
       }}>
-        <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(20px, 3.2vw, 36px)' }}>
+        <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(16px, 3.2vw, 36px)' }}>
           
           {/* Breadcrumb */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#4A5D5A', marginBottom: '20px' }}>
@@ -109,7 +109,7 @@ export default function SaaSSolution() {
             <span style={{ color: '#E8792F', fontWeight: 600 }}>SaaS Platforms &amp; Cloud APIs</span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '40px', alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '40px', alignItems: 'center' }}>
             
             {/* Left Column: SaaS Value Prop */}
             <div>
@@ -385,7 +385,7 @@ export default function SaaSSolution() {
 
       {/* ===================== 6 DEEP SAAS & API FEATURES ===================== */}
       <section style={{ padding: '80px 0', background: '#FFFFFF', borderBottom: '1px solid #D9E1DC' }}>
-        <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(20px, 3.2vw, 36px)' }}>
+        <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(16px, 3.2vw, 36px)' }}>
           <div style={{ textAlign: 'center', maxWidth: '720px', margin: '0 auto 48px auto' }}>
             <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#E8792F', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '8px' }}>
               High-Throughput Engineering
@@ -398,7 +398,7 @@ export default function SaaSSolution() {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '24px' }}>
             {[
               {
                 icon: Cpu,
@@ -501,7 +501,7 @@ export default function SaaSSolution() {
 
       {/* ===================== DEVELOPER INTEGRATION SNIPPET ===================== */}
       <section style={{ padding: '72px 0', background: '#F7F6F1' }}>
-        <div style={{ maxWidth: '960px', margin: '0 auto', padding: '0 clamp(20px, 3.2vw, 36px)' }}>
+        <div style={{ maxWidth: '960px', margin: '0 auto', padding: '0 clamp(16px, 3.2vw, 36px)' }}>
           <div style={{ textAlign: 'center', marginBottom: '30px' }}>
             <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#E8792F', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '8px' }}>
               Zero-Friction Ingress
@@ -545,7 +545,7 @@ app.add_middleware(
         color: '#FFFFFF',
         textAlign: 'center'
       }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 clamp(20px, 3.2vw, 36px)' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 clamp(16px, 3.2vw, 36px)' }}>
           <h2 style={{ fontSize: 'clamp(26px, 3.4vw, 40px)', fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.04em', marginBottom: '14px' }}>
             Elevate your API reliability with zero latency trade-off.
           </h2>

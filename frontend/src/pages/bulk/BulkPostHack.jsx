@@ -512,6 +512,7 @@ export default function BulkPostHack() {
           
           {/* Card 1: Session Kickout */}
           <div
+            className="mdf-posthack-card"
             style={{
               background: '#FFFFFF',
               border: '1px solid #E2E8F0',
@@ -579,6 +580,7 @@ export default function BulkPostHack() {
 
           {/* Card 2: Security Salts Regenerator */}
           <div
+            className="mdf-posthack-card"
             style={{
               background: '#FFFFFF',
               border: '1px solid #E2E8F0',
@@ -646,6 +648,7 @@ export default function BulkPostHack() {
 
           {/* Card 3: Mandate Password Reset */}
           <div
+            className="mdf-posthack-card"
             style={{
               background: '#FFFFFF',
               border: '1px solid #E2E8F0',
@@ -749,6 +752,7 @@ export default function BulkPostHack() {
 
           {/* Card 4: Emergency Maintenance Lockdown */}
           <div
+            className="mdf-posthack-card"
             style={{
               background: isLockdownActive ? '#FEF2F2' : '#FFFFFF',
               border: `1px solid ${isLockdownActive ? '#FECACA' : '#E2E8F0'}`,
@@ -883,7 +887,7 @@ export default function BulkPostHack() {
             </span>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
+          <div className="mdf-posthack-desktop-table" style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
@@ -992,6 +996,107 @@ export default function BulkPostHack() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile View: High-density stream cards */}
+          <div className="mdf-posthack-mobile-list" style={{ padding: '12px' }}>
+            {Array.isArray(statusData?.admins) && statusData.admins.length > 0 ? (
+              statusData.admins.map((adm, idx) => {
+                const isHighRisk = adm.risk_level === 'High'
+                const isMedRisk = adm.risk_level === 'Medium'
+                return (
+                  <div key={adm.ID || `${adm.user_login}-${adm.site_domain || idx}`} style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '10px',
+                    padding: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)'
+                  }}>
+                    {/* Top Row: User + Risk Badge */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                        <div style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '6px',
+                          background: '#FFF7ED',
+                          border: '1px solid #FFEDD5',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}>
+                          <Users size={14} color="#EA580C" />
+                        </div>
+                        <strong style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {adm.user_login}
+                        </strong>
+                      </div>
+                      <span style={{
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: isHighRisk ? '#FEF2F2' : isMedRisk ? '#FFFBEB' : '#ECFDF5',
+                        color: isHighRisk ? '#DC2626' : isMedRisk ? '#D97706' : '#059669',
+                        border: `1px solid ${isHighRisk ? '#FECACA' : isMedRisk ? '#FDE68A' : '#A7F3D0'}`,
+                        flexShrink: 0
+                      }}>
+                        {adm.risk_level || 'Low'} Risk
+                      </span>
+                    </div>
+
+                    {/* Email & Site Domain */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontSize: '12px', color: '#64748B' }}>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{adm.user_email}</span>
+                      {adm.site_domain && (
+                        <span style={{ fontSize: '11px', fontWeight: 600, color: '#0F172A', background: '#F1F5F9', padding: '1px 6px', borderRadius: '4px', flexShrink: 0 }}>
+                          {adm.site_domain}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Bottom Row Badges */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', fontSize: '11px', paddingTop: '4px', borderTop: '1px solid #F1F5F9' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {adm.has_2fa ? (
+                          <>
+                            <CheckCircle2 size={13} color="#059669" />
+                            <span style={{ color: '#059669', fontWeight: 700 }}>2FA Enforced</span>
+                          </>
+                        ) : (
+                          <>
+                            <AlertTriangle size={13} color="#D97706" />
+                            <span style={{ color: '#D97706', fontWeight: 600 }}>2FA Disabled</span>
+                          </>
+                        )}
+                      </div>
+                      <span style={{ color: '#64748B', marginLeft: 'auto' }}>
+                        <strong style={{ color: '#0F172A' }}>{adm.active_sessions || 0}</strong> active device(s)
+                      </span>
+                    </div>
+
+                    {/* Warnings (if any) */}
+                    {Array.isArray(adm.warnings) && adm.warnings.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
+                        {adm.warnings.map((w, wIdx) => (
+                          <span key={wIdx} style={{ fontSize: '10px', fontWeight: 600, color: '#B91C1C', background: '#FEF2F2', border: '1px solid #FECACA', padding: '1px 6px', borderRadius: '4px' }}>
+                            {w}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            ) : (
+              <div style={{ padding: '24px 16px', textAlign: 'center', color: '#64748B', fontSize: '13px' }}>
+                {loadingStatus ? 'Loading administrator security audit...' : 'No administrator accounts discovered.'}
+              </div>
+            )}
           </div>
         </div>
 

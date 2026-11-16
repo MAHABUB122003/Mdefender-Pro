@@ -299,7 +299,7 @@ export default function Solutions() {
 
       {/* ===================== EXPANSIVE 6-SOLUTION DIRECTORY (NO SHORTCUTS) ===================== */}
       <section style={{ padding: '80px 0 100px 0', background: '#FFFFFF' }}>
-        <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(20px, 3.2vw, 36px)' }}>
+        <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(16px, 3.2vw, 36px)' }}>
           
           <div style={{ textAlign: 'center', maxWidth: '720px', margin: '0 auto 60px auto' }}>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#E8792F', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '10px' }}>
@@ -314,7 +314,7 @@ export default function Solutions() {
           </div>
 
           {/* 6 Comprehensive Solution Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '32px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '24px' }}>
             {solutionsDirectory.map((sol) => {
               const IconComp = sol.icon;
               return (
@@ -324,7 +324,7 @@ export default function Solutions() {
                     background: '#FAF9F5',
                     borderRadius: '20px',
                     border: '1.5px solid #E2DDD5',
-                    padding: '32px',
+                    padding: 'clamp(20px, 4vw, 32px)',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',

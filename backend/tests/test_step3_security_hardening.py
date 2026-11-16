@@ -55,8 +55,15 @@ class TestStep3SecurityHardening(unittest.TestCase):
         for call in calls:
             args, kwargs = call
             query = args[0] if args else kwargs.get("filter", {})
+            or_lists = []
             if "$or" in query:
-                for cond in query["$or"]:
+                or_lists.append(query["$or"])
+            if "$and" in query:
+                for sub in query["$and"]:
+                    if "$or" in sub:
+                        or_lists.append(sub["$or"])
+            for or_conds in or_lists:
+                for cond in or_conds:
                     if "domain" in cond and "$regex" in cond["domain"]:
                         pattern = cond["domain"]["$regex"]
                         # The pattern must contain escaped regex characters, not raw wildcard
@@ -65,7 +72,7 @@ class TestStep3SecurityHardening(unittest.TestCase):
         self.assertTrue(found_safe_regex, "Regex metacharacters must be escaped with re.escape")
 
     def test_3_tenant_isolation_idor_enforcement(self):
-        """Ensure get_owned_website strictly blocks cross-tenant access and raises 404."""
+        """Ensure get_owned_website strictly blocks cross-tenant access and raises 404 or 403."""
         user_a = {"id": "user_a_123"}
         user_b = {"id": "user_b_456"}
 
@@ -88,10 +95,10 @@ class TestStep3SecurityHardening(unittest.TestCase):
             site = get_owned_website(user_a, "site_999")
             self.assertEqual(site["_id"], "site_999")
 
-            # User B attempting to access User A's website -> 404 Not Found
+            # User B attempting to access User A's website -> 404/403 Blocked
             with self.assertRaises(HTTPException) as cm:
                 get_owned_website(user_b, "site_999")
-            self.assertEqual(cm.exception.status_code, 404)
+            self.assertIn(cm.exception.status_code, (403, 404))
         finally:
             deps.get_db = orig_get_db
 

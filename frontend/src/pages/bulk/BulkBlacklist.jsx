@@ -127,7 +127,7 @@ export default function BulkBlacklist() {
   const spamhausAuth = authorities.find(a => a.authority === 'Spamhaus DBL')
 
   return (
-    <div style={{ padding: '32px 36px', minHeight: '100vh', background: '#F6F8F7', color: '#10201E' }}>
+    <div style={{ maxWidth: '1720px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '16px', paddingBottom: '32px' }}>
 
       {/* Toast Notification */}
       {toastMsg && (
@@ -159,24 +159,9 @@ export default function BulkBlacklist() {
       />
 
       {/* Trust Score & Executive Posture Banner */}
-      <div style={{
-        background: '#ffffff',
-        border: '1px solid #D9E1DC',
-        borderRadius: '16px',
-        padding: '26px 30px',
-        marginBottom: '26px',
-        boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '20px',
-          paddingBottom: '20px',
-          borderBottom: '1px solid #F0F4F2'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+      <div className="mdf-blacklist-banner">
+        <div className="mdf-blacklist-banner-top">
+          <div className="mdf-blacklist-title-group">
             <div style={{
               width: '54px',
               height: '54px',
@@ -185,12 +170,13 @@ export default function BulkBlacklist() {
               color: isBlacklisted ? '#DC2626' : '#059669',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              flexShrink: 0
             }}>
               {isBlacklisted ? <ShieldAlert size={30} /> : <ShieldCheck size={30} />}
             </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                 <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: '#10201E' }}>
                   {isBlacklisted ? 'Domain Flagged on Global Blacklists' : 'Pristine Global Reputation & Search Safe'}
                 </h3>
@@ -207,19 +193,19 @@ export default function BulkBlacklist() {
                   {isBlacklisted ? 'BLACKLISTED' : 'TRUSTED & CLEAN'}
                 </span>
               </div>
-              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#576563' }}>
+              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#576563', wordBreak: 'break-word' }}>
                 Audited Hostname: <strong style={{ color: '#10201E' }}>{auditData?.domain || currentSite?.domain || 'Target Domain'}</strong> • Last Audited: <span style={{ color: '#10201E' }}>{auditData?.last_audited_at || 'Just now'}</span>
               </p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div className="mdf-blacklist-action-group">
             {/* Score Ring */}
-            <div style={{ textAlign: 'right' }}>
+            <div className="mdf-blacklist-score" style={{ textAlign: 'right' }}>
               <div style={{ fontSize: '11px', fontWeight: 600, color: '#7E8B88', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Reputation Trust Score
               </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', justifyContent: 'flex-end', marginTop: '2px' }}>
+              <div className="score-val" style={{ display: 'flex', alignItems: 'baseline', gap: '4px', justifyContent: 'flex-end', marginTop: '2px' }}>
                 <span style={{
                   fontSize: '30px',
                   fontWeight: 800,
@@ -246,7 +232,8 @@ export default function BulkBlacklist() {
                 alignItems: 'center',
                 gap: '8px',
                 cursor: scanning ? 'not-allowed' : 'pointer',
-                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)'
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+                whiteSpace: 'nowrap'
               }}
             >
               <RotateCw size={15} className={scanning ? 'animate-spin' : ''} />
@@ -256,7 +243,7 @@ export default function BulkBlacklist() {
         </div>
 
         {/* Status Callout */}
-        <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#576563' }}>
+        <div className="mdf-blacklist-callout">
           <Info size={16} color={isBlacklisted ? '#DC2626' : '#059669'} />
           <span>
             {isBlacklisted
@@ -450,8 +437,8 @@ export default function BulkBlacklist() {
           </span>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: '100%', minWidth: '650px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
             <thead>
               <tr style={{ background: '#FAFBF9', borderBottom: '1px solid #E6ECE9', color: '#6B7280', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 <th style={{ padding: '14px 28px' }}>Security Authority</th>

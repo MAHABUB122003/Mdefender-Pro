@@ -549,9 +549,9 @@ export default function UserBlacklist({ activeMode }) {
           </div>
 
           {/* Toolbar */}
-          <div style={{ ...S.cardPad, marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
-              <div style={{ position: 'relative', flex: 1, maxWidth: '320px' }}>
+          <div className="mdf-access-card" style={{ ...S.cardPad, padding: undefined, marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
+              <div style={{ position: 'relative', flex: '1 1 200px', maxWidth: '320px', minWidth: '150px' }}>
                 <Search size={14} style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
                 <input
                   type="text"
@@ -585,7 +585,7 @@ export default function UserBlacklist({ activeMode }) {
                 ))}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
               {selectedIps.length > 0 && (
                 <button style={S.btn('#FFFFFF', '#DC2626', '#D9E1DC')} onClick={handleBulkUnblock} disabled={bulkUnblocking}>
                   <Trash2 size={13} />
@@ -603,7 +603,7 @@ export default function UserBlacklist({ activeMode }) {
 
           {/* IP Table */}
           <div style={S.card}>
-            <div style={{ overflowX: 'auto' }}>
+            <div className="mdf-access-desktop-table" style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
                   <tr>
@@ -717,6 +717,113 @@ export default function UserBlacklist({ activeMode }) {
                 </tbody>
               </table>
             </div>
+
+            {/* Mobile View: High-density stream cards */}
+            <div className="mdf-access-mobile-list" style={{ padding: '12px' }}>
+              {loading ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94A3B8' }}>
+                  <RotateCw size={20} style={{ animation: 'spin 1s linear infinite', display: 'block', margin: '0 auto 10px' }} />
+                  Loading...
+                </div>
+              ) : filteredEntries.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94A3B8' }}>
+                  <ShieldCheck size={32} style={{ display: 'block', margin: '0 auto 10px', color: '#86EFAC' }} />
+                  <div style={{ fontWeight: '700', color: '#334155', marginBottom: '4px' }}>No blocked IPs</div>
+                  <div style={{ fontSize: '12px' }}>{search || filterDuration !== 'all' ? 'Try adjusting filters.' : 'All websites are clean.'}</div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#F8FAF9', borderRadius: '8px', border: '1px solid #D9E1DC', marginBottom: '4px' }}>
+                    <button onClick={toggleSelectAll} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', padding: 0 }}>
+                      {filteredEntries.length > 0 && selectedIps.length === filteredEntries.length
+                        ? <CheckSquare size={16} color="#DC2626" />
+                        : <Square size={16} color="#CBD5E1" />}
+                      <span style={{ fontSize: '12px', fontWeight: '700', color: '#10201E' }}>Select All ({filteredEntries.length})</span>
+                    </button>
+                    {selectedIps.length > 0 && (
+                      <span style={{ fontSize: '11px', fontWeight: '700', color: '#DC2626' }}>{selectedIps.length} selected</span>
+                    )}
+                  </div>
+                  {filteredEntries.map((entry, i) => {
+                    const now = new Date()
+                    const isSelected = selectedIps.includes(entry.ip)
+                    const isExpired = entry.is_expired || (entry.expires_at && new Date(entry.expires_at) <= now)
+                    const isPerm = !entry.expires_at || String(entry.type || entry.duration || '').toLowerCase() === 'permanent'
+                    const origin = getIpOriginInfo(entry)
+
+                    return (
+                      <div key={entry.id || entry.ip || i} style={{
+                        background: isSelected ? '#FFF7F7' : '#FFFFFF',
+                        border: `1px solid ${isSelected ? '#FECACA' : '#D9E1DC'}`,
+                        borderRadius: '10px',
+                        padding: '12px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                        boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                            <button onClick={() => toggleSelectIp(entry.ip)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
+                              {isSelected ? <CheckSquare size={16} color="#DC2626" /> : <Square size={16} color="#CBD5E1" />}
+                            </button>
+                            {origin.flagUrl && (
+                              <img src={origin.flagUrl} alt="" onError={e => { e.target.style.display = 'none' }}
+                                style={{ width: '18px', height: '13px', borderRadius: '2px', objectFit: 'cover', flexShrink: 0 }} />
+                            )}
+                            <code style={{ fontFamily: 'monospace', fontSize: '13px', fontWeight: '700', color: '#0F172A', background: '#F1F5F9', padding: '2px 6px', borderRadius: '4px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {entry.ip}
+                            </code>
+                            {isExpired && <span style={S.badge('#FEE2E2', '#DC2626', '#FECACA')}>Expired</span>}
+                          </div>
+                          <button
+                            onClick={() => handleUnblock(entry.ip, entry.website_id)}
+                            style={{ ...S.btnSm('#FFFFFF', '#10201E', '#D9E1DC'), flexShrink: 0 }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#DC2626'; e.currentTarget.style.color = '#FFFFFF' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.color = '#10201E' }}
+                          >
+                            Unblock
+                          </button>
+                        </div>
+
+                        {entry.reason && (
+                          <div style={{ fontSize: '12px', color: '#475569', lineHeight: '1.4' }}>
+                            {entry.reason}
+                          </div>
+                        )}
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', fontSize: '11px' }}>
+                          <span style={S.badge(isPerm ? '#FEF2F2' : '#FBFCFA', isPerm ? '#DC2626' : '#10201E', isPerm ? '#FECACA' : '#D9E1DC')}>
+                            <Clock size={10} />
+                            {entry.duration || entry.type || (isPerm ? 'Permanent' : 'Temp')}
+                          </span>
+                          <span style={S.badge('#FBFCFA', '#60716B', '#D9E1DC')}>
+                            {entry.auto_blocked ? 'Auto' : 'Manual'}
+                          </span>
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            background: '#FBFCFA',
+                            color: '#10201E',
+                            border: '1px solid #D9E1DC',
+                            display: 'inline-block'
+                          }}>
+                            {entry.website_domain || (entry.website_id && entry.website_id !== 'all' ? 'Single Site' : 'Global Fleet')}
+                          </span>
+                          {origin.name && origin.name !== 'Unknown' && (
+                            <span style={{ color: '#94A3B8', fontSize: '11px', marginLeft: 'auto' }}>
+                              {origin.name}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </>
+              )}
+            </div>
           </div>
         </>
       )}
@@ -740,7 +847,7 @@ export default function UserBlacklist({ activeMode }) {
           </div>
 
           {/* Quick Threat Presets */}
-          <div style={S.cardPad}>
+          <div className="mdf-access-card" style={S.cardPad}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '12px' }}>
               <Flame size={14} color="#10201E" />
               <span style={{ fontSize: '12px', fontWeight: '700', color: '#10201E', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Quick Block Presets</span>
@@ -775,7 +882,7 @@ export default function UserBlacklist({ activeMode }) {
           </div>
 
           {/* Add Country Form */}
-          <div id="country-block-form" style={S.cardPad}>
+          <div id="country-block-form" className="mdf-access-card" style={S.cardPad}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
                 <Shield size={15} color="#10201E" />
@@ -802,7 +909,7 @@ export default function UserBlacklist({ activeMode }) {
               </div>
             </div>
 
-            <form onSubmit={handleAddCountryBlock} style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr auto', gap: '12px', alignItems: 'end' }}>
+            <form onSubmit={handleAddCountryBlock} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '12px', alignItems: 'end' }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                   <label style={S.label}>Country ({pickerFilteredCountries.length} available)</label>
@@ -880,7 +987,7 @@ export default function UserBlacklist({ activeMode }) {
           </div>
 
           {/* Country Blocks Table */}
-          <div style={S.cardPad}>
+          <div className="mdf-access-card" style={S.cardPad}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
                 <Globe size={15} color="#0F172A" />
@@ -889,7 +996,7 @@ export default function UserBlacklist({ activeMode }) {
                 </span>
               </div>
               {countryBlocks.length > 0 && (
-                <div style={{ position: 'relative', width: '220px' }}>
+                <div style={{ position: 'relative', width: '220px', maxWidth: '100%' }}>
                   <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
                   <input
                     type="text"
@@ -914,76 +1021,143 @@ export default function UserBlacklist({ activeMode }) {
                 <div style={{ fontSize: '12px' }}>Use the form above or click a preset to block a country.</div>
               </div>
             ) : (
-              <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid #D9E1DC', minHeight: '120px' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                  <thead>
-                    <tr>
-                      <th style={S.th}>Country</th>
-                      <th style={S.th}>Code</th>
-                      <th style={S.th}>Reason</th>
-                      <th style={S.th}>Scope</th>
-                      <th style={S.th}>Status</th>
-                      <th style={{ ...S.th, textAlign: 'right' }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredCountryBlocks.map(block => {
-                      const code = (block.country_code || '').toUpperCase().trim()
-                      const cObj = ALL_COUNTRIES.find(c => c.code === code)
-                      const displayName = cObj ? cObj.name : (block.country_name || code)
-                      const flagUrl = getFlagUrl(code, '20x15')
+              <>
+                <div className="mdf-country-desktop-table" style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid #D9E1DC', minHeight: '120px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                      <tr>
+                        <th style={S.th}>Country</th>
+                        <th style={S.th}>Code</th>
+                        <th style={S.th}>Reason</th>
+                        <th style={S.th}>Scope</th>
+                        <th style={S.th}>Status</th>
+                        <th style={{ ...S.th, textAlign: 'right' }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredCountryBlocks.map(block => {
+                        const code = (block.country_code || '').toUpperCase().trim()
+                        const cObj = ALL_COUNTRIES.find(c => c.code === code)
+                        const displayName = cObj ? cObj.name : (block.country_name || code)
+                        const flagUrl = getFlagUrl(code, '20x15')
 
-                      return (
-                        <tr key={block._id || code} style={{ background: '#FFFFFF' }}>
-                          <td style={S.td}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ width: '20px', height: '14px', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#F1F5F9', borderRadius: '2px', overflow: 'hidden' }}>
-                                <img src={flagUrl} alt={code}
-                                  onError={e => { e.target.style.display = 'none' }}
-                                  style={{ width: '20px', height: '14px', objectFit: 'cover' }} />
+                        return (
+                          <tr key={block._id || code} style={{ background: '#FFFFFF' }}>
+                            <td style={S.td}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ width: '20px', height: '14px', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#F1F5F9', borderRadius: '2px', overflow: 'hidden' }}>
+                                  <img src={flagUrl} alt={code}
+                                    onError={e => { e.target.style.display = 'none' }}
+                                    style={{ width: '20px', height: '14px', objectFit: 'cover' }} />
+                                </span>
+                                <span style={{ fontWeight: '700', color: '#10201E' }}>{displayName}</span>
+                              </div>
+                            </td>
+                            <td style={S.td}>
+                              <span style={S.badge('#FBFCFA', '#10201E', '#D9E1DC')}>{code}</span>
+                            </td>
+                            <td style={{ ...S.td, color: '#60716B', fontSize: '12px', maxWidth: '280px' }}>
+                              {block.reason || '—'}
+                            </td>
+                            <td style={S.td}>
+                              <span style={{
+                                fontSize: '11px',
+                                fontWeight: '700',
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                background: '#FBFCFA',
+                                color: '#10201E',
+                                border: '1px solid #D9E1DC',
+                                display: 'inline-block'
+                              }}>
+                                {block.website_domain || (block.website_id && block.website_id !== 'all' ? 'Single Site' : 'Global Fleet')}
                               </span>
-                              <span style={{ fontWeight: '700', color: '#10201E' }}>{displayName}</span>
-                            </div>
-                          </td>
-                          <td style={S.td}>
-                            <span style={S.badge('#FBFCFA', '#10201E', '#D9E1DC')}>{code}</span>
-                          </td>
-                          <td style={{ ...S.td, color: '#60716B', fontSize: '12px', maxWidth: '280px' }}>
-                            {block.reason || '—'}
-                          </td>
-                          <td style={S.td}>
-                            <span style={{
-                              fontSize: '11px',
-                              fontWeight: '700',
-                              padding: '3px 8px',
-                              borderRadius: '6px',
-                              background: '#FBFCFA',
-                              color: '#10201E',
-                              border: '1px solid #D9E1DC',
-                              display: 'inline-block'
-                            }}>
-                              {block.website_domain || (block.website_id && block.website_id !== 'all' ? 'Single Site' : 'Global Fleet')}
+                            </td>
+                            <td style={S.td}>
+                              <span style={S.badge('#E8EEE8', '#0B2522', '#D9E1DC')}>Blocked</span>
+                            </td>
+                            <td style={{ ...S.td, textAlign: 'right' }}>
+                              <button
+                                onClick={() => handleRemoveCountryBlock(code, displayName, block.website_id)}
+                                style={S.btnSm('#FFFFFF', '#10201E', '#D9E1DC')}
+                                onMouseEnter={e => { e.currentTarget.style.background = '#FAFBF9'; e.currentTarget.style.borderColor = '#0B2522' }}
+                                onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.borderColor = '#D9E1DC' }}
+                              >
+                                Unblock
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile View: High-density stream cards */}
+                <div className="mdf-country-mobile-list">
+                  {filteredCountryBlocks.map(block => {
+                    const code = (block.country_code || '').toUpperCase().trim()
+                    const cObj = ALL_COUNTRIES.find(c => c.code === code)
+                    const displayName = cObj ? cObj.name : (block.country_name || code)
+                    const flagUrl = getFlagUrl(code, '20x15')
+
+                    return (
+                      <div key={block._id || code} style={{
+                        background: '#FFFFFF',
+                        border: '1px solid #D9E1DC',
+                        borderRadius: '10px',
+                        padding: '12px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                        boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                            <span style={{ width: '20px', height: '14px', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#F1F5F9', borderRadius: '2px', overflow: 'hidden' }}>
+                              <img src={flagUrl} alt={code}
+                                onError={e => { e.target.style.display = 'none' }}
+                                style={{ width: '20px', height: '14px', objectFit: 'cover' }} />
                             </span>
-                          </td>
-                          <td style={S.td}>
-                            <span style={S.badge('#E8EEE8', '#0B2522', '#D9E1DC')}>Blocked</span>
-                          </td>
-                          <td style={{ ...S.td, textAlign: 'right' }}>
-                            <button
-                              onClick={() => handleRemoveCountryBlock(code, displayName, block.website_id)}
-                              style={S.btnSm('#FFFFFF', '#10201E', '#D9E1DC')}
-                              onMouseEnter={e => { e.currentTarget.style.background = '#FAFBF9'; e.currentTarget.style.borderColor = '#0B2522' }}
-                              onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.borderColor = '#D9E1DC' }}
-                            >
-                              Unblock
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                            <span style={{ fontWeight: '700', color: '#10201E', fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {displayName}
+                            </span>
+                            <span style={S.badge('#FBFCFA', '#10201E', '#D9E1DC')}>{code}</span>
+                          </div>
+                          <button
+                            onClick={() => handleRemoveCountryBlock(code, displayName, block.website_id)}
+                            style={{ ...S.btnSm('#FFFFFF', '#DC2626', '#D9E1DC'), flexShrink: 0 }}
+                          >
+                            Unblock
+                          </button>
+                        </div>
+
+                        {block.reason && (
+                          <div style={{ fontSize: '12px', color: '#60716B', lineHeight: '1.4' }}>
+                            {block.reason}
+                          </div>
+                        )}
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span style={S.badge('#E8EEE8', '#0B2522', '#D9E1DC')}>Blocked</span>
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            background: '#FBFCFA',
+                            color: '#10201E',
+                            border: '1px solid #D9E1DC',
+                            display: 'inline-block'
+                          }}>
+                            {block.website_domain || (block.website_id && block.website_id !== 'all' ? 'Single Site' : 'Global Fleet')}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -1011,9 +1185,9 @@ export default function UserBlacklist({ activeMode }) {
           </div>
 
           {/* Whitelist Table Card */}
-          <div style={{ ...S.cardPad, padding: '20px 24px' }}>
+          <div className="mdf-access-card" style={{ ...S.cardPad, padding: undefined }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
-              <div style={{ position: 'relative', width: '280px' }}>
+              <div style={{ position: 'relative', width: '280px', maxWidth: '100%' }}>
                 <Search size={14} color="#60716B" style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }} />
                 <input
                   type="text"
@@ -1043,57 +1217,113 @@ export default function UserBlacklist({ activeMode }) {
                 </div>
               </div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      <th style={{ padding: '10px 12px', fontWeight: '700' }}>Whitelisted IP</th>
-                      <th style={{ padding: '10px 12px', fontWeight: '700' }}>Reason & Description</th>
-                      <th style={{ padding: '10px 12px', fontWeight: '700' }}>Added By</th>
-                      <th style={{ padding: '10px 12px', fontWeight: '700' }}>Date Added</th>
-                      <th style={{ padding: '10px 12px', fontWeight: '700', textAlign: 'right' }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredWhitelistEntries.map(item => (
-                      <tr key={item.id || item.ip} style={{ borderBottom: '1px solid #F1F5F3' }}>
-                        <td style={{ padding: '14px 12px', fontFamily: 'monospace', fontWeight: '700', color: '#10201E' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <ShieldCheck size={15} color="#2A8B68" />
-                            <span>{item.ip}</span>
-                          </div>
-                        </td>
-                        <td style={{ padding: '14px 12px', color: '#40514B' }}>
-                          {item.reason || 'Trusted bypass IP'}
-                        </td>
-                        <td style={{ padding: '14px 12px', color: '#60716B', fontSize: '12px' }}>
-                          {item.added_by || 'Dashboard'}
-                        </td>
-                        <td style={{ padding: '14px 12px', color: '#60716B', fontSize: '12px' }}>
-                          {item.added_at || 'Recent'}
-                        </td>
-                        <td style={{ padding: '14px 12px', textAlign: 'right' }}>
-                          <button
-                            onClick={() => handleRemoveWhitelist(item.ip)}
-                            style={{
-                              background: '#FFF1F2',
-                              border: '1px solid #FECDD3',
-                              color: '#BE123C',
-                              padding: '5px 10px',
-                              borderRadius: '6px',
-                              fontSize: '11px',
-                              fontWeight: '700',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            Remove
-                          </button>
-                        </td>
+              <>
+                <div className="mdf-whitelist-desktop-table" style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        <th style={{ padding: '10px 12px', fontWeight: '700' }}>Whitelisted IP</th>
+                        <th style={{ padding: '10px 12px', fontWeight: '700' }}>Reason & Description</th>
+                        <th style={{ padding: '10px 12px', fontWeight: '700' }}>Added By</th>
+                        <th style={{ padding: '10px 12px', fontWeight: '700' }}>Date Added</th>
+                        <th style={{ padding: '10px 12px', fontWeight: '700', textAlign: 'right' }}>Action</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {filteredWhitelistEntries.map(item => (
+                        <tr key={item.id || item.ip} style={{ borderBottom: '1px solid #F1F5F3' }}>
+                          <td style={{ padding: '14px 12px', fontFamily: 'monospace', fontWeight: '700', color: '#10201E' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <ShieldCheck size={15} color="#2A8B68" />
+                              <span>{item.ip}</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '14px 12px', color: '#40514B' }}>
+                            {item.reason || 'Trusted bypass IP'}
+                          </td>
+                          <td style={{ padding: '14px 12px', color: '#60716B', fontSize: '12px' }}>
+                            {item.added_by || 'Dashboard'}
+                          </td>
+                          <td style={{ padding: '14px 12px', color: '#60716B', fontSize: '12px' }}>
+                            {item.added_at || 'Recent'}
+                          </td>
+                          <td style={{ padding: '14px 12px', textAlign: 'right' }}>
+                            <button
+                              onClick={() => handleRemoveWhitelist(item.ip)}
+                              style={{
+                                background: '#FFF1F2',
+                                border: '1px solid #FECDD3',
+                                color: '#BE123C',
+                                padding: '5px 10px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: '700',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile View: High-density stream cards */}
+                <div className="mdf-whitelist-mobile-list">
+                  {filteredWhitelistEntries.map(item => (
+                    <div key={item.id || item.ip} style={{
+                      background: '#FFFFFF',
+                      border: '1px solid #D9E1DC',
+                      borderRadius: '10px',
+                      padding: '12px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                          <ShieldCheck size={16} color="#2A8B68" style={{ flexShrink: 0 }} />
+                          <code style={{ fontFamily: 'monospace', fontWeight: '700', color: '#10201E', fontSize: '13px', background: '#F1F5F9', padding: '2px 6px', borderRadius: '4px' }}>
+                            {item.ip}
+                          </code>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveWhitelist(item.ip)}
+                          style={{
+                            background: '#FFF1F2',
+                            border: '1px solid #FECDD3',
+                            color: '#BE123C',
+                            padding: '5px 10px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            flexShrink: 0
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+
+                      <div style={{ fontSize: '12px', color: '#40514B', lineHeight: '1.4' }}>
+                        {item.reason || 'Trusted bypass IP'}
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', fontSize: '11px', color: '#60716B' }}>
+                        <span style={S.badge('#FBFCFA', '#60716B', '#D9E1DC')}>
+                          By: {item.added_by || 'Dashboard'}
+                        </span>
+                        <span style={S.badge('#FBFCFA', '#60716B', '#D9E1DC')}>
+                          {item.added_at || 'Recent'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         </div>

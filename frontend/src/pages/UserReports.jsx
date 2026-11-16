@@ -1428,47 +1428,85 @@ export default function UserReports() {
                     <span>Zero origin downtime or timeout incidents occurred across audited properties during this {report.period_days}-day period.</span>
                   </div>
                 ) : (
-                  <div style={{ overflowX: 'auto', border: '1px solid #E2E8F0', borderRadius: 6 }}>
-                    <table className="tabular-nums" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, textAlign: 'left' }}>
-                      <thead>
-                        <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', color: '#475569', fontSize: 11, textTransform: 'uppercase' }}>
-                          <th style={{ padding: '9px 12px', fontWeight: 700 }}>Property</th>
-                          <th style={{ padding: '9px 10px', fontWeight: 700 }}>Started (UTC)</th>
-                          <th style={{ padding: '9px 10px', fontWeight: 700 }}>Duration</th>
-                          <th style={{ padding: '9px 10px', fontWeight: 700 }}>Diagnostic Reason</th>
-                          <th style={{ padding: '9px 12px', fontWeight: 700 }}>State</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {incidents.map((inc, i) => (
-                          <tr key={`${inc.domain}-${i}`} style={{ borderBottom: '1px solid #E2E8F0' }}>
-                            <td style={{ padding: '9px 12px', fontWeight: 600, color: '#0F172A' }}>{inc.domain}</td>
-                            <td style={{ padding: '9px 10px', color: '#475569' }}>{inc.started_at}</td>
-                            <td style={{ padding: '9px 10px', fontWeight: 600, color: '#0F172A' }}>{inc.duration_label}</td>
-                            <td style={{ padding: '9px 10px', color: '#334155' }}>
-                              {inc.status_code ? `HTTP ${inc.status_code} — ` : ''}
-                              {inc.error_message}
-                            </td>
-                            <td style={{ padding: '9px 12px' }}>
-                              <span
-                                style={{
-                                  fontSize: 10.5,
-                                  fontWeight: 700,
-                                  padding: '2px 7px',
-                                  borderRadius: 4,
-                                  background: inc.status === 'ONGOING' ? '#FEF2F2' : '#F0FDF4',
-                                  color: inc.status === 'ONGOING' ? '#B91C1C' : '#15803D',
-                                  border: `1px solid ${inc.status === 'ONGOING' ? '#FECACA' : '#BBF7D0'}`
-                                }}
-                              >
-                                {inc.status}
-                              </span>
-                            </td>
+                  <>
+                    <div className="mdf-reports-incidents-desktop" style={{ overflowX: 'auto', border: '1px solid #E2E8F0', borderRadius: 6 }}>
+                      <table className="tabular-nums" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, textAlign: 'left' }}>
+                        <thead>
+                          <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', color: '#475569', fontSize: 11, textTransform: 'uppercase' }}>
+                            <th style={{ padding: '9px 12px', fontWeight: 700 }}>Property</th>
+                            <th style={{ padding: '9px 10px', fontWeight: 700 }}>Started (UTC)</th>
+                            <th style={{ padding: '9px 10px', fontWeight: 700 }}>Duration</th>
+                            <th style={{ padding: '9px 10px', fontWeight: 700 }}>Diagnostic Reason</th>
+                            <th style={{ padding: '9px 12px', fontWeight: 700 }}>State</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {incidents.map((inc, i) => (
+                            <tr key={`${inc.domain}-${i}`} style={{ borderBottom: '1px solid #E2E8F0' }}>
+                              <td style={{ padding: '9px 12px', fontWeight: 600, color: '#0F172A' }}>{inc.domain}</td>
+                              <td style={{ padding: '9px 10px', color: '#475569' }}>{inc.started_at}</td>
+                              <td style={{ padding: '9px 10px', fontWeight: 600, color: '#0F172A' }}>{inc.duration_label}</td>
+                              <td style={{ padding: '9px 10px', color: '#334155' }}>
+                                {inc.status_code ? `HTTP ${inc.status_code} — ` : ''}
+                                {inc.error_message}
+                              </td>
+                              <td style={{ padding: '9px 12px' }}>
+                                <span
+                                  style={{
+                                    fontSize: 10.5,
+                                    fontWeight: 700,
+                                    padding: '2px 7px',
+                                    borderRadius: 4,
+                                    background: inc.status === 'ONGOING' ? '#FEF2F2' : '#F0FDF4',
+                                    color: inc.status === 'ONGOING' ? '#B91C1C' : '#15803D',
+                                    border: `1px solid ${inc.status === 'ONGOING' ? '#FECACA' : '#BBF7D0'}`
+                                  }}
+                                >
+                                  {inc.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile Incident Cards */}
+                    <div className="mdf-reports-incidents-mobile">
+                      {incidents.map((inc, i) => (
+                        <div key={`${inc.domain}-${i}`} style={{
+                          background: '#FFFFFF',
+                          border: '1px solid #E2E8F0',
+                          borderRadius: 8,
+                          padding: '10px 12px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 6
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                            <strong style={{ fontSize: 13, color: '#0F172A' }}>{inc.domain}</strong>
+                            <span style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: '2px 6px',
+                              borderRadius: 4,
+                              background: inc.status === 'ONGOING' ? '#FEF2F2' : '#F0FDF4',
+                              color: inc.status === 'ONGOING' ? '#B91C1C' : '#15803D',
+                              border: `1px solid ${inc.status === 'ONGOING' ? '#FECACA' : '#BBF7D0'}`
+                            }}>
+                              {inc.status}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 11, color: '#475569' }}>
+                            Started: {inc.started_at} &bull; Duration: <strong>{inc.duration_label}</strong>
+                          </div>
+                          <div style={{ fontSize: 11.5, color: '#334155', paddingTop: 4, borderTop: '1px solid #F1F5F9' }}>
+                            {inc.status_code ? `HTTP ${inc.status_code} — ` : ''}{inc.error_message}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -1825,7 +1863,7 @@ export default function UserReports() {
                   subtitle={`Consolidated side-by-side overview across ${filteredWebsites.length} property(ies) for executive sign-off.`}
                 />
 
-                <div style={{ overflowX: 'auto', border: '1px solid #E2E8F0', borderRadius: 6 }}>
+                <div className="mdf-reports-fleet-desktop" style={{ overflowX: 'auto', border: '1px solid #E2E8F0', borderRadius: 6 }}>
                   <table
                     className="tabular-nums"
                     style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, textAlign: 'left' }}
@@ -1928,6 +1966,78 @@ export default function UserReports() {
                       )}
                     </tbody>
                   </table>
+                </div>
+
+                {/* Mobile Fleet Cards View */}
+                <div className="mdf-reports-fleet-mobile">
+                  {filteredWebsites.length === 0 ? (
+                    <div style={{ padding: 20, textAlign: 'center', color: '#64748B', fontSize: 12 }}>
+                      No websites match the current filter.
+                    </div>
+                  ) : (
+                    filteredWebsites.map((site) => {
+                      const vStyle = getVerdictStyle(site.verdict)
+                      const issueNames = (site.issues || [])
+                        .map((iss) => (typeof iss === 'string' ? iss : iss?.title || iss?.finding))
+                        .filter(Boolean)
+                      return (
+                        <div
+                          key={site.website_id || site.id || site.domain}
+                          style={{
+                            background: '#FFFFFF',
+                            border: '1px solid #E2E8F0',
+                            borderRadius: 8,
+                            padding: '10px 12px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 6
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                            <strong style={{ fontSize: 13, color: '#0F172A' }}>{site.domain}</strong>
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                padding: '2px 7px',
+                                borderRadius: 4,
+                                fontSize: 10,
+                                fontWeight: 700,
+                                background: vStyle.bg,
+                                color: vStyle.color,
+                                border: `1px solid ${vStyle.border}`
+                              }}
+                            >
+                              <span style={{ width: 5, height: 5, borderRadius: 99, background: vStyle.dot }} />
+                              {vStyle.label}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, fontSize: 11, color: '#64748B' }}>
+                            <span style={{ color: site.is_online ? '#059669' : '#B91C1C', fontWeight: 600 }}>
+                              {site.is_online ? '● Online' : '● Offline'} ({site.uptime_pct}%) &bull; {site.avg_latency_ms} ms
+                            </span>
+                            <span style={{ fontWeight: 700, color: '#0F172A' }}>
+                              Grade: {site.grade || 'B'} ({site.score})
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, fontSize: 11, color: '#475569', paddingTop: 4, borderTop: '1px solid #F1F5F9' }}>
+                            <span>{fmtNumber(site.requests)} req ({fmtNumber(site.blocked)} blk)</span>
+                            <span>WAF: <strong style={{ textTransform: 'uppercase' }}>{site.waf_mode}</strong></span>
+                            <span>SSL: {site.ssl_grade || 'A'}</span>
+                          </div>
+
+                          {issueNames.length > 0 && (
+                            <div style={{ fontSize: 10.5, color: '#B91C1C', background: '#FEF2F2', padding: '4px 8px', borderRadius: 4, border: '1px solid #FECACA', marginTop: 2 }}>
+                              <strong>{issueNames.length} finding(s):</strong> {issueNames.join('; ')}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })
+                  )}
                 </div>
 
                 {/* Attestation Note */}

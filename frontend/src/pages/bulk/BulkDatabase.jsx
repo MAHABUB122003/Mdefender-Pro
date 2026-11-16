@@ -598,8 +598,9 @@ export default function BulkDatabase() {
             </span>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
+          {/* Desktop Table View */}
+          <div className="mdf-db-desktop-table" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: '650px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid #E5EBE8', color: '#60716B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                   <th style={{ padding: '10px 14px' }}>Table Name</th>
@@ -644,6 +645,52 @@ export default function BulkDatabase() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Stream View (Zero Horizontal Scrolling) */}
+          <div className="mdf-db-mobile-list">
+            {dbStatus.table_details.map((tbl, i) => (
+              <div
+                key={tbl.name || i}
+                style={{
+                  padding: '10px 12px',
+                  background: '#FAFBF9',
+                  border: '1px solid #E6ECE9',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                  <span style={{ fontWeight: 700, color: '#0B2522', fontFamily: 'monospace', fontSize: '12px', wordBreak: 'break-all' }}>
+                    {tbl.name}
+                  </span>
+                  <span style={{
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    padding: '2px 7px',
+                    borderRadius: '10px',
+                    background: tbl.overhead_mb > 0 ? '#FEF3C7' : '#ECFDF5',
+                    color: tbl.overhead_mb > 0 ? '#92400E' : '#059669',
+                    flexShrink: 0
+                  }}>
+                    {tbl.overhead_mb > 0 ? 'Fragmented' : 'Healthy'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', fontSize: '11px', color: '#60716B' }}>
+                  <span>{tbl.engine}</span>
+                  <span>•</span>
+                  <span>{tbl.rows.toLocaleString()} rows</span>
+                  <span>•</span>
+                  <span><strong>{tbl.size_mb} MB</strong></span>
+                  <span>•</span>
+                  <span style={{ color: tbl.overhead_mb > 0 ? '#D97706' : '#60716B', fontWeight: tbl.overhead_mb > 0 ? 700 : 500 }}>
+                    {tbl.overhead_mb > 0 ? `${tbl.overhead_mb} MB overhead` : 'Clean'}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

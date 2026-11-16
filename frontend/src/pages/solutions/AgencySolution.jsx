@@ -65,7 +65,7 @@ export default function AgencySolution() {
         background: 'radial-gradient(ellipse 90% 50% at 50% 0%, rgba(40, 116, 93, 0.08), transparent 70%), #F7F6F1',
         borderBottom: '1px solid #D9E1DC'
       }}>
-        <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(20px, 3.2vw, 36px)' }}>
+        <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(16px, 3.2vw, 36px)' }}>
           
           {/* Breadcrumb */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#4A5D5A', marginBottom: '22px' }}>
@@ -74,7 +74,7 @@ export default function AgencySolution() {
             <span style={{ color: '#E8792F', fontWeight: 600 }}>Digital Agencies &amp; Multi-Site Fleet SaaS</span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '48px', alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '48px', alignItems: 'center' }}>
             
             {/* Left Column: Hero Text */}
             <div>
@@ -419,7 +419,7 @@ export default function AgencySolution() {
         background: '#FFFFFF',
         borderBottom: '1px solid #D9E1DC'
       }}>
-        <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(20px, 3.2vw, 36px)' }}>
+        <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(16px, 3.2vw, 36px)' }}>
           <div style={{ textAlign: 'center', maxWidth: '720px', margin: '0 auto 48px auto' }}>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#28745D', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '10px' }}>
               Agency Financial Impact
@@ -434,7 +434,7 @@ export default function AgencySolution() {
 
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
             gap: '36px',
             alignItems: 'center',
             background: '#FAF9F5',
@@ -575,7 +575,7 @@ export default function AgencySolution() {
 
       {/* ===================== ASYMMETRIC DEEP FEATURE BREAKDOWN ===================== */}
       <section style={{ padding: '96px 0', background: '#F7F6F1' }}>
-        <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(20px, 3.2vw, 36px)' }}>
+        <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(16px, 3.2vw, 36px)' }}>
           <div style={{ textAlign: 'center', maxWidth: '720px', margin: '0 auto 56px auto' }}>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#E8792F', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '10px' }}>
               Deep Engineering Breakdown
@@ -588,7 +588,7 @@ export default function AgencySolution() {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '28px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '28px' }}>
             {[
               {
                 icon: RefreshCw,
@@ -691,7 +691,7 @@ export default function AgencySolution() {
 
       {/* ===================== AGENCY CASE STUDY ===================== */}
       <section style={{ padding: '80px 0', background: '#FFFFFF', borderTop: '1px solid #D9E1DC' }}>
-        <div style={{ maxWidth: '1020px', margin: '0 auto', padding: '0 clamp(20px, 3.2vw, 36px)' }}>
+        <div style={{ maxWidth: '1020px', margin: '0 auto', padding: '0 clamp(16px, 3.2vw, 36px)' }}>
           <div style={{
             background: '#FAF9F5',
             borderRadius: '20px',
@@ -739,7 +739,7 @@ export default function AgencySolution() {
         color: '#FFFFFF',
         textAlign: 'center'
       }}>
-        <div style={{ maxWidth: '820px', margin: '0 auto', padding: '0 clamp(20px, 3.2vw, 36px)' }}>
+        <div style={{ maxWidth: '820px', margin: '0 auto', padding: '0 clamp(16px, 3.2vw, 36px)' }}>
           <h2 style={{ fontSize: 'clamp(32px, 4vw, 48px)', fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.04em', marginBottom: '18px' }}>
             Ready to scale your agency without maintenance nightmares?
           </h2>

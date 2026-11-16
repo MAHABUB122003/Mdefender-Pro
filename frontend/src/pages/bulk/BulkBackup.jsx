@@ -648,12 +648,7 @@ export default function BulkBackup() {
           </div>
 
           {/* 4 Telemetry KPI Cards - Sleek Low Profile */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '10px',
-            marginBottom: '12px'
-          }}>
+          <div className="mdf-backup-kpi-grid">
             {/* Card 1: Stored Backups */}
             <div style={kpiCardStyle} title="Stored in isolated filesystem storage">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
@@ -903,161 +898,274 @@ export default function BulkBackup() {
                   </button>
                 </div>
               ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '920px' }}>
-                    <thead>
-                      <tr style={{ background: '#F8FAF9', borderBottom: '1px solid #D9E1DC' }}>
-                        <th style={thStyle}>ARCHIVE FILENAME / ID</th>
-                        <th style={thStyle}>WEBSITE ORIGIN</th>
-                        <th style={thStyle}>TYPE</th>
-                        <th style={thStyle}>INCLUDED COMPONENTS</th>
-                        <th style={thStyle}>SIZE</th>
-                        <th style={thStyle}>DATE CREATED</th>
-                        <th style={{ ...thStyle, textAlign: 'right' }}>ACTIONS</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {backups.map((bk, idx) => {
-                        const bType = bk.type || 'full'
-                        const isDatabase = bType === 'database' || bk.filename.endsWith('.sql')
-                        const components = bk.components || ['Full Site']
+                <>
+                  <div className="mdf-backup-desktop-table" style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '920px' }}>
+                      <thead>
+                        <tr style={{ background: '#F8FAF9', borderBottom: '1px solid #D9E1DC' }}>
+                          <th style={thStyle}>ARCHIVE FILENAME / ID</th>
+                          <th style={thStyle}>WEBSITE ORIGIN</th>
+                          <th style={thStyle}>TYPE</th>
+                          <th style={thStyle}>INCLUDED COMPONENTS</th>
+                          <th style={thStyle}>SIZE</th>
+                          <th style={thStyle}>DATE CREATED</th>
+                          <th style={{ ...thStyle, textAlign: 'right' }}>ACTIONS</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {backups.map((bk, idx) => {
+                          const bType = bk.type || 'full'
+                          const isDatabase = bType === 'database' || bk.filename.endsWith('.sql')
+                          const components = bk.components || ['Full Site']
 
-                        return (
-                          <tr key={`${bk.site_id || bk.domain || 'site'}_${bk.filename}_${idx}`} style={trStyle}>
-                            {/* 1. Filename & Icon */}
-                            <td style={tdStyle}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <div style={{
-                                  width: '36px',
-                                  height: '36px',
-                                  borderRadius: '8px',
-                                  background: '#F0F4F2',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  flexShrink: 0
-                                }}>
-                                  <HardDrive size={16} color="#0B2522" />
-                                </div>
-                                <div>
-                                  <strong style={{ fontSize: '13.5px', fontWeight: 700, color: '#10201E', fontFamily: 'monospace' }}>
-                                    {bk.filename}
-                                  </strong>
-                                  <div style={{ fontSize: '11px', color: '#60716B', marginTop: '3px' }}>
-                                    {bk.note || 'Disaster Recovery Snapshot'}
+                          return (
+                            <tr key={`${bk.site_id || bk.domain || 'site'}_${bk.filename}_${idx}`} style={trStyle}>
+                              {/* 1. Filename & Icon */}
+                              <td style={tdStyle}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                  <div style={{
+                                    width: '36px',
+                                    height: '36px',
+                                    borderRadius: '8px',
+                                    background: '#F0F4F2',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0
+                                  }}>
+                                    <HardDrive size={16} color="#0B2522" />
+                                  </div>
+                                  <div>
+                                    <strong style={{ fontSize: '13.5px', fontWeight: 700, color: '#10201E', fontFamily: 'monospace' }}>
+                                      {bk.filename}
+                                    </strong>
+                                    <div style={{ fontSize: '11px', color: '#60716B', marginTop: '3px' }}>
+                                      {bk.note || 'Disaster Recovery Snapshot'}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            </td>
+                              </td>
 
-                            {/* 2. Website Origin */}
-                            <td style={tdStyle}>
-                              <span style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '4px 10px',
-                                borderRadius: '6px',
-                                background: '#F0FDF4',
-                                border: '1px solid #DCFCE7',
-                                color: '#166534',
-                                fontWeight: 600,
-                                fontSize: '12px'
-                              }}>
-                                <Globe size={12} color="#166534" />
-                                <span>
-                                  {bk.domain || bk.site_name || (wpWebsites.find(w => (w.id || w._id) === bk.site_id)?.domain) || (wpWebsites[0]?.domain) || 'WordPress Origin'}
+                              {/* 2. Website Origin */}
+                              <td style={tdStyle}>
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '4px 10px',
+                                  borderRadius: '6px',
+                                  background: '#F0FDF4',
+                                  border: '1px solid #DCFCE7',
+                                  color: '#166534',
+                                  fontWeight: 600,
+                                  fontSize: '12px'
+                                }}>
+                                  <Globe size={12} color="#166534" />
+                                  <span>
+                                    {bk.domain || bk.site_name || (wpWebsites.find(w => (w.id || w._id) === bk.site_id)?.domain) || (wpWebsites[0]?.domain) || 'WordPress Origin'}
+                                  </span>
                                 </span>
-                              </span>
-                            </td>
+                              </td>
 
-                            {/* 3. Type */}
-                            <td style={tdStyle}>
-                              <span style={badgeStyle(
+                              {/* 3. Type */}
+                              <td style={tdStyle}>
+                                <span style={badgeStyle(
+                                  isDatabase ? '#EEF2FF' : '#E8F3EC',
+                                  isDatabase ? '#4F46E5' : '#2A8B68',
+                                  isDatabase ? '#C7D2FE' : '#CFE2D4'
+                                )}>
+                                  {bType.toUpperCase()}
+                                </span>
+                              </td>
+
+                              {/* 3. Included Components */}
+                              <td style={tdStyle}>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                  {components.map((c, i) => (
+                                    <span key={i} style={componentPillStyle}>
+                                      {c}
+                                    </span>
+                                  ))}
+                                </div>
+                              </td>
+
+                              {/* 4. Size */}
+                              <td style={tdStyle}>
+                                <strong style={{ fontSize: '13px', color: '#10201E' }}>
+                                  {bk.size || '1.2 MB'}
+                                </strong>
+                              </td>
+
+                              {/* 5. Date Created */}
+                              <td style={tdStyle}>
+                                <div style={{ fontSize: '12px', color: '#60716B', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <Clock size={12} color="#889892" />
+                                  <span>{bk.created_at || 'Recent'}</span>
+                                </div>
+                              </td>
+
+                              {/* 6. Actions */}
+                              <td style={{ ...tdStyle, textAlign: 'right' }}>
+                                {bk.is_creating || bk.status === 'creating' ? (
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', color: '#15803D', fontSize: '12px', fontWeight: 700 }}>
+                                    <RefreshCw size={13} style={{ animation: 'spin 1.2s linear infinite' }} />
+                                    <span>Packaging Archive...</span>
+                                  </div>
+                                ) : (
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                                    <button
+                                      onClick={() => setRestoreModalData(bk)}
+                                      style={actionRestoreBtnStyle}
+                                      title="Restore website from this backup (Disaster Recovery)"
+                                    >
+                                      <RotateCcw size={12} />
+                                      <span>Restore</span>
+                                    </button>
+
+                                    <button
+                                      onClick={() => handleDownload(bk)}
+                                      style={actionDownloadBtnStyle}
+                                      title="Download archive to your computer"
+                                    >
+                                      <Download size={12} />
+                                      <span>Download</span>
+                                    </button>
+
+                                    <button
+                                      onClick={() => handleDelete(bk)}
+                                      style={actionDeleteBtnStyle}
+                                      title="Delete backup permanently"
+                                    >
+                                      <Trash2 size={13} color="#DC2626" />
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile View: High-density stream cards */}
+                  <div className="mdf-backup-mobile-list" style={{ padding: '12px' }}>
+                    {backups.map((bk, idx) => {
+                      const bType = bk.type || 'full'
+                      const isDatabase = bType === 'database' || bk.filename.endsWith('.sql')
+                      const siteDomain = bk.domain || bk.site_name || (wpWebsites.find(w => (w.id || w._id) === bk.site_id)?.domain) || (wpWebsites[0]?.domain) || 'WordPress Origin'
+
+                      return (
+                        <div key={`${bk.site_id || bk.domain || 'site'}_${bk.filename}_${idx}`} style={{
+                          background: '#ffffff',
+                          border: '1px solid #D9E1DC',
+                          borderRadius: '10px',
+                          padding: '12px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px',
+                          boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                              <div style={{
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '6px',
+                                background: '#F0F4F2',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                              }}>
+                                <HardDrive size={14} color="#0B2522" />
+                              </div>
+                              <strong style={{ fontSize: '13px', fontWeight: 700, color: '#10201E', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {bk.filename}
+                              </strong>
+                            </div>
+                            <span style={{
+                              ...badgeStyle(
                                 isDatabase ? '#EEF2FF' : '#E8F3EC',
                                 isDatabase ? '#4F46E5' : '#2A8B68',
                                 isDatabase ? '#C7D2FE' : '#CFE2D4'
-                              )}>
-                                {bType.toUpperCase()}
-                              </span>
-                            </td>
+                              ),
+                              flexShrink: 0
+                            }}>
+                              {bType.toUpperCase()}
+                            </span>
+                          </div>
 
-                            {/* 3. Included Components */}
-                            <td style={tdStyle}>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                {components.map((c, i) => (
-                                  <span key={i} style={componentPillStyle}>
-                                    {c}
-                                  </span>
-                                ))}
-                              </div>
-                            </td>
+                          <div style={{ fontSize: '12px', color: '#60716B', lineHeight: '1.4' }}>
+                            {bk.note || 'Disaster Recovery Snapshot'}
+                          </div>
 
-                            {/* 4. Size */}
-                            <td style={tdStyle}>
-                              <strong style={{ fontSize: '13px', color: '#10201E' }}>
-                                {bk.size || '1.2 MB'}
-                              </strong>
-                            </td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', fontSize: '11px' }}>
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                              background: '#F0FDF4',
+                              border: '1px solid #DCFCE7',
+                              color: '#166534',
+                              fontWeight: 600
+                            }}>
+                              <Globe size={11} color="#166534" />
+                              <span>{siteDomain}</span>
+                            </span>
+                            <span style={{ fontWeight: '700', color: '#10201E', padding: '2px 6px', background: '#F8FAF9', borderRadius: '4px', border: '1px solid #D9E1DC' }}>
+                              {bk.size || '1.2 MB'}
+                            </span>
+                            <span style={{ color: '#889892', display: 'flex', alignItems: 'center', gap: '3px', marginLeft: 'auto' }}>
+                              <Clock size={11} />
+                              {bk.created_at || 'Recent'}
+                            </span>
+                          </div>
 
-                            {/* 5. Date Created */}
-                            <td style={tdStyle}>
-                              <div style={{ fontSize: '12px', color: '#60716B', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <Clock size={12} color="#889892" />
-                                <span>{bk.created_at || 'Recent'}</span>
-                              </div>
-                            </td>
-
-                            {/* 6. Actions */}
-                            <td style={{ ...tdStyle, textAlign: 'right' }}>
-                              {bk.is_creating || bk.status === 'creating' ? (
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', color: '#15803D', fontSize: '12px', fontWeight: 700 }}>
-                                  <RefreshCw size={13} style={{ animation: 'spin 1.2s linear infinite' }} />
-                                  <span>Packaging Archive...</span>
-                                </div>
-                              ) : (
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
-                                  <button
-                                    onClick={() => setRestoreModalData(bk)}
-                                    style={actionRestoreBtnStyle}
-                                    title="Restore website from this backup (Disaster Recovery)"
-                                  >
-                                    <RotateCcw size={12} />
-                                    <span>Restore</span>
-                                  </button>
-
-                                  <button
-                                    onClick={() => handleDownload(bk)}
-                                    style={actionDownloadBtnStyle}
-                                    title="Download archive to your computer"
-                                  >
-                                    <Download size={12} />
-                                    <span>Download</span>
-                                  </button>
-
-                                  <button
-                                    onClick={() => handleDelete(bk)}
-                                    style={actionDeleteBtnStyle}
-                                    title="Delete backup permanently"
-                                  >
-                                    <Trash2 size={13} color="#DC2626" />
-                                  </button>
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                          {bk.is_creating || bk.status === 'creating' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#15803D', fontSize: '12px', fontWeight: 700, padding: '4px 0' }}>
+                              <RefreshCw size={13} style={{ animation: 'spin 1.2s linear infinite' }} />
+                              <span>Packaging Archive...</span>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '4px', borderTop: '1px solid #F0F4F2' }}>
+                              <button
+                                onClick={() => setRestoreModalData(bk)}
+                                style={{ ...actionRestoreBtnStyle, flex: 1, justifyContent: 'center' }}
+                              >
+                                <RotateCcw size={12} />
+                                <span>Restore</span>
+                              </button>
+                              <button
+                                onClick={() => handleDownload(bk)}
+                                style={{ ...actionDownloadBtnStyle, flex: 1, justifyContent: 'center' }}
+                              >
+                                <Download size={12} />
+                                <span>Download</span>
+                              </button>
+                              <button
+                                onClick={() => handleDelete(bk)}
+                                style={actionDeleteBtnStyle}
+                                title="Delete backup permanently"
+                              >
+                                <Trash2 size={13} color="#DC2626" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
               )}
             </div>
           )}
 
           {/* TAB 2: Create New Backup */}
           {activeTab === 'create' && (
-            <div style={formCardStyle}>
+            <div className="mdf-backup-form-card" style={formCardStyle}>
               <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '800', color: '#10201E' }}>
                 Generate Disaster Recovery Snapshot
               </h3>
@@ -1220,7 +1328,7 @@ export default function BulkBackup() {
 
           {/* TAB 3: Automated Schedule */}
           {activeTab === 'schedule' && (
-            <div style={formCardStyle}>
+            <div className="mdf-backup-form-card" style={formCardStyle}>
               <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '800', color: '#10201E' }}>
                 Automated Scheduled Backups
               </h3>
@@ -1318,7 +1426,7 @@ export default function BulkBackup() {
 
           {/* TAB 4: Upload Archive (Migration & Cloning) */}
           {activeTab === 'upload' && (
-            <div style={formCardStyle}>
+            <div className="mdf-backup-form-card" style={formCardStyle}>
               <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '800', color: '#10201E' }}>
                 Upload Existing Backup Archive (Site Migration &amp; Cloning)
               </h3>

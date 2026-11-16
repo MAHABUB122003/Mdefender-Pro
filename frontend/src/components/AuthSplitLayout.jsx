@@ -5,7 +5,7 @@ export default function AuthSplitLayout({ children }) {
   return (
     <div
       style={{
-        minHeight: 'calc(100vh - 76px)',
+        minHeight: '100vh',
         width: '100%',
         display: 'flex',
         flexDirection: 'row',
@@ -17,19 +17,16 @@ export default function AuthSplitLayout({ children }) {
     >
       {/* ================= LEFT BRAND PANEL (45.5% Desktop) ================= */}
       <div
-        className="hidden lg:flex"
+        className="auth-brand-panel"
         style={{
-          width: '45.5%',
           minHeight: '100vh',
           background: '#0B2522',
           color: '#ffffff',
           padding: 'clamp(48px, 6vw, 92px)',
-          display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
           position: 'relative',
           overflow: 'hidden',
-          flexShrink: 0,
         }}
       >
         {/* Subtle Geometric Shapes: #153B34 and #1C3026 */}
@@ -217,13 +214,11 @@ export default function AuthSplitLayout({ children }) {
       {/* ================= RIGHT FORM PANEL (54.5% Desktop, 100% Mobile) ================= */}
       <div
         style={{
-          width: '54.5%',
           minHeight: '100vh',
           background: '#F7F6F1',
           display: 'flex',
           flexDirection: 'column',
           position: 'relative',
-          flexGrow: 1,
         }}
         className="auth-right-panel"
       >
@@ -231,13 +226,13 @@ export default function AuthSplitLayout({ children }) {
         <div
           style={{
             position: 'absolute',
-            top: '28px',
-            left: 'clamp(20px, 4vw, 48px)',
+            top: '24px',
+            left: 'clamp(16px, 4vw, 48px)',
+            right: 'clamp(16px, 4vw, 48px)',
             zIndex: 10,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            width: 'calc(100% - clamp(40px, 8vw, 96px))',
           }}
         >
           <Link
@@ -247,7 +242,7 @@ export default function AuthSplitLayout({ children }) {
               alignItems: 'center',
               gap: '6px',
               color: '#60716B',
-              fontSize: '11.5px',
+              fontSize: '12px',
               fontWeight: 600,
               textDecoration: 'none',
               transition: 'color 0.15s ease',
@@ -256,11 +251,11 @@ export default function AuthSplitLayout({ children }) {
             onMouseLeave={(e) => (e.currentTarget.style.color = '#60716B')}
           >
             <ArrowLeft size={14} strokeWidth={2.2} />
-            <span>Back to homepage</span>
+            <span>Back to home</span>
           </Link>
 
           {/* Compact Mobile Brand Mark */}
-          <div className="flex lg:hidden">
+          <div className="auth-mobile-brand">
             <Link
               to="/"
               style={{
@@ -272,8 +267,8 @@ export default function AuthSplitLayout({ children }) {
             >
               <div
                 style={{
-                  width: '30px',
-                  height: '30px',
+                  width: '28px',
+                  height: '28px',
                   borderRadius: '7px',
                   overflow: 'hidden',
                   display: 'flex',
@@ -291,7 +286,7 @@ export default function AuthSplitLayout({ children }) {
               </div>
               <span
                 style={{
-                  fontSize: '14px',
+                  fontSize: '13.5px',
                   fontWeight: 700,
                   color: '#10201E',
                 }}
@@ -302,17 +297,14 @@ export default function AuthSplitLayout({ children }) {
           </div>
         </div>
 
-        {/* Form Container: width 388px, starts ~125px from top */}
+        {/* Form Container: width 388px */}
         <div
+          className="auth-form-scroll"
           style={{
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            paddingTop: '125px',
-            paddingBottom: '48px',
-            paddingLeft: '20px',
-            paddingRight: '20px',
             width: '100%',
           }}
         >
@@ -330,9 +322,39 @@ export default function AuthSplitLayout({ children }) {
       </div>
 
       <style>{`
-        @media (max-width: 1024px) {
+        .auth-brand-panel {
+          width: 45.5%;
+          display: flex;
+          flex-shrink: 0;
+        }
+        .auth-right-panel {
+          width: 54.5%;
+          flex-grow: 1;
+        }
+        .auth-mobile-brand {
+          display: none;
+        }
+        .auth-form-scroll {
+          padding-top: 110px;
+          padding-bottom: 48px;
+          padding-left: 24px;
+          padding-right: 24px;
+        }
+        @media (max-width: 1023px) {
+          .auth-brand-panel {
+            display: none !important;
+          }
           .auth-right-panel {
             width: 100% !important;
+          }
+          .auth-mobile-brand {
+            display: flex !important;
+          }
+          .auth-form-scroll {
+            padding-top: 80px !important;
+            padding-bottom: 36px !important;
+            padding-left: 16px !important;
+            padding-right: 16px !important;
           }
         }
         @media (max-width: 480px) {

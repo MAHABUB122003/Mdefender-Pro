@@ -498,7 +498,7 @@ export default function UserPricing() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '1.2fr 1fr',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
             gap: '36px',
             alignItems: 'center',
           }}

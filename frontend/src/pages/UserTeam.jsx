@@ -319,11 +319,11 @@ export default function UserTeam() {
         overflow: 'hidden'
       }}>
         {/* Navigation Tabs Header */}
-        <div style={{
+        <div className="mdf-team-tabs" style={{
           padding: '0 24px', background: '#FAFBF9', borderBottom: '1px solid #D9E1DC',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap'
         }}>
-          <div style={{ display: 'flex', gap: '6px' }}>
+          <div className="mdf-team-tabs-list" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             {[
               { id: 'members', label: `Active Members (${members.length})`, icon: Users },
               { id: 'invites', label: `Pending Invitations (${pendingInvites.length})`, icon: Mail },
@@ -337,15 +337,16 @@ export default function UserTeam() {
                   key={t.id}
                   type="button"
                   onClick={() => setActiveTab(t.id)}
+                  className={`mdf-team-tab-btn ${isSel ? 'active' : ''}`}
                   style={{
-                    padding: '14px 18px', background: 'none', border: 'none',
+                    padding: '14px 16px', background: 'none', border: 'none',
                     borderBottom: isSel ? '2.5px solid #10201E' : '2.5px solid transparent',
                     color: isSel ? '#10201E' : '#64748B', fontWeight: isSel ? '800' : '600',
                     fontSize: '13px', cursor: 'pointer', display: 'inline-flex',
                     alignItems: 'center', gap: '8px', transition: 'all 0.15s ease'
                   }}
                 >
-                  <Icon size={15} style={{ color: isSel ? '#10201E' : '#94A3B8' }} />
+                  <Icon size={15} style={{ color: isSel ? 'inherit' : '#94A3B8' }} />
                   <span>{t.label}</span>
                 </button>
               )
@@ -397,127 +398,230 @@ export default function UserTeam() {
               </div>
             </div>
 
-            {/* Members Table */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-              <thead>
-                <tr style={{ background: '#FAFBF9', borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  <th style={{ padding: '12px 20px' }}>Team Member</th>
-                  <th style={{ padding: '12px 16px' }}>Assigned Role</th>
-                  <th style={{ padding: '12px 16px' }}>Domain Access Scope</th>
-                  <th style={{ padding: '12px 16px' }}>2FA Security</th>
-                  <th style={{ padding: '12px 16px' }}>Last Telemetry</th>
-                  <th style={{ padding: '12px 20px', textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredMembers.map((m, i) => {
-                  const roleObj = TEAM_ROLES.find(r => r.id === m.roleId) || TEAM_ROLES[3]
-                  return (
-                    <tr key={m.id} style={{ borderBottom: i < filteredMembers.length - 1 ? '1px solid #F1F5F2' : 'none' }}>
-                      {/* Name & Email */}
-                      <td style={{ padding: '16px 20px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div style={{
-                            width: '38px', height: '38px', borderRadius: '10px',
-                            background: m.isOwner ? '#10201E' : '#FAFBF9',
-                            border: '1.5px solid #D9E1DC',
-                            color: m.isOwner ? '#FFFFFF' : '#10201E',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: '13px', fontWeight: '800', flexShrink: 0
-                          }}>
-                            {m.name.substring(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span style={{ fontSize: '13px', fontWeight: '800', color: '#10201E' }}>{m.name}</span>
-                              {m.isOwner && (
-                                <span style={{
-                                  fontSize: '10px', fontWeight: '800', padding: '1px 6px',
-                                  borderRadius: '4px', background: '#F0FDF4', color: '#15803D',
-                                  border: '1px solid #DCFCE7'
-                                }}>
-                                  ACCOUNT OWNER
-                                </span>
-                              )}
+            {/* Members Table: Desktop View */}
+            <div className="mdf-team-desktop-table" style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ background: '#FAFBF9', borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    <th style={{ padding: '12px 20px' }}>Team Member</th>
+                    <th style={{ padding: '12px 16px' }}>Assigned Role</th>
+                    <th style={{ padding: '12px 16px' }}>Domain Access Scope</th>
+                    <th style={{ padding: '12px 16px' }}>2FA Security</th>
+                    <th style={{ padding: '12px 16px' }}>Last Telemetry</th>
+                    <th style={{ padding: '12px 20px', textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredMembers.map((m, i) => {
+                    const roleObj = TEAM_ROLES.find(r => r.id === m.roleId) || TEAM_ROLES[3]
+                    return (
+                      <tr key={m.id} style={{ borderBottom: i < filteredMembers.length - 1 ? '1px solid #F1F5F2' : 'none' }}>
+                        {/* Name & Email */}
+                        <td style={{ padding: '16px 20px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                              width: '38px', height: '38px', borderRadius: '10px',
+                              background: m.isOwner ? '#10201E' : '#FAFBF9',
+                              border: '1.5px solid #D9E1DC',
+                              color: m.isOwner ? '#FFFFFF' : '#10201E',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: '13px', fontWeight: '800', flexShrink: 0
+                            }}>
+                              {m.name.substring(0, 2).toUpperCase()}
                             </div>
-                            <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>{m.email}</div>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontSize: '13px', fontWeight: '800', color: '#10201E' }}>{m.name}</span>
+                                {m.isOwner && (
+                                  <span style={{
+                                    fontSize: '10px', fontWeight: '800', padding: '1px 6px',
+                                    borderRadius: '4px', background: '#F0FDF4', color: '#15803D',
+                                    border: '1px solid #DCFCE7'
+                                  }}>
+                                    ACCOUNT OWNER
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>{m.email}</div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Role Badge */}
+                        <td style={{ padding: '16px 16px' }}>
+                          <span style={{
+                            padding: '4px 10px', borderRadius: '6px', fontSize: '11px',
+                            fontWeight: '800', background: roleObj.bg, color: roleObj.color,
+                            border: `1px solid ${roleObj.border}`
+                          }}>
+                            {roleObj.badge}: {roleObj.title.split('(')[0].trim()}
+                          </span>
+                        </td>
+
+                        {/* Scope */}
+                        <td style={{ padding: '16px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Globe size={13} style={{ color: '#60716B' }} />
+                            <span style={{ fontSize: '12px', fontWeight: '600', color: '#10201E' }}>
+                              {m.scope}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* 2FA */}
+                        <td style={{ padding: '16px 16px' }}>
+                          {m.twoFactor ? (
+                            <span style={{
+                              padding: '3px 8px', borderRadius: '6px', fontSize: '11px',
+                              fontWeight: '700', background: '#F0FDF4', color: '#15803D',
+                              border: '1px solid #DCFCE7', display: 'inline-flex', alignItems: 'center', gap: '4px'
+                            }}>
+                              <CheckCircle2 size={11} /> 2FA Enforced
+                            </span>
+                          ) : (
+                            <span style={{
+                              padding: '3px 8px', borderRadius: '6px', fontSize: '11px',
+                              fontWeight: '700', background: '#FFFBEB', color: '#D97706',
+                              border: '1px solid #FDE68A', display: 'inline-flex', alignItems: 'center', gap: '4px'
+                            }}>
+                              <Clock size={11} /> Setup Pending
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Last Active */}
+                        <td style={{ padding: '16px 16px', fontSize: '12px', color: '#60716B' }}>
+                          {m.lastActive}
+                        </td>
+
+                        {/* Actions */}
+                        <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                          {!m.isOwner ? (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteMember(m.id, m.name)}
+                              style={{
+                                padding: '6px 12px', borderRadius: '7px',
+                                background: '#FFFFFF', border: '1px solid #D9E1DC',
+                                color: '#DC2626', fontSize: '11px', fontWeight: '700',
+                                cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px',
+                                transition: 'all 0.12s ease'
+                              }}
+                            >
+                              <Trash2 size={12} />
+                              <span>Revoke Access</span>
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: '600' }}>Master Key</span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile View: High-density stream cards */}
+            <div className="mdf-team-mobile-list" style={{ padding: '12px' }}>
+              {filteredMembers.map((m) => {
+                const roleObj = TEAM_ROLES.find(r => r.id === m.roleId) || TEAM_ROLES[3]
+                return (
+                  <div key={m.id} style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '10px',
+                    padding: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)'
+                  }}>
+                    {/* Top Row: Avatar + Name + Role Badge */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                        <div style={{
+                          width: '32px', height: '32px', borderRadius: '8px',
+                          background: m.isOwner ? '#10201E' : '#FAFBF9',
+                          border: '1.5px solid #D9E1DC',
+                          color: m.isOwner ? '#FFFFFF' : '#10201E',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '12px', fontWeight: '800', flexShrink: 0
+                        }}>
+                          {m.name.substring(0, 2).toUpperCase()}
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <strong style={{ fontSize: '13px', color: '#10201E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {m.name}
+                            </strong>
+                            {m.isOwner && (
+                              <span style={{
+                                fontSize: '9px', fontWeight: '800', padding: '1px 5px',
+                                borderRadius: '4px', background: '#F0FDF4', color: '#15803D',
+                                border: '1px solid #DCFCE7', flexShrink: 0
+                              }}>
+                                OWNER
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#60716B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {m.email}
                           </div>
                         </div>
-                      </td>
+                      </div>
 
-                      {/* Role Badge */}
-                      <td style={{ padding: '16px 16px' }}>
-                        <span style={{
-                          padding: '4px 10px', borderRadius: '6px', fontSize: '11px',
-                          fontWeight: '800', background: roleObj.bg, color: roleObj.color,
-                          border: `1px solid ${roleObj.border}`
-                        }}>
-                          {roleObj.badge}: {roleObj.title.split('(')[0].trim()}
-                        </span>
-                      </td>
+                      <span style={{
+                        padding: '2px 7px', borderRadius: '4px', fontSize: '10px',
+                        fontWeight: '800', background: roleObj.bg, color: roleObj.color,
+                        border: `1px solid ${roleObj.border}`, flexShrink: 0
+                      }}>
+                        {roleObj.badge}
+                      </span>
+                    </div>
 
-                      {/* Scope */}
-                      <td style={{ padding: '16px 16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Globe size={13} style={{ color: '#60716B' }} />
-                          <span style={{ fontSize: '12px', fontWeight: '600', color: '#10201E' }}>
-                            {m.scope}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* 2FA */}
-                      <td style={{ padding: '16px 16px' }}>
+                    {/* Middle Row: Scope + 2FA */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', fontSize: '11px', color: '#60716B', paddingTop: '4px', borderTop: '1px solid #F1F5F9' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <Globe size={12} color="#60716B" />
+                        <span style={{ fontWeight: '600', color: '#10201E' }}>{m.scope}</span>
+                      </div>
+                      <div>
                         {m.twoFactor ? (
-                          <span style={{
-                            padding: '3px 8px', borderRadius: '6px', fontSize: '11px',
-                            fontWeight: '700', background: '#F0FDF4', color: '#15803D',
-                            border: '1px solid #DCFCE7', display: 'inline-flex', alignItems: 'center', gap: '4px'
-                          }}>
-                            <CheckCircle2 size={11} /> 2FA Enforced
+                          <span style={{ color: '#15803D', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                            <CheckCircle2 size={11} /> 2FA Active
                           </span>
                         ) : (
-                          <span style={{
-                            padding: '3px 8px', borderRadius: '6px', fontSize: '11px',
-                            fontWeight: '700', background: '#FFFBEB', color: '#D97706',
-                            border: '1px solid #FDE68A', display: 'inline-flex', alignItems: 'center', gap: '4px'
-                          }}>
-                            <Clock size={11} /> Setup Pending
+                          <span style={{ color: '#D97706', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                            <Clock size={11} /> 2FA Pending
                           </span>
                         )}
-                      </td>
+                      </div>
+                    </div>
 
-                      {/* Last Active */}
-                      <td style={{ padding: '16px 16px', fontSize: '12px', color: '#60716B' }}>
-                        {m.lastActive}
-                      </td>
-
-                      {/* Actions */}
-                      <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                        {!m.isOwner ? (
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteMember(m.id, m.name)}
-                            style={{
-                              padding: '6px 12px', borderRadius: '7px',
-                              background: '#FFFFFF', border: '1px solid #D9E1DC',
-                              color: '#DC2626', fontSize: '11px', fontWeight: '700',
-                              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px',
-                              transition: 'all 0.12s ease'
-                            }}
-                          >
-                            <Trash2 size={12} />
-                            <span>Revoke Access</span>
-                          </button>
-                        ) : (
-                          <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: '600' }}>Master Key</span>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                    {/* Bottom Row: Last Active + Action */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', fontSize: '11px' }}>
+                      <span style={{ color: '#94A3B8' }}>Active: {m.lastActive}</span>
+                      {!m.isOwner && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteMember(m.id, m.name)}
+                          style={{
+                            padding: '4px 8px', borderRadius: '5px',
+                            background: '#FFFFFF', border: '1px solid #FECACA',
+                            color: '#DC2626', fontSize: '11px', fontWeight: '700',
+                            cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px'
+                          }}
+                        >
+                          <Trash2 size={11} />
+                          <span>Revoke</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
 

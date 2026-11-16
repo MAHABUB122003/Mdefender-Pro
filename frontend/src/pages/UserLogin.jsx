@@ -171,11 +171,11 @@ export default function UserLogin({ onLoginSuccess }) {
 
         <h1
           style={{
-            fontSize: '31px',
+            fontSize: 'clamp(24px, 5.5vw, 31px)',
             fontWeight: 600,
             letterSpacing: '-0.06em',
             color: '#10201E',
-            lineHeight: 1.12,
+            lineHeight: 1.15,
             marginBottom: '8px',
           }}
         >

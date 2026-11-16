@@ -51,7 +51,7 @@ export default function WordPressSolution() {
         background: 'radial-gradient(ellipse 90% 50% at 50% 0%, rgba(40, 116, 93, 0.08), transparent 70%), #F7F6F1',
         borderBottom: '1px solid #D9E1DC'
       }}>
-        <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(20px, 3.2vw, 36px)' }}>
+        <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(16px, 3.2vw, 36px)' }}>
           
           {/* Breadcrumb */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#4A5D5A', marginBottom: '22px' }}>
@@ -60,7 +60,7 @@ export default function WordPressSolution() {
             <span style={{ color: '#28745D', fontWeight: 600 }}>WordPress Sovereign Hardening &amp; RASP</span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '48px', alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '48px', alignItems: 'center' }}>
             
             {/* Left: Value Proposition */}
             <div>
@@ -296,7 +296,7 @@ export default function WordPressSolution() {
 
       {/* ===================== 6 DEEP WORDPRESS SOVEREIGN FEATURES ===================== */}
       <section style={{ padding: '96px 0', background: '#FFFFFF', borderBottom: '1px solid #D9E1DC' }}>
-        <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(20px, 3.2vw, 36px)' }}>
+        <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(16px, 3.2vw, 36px)' }}>
           <div style={{ textAlign: 'center', maxWidth: '720px', margin: '0 auto 56px auto' }}>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#28745D', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '10px' }}>
               WordPress Native Hardening
@@ -309,7 +309,7 @@ export default function WordPressSolution() {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '28px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '28px' }}>
             {[
               {
                 icon: FileCode,
@@ -417,7 +417,7 @@ export default function WordPressSolution() {
         color: '#FFFFFF',
         textAlign: 'center'
       }}>
-        <div style={{ maxWidth: '820px', margin: '0 auto', padding: '0 clamp(20px, 3.2vw, 36px)' }}>
+        <div style={{ maxWidth: '820px', margin: '0 auto', padding: '0 clamp(16px, 3.2vw, 36px)' }}>
           <h2 style={{ fontSize: 'clamp(32px, 4vw, 48px)', fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.04em', marginBottom: '18px' }}>
             Give your WordPress sites enterprise immunity today.
           </h2>

@@ -203,7 +203,7 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
   return (
     <header className="header">
       <div className="header-left">
-        <button type="button" className="menu-toggle" id="menuToggle" onClick={onToggleSidebar} aria-label="Toggle Navigation" style={{ cursor: 'pointer', padding: '6px' }}>
+        <button type="button" className="menu-toggle" id="menuToggle" onClick={onToggleSidebar} aria-label="Toggle Navigation" style={{ cursor: 'pointer' }}>
           <Menu size={20} />
         </button>
         <div className="header-title-group">
@@ -224,6 +224,7 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
         <div style={{ position: 'relative' }}>
           <button
             type="button"
+            className="header-domain-btn"
             onClick={(e) => {
               e.stopPropagation();
               setShowDomainMenu(!showDomainMenu);
@@ -237,18 +238,19 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
               background: '#FFFFFF',
               border: '1px solid #D9E1DC',
               borderRadius: '8px',
-              padding: '6px 14px',
+              padding: '6px 12px',
               cursor: 'pointer',
               boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
               transition: 'all 0.15s ease',
-              outline: 'none'
+              outline: 'none',
+              maxWidth: '180px'
             }}
             aria-expanded={showDomainMenu}
             aria-haspopup="true"
             title="Filter and synchronize WordPress domain telemetry"
           >
-            <Globe size={15} color="#10201E" strokeWidth={2.2} />
-            <span style={{ fontSize: '13px', fontWeight: '700', color: '#10201E', whiteSpace: 'nowrap' }}>
+            <Globe size={15} color="#10201E" strokeWidth={2.2} style={{ flexShrink: 0 }} />
+            <span className="header-domain-text" style={{ fontSize: '13px', fontWeight: '700', color: '#10201E', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {displayDomainLabel}
             </span>
             <ChevronDown
@@ -257,23 +259,26 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
               strokeWidth={2.4}
               style={{
                 transform: showDomainMenu ? 'rotate(180deg)' : 'none',
-                transition: 'transform 0.2s ease'
+                transition: 'transform 0.2s ease',
+                flexShrink: 0
               }}
             />
           </button>
 
           {showDomainMenu && (
             <div
+              className="header-domain-dropdown"
               style={{
                 position: 'absolute',
                 top: 'calc(100% + 6px)',
                 right: 0,
                 minWidth: '240px',
+                maxWidth: 'calc(100vw - 24px)',
                 background: '#FFFFFF',
                 borderRadius: '10px',
                 border: '1px solid #D9E1DC',
                 boxShadow: '0 8px 24px rgba(11, 37, 34, 0.12)',
-                zIndex: 1000,
+                zIndex: 1050,
                 padding: '6px',
                 display: 'flex',
                 flexDirection: 'column',
@@ -412,7 +417,7 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
           <div
             className={`notification-panel ${showNotifications ? 'show' : ''}`}
             onClick={(e) => e.stopPropagation()}
-            style={{ width: '340px', maxWidth: '92vw' }}
+            style={{ width: '340px', maxWidth: 'calc(100vw - 24px)', right: 0 }}
           >
             <div className="panel-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -507,7 +512,7 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
 
         {/* Modern 14-Day Free Trial Countdown (Hidden permanently when PRO) */}
         {!isPro && (
-          <div style={{
+          <div className="header-trial-badge" style={{
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
@@ -520,7 +525,7 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
             color: trialDays <= 4 ? '#DC2626' : '#059669',
             whiteSpace: 'nowrap'
           }}>
-            <span>⏳ {trialDays > 0 ? `${trialDays}d Trial Left` : 'Trial Expired'}</span>
+            <span className="header-trial-text">⏳ {trialDays > 0 ? `${trialDays}d Trial Left` : 'Trial Expired'}</span>
             <Link
               to="/user/pricing"
               style={{
@@ -592,7 +597,7 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
             )}
           </button>
 
-          <div className={`dropdown-menu ${showDropdown ? 'show' : ''}`} style={{ right: 0 }}>
+          <div className={`dropdown-menu ${showDropdown ? 'show' : ''}`} style={{ right: 0, maxWidth: 'calc(100vw - 24px)' }}>
             <div style={{ padding: '8px 14px', borderBottom: '1px solid #E2E8F0', marginBottom: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E' }}>{userName}</div>

@@ -842,12 +842,7 @@ function BulkUptimeContent() {
       {/* ===================================================================== */}
       {/* SECTION 2: 2-COLUMN OBSERVABILITY WORKSPACE (SINGLE VIEWPORT FIT)    */}
       {/* ===================================================================== */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1.28fr) minmax(0, 1fr)',
-        gap: '10px',
-        alignItems: 'stretch'
-      }}>
+      <div className="mdf-uptime-workspace-grid">
         
         {/* LEFT COLUMN: AVAILABILITY TIMELINE & FLEET MATRIX */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -941,9 +936,11 @@ function BulkUptimeContent() {
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '2px',
+              gap: timeWindow === '90d' ? '1px' : '2px',
               padding: '2px 0 6px',
-              minHeight: '26px'
+              minHeight: '26px',
+              overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch'
             }}>
               {heartbeatDays.map((day, idx) => (
                 <div
@@ -1031,8 +1028,8 @@ function BulkUptimeContent() {
               </span>
             </div>
 
-            <div style={{ overflowX: 'auto', flex: 1 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', flex: 1 }}>
+              <table style={{ width: '100%', minWidth: '520px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #E2E8F0', color: '#64748B', background: '#F8FAFC' }}>
                     <th style={{ padding: '6px 10px', fontWeight: '600', borderRadius: '5px 0 0 5px' }}>Endpoint</th>
@@ -1249,7 +1246,7 @@ function BulkUptimeContent() {
             </div>
 
             {/* 5 Chips Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
+            <div className="mdf-socket-chips-grid">
               <div style={{ ...metricCardStyle, padding: '6px 8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '9.5px', color: '#64748B', fontWeight: '600' }}>
                   <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#3B82F6' }} />

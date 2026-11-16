@@ -72,7 +72,7 @@ export default function FintechSolution() {
         background: 'radial-gradient(ellipse 90% 50% at 50% 0%, rgba(202, 138, 4, 0.08), transparent 70%), #F7F6F1',
         borderBottom: '1px solid #D9E1DC'
       }}>
-        <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(20px, 3.2vw, 36px)' }}>
+        <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(16px, 3.2vw, 36px)' }}>
           
           {/* Breadcrumb */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#4A5D5A', marginBottom: '22px' }}>
@@ -81,7 +81,7 @@ export default function FintechSolution() {
             <span style={{ color: '#CA8A04', fontWeight: 600 }}>FinTech, Banking &amp; Regulated Compliance</span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '48px', alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '48px', alignItems: 'center' }}>
             
             {/* Left: Value Proposition */}
             <div>
@@ -284,7 +284,7 @@ export default function FintechSolution() {
 
       {/* ===================== REGULATORY FRAMEWORK MATRIX ===================== */}
       <section style={{ padding: '80px 0', background: '#FFFFFF', borderBottom: '1px solid #D9E1DC' }}>
-        <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(20px, 3.2vw, 36px)' }}>
+        <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(16px, 3.2vw, 36px)' }}>
           <div style={{ textAlign: 'center', maxWidth: '720px', margin: '0 auto 48px auto' }}>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#CA8A04', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '10px' }}>
               Standard-by-Standard Mapping
@@ -378,7 +378,7 @@ export default function FintechSolution() {
 
       {/* ===================== 6 DEEP FINTECH FEATURES ===================== */}
       <section style={{ padding: '96px 0', background: '#F7F6F1' }}>
-        <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(20px, 3.2vw, 36px)' }}>
+        <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(16px, 3.2vw, 36px)' }}>
           <div style={{ textAlign: 'center', maxWidth: '720px', margin: '0 auto 56px auto' }}>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#CA8A04', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '10px' }}>
               Institutional Grade
@@ -391,7 +391,7 @@ export default function FintechSolution() {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '28px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '28px' }}>
             {[
               {
                 icon: Database,
@@ -499,7 +499,7 @@ export default function FintechSolution() {
         color: '#FFFFFF',
         textAlign: 'center'
       }}>
-        <div style={{ maxWidth: '820px', margin: '0 auto', padding: '0 clamp(20px, 3.2vw, 36px)' }}>
+        <div style={{ maxWidth: '820px', margin: '0 auto', padding: '0 clamp(16px, 3.2vw, 36px)' }}>
           <h2 style={{ fontSize: 'clamp(32px, 4vw, 48px)', fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.04em', marginBottom: '18px' }}>
             Elevate compliance and eliminate audit friction.
           </h2>

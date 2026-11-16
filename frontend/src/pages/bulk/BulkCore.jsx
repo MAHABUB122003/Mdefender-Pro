@@ -627,8 +627,8 @@ export default function BulkCore() {
               </div>
             </div>
 
-            {/* Responsive Table */}
-            <div style={{ overflowX: 'auto' }}>
+            {/* Responsive Desktop Table */}
+            <div className="mdf-wp-desktop-table" style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '920px' }}>
                 <thead>
                   <tr style={{ background: '#F8FAF9', borderBottom: '1px solid #D9E1DC' }}>
@@ -855,6 +855,188 @@ export default function BulkCore() {
                   })}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Core Cards View (Zero Horizontal Scrolling) */}
+            <div className="mdf-wp-mobile-list" style={{ paddingBottom: '20px' }}>
+              {displayedSites.map((site) => {
+                const isVerifying = verifyingSiteId === site.site_id
+                const isUpdating = updatingSiteId === site.site_id
+                const hasUpdate = site.update_available === true
+                const versionKnown = site.update_available !== null && site.update_available !== undefined
+                const repairableFileCount = (site.modified_files || []).length + (site.missing_files || []).length
+
+                return (
+                  <div
+                    key={site.site_id}
+                    style={{
+                      background: '#FFFFFF',
+                      border: '1px solid #D9E1DC',
+                      borderRadius: '10px',
+                      padding: '12px 14px',
+                      boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px'
+                    }}
+                  >
+                    {/* Top: Origin & Status */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '8px',
+                          background: '#F1F5F9',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}>
+                          <Cpu size={15} color="#0B2522" />
+                        </div>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontWeight: '700', fontSize: '13px', color: '#10201E' }}>
+                              {site.domain}
+                            </span>
+                            {site.url && (
+                              <a
+                                href={site.url.startsWith('http') ? site.url : `https://${site.domain}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{ color: '#889892', display: 'flex', alignItems: 'center' }}
+                              >
+                                <ExternalLink size={12} />
+                              </a>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#60716B', marginTop: '1px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <span style={{
+                              width: '6px',
+                              height: '6px',
+                              borderRadius: '50%',
+                              background: site.is_online ? '#2A8B68' : '#94A3B8'
+                            }} />
+                            <span>{site.is_online ? 'Origin Live' : 'Connected'}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {hasUpdate ? (
+                        <span style={badgeStyle('#FFF4ED', '#EA580C', '#FED7AA')}>
+                          UPDATE TO v{site.latest_version}
+                        </span>
+                      ) : versionKnown ? (
+                        <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>
+                          v{site.installed_version} CURRENT
+                        </span>
+                      ) : (
+                        <span style={badgeStyle('#FFF4ED', '#EA580C', '#FED7AA')}>UNKNOWN</span>
+                      )}
+                    </div>
+
+                    {/* Middle: Runtime Info & Checksum Status */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '8px',
+                      padding: '8px 10px',
+                      background: '#FAFBF9',
+                      borderRadius: '8px',
+                      border: '1px solid #E6ECE9',
+                      fontSize: '11.5px'
+                    }}>
+                      <div style={{ color: '#60716B' }}>
+                        <span>PHP {site.php_version || '8.x'}</span>
+                        <span style={{ margin: '0 5px' }}>•</span>
+                        <span>MySQL {site.mysql_version || '5.7+'}</span>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <span style={{
+                          fontSize: '10.5px',
+                          fontWeight: 700,
+                          padding: '2px 7px',
+                          borderRadius: '10px',
+                          background: site.checksum_status === 'verified' ? '#E8F3EC' : '#FFF4ED',
+                          color: site.checksum_status === 'verified' ? '#2A8B68' : '#EA580C'
+                        }}>
+                          {site.checksum_status === 'verified' ? 'SVN Verified' : 'Audit Checksum'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Bottom: Policy and Action Buttons */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                      <select
+                        value={site.auto_update_policy || 'minor'}
+                        onChange={(e) => handlePolicyChange(site.site_id, e.target.value)}
+                        style={{
+                          fontSize: '11.5px',
+                          fontWeight: '600',
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          border: '1px solid #D9E1DC',
+                          background: '#FFFFFF',
+                          color: '#10201E',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="major">Major & Minor Auto</option>
+                        <option value="minor">Minor Only</option>
+                        <option value="disabled">Disabled (Manual)</option>
+                      </select>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <button
+                          onClick={() => handleVerifyChecksums(site)}
+                          disabled={isVerifying}
+                          style={actionSecondaryBtnStyle}
+                        >
+                          <RefreshCw size={12} style={{ animation: isVerifying ? 'spin 1s linear infinite' : 'none' }} />
+                          <span>{isVerifying ? '...' : 'Verify'}</span>
+                        </button>
+
+                        {repairableFileCount > 0 && (
+                          <button
+                            onClick={() => handleRepairAllCoreFiles(site)}
+                            disabled={repairingFile === '__all__'}
+                            style={{
+                              ...actionPrimaryBtnStyle,
+                              background: '#DC2626',
+                              borderColor: '#DC2626'
+                            }}
+                          >
+                            <span>Repair</span>
+                          </button>
+                        )}
+
+                        {hasUpdate ? (
+                          <button
+                            onClick={() => handleUpdateCore(site)}
+                            disabled={isUpdating}
+                            style={actionPrimaryBtnStyle}
+                          >
+                            <Sparkles size={12} />
+                            <span>Upgrade</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setAuditModalSite(site)}
+                            style={actionInspectBtnStyle}
+                          >
+                            <FileCheck size={12} />
+                            <span>Inspect</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
 

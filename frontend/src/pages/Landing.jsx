@@ -111,6 +111,7 @@ export default function Landing() {
           top: 0,
           right: 0,
           width: '720px',
+          maxWidth: '100vw',
           height: '640px',
           background: 'radial-gradient(circle at 80% 15%, rgba(232, 238, 232, 0.6) 0%, rgba(247, 246, 241, 0) 70%)',
           pointerEvents: 'none',
@@ -123,6 +124,7 @@ export default function Landing() {
           top: '120px',
           left: 0,
           width: '560px',
+          maxWidth: '100vw',
           height: '560px',
           background: 'radial-gradient(circle at 15% 30%, rgba(234, 244, 255, 0.45) 0%, rgba(247, 246, 241, 0) 65%)',
           pointerEvents: 'none',
@@ -157,7 +159,7 @@ export default function Landing() {
               className="hero-grid"
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'clamp(440px, 34%, 520px) 1fr',
+                gridTemplateColumns: 'clamp(320px, 34%, 520px) 1fr',
                 gap: 'clamp(28px, 3.5vw, 56px)',
                 alignItems: 'center',
               }}
@@ -465,7 +467,7 @@ export default function Landing() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
                 gap: '18px',
               }}
             >
@@ -1179,7 +1181,7 @@ export default function Landing() {
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))',
                     gap: '12px',
                     marginBottom: '20px',
                   }}
@@ -1285,8 +1287,9 @@ export default function Landing() {
               </p>
             </div>
 
-            {/* Benchmark Table Card */}
+            {/* Benchmark Table Card (Desktop) */}
             <div
+              className="mdf-benchmark-desktop"
               style={{
                 background: '#ffffff',
                 borderRadius: '16px',
@@ -1439,6 +1442,127 @@ export default function Landing() {
                 </tbody>
               </table>
             </div>
+
+            {/* Mobile Benchmark Stream Cards */}
+            <div className="mdf-benchmark-mobile">
+              {[
+                {
+                  cap: 'Edge Inspection Latency',
+                  mdef: '< 0.61ms (Single-Pass Radix)',
+                  mdefColor: '#28745D',
+                  legacy: '15ms – 30ms',
+                  wp: '80ms – 250ms (Origin Lag)'
+                },
+                {
+                  cap: 'Threat Intelligence & Signatures',
+                  mdef: '14,041,641+ Records (ML + Checksums)',
+                  mdefColor: '#E8792F',
+                  legacy: 'Static Regex (~50,000)',
+                  wp: 'Local Hashes (~12,000)'
+                },
+                {
+                  cap: 'Hacker Defense & Cloaking',
+                  mdef: 'Stealth HTTP 502 / ERR_CLOSED',
+                  mdefColor: '#28745D',
+                  legacy: 'Obvious 403 (Alerts Attacker)',
+                  wp: 'Leaked PHP Error Stacks'
+                },
+                {
+                  cap: 'L7 Anti-DDoS & Bot Challenge',
+                  mdef: 'PoW Turnstile (Zero Image Captchas)',
+                  mdefColor: '#28745D',
+                  legacy: 'Annoying Puzzle Captchas',
+                  wp: 'None (Crashes Apache/MySQL)'
+                },
+                {
+                  cap: 'Malware & Backdoor Detection',
+                  mdef: '5.32M Checksums + AST Taint Analysis',
+                  mdefColor: '#28745D',
+                  legacy: 'Blind to Server Files (DNS Only)',
+                  wp: 'Basic Regex (Bypassed by eval/base64)'
+                },
+                {
+                  cap: 'Database Storage Architecture',
+                  mdef: 'Zero-Bloat (Live Stream On-Demand)',
+                  mdefColor: '#28745D',
+                  legacy: 'Requires Heavy SIEM Logs',
+                  wp: 'Bloats wp_options & MySQL (GBs)'
+                },
+                {
+                  cap: 'In-Memory Runtime RASP',
+                  mdef: 'Priority 1 Pre-Execution Hook',
+                  mdefColor: '#28745D',
+                  legacy: 'Blind to PHP Internals',
+                  wp: 'Post-Execution Check Only'
+                },
+                {
+                  cap: 'Generative AI & LLM Barrier',
+                  mdef: 'Built-In OWASP LLM Top 10 Guard',
+                  mdefColor: '#28745D',
+                  legacy: 'Expensive Enterprise Add-on ($$$)',
+                  wp: 'Not Supported'
+                },
+                {
+                  cap: 'Multi-Site Fleet SaaS Console',
+                  mdef: '1-Click Updates & Safe Rollback (1-100+ Sites)',
+                  mdefColor: '#28745D',
+                  legacy: 'Not Supported (DNS Only)',
+                  wp: 'Single-Site Manual Logins'
+                },
+                {
+                  cap: 'Pricing & Feature Access',
+                  mdef: '$4 / site / month (14-Day Free Trial)',
+                  mdefColor: '#E8792F',
+                  legacy: '$200 – $3,000 / month (Enterprise lock)',
+                  wp: '$149 – $499 / year per site'
+                }
+              ].map((bench, bIdx) => (
+                <div
+                  key={bIdx}
+                  style={{
+                    background: '#ffffff',
+                    borderRadius: '12px',
+                    border: '1.5px solid #D9E1DC',
+                    padding: '14px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
+                  }}
+                >
+                  <div style={{ fontSize: '13px', fontWeight: '850', color: '#10201E' }}>
+                    {bench.cap}
+                  </div>
+                  
+                  {/* MDefender Pro Value */}
+                  <div style={{
+                    background: '#FAFBF9',
+                    border: '1px solid #D9E1DC',
+                    borderLeft: `3px solid ${bench.mdefColor}`,
+                    borderRadius: '6px',
+                    padding: '8px 10px'
+                  }}>
+                    <div style={{ fontSize: '10px', fontWeight: '800', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      MDefender Pro
+                    </div>
+                    <div style={{ fontSize: '13px', fontWeight: '800', color: bench.mdefColor, marginTop: '2px' }}>
+                      {bench.mdef}
+                    </div>
+                  </div>
+
+                  {/* Competitor Comparisons */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '11px' }}>
+                    <div style={{ background: '#F7F6F1', borderRadius: '6px', padding: '7px 9px' }}>
+                      <div style={{ color: '#8EA29C', fontWeight: '700', marginBottom: '2px', fontSize: '10px' }}>Legacy Cloud WAFs</div>
+                      <div style={{ color: '#4A5D5A', fontWeight: '500' }}>{bench.legacy}</div>
+                    </div>
+                    <div style={{ background: '#F7F6F1', borderRadius: '6px', padding: '7px 9px' }}>
+                      <div style={{ color: '#8EA29C', fontWeight: '700', marginBottom: '2px', fontSize: '10px' }}>Generic WP Plugins</div>
+                      <div style={{ color: '#4A5D5A', fontWeight: '500' }}>{bench.wp}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -1463,7 +1587,7 @@ export default function Landing() {
               className="comparison-grid"
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
                 gap: '48px',
                 alignItems: 'center',
               }}
@@ -1531,7 +1655,7 @@ export default function Landing() {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))',
                   gap: '20px',
                 }}
               >
@@ -1755,7 +1879,7 @@ export default function Landing() {
                 className="threat-panel-grid"
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))',
                   gap: '36px',
                   alignItems: 'center',
                 }}
@@ -2250,6 +2374,22 @@ export default function Landing() {
 
       {/* Responsive Media Queries */}
       <style>{`
+        .mdf-benchmark-desktop {
+          display: block;
+        }
+        .mdf-benchmark-mobile {
+          display: none;
+        }
+        @media (max-width: 768px) {
+          .mdf-benchmark-desktop {
+            display: none !important;
+          }
+          .mdf-benchmark-mobile {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 12px !important;
+          }
+        }
         @media (max-width: 900px) {
           .hero-grid {
             grid-template-columns: 1fr !important;
@@ -2311,6 +2451,20 @@ export default function Landing() {
             justify-content: center !important;
           }
           .footer-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+        @media (max-width: 420px) {
+          .hero-heading {
+            font-size: 32px !important;
+            letter-spacing: -0.04em !important;
+          }
+          .cta-btn-group a {
+            min-height: 46px !important;
+            padding-left: 18px !important;
+            padding-right: 18px !important;
+          }
+          .trust-strip-grid {
             grid-template-columns: 1fr !important;
           }
         }
