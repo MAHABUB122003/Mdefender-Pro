@@ -155,49 +155,50 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 8px 10px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   cursor: pointer;
-  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   outline: none;
   user-select: none;
 }
 .profile-trigger-btn:hover {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(255, 255, 255, 0.16);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 .profile-trigger-btn.active {
-  background: rgba(255, 255, 255, 0.09);
-  border-color: rgba(232, 121, 47, 0.5);
-  box-shadow: 0 0 0 1px rgba(232, 121, 47, 0.25), 0 4px 12px rgba(0, 0, 0, 0.35);
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.2), 0 4px 14px rgba(0, 0, 0, 0.35);
 }
 
 .popover-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 7px 9px;
-  border-radius: 7px;
-  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12.5px;
   font-weight: 500;
   color: #94a3b8;
   text-decoration: none;
   cursor: pointer;
-  transition: all 0.14s ease;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
 }
 .popover-item svg {
-  color: #6A7D78;
-  transition: color 0.14s ease;
+  color: #64748b;
+  transition: all 0.15s ease;
 }
 .popover-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.05);
   color: #FFFFFF;
+  transform: translateX(2px);
 }
 .popover-item:hover svg {
-  color: #F38A3E !important;
+  color: #10B981 !important;
 }
 
 .popover-logout-btn {
@@ -205,22 +206,23 @@ body {
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 7px 9px;
-  border-radius: 7px;
+  padding: 8px 10px;
+  border-radius: 8px;
   border: none;
   background: transparent;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 12.5px;
+  font-weight: 600;
   color: #f87171;
   cursor: pointer;
   text-align: left;
-  transition: all 0.14s ease;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   outline: none;
   user-select: none;
 }
 .popover-logout-btn:hover {
   background: rgba(239, 68, 68, 0.12);
-  color: #fca5a5;
+  color: #ef4444;
+  transform: translateX(2px);
 }
 
 @keyframes popoverFadeIn {

@@ -738,13 +738,13 @@ export default function UserSidebar({ isOpen, onClose }) {
               style={{
                 position: 'absolute',
                 bottom: 'calc(100% + 8px)',
-                left: '10px',
-                right: '10px',
-                background: '#0d1817',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                borderRadius: '12px',
-                boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05)',
-                backdropFilter: 'blur(16px)',
+                left: '8px',
+                right: '8px',
+                background: '#0B1514',
+                border: '1px solid rgba(255, 255, 255, 0.09)',
+                borderRadius: '14px',
+                boxShadow: '0 24px 48px -12px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.05), 0 4px 14px rgba(0, 0, 0, 0.5)',
+                backdropFilter: 'blur(20px)',
                 padding: '8px',
                 zIndex: 1000,
                 display: 'flex',
@@ -753,15 +753,17 @@ export default function UserSidebar({ isOpen, onClose }) {
                 animation: 'popoverFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1)'
               }}
             >
-              {/* Popover Header: User identity & subscription */}
-              <div style={{ padding: '8px 8px 10px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              {/* Popover Header: Circular Avatar & Identity */}
+              <div style={{ padding: '8px 8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  {/* Circular Avatar */}
                   <div style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '8px',
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '50%',
                     background: 'linear-gradient(135deg, #10B981 0%, #064E3B 100%)',
-                    border: '1px solid rgba(16, 185, 129, 0.4)',
+                    border: '1.5px solid rgba(16, 185, 129, 0.4)',
+                    boxShadow: '0 0 0 3px rgba(16, 185, 129, 0.12), 0 2px 8px rgba(0,0,0,0.3)',
                     color: '#ffffff',
                     display: 'flex',
                     alignItems: 'center',
@@ -769,76 +771,114 @@ export default function UserSidebar({ isOpen, onClose }) {
                     fontSize: '13px',
                     fontWeight: 800,
                     letterSpacing: '0.04em',
-                    boxShadow: '0 2px 8px rgba(16,185,129,0.3)',
                     flexShrink: 0
                   }}>
                     {userInitials}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {userName}
-                      </span>
-                      <span style={{
-                        fontSize: '9px',
-                        fontWeight: 800,
-                        padding: '1px 5px',
-                        borderRadius: '4px',
-                        background: isPaid ? 'rgba(16, 185, 129, 0.15)' : 'rgba(232, 121, 47, 0.15)',
-                        color: isPaid ? '#10B981' : '#E8792F',
-                        border: isPaid ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(232, 121, 47, 0.3)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em'
-                      }}>
-                        {isPaid ? (userPlan === 'enterprise' ? 'ENTERPRISE' : 'PRO') : 'FREE TIER'}
-                      </span>
-                    </div>
-                    <span style={{ fontSize: '11px', color: '#94A3B8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <span style={{
+                      fontSize: '13.5px',
+                      fontWeight: 700,
+                      color: '#FFFFFF',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
+                      {userName}
+                    </span>
+                    <span style={{
+                      fontSize: '11px',
+                      color: '#80928F',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      marginTop: '1px'
+                    }}>
                       {userEmail || 'operator@mdefender.io'}
                     </span>
                   </div>
                 </div>
 
-                {/* Tier & Trial Status */}
+                {/* Single Unified Subscription Status Card (Clean & Non-Redundant) */}
                 <div style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.07)',
+                  borderRadius: '10px',
+                  padding: '9px 10px',
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  borderRadius: '7px',
-                  padding: '6px 8px'
+                  flexDirection: 'column',
+                  gap: '6px'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{
-                      width: '6.5px',
-                      height: '6.5px',
-                      borderRadius: '50%',
-                      background: isPaid ? '#10B981' : '#F59E0B',
-                      boxShadow: isPaid ? '0 0 6px rgba(16,185,129,0.8)' : 'none'
-                    }} />
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: '#E2E8F0' }}>
-                      {planName}
-                    </span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{
+                        width: '6.5px',
+                        height: '6.5px',
+                        borderRadius: '50%',
+                        background: '#10B981',
+                        boxShadow: '0 0 8px rgba(16,185,129,0.9)'
+                      }} />
+                      <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#F1F5F9' }}>
+                        {isPaid ? planName : (trialDays ? 'Enterprise Pro Trial' : 'Starter Free')}
+                      </span>
+                    </div>
+                    {trialDays ? (
+                      <span style={{
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        color: '#10B981',
+                        background: 'rgba(16, 185, 129, 0.12)',
+                        border: '1px solid rgba(16, 185, 129, 0.25)',
+                        padding: '1.5px 7px',
+                        borderRadius: '10px'
+                      }}>
+                        {trialDays}d Left
+                      </span>
+                    ) : (
+                      <Link
+                        to="/user/pricing"
+                        onClick={() => { setShowProfileMenu(false); handleLinkClick(); }}
+                        style={{ fontSize: '10.5px', fontWeight: 600, color: '#10B981', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '2px' }}
+                      >
+                        {isPaid ? 'Manage' : 'Upgrade'} <ChevronRight size={11} />
+                      </Link>
+                    )}
                   </div>
-                  {trialDays ? (
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#E8792F', background: 'rgba(232,121,47,0.12)', border: '1px solid rgba(232,121,47,0.25)', padding: '2px 6px', borderRadius: '4px' }}>
-                      {trialDays}d Trial
-                    </span>
-                  ) : (
-                    <Link
-                      to="/user/pricing"
-                      onClick={() => { setShowProfileMenu(false); handleLinkClick(); }}
-                      style={{ fontSize: '10.5px', fontWeight: 600, color: '#E8792F', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '3px' }}
-                    >
-                      Manage Plan <ChevronRight size={12} />
-                    </Link>
+
+                  {/* Sleek Trial Timeline Bar (Only shown during active trial) */}
+                  {trialDays && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
+                      <div style={{
+                        width: '100%',
+                        height: '3px',
+                        background: 'rgba(255, 255, 255, 0.08)',
+                        borderRadius: '999px',
+                        overflow: 'hidden'
+                      }}>
+                        <div style={{
+                          width: `${Math.min(100, Math.max(10, (Number(trialDays) / 14) * 100))}%`,
+                          height: '100%',
+                          background: 'linear-gradient(90deg, #10B981, #059669)',
+                          borderRadius: '999px'
+                        }} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '10px', color: '#6A7D78' }}>Full Security Suite Active</span>
+                        <Link
+                          to="/user/pricing"
+                          onClick={() => { setShowProfileMenu(false); handleLinkClick(); }}
+                          style={{ fontSize: '10px', fontWeight: 700, color: '#F38A3E', textDecoration: 'none' }}
+                        >
+                          Upgrade Plan →
+                        </Link>
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
 
               {/* Navigation Options List */}
-              <div style={{ padding: '4px 0' }}>
+              <div style={{ padding: '4px 0', display: 'flex', flexDirection: 'column', gap: '1px' }}>
                 <Link
                   to="/user/settings"
                   onClick={() => { setShowProfileMenu(false); handleLinkClick(); }}
@@ -873,18 +913,29 @@ export default function UserSidebar({ isOpen, onClose }) {
                 </Link>
 
                 <Link
+                  to="/user/pricing"
+                  onClick={() => { setShowProfileMenu(false); handleLinkClick(); }}
+                  className="popover-item"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                    <CreditCard size={14} />
+                    <span>Plans &amp; Billing</span>
+                  </div>
+                </Link>
+
+                <Link
                   to="/user/support"
                   onClick={() => { setShowProfileMenu(false); handleLinkClick(); }}
                   className="popover-item"
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
-                    <LifeBuoy size={14} color="#E8792F" />
-                    <span style={{ fontWeight: 600, color: '#FFFFFF' }}>Support &amp; Help Desk</span>
+                    <LifeBuoy size={14} />
+                    <span>Support &amp; Help Desk</span>
                   </div>
                 </Link>
               </div>
 
-              <div style={{ height: '1px', background: 'rgba(255,255,255,0.07)', margin: '2px 0' }} />
+              <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', margin: '3px 4px' }} />
 
               {/* Sign Out Option */}
               <button
@@ -963,35 +1014,36 @@ export default function UserSidebar({ isOpen, onClose }) {
             aria-label="User profile and account options"
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
-              {/* Avatar with Live Indicator */}
+              {/* Circular Avatar with Live Status Ring */}
               <div style={{ position: 'relative', flexShrink: 0 }}>
                 <div style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '8px',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
                   background: 'linear-gradient(135deg, #10B981 0%, #064E3B 100%)',
-                  border: '1px solid rgba(16, 185, 129, 0.35)',
+                  border: '1.5px solid rgba(16, 185, 129, 0.4)',
+                  boxShadow: '0 0 0 2px rgba(16, 185, 129, 0.1)',
                   color: '#ffffff',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '12px',
                   fontWeight: 800,
-                  letterSpacing: '0.04em',
-                  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.25)'
+                  letterSpacing: '0.04em'
                 }}>
                   {userInitials}
                 </div>
+                {/* Live Online Dot */}
                 <span style={{
                   position: 'absolute',
-                  bottom: '-2px',
-                  right: '-2px',
-                  width: '8px',
-                  height: '8px',
+                  bottom: '0px',
+                  right: '0px',
+                  width: '9px',
+                  height: '9px',
                   borderRadius: '50%',
-                  background: isPaid ? '#10B981' : '#F59E0B',
-                  border: '2px solid #0B1916',
-                  boxShadow: isPaid ? '0 0 6px rgba(16, 185, 129, 0.8)' : 'none'
+                  background: '#10B981',
+                  border: '2px solid #0c1615',
+                  boxShadow: '0 0 6px rgba(16, 185, 129, 0.8)'
                 }} />
               </div>
 
@@ -999,7 +1051,7 @@ export default function UserSidebar({ isOpen, onClose }) {
               <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1, textAlign: 'left' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{
-                    fontSize: '12px',
+                    fontSize: '12.5px',
                     fontWeight: 700,
                     color: '#F8FAFC',
                     whiteSpace: 'nowrap',
@@ -1011,23 +1063,22 @@ export default function UserSidebar({ isOpen, onClose }) {
                   </span>
                   <span style={{
                     fontSize: '8.5px',
-                    fontWeight: 900,
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    background: isPaid ? 'linear-gradient(135deg, #6366F1, #EC4899)' : 'rgba(232, 121, 47, 0.15)',
-                    color: isPaid ? '#FFFFFF' : '#E8792F',
-                    border: isPaid ? 'none' : '1px solid rgba(232, 121, 47, 0.3)',
+                    fontWeight: 800,
+                    padding: '1.5px 6px',
+                    borderRadius: '10px',
+                    background: isPaid ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                    color: '#10B981',
+                    border: '1px solid rgba(16, 185, 129, 0.25)',
                     textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    lineHeight: 1.2,
-                    boxShadow: isPaid ? '0 1px 4px rgba(168, 85, 247, 0.4)' : 'none'
+                    letterSpacing: '0.04em',
+                    lineHeight: 1.2
                   }}>
-                    {isPaid ? (userPlan === 'enterprise' ? '⚡ ENTERPRISE' : '⚡ PRO') : 'TRIAL'}
+                    {isPaid ? (userPlan === 'enterprise' ? 'ENTERPRISE' : 'PRO') : (trialDays ? `${trialDays}D TRIAL` : 'FREE')}
                   </span>
                 </div>
                 <span style={{
                   fontSize: '10.5px',
-                  color: '#94A3B8',
+                  color: '#80928F',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -1043,9 +1094,10 @@ export default function UserSidebar({ isOpen, onClose }) {
             <ChevronsUpDown
               size={14}
               style={{
-                color: showProfileMenu ? '#F38A3E' : '#6A7D78',
+                color: showProfileMenu ? '#10B981' : '#6A7D78',
                 flexShrink: 0,
-                transition: 'color 0.15s ease'
+                transition: 'all 0.18s ease',
+                transform: showProfileMenu ? 'rotate(180deg)' : 'none'
               }}
             />
           </button>
