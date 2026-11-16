@@ -96,7 +96,14 @@ export default function UserSidebar({ isOpen, onClose }) {
   const userName = rawName || 'SecOps Lead Operator'
   const userEmail = cachedProfile.email || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_email') : '') || 'operator@mdefender.io'
 
-  const userPlan = (cachedProfile.plan || (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || 'free') : 'free')).toLowerCase()
+  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
+  const testTrialParam = urlParams ? urlParams.get('test_trial_days') : null
+  const testProParam = urlParams ? urlParams.get('test_pro') : null
+
+  const userPlan = (testProParam === 'true'
+    ? 'pro'
+    : (cachedProfile.plan || (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || 'free') : 'free'))
+  ).toLowerCase()
   const isPaid = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan)
 
   const userInitials = useMemo(() => {
@@ -115,7 +122,25 @@ export default function UserSidebar({ isOpen, onClose }) {
     enterprise: 'Dedicated Enterprise'
   }[userPlan] || (isPaid ? 'Premium Plan' : 'Starter Free')
 
-  const trialDays = (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_trial_days') : null)
+  // Dynamic trial days countdown with registration elapsed date fallback
+  const trialDays = useMemo(() => {
+    if (testTrialParam !== null) return Math.max(0, Number(testTrialParam))
+    if (typeof localStorage === 'undefined') return 14
+    const storedTrial = localStorage.getItem('mdefender_trial_days')
+    if (storedTrial !== null && storedTrial !== undefined && storedTrial !== '') {
+      return Math.max(0, Number(storedTrial))
+    }
+    const createdAt = localStorage.getItem('mdefender_user_created_at')
+    if (createdAt) {
+      const createdDt = new Date(createdAt)
+      if (!isNaN(createdDt.getTime())) {
+        const daysElapsed = Math.floor((Date.now() - createdDt.getTime()) / (1000 * 60 * 60 * 24))
+        return Math.max(0, 14 - daysElapsed)
+      }
+    }
+    return 14
+  }, [testTrialParam])
+
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [copiedApiKey, setCopiedApiKey] = useState(false)
   const [sidebarApiKey, setSidebarApiKey] = useState(() => {
@@ -753,9 +778,9 @@ export default function UserSidebar({ isOpen, onClose }) {
                 animation: 'popoverFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1)'
               }}
             >
-              {/* Popover Header: Circular Avatar & Identity */}
-              <div style={{ padding: '8px 8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              {/* Popover Header: Circular Avatar & Identity (Gemini-Style Minimalist Standard) */}
+              <div style={{ padding: '10px 10px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   {/* Circular Avatar */}
                   <div style={{
                     width: '42px',
@@ -768,112 +793,45 @@ export default function UserSidebar({ isOpen, onClose }) {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '13px',
+                    fontSize: '14px',
                     fontWeight: 800,
-                    letterSpacing: '0.04em',
+                    letterSpacing: '0.03em',
                     flexShrink: 0
                   }}>
                     {userInitials}
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1, textAlign: 'left' }}>
                     <span style={{
                       fontSize: '13.5px',
                       fontWeight: 700,
                       color: '#FFFFFF',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
-                      textOverflow: 'ellipsis'
+                      textOverflow: 'ellipsis',
+                      lineHeight: 1.25
                     }}>
                       {userName}
                     </span>
                     <span style={{
-                      fontSize: '11px',
+                      fontSize: '11.5px',
+                      fontWeight: 600,
+                      color: isPaid ? '#10B981' : (trialDays > 0 ? '#10B981' : '#94A3B8'),
+                      lineHeight: 1.2,
+                      marginTop: '2px'
+                    }}>
+                      {isPaid ? 'Pro' : (trialDays > 0 ? `${trialDays}d Trial` : 'Free')}
+                    </span>
+                    <span style={{
+                      fontSize: '10.5px',
                       color: '#80928F',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
-                      marginTop: '1px'
+                      marginTop: '2px'
                     }}>
                       {userEmail || 'operator@mdefender.io'}
                     </span>
                   </div>
-                </div>
-
-                {/* Single Unified Subscription Status Card (Clean & Non-Redundant) */}
-                <div style={{
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid rgba(255, 255, 255, 0.07)',
-                  borderRadius: '10px',
-                  padding: '9px 10px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{
-                        width: '6.5px',
-                        height: '6.5px',
-                        borderRadius: '50%',
-                        background: '#10B981',
-                        boxShadow: '0 0 8px rgba(16,185,129,0.9)'
-                      }} />
-                      <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#F1F5F9' }}>
-                        {isPaid ? planName : (trialDays ? 'Enterprise Pro Trial' : 'Starter Free')}
-                      </span>
-                    </div>
-                    {trialDays ? (
-                      <span style={{
-                        fontSize: '10px',
-                        fontWeight: 700,
-                        color: '#10B981',
-                        background: 'rgba(16, 185, 129, 0.12)',
-                        border: '1px solid rgba(16, 185, 129, 0.25)',
-                        padding: '1.5px 7px',
-                        borderRadius: '10px'
-                      }}>
-                        {trialDays}d Left
-                      </span>
-                    ) : (
-                      <Link
-                        to="/user/pricing"
-                        onClick={() => { setShowProfileMenu(false); handleLinkClick(); }}
-                        style={{ fontSize: '10.5px', fontWeight: 600, color: '#10B981', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '2px' }}
-                      >
-                        {isPaid ? 'Manage' : 'Upgrade'} <ChevronRight size={11} />
-                      </Link>
-                    )}
-                  </div>
-
-                  {/* Sleek Trial Timeline Bar (Only shown during active trial) */}
-                  {trialDays && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
-                      <div style={{
-                        width: '100%',
-                        height: '3px',
-                        background: 'rgba(255, 255, 255, 0.08)',
-                        borderRadius: '999px',
-                        overflow: 'hidden'
-                      }}>
-                        <div style={{
-                          width: `${Math.min(100, Math.max(10, (Number(trialDays) / 14) * 100))}%`,
-                          height: '100%',
-                          background: 'linear-gradient(90deg, #10B981, #059669)',
-                          borderRadius: '999px'
-                        }} />
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '10px', color: '#6A7D78' }}>Full Security Suite Active</span>
-                        <Link
-                          to="/user/pricing"
-                          onClick={() => { setShowProfileMenu(false); handleLinkClick(); }}
-                          style={{ fontSize: '10px', fontWeight: 700, color: '#F38A3E', textDecoration: 'none' }}
-                        >
-                          Upgrade Plan →
-                        </Link>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -1047,45 +1005,27 @@ export default function UserSidebar({ isOpen, onClose }) {
                 }} />
               </div>
 
-              {/* Name & Plan Badge / Email */}
+              {/* Name & Plan (Gemini-Style Minimalist 2-line layout) */}
               <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1, textAlign: 'left' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{
-                    fontSize: '12.5px',
-                    fontWeight: 700,
-                    color: '#F8FAFC',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    lineHeight: 1.2
-                  }}>
-                    {userName}
-                  </span>
-                  <span style={{
-                    fontSize: '8.5px',
-                    fontWeight: 800,
-                    padding: '1.5px 6px',
-                    borderRadius: '10px',
-                    background: isPaid ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                    color: '#10B981',
-                    border: '1px solid rgba(16, 185, 129, 0.25)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                    lineHeight: 1.2
-                  }}>
-                    {isPaid ? (userPlan === 'enterprise' ? 'ENTERPRISE' : 'PRO') : (trialDays ? `${trialDays}D TRIAL` : 'FREE')}
-                  </span>
-                </div>
                 <span style={{
-                  fontSize: '10.5px',
-                  color: '#80928F',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  color: '#F8FAFC',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
+                  lineHeight: 1.25
+                }}>
+                  {userName}
+                </span>
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: isPaid ? '#10B981' : (trialDays > 0 ? '#10B981' : '#94A3B8'),
                   lineHeight: 1.2,
                   marginTop: '2px'
                 }}>
-                  {userEmail || 'operator@mdefender.io'}
+                  {isPaid ? 'Pro' : (trialDays > 0 ? `${trialDays}d Trial` : 'Free')}
                 </span>
               </div>
             </div>

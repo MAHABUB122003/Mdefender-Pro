@@ -167,8 +167,22 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
   ).toLowerCase();
   const isPro = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan);
   const trialDays = testTrialParam !== null
-    ? Number(testTrialParam)
-    : Number(typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_trial_days') ?? 14) : 14);
+    ? Math.max(0, Number(testTrialParam))
+    : (typeof localStorage !== 'undefined' ? (() => {
+        const storedTrial = localStorage.getItem('mdefender_trial_days');
+        if (storedTrial !== null && storedTrial !== undefined && storedTrial !== '') {
+          return Math.max(0, Number(storedTrial));
+        }
+        const createdAt = localStorage.getItem('mdefender_user_created_at');
+        if (createdAt) {
+          const createdDt = new Date(createdAt);
+          if (!isNaN(createdDt.getTime())) {
+            const daysElapsed = Math.floor((Date.now() - createdDt.getTime()) / (1000 * 60 * 60 * 24));
+            return Math.max(0, 14 - daysElapsed);
+          }
+        }
+        return 14;
+      })() : 14);
 
   const planLabel = {
     free: 'Free Plan',
