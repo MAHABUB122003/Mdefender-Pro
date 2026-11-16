@@ -47,6 +47,70 @@ const severityBadgeStyles = {
   default: { label: 'MITIGATED', color: '#D97735', bg: '#FEF3EB', border: '#FCD8BF' }
 };
 
+// ── Skeleton Shimmer Subcomponents ──────────────────────────────────────────
+const LogsTableSkeletonRows = ({ count = 8 }) => (
+  <>
+    {Array.from({ length: count }).map((_, i) => (
+      <tr key={i} style={{ borderBottom: '1px solid #ECEFEF' }}>
+        <td style={{ padding: '14px 16px' }}>
+          <div className="mdf-shimmer" style={{ width: `${80 + (i % 3) * 25}px`, height: '22px', borderRadius: '6px' }} />
+        </td>
+        <td style={{ padding: '14px 16px' }}>
+          <div className="mdf-shimmer" style={{ width: '105px', height: '18px', borderRadius: '5px' }} />
+        </td>
+        <td style={{ padding: '14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="mdf-shimmer" style={{ width: '18px', height: '13px', borderRadius: '2px' }} />
+            <div className="mdf-shimmer" style={{ width: `${60 + (i % 2) * 25}px`, height: '14px', borderRadius: '3px' }} />
+          </div>
+        </td>
+        <td style={{ padding: '14px 20px' }}>
+          <div className="mdf-shimmer" style={{ width: `${130 + (i % 4) * 40}px`, maxWidth: '100%', height: '14px', borderRadius: '4px' }} />
+          <div className="mdf-shimmer" style={{ width: `${90 + (i % 2) * 30}px`, height: '11px', marginTop: '5px', borderRadius: '3px' }} />
+        </td>
+        <td style={{ padding: '14px 16px' }}>
+          <div className="mdf-shimmer" style={{ width: '95px', height: '14px', borderRadius: '4px' }} />
+        </td>
+        <td style={{ padding: '14px 16px' }}>
+          <div className="mdf-shimmer" style={{ width: '105px', height: '15px', borderRadius: '4px' }} />
+        </td>
+        <td style={{ padding: '14px 14px', textAlign: 'center' }}>
+          <div className="mdf-shimmer" style={{ width: '56px', height: '20px', borderRadius: '6px', margin: '0 auto' }} />
+        </td>
+        <td style={{ padding: '14px 20px', textAlign: 'center' }}>
+          <div className="mdf-shimmer" style={{ width: '32px', height: '26px', borderRadius: '6px', margin: '0 auto' }} />
+        </td>
+      </tr>
+    ))}
+  </>
+);
+
+const LogsMobileCardSkeleton = ({ count = 4 }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    {Array.from({ length: count }).map((_, i) => (
+      <div
+        key={i}
+        style={{
+          padding: '14px 16px',
+          background: '#FFFFFF',
+          border: '1px solid #ECEFEF',
+          borderRadius: '10px'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <div className="mdf-shimmer" style={{ width: '85px', height: '22px', borderRadius: '6px' }} />
+          <div className="mdf-shimmer" style={{ width: '60px', height: '18px', borderRadius: '5px' }} />
+        </div>
+        <div className="mdf-shimmer" style={{ width: '85%', height: '14px', marginBottom: '8px', borderRadius: '4px' }} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
+          <div className="mdf-shimmer" style={{ width: '100px', height: '12px', borderRadius: '3px' }} />
+          <div className="mdf-shimmer" style={{ width: '80px', height: '12px', borderRadius: '3px' }} />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
 function getLogSeverity(type = '', isBlocked = false) {
   if (!isBlocked) return severityBadgeStyles.clean;
   const lower = (type || '').toLowerCase();
@@ -1312,15 +1376,8 @@ export default function UserLogs() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', color: '#64748B', padding: '60px 20px' }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '600' }}>
-                      <RotateCw size={18} style={{ animation: 'spin 1s linear infinite', color: '#E8792F' }} />
-                      <span>Streaming Ingress Telemetry...</span>
-                    </div>
-                  </td>
-                </tr>
+              {loading && logsList.length === 0 ? (
+                <LogsTableSkeletonRows count={8} />
               ) : logsList.length === 0 ? (
                 <tr>
                   <td colSpan="8" style={{ textAlign: 'center', padding: '60px 20px', color: '#64748B' }}>
@@ -1874,13 +1931,8 @@ export default function UserLogs() {
             <span>{logsList.length} Records</span>
           </div>
 
-          {loading ? (
-            <div style={{ textAlign: 'center', color: '#64748B', padding: '30px 14px' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '600' }}>
-                <RotateCw size={16} style={{ animation: 'spin 1s linear infinite', color: '#E8792F' }} />
-                <span>Streaming Ingress Telemetry...</span>
-              </div>
-            </div>
+          {loading && logsList.length === 0 ? (
+            <LogsMobileCardSkeleton count={4} />
           ) : logsList.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '30px 14px', color: '#64748B' }}>
               <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#FEF3EB', border: '1px solid #FCD8BF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px', color: '#D97735' }}>

@@ -23,14 +23,90 @@ import BulkHeader from './BulkHeader'
 import EmptyFleetState from './EmptyFleetState'
 import useBulkFleet from './useBulkFleet'
 import api from '../../api/api'
+import userStore from '../../utils/userStore'
+
+// ── Skeleton Shimmer Placeholder Subcomponent ─────────────────────────────
+const ActivitySkeletonRows = ({ count = 6 }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    {Array.from({ length: count }).map((_, i) => (
+      <div
+        key={i}
+        style={{
+          border: '1px solid #ECEFEF',
+          borderRadius: '8px',
+          padding: '12px 14px',
+          background: '#FFFFFF',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: '240px' }}>
+          <div
+            className="mdf-shimmer"
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              flexShrink: 0
+            }}
+          />
+          <div style={{ flex: 1 }}>
+            <div
+              className="mdf-shimmer"
+              style={{
+                width: `${140 + (i % 3) * 55}px`,
+                maxWidth: '85%',
+                height: '15px',
+                borderRadius: '4px'
+              }}
+            />
+            <div
+              className="mdf-shimmer"
+              style={{
+                width: `${210 + (i % 4) * 40}px`,
+                maxWidth: '90%',
+                height: '11px',
+                marginTop: '6px',
+                borderRadius: '3px'
+              }}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div
+            className="mdf-shimmer"
+            style={{
+              width: '74px',
+              height: '22px',
+              borderRadius: '6px'
+            }}
+          />
+          <div
+            className="mdf-shimmer"
+            style={{
+              width: '95px',
+              height: '13px',
+              borderRadius: '4px'
+            }}
+          />
+        </div>
+      </div>
+    ))}
+  </div>
+)
 
 export default function BulkActivity() {
   const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite } = useBulkFleet()
   const [filterType, setFilterType] = useState('all') // 'all' | 'config' | 'backup' | 'update' | 'security'
   const [searchTerm, setSearchTerm] = useState('')
   const [toastMsg, setToastMsg] = useState(null)
-  const [logs, setLogs] = useState([])
-  const [loading, setLoading] = useState(false)
+  const cachedLogs = userStore.get('fleet_activity_logs')
+  const [logs, setLogs] = useState(Array.isArray(cachedLogs) ? cachedLogs : [])
+  const [loading, setLoading] = useState(!(Array.isArray(cachedLogs) && cachedLogs.length > 0))
   const [showClearModal, setShowClearModal] = useState(false)
   const [clearing, setClearing] = useState(false)
 
@@ -50,15 +126,20 @@ export default function BulkActivity() {
         params.website_id = selectedSiteId
       }
       const res = await api.getFleetActivityLogs(params)
+      let freshLogs = []
       if (res && res.data && Array.isArray(res.data.logs)) {
-        setLogs(res.data.logs)
-        if (showNotification) {
-          showToast(`Activity ledger synced: ${res.data.logs.length} audit records retrieved.`)
-        }
+        freshLogs = res.data.logs
       } else if (res && Array.isArray(res.logs)) {
-        setLogs(res.logs)
-      } else {
-        setLogs([])
+        freshLogs = res.logs
+      }
+      setLogs(freshLogs)
+      if (filterType === 'all' && (!selectedSiteId || selectedSiteId === 'all')) {
+        try {
+          userStore.set('fleet_activity_logs', freshLogs)
+        } catch { }
+      }
+      if (showNotification) {
+        showToast(`Activity ledger synced: ${freshLogs.length} audit records retrieved.`)
       }
     } catch (err) {
       console.error('Failed to load fleet activity logs:', err)
@@ -101,6 +182,9 @@ export default function BulkActivity() {
         await api.userCleanLogs({ mode: 'all' })
       }
       setLogs([])
+      try {
+        userStore.set('fleet_activity_logs', [])
+      } catch { }
       showToast('All activity & audit log records have been cleared.')
     } catch (err) {
       console.error('Failed to clear activity logs:', err)
@@ -227,9 +311,13 @@ export default function BulkActivity() {
               <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Total Operations
               </div>
-              <div style={{ fontSize: '17px', fontWeight: '700', letterSpacing: '-0.03em', color: '#10201E', marginTop: '3px' }}>
-                {totalOps} Events
-              </div>
+              {loading && logs.length === 0 ? (
+                <div className="mdf-shimmer" style={{ width: '75px', height: '18px', marginTop: '4px', borderRadius: '4px' }} />
+              ) : (
+                <div style={{ fontSize: '17px', fontWeight: '700', letterSpacing: '-0.03em', color: '#10201E', marginTop: '3px' }}>
+                  {totalOps} Events
+                </div>
+              )}
               <div style={{ fontSize: '11px', color: '#60716B', marginTop: '2px' }}>
                 90-day Auto-TTL tenant ledger
               </div>
@@ -239,9 +327,13 @@ export default function BulkActivity() {
               <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Security &amp; Threats
               </div>
-              <div style={{ fontSize: '17px', fontWeight: '700', letterSpacing: '-0.03em', color: '#0284C7', marginTop: '3px' }}>
-                {securityOps} Actions
-              </div>
+              {loading && logs.length === 0 ? (
+                <div className="mdf-shimmer" style={{ width: '70px', height: '18px', marginTop: '4px', borderRadius: '4px' }} />
+              ) : (
+                <div style={{ fontSize: '17px', fontWeight: '700', letterSpacing: '-0.03em', color: '#0284C7', marginTop: '3px' }}>
+                  {securityOps} Actions
+                </div>
+              )}
               <div style={{ fontSize: '11px', color: '#60716B', marginTop: '2px' }}>
                 IP bans, unblocks &amp; sessions
               </div>
@@ -251,9 +343,13 @@ export default function BulkActivity() {
               <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Policy Dispatches
               </div>
-              <div style={{ fontSize: '17px', fontWeight: '700', letterSpacing: '-0.03em', color: '#B45309', marginTop: '3px' }}>
-                {configOps} Updates
-              </div>
+              {loading && logs.length === 0 ? (
+                <div className="mdf-shimmer" style={{ width: '70px', height: '18px', marginTop: '4px', borderRadius: '4px' }} />
+              ) : (
+                <div style={{ fontSize: '17px', fontWeight: '700', letterSpacing: '-0.03em', color: '#B45309', marginTop: '3px' }}>
+                  {configOps} Updates
+                </div>
+              )}
               <div style={{ fontSize: '11px', color: '#60716B', marginTop: '2px' }}>
                 WAF, Under Attack &amp; Rate limits
               </div>
@@ -263,9 +359,13 @@ export default function BulkActivity() {
               <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Backup &amp; Recovery
               </div>
-              <div style={{ fontSize: '17px', fontWeight: '700', letterSpacing: '-0.03em', color: '#2A8B68', marginTop: '3px' }}>
-                {backupOps} Snapshots
-              </div>
+              {loading && logs.length === 0 ? (
+                <div className="mdf-shimmer" style={{ width: '75px', height: '18px', marginTop: '4px', borderRadius: '4px' }} />
+              ) : (
+                <div style={{ fontSize: '17px', fontWeight: '700', letterSpacing: '-0.03em', color: '#2A8B68', marginTop: '3px' }}>
+                  {backupOps} Snapshots
+                </div>
+              )}
               <div style={{ fontSize: '11px', color: '#60716B', marginTop: '2px' }}>
                 Database &amp; filesystem archives
               </div>
@@ -370,7 +470,9 @@ export default function BulkActivity() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {filteredLogs.length === 0 ? (
+              {loading && logs.length === 0 ? (
+                <ActivitySkeletonRows count={6} />
+              ) : filteredLogs.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '48px 20px', color: '#60716B' }}>
                   <div style={{
                     width: '44px',
