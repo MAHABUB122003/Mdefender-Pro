@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useSearchParams, useLocation } from 'react-router-dom'
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom'
 import {
   Ban,
   Globe,
@@ -21,11 +21,125 @@ import api from '../api/api'
 import userStore from '../utils/userStore'
 import { ALL_COUNTRIES, POPULAR_THREAT_COUNTRIES, getFlagEmoji, getFlagUrl } from '../utils/countries'
 
+// ── Skeleton Shimmer Subcomponents ──────────────────────────────────────────
+const TableSkeletonRows = ({ count = 5 }) => (
+  <>
+    {Array.from({ length: count }).map((_, i) => (
+      <tr key={i} style={{ borderBottom: '1px solid #ECEFEF' }}>
+        <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+          <div className="mdf-shimmer" style={{ width: '15px', height: '15px', margin: '0 auto', borderRadius: '4px' }} />
+        </td>
+        <td style={{ padding: '14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="mdf-shimmer" style={{ width: '18px', height: '13px', borderRadius: '2px' }} />
+            <div className="mdf-shimmer" style={{ width: '120px', height: '22px', borderRadius: '5px' }} />
+          </div>
+          <div className="mdf-shimmer" style={{ width: '70px', height: '11px', marginTop: '6px', marginLeft: '26px' }} />
+        </td>
+        <td style={{ padding: '14px 16px' }}>
+          <div className="mdf-shimmer" style={{ width: `${140 + (i % 3) * 35}px`, height: '14px' }} />
+        </td>
+        <td style={{ padding: '14px 16px' }}>
+          <div className="mdf-shimmer" style={{ width: '70px', height: '20px', borderRadius: '6px' }} />
+        </td>
+        <td style={{ padding: '14px 16px' }}>
+          <div className="mdf-shimmer" style={{ width: '85px', height: '14px' }} />
+        </td>
+        <td style={{ padding: '14px 16px' }}>
+          <div className="mdf-shimmer" style={{ width: '55px', height: '20px', borderRadius: '6px' }} />
+        </td>
+        <td style={{ padding: '14px 16px' }}>
+          <div className="mdf-shimmer" style={{ width: '75px', height: '20px', borderRadius: '6px' }} />
+        </td>
+        <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+          <div className="mdf-shimmer" style={{ width: '64px', height: '26px', borderRadius: '6px', marginLeft: 'auto' }} />
+        </td>
+      </tr>
+    ))}
+  </>
+)
+
+const CountryTableSkeleton = ({ count = 5 }) => (
+  <>
+    {Array.from({ length: count }).map((_, i) => (
+      <tr key={i} style={{ borderBottom: '1px solid #ECEFEF', background: '#FFFFFF' }}>
+        <td style={{ padding: '14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="mdf-shimmer" style={{ width: '20px', height: '14px', borderRadius: '2px' }} />
+            <div className="mdf-shimmer" style={{ width: `${95 + (i % 3) * 30}px`, height: '16px' }} />
+          </div>
+        </td>
+        <td style={{ padding: '14px 16px' }}>
+          <div className="mdf-shimmer" style={{ width: '32px', height: '20px', borderRadius: '6px' }} />
+        </td>
+        <td style={{ padding: '14px 16px' }}>
+          <div className="mdf-shimmer" style={{ width: `${130 + (i % 2) * 45}px`, height: '14px' }} />
+        </td>
+        <td style={{ padding: '14px 16px' }}>
+          <div className="mdf-shimmer" style={{ width: '75px', height: '20px', borderRadius: '6px' }} />
+        </td>
+        <td style={{ padding: '14px 16px' }}>
+          <div className="mdf-shimmer" style={{ width: '55px', height: '20px', borderRadius: '6px' }} />
+        </td>
+        <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+          <div className="mdf-shimmer" style={{ width: '64px', height: '26px', borderRadius: '6px', marginLeft: 'auto' }} />
+        </td>
+      </tr>
+    ))}
+  </>
+)
+
+const WhitelistTableSkeleton = ({ count = 5 }) => (
+  <>
+    {Array.from({ length: count }).map((_, i) => (
+      <tr key={i} style={{ borderBottom: '1px solid #F1F5F3' }}>
+        <td style={{ padding: '14px 12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="mdf-shimmer" style={{ width: '16px', height: '16px', borderRadius: '50%' }} />
+            <div className="mdf-shimmer" style={{ width: '125px', height: '20px', borderRadius: '4px' }} />
+          </div>
+        </td>
+        <td style={{ padding: '14px 12px' }}>
+          <div className="mdf-shimmer" style={{ width: `${140 + (i % 3) * 40}px`, height: '14px' }} />
+        </td>
+        <td style={{ padding: '14px 12px' }}>
+          <div className="mdf-shimmer" style={{ width: '70px', height: '14px' }} />
+        </td>
+        <td style={{ padding: '14px 12px' }}>
+          <div className="mdf-shimmer" style={{ width: '65px', height: '14px' }} />
+        </td>
+        <td style={{ padding: '14px 12px', textAlign: 'right' }}>
+          <div className="mdf-shimmer" style={{ width: '60px', height: '24px', borderRadius: '6px', marginLeft: 'auto' }} />
+        </td>
+      </tr>
+    ))}
+  </>
+)
+
+const MobileCardsSkeleton = ({ count = 4 }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px' }}>
+    {Array.from({ length: count }).map((_, i) => (
+      <div key={i} style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '10px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="mdf-shimmer" style={{ width: '130px', height: '22px' }} />
+          <div className="mdf-shimmer" style={{ width: '60px', height: '24px' }} />
+        </div>
+        <div className="mdf-shimmer" style={{ width: '85%', height: '14px' }} />
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <div className="mdf-shimmer" style={{ width: '55px', height: '18px' }} />
+          <div className="mdf-shimmer" style={{ width: '70px', height: '18px' }} />
+        </div>
+      </div>
+    ))}
+  </div>
+)
+
 export default function UserBlacklist({ activeMode }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const location = useLocation()
+  const navigate = useNavigate()
 
-  // Determine active view mode (standalone dedicated page)
+  // Determine active view mode (standalone dedicated page or unified view)
   const activeTab = useMemo(() => {
     if (activeMode) return activeMode
     const path = location.pathname.toLowerCase()
@@ -37,7 +151,6 @@ export default function UserBlacklist({ activeMode }) {
     if (rawTab.includes('country')) return 'country'
     return 'ip'
   }, [activeMode, location.pathname, searchParams])
-  const setActiveTab = (tab) => setSearchParams({ tab })
 
   // ── IP Blacklist State ──────────────────────────────────────────────────────
   const [entries, setEntries] = useState(() => userStore.get('blacklist') || [])
@@ -65,16 +178,16 @@ export default function UserBlacklist({ activeMode }) {
   })
 
   // ── IP Whitelist State ──────────────────────────────────────────────────────
-  const [whitelistEntries, setWhitelistEntries] = useState([])
-  const [whitelistLoading, setWhitelistLoading] = useState(false)
+  const [whitelistEntries, setWhitelistEntries] = useState(() => userStore.get('whitelist') || [])
+  const [whitelistLoading, setWhitelistLoading] = useState(() => !userStore.get('whitelist'))
   const [showWhitelistModal, setShowWhitelistModal] = useState(false)
   const [whitelistForm, setWhitelistForm] = useState({ ip: '', reason: '', website_id: 'all' })
   const [submittingWhitelist, setSubmittingWhitelist] = useState(false)
   const [whitelistSearch, setWhitelistSearch] = useState('')
 
   // ── Country Blacklist State ─────────────────────────────────────────────────
-  const [countryBlocks, setCountryBlocks] = useState([])
-  const [countryLoading, setCountryLoading] = useState(false)
+  const [countryBlocks, setCountryBlocks] = useState(() => userStore.get('country_blocks') || [])
+  const [countryLoading, setCountryLoading] = useState(() => !userStore.get('country_blocks'))
   const [selectedCountry, setSelectedCountry] = useState('CN')
   const [selectedRegion, setSelectedRegion] = useState('All')
   const [blockReason, setBlockReason] = useState('')
@@ -85,7 +198,7 @@ export default function UserBlacklist({ activeMode }) {
   // ── Helpers ─────────────────────────────────────────────────────────────────
   const showToast = (text, type = 'success') => {
     setFeedbackMsg({ text, type })
-    setTimeout(() => setFeedbackMsg(null), 4500)
+    setTimeout(() => setFeedbackMsg(null), 4000)
   }
 
   const fetchWebsites = useCallback(async () => {
@@ -121,11 +234,11 @@ export default function UserBlacklist({ activeMode }) {
 
   const fetchWhitelist = useCallback(async (manual = false) => {
     if (manual) setRefreshing(true)
-    setWhitelistLoading(true)
     try {
       const data = await api.getUserWhitelist()
       const list = Array.isArray(data) ? data : (data?.whitelist || [])
       setWhitelistEntries(list)
+      userStore.set('whitelist', list)
     } catch (err) {
       console.error('Failed to load whitelist:', err)
     } finally {
@@ -136,10 +249,11 @@ export default function UserBlacklist({ activeMode }) {
 
   const fetchCountryBlocks = useCallback(async (manual = false, siteId = selectedWebsite) => {
     if (manual) setRefreshing(true)
-    setCountryLoading(true)
     try {
       const res = await api.getUserCountryBlocks({ website_id: siteId })
-      if (res?.country_blocks) setCountryBlocks(res.country_blocks)
+      const list = res?.country_blocks || []
+      setCountryBlocks(list)
+      userStore.set('country_blocks', list)
     } catch (err) {
       console.error('Failed to load country blocks:', err)
     } finally {
@@ -157,18 +271,18 @@ export default function UserBlacklist({ activeMode }) {
 
   useEffect(() => {
     const handleDomainSync = () => {
-      const cur = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdf_bulk_selected_site') || localStorage.getItem('mdefender_selected_site')) : null) || 'all';
-      setSelectedWebsite(cur);
-      fetchBlacklist(true, cur);
-      fetchCountryBlocks(true, cur);
-    };
-    window.addEventListener('mdf_bulk_domain_changed', handleDomainSync);
-    window.addEventListener('mdefender_domain_changed', handleDomainSync);
+      const cur = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdf_bulk_selected_site') || localStorage.getItem('mdefender_selected_site')) : null) || 'all'
+      setSelectedWebsite(cur)
+      fetchBlacklist(true, cur)
+      fetchCountryBlocks(true, cur)
+    }
+    window.addEventListener('mdf_bulk_domain_changed', handleDomainSync)
+    window.addEventListener('mdefender_domain_changed', handleDomainSync)
     return () => {
-      window.removeEventListener('mdf_bulk_domain_changed', handleDomainSync);
-      window.removeEventListener('mdefender_domain_changed', handleDomainSync);
-    };
-  }, [fetchBlacklist, fetchCountryBlocks]);
+      window.removeEventListener('mdf_bulk_domain_changed', handleDomainSync)
+      window.removeEventListener('mdefender_domain_changed', handleDomainSync)
+    }
+  }, [fetchBlacklist, fetchCountryBlocks])
 
   const blockedCodesSet = useMemo(() =>
     new Set(countryBlocks.map(b => (b.country_code || '').toUpperCase().trim()))
@@ -266,60 +380,96 @@ export default function UserBlacklist({ activeMode }) {
     }
   }
 
-  const handleRemoveWhitelist = async (ip) => {
+  // ── Instant Optimistic Whitelist Removal ───────────────────────────────────
+  const handleRemoveWhitelist = (ip) => {
+    const previous = [...whitelistEntries]
+    // Optimistic UI removal
     setWhitelistEntries(prev => prev.filter(item => (typeof item === 'string' ? item : item.ip) !== ip))
-    try {
-      await api.removeUserWhitelist(ip)
-      showToast(`IP ${ip} removed from whitelist.`)
-      fetchWhitelist(true)
-    } catch (err) {
-      showToast(err.message || 'Failed to remove IP from whitelist', 'error')
-      fetchWhitelist(true)
-    }
+    showToast(`IP ${ip} removed from allowlist successfully.`, 'success')
+
+    // Background sync
+    api.removeUserWhitelist(ip)
+      .then(() => {
+        const updated = (userStore.get('whitelist') || []).filter(item => (typeof item === 'string' ? item : item.ip) !== ip)
+        userStore.set('whitelist', updated)
+      })
+      .catch(err => {
+        setWhitelistEntries(previous)
+        showToast(err.message || 'Failed to remove IP from allowlist. Restoring entry.', 'error')
+      })
   }
 
-  // ── IP Handlers ─────────────────────────────────────────────────────────────
-  const handleUnblock = async (ip, siteId) => {
+  // ── Instant Optimistic IP Blacklist Unblock ────────────────────────────────
+  const handleUnblock = (ip, siteId) => {
+    const previousEntries = [...entries]
+    // 1. Instant optimistic removal from UI
     setEntries(prev => prev.filter(item => item.ip !== ip))
     setSelectedIps(prev => prev.filter(i => i !== ip))
-    userStore.invalidate('blacklist')
-    try {
-      await api.removeUserBlacklist(ip, siteId || selectedWebsite)
-      showToast(`IP ${ip} unblocked.`)
-      fetchBlacklist(true, selectedWebsite)
-    } catch (err) {
-      showToast(err.message || 'Failed to unblock IP', 'error')
-      fetchBlacklist(true, selectedWebsite)
-    }
+    
+    // 2. Instant feedback toast (0ms latency!)
+    showToast(`IP ${ip} unblocked successfully. Firewall rules updated.`, 'success')
+
+    // 3. Background API sync
+    api.removeUserBlacklist(ip, siteId || selectedWebsite)
+      .then(() => {
+        const updated = (userStore.get('blacklist') || []).filter(item => item.ip !== ip)
+        userStore.set('blacklist', updated)
+      })
+      .catch(err => {
+        // Rollback on error
+        setEntries(previousEntries)
+        showToast(err.message || `Failed to unblock IP ${ip}. Restoring entry.`, 'error')
+      })
   }
 
-  const handleFlushExpired = async () => {
+  // ── Instant Optimistic Flush Expired ────────────────────────────────────────
+  const handleFlushExpired = () => {
     if (expiredEntries.length === 0) { showToast('No expired entries to purge.', 'info'); return }
+    const previousEntries = [...entries]
+    const count = expiredEntries.length
+    const expiredIps = new Set(expiredEntries.map(e => e.ip))
+
+    // Optimistic removal
+    setEntries(prev => prev.filter(e => !expiredIps.has(e.ip)))
+    setSelectedIps(prev => prev.filter(ip => !expiredIps.has(ip)))
+    showToast(`Purged ${count} expired IP(s) successfully.`, 'success')
+
     setFlushingExpired(true)
-    try {
-      const res = await api.unblockExpiredBlacklist()
-      showToast(`Unblocked ${res?.unblocked_count ?? expiredEntries.length} expired IPs.`)
-      setSelectedIps([])
-      userStore.invalidate('blacklist')
-      await fetchBlacklist(true)
-    } catch (err) {
-      showToast(err.message || 'Failed to flush expired IPs', 'error')
-    } finally { setFlushingExpired(false) }
+    api.unblockExpiredBlacklist()
+      .then(() => {
+        const updated = (userStore.get('blacklist') || []).filter(e => !expiredIps.has(e.ip))
+        userStore.set('blacklist', updated)
+      })
+      .catch(err => {
+        setEntries(previousEntries)
+        showToast(err.message || 'Failed to flush expired IPs. Restoring list.', 'error')
+      })
+      .finally(() => setFlushingExpired(false))
   }
 
-  const handleBulkUnblock = async () => {
+  // ── Instant Optimistic Bulk Unblock ─────────────────────────────────────────
+  const handleBulkUnblock = () => {
     if (!selectedIps.length) return
-    const count = selectedIps.length
+    const targets = [...selectedIps]
+    const previousEntries = [...entries]
+    const count = targets.length
+
+    // Optimistic removal
+    setEntries(prev => prev.filter(item => !targets.includes(item.ip)))
+    setSelectedIps([])
+    showToast(`Unblocked ${count} IP(s) successfully across all nodes.`, 'success')
+
     setBulkUnblocking(true)
-    try {
-      const res = await api.unblockBatchBlacklist(selectedIps, selectedWebsite)
-      showToast(res?.message || `Unblocked ${count} IP(s).`)
-      setSelectedIps([])
-      userStore.invalidate('blacklist')
-      await fetchBlacklist(true, selectedWebsite)
-    } catch (err) {
-      showToast(err.message || 'Failed to unblock IPs', 'error')
-    } finally { setBulkUnblocking(false) }
+    api.unblockBatchBlacklist(targets, selectedWebsite)
+      .then(() => {
+        const updated = (userStore.get('blacklist') || []).filter(item => !targets.includes(item.ip))
+        userStore.set('blacklist', updated)
+      })
+      .catch(err => {
+        setEntries(previousEntries)
+        showToast(err.message || 'Failed to unblock selected IPs. Restoring entries.', 'error')
+      })
+      .finally(() => setBulkUnblocking(false))
   }
 
   const toggleSelectAll = () =>
@@ -341,7 +491,7 @@ export default function UserBlacklist({ activeMode }) {
         setShowModal(false)
         setForm({ ip: '', reason: '', duration: '1d', website_id: selectedWebsite })
         userStore.invalidate('blacklist')
-        showToast(res?.message || `IP ${form.ip} blocked.`)
+        showToast(res?.message || `IP ${form.ip} blocked successfully.`)
         fetchBlacklist(true, selectedWebsite)
       }
     } catch (err) {
@@ -366,7 +516,7 @@ export default function UserBlacklist({ activeMode }) {
       }
       const res = await api.addUserCountryBlock(payload)
       if (res?.status === 'success' || (res?.message && !res?.message.toLowerCase().includes('already') && res?.status !== 'error')) {
-        showToast(`${targetObj.name} blocked.`)
+        showToast(`${targetObj.name} blocked successfully.`)
         setBlockReason('')
         setCountryBlocks(prev => {
           if (prev.some(b => b.country_code === targetObj.code && b.website_id === selectedWebsite)) return prev
@@ -393,7 +543,7 @@ export default function UserBlacklist({ activeMode }) {
         const wDom = siteObj ? (siteObj.domain || siteObj.name) : (selectedWebsite === 'all' ? 'Global Fleet' : selectedWebsite)
         const res = await api.addUserCountryBlock({ country_code: preset.code, country_name: preset.name, reason, website_id: selectedWebsite })
         if (res?.status === 'success' || (res?.message && !res?.message.toLowerCase().includes('already') && res?.status !== 'error')) {
-          showToast(`${preset.name} blocked.`)
+          showToast(`${preset.name} blocked successfully.`)
           setCountryBlocks(prev => {
             if (prev.some(b => b.country_code === preset.code && b.website_id === selectedWebsite)) return prev
             return [{ country_code: preset.code, country_name: preset.name, reason, website_id: selectedWebsite, website_domain: wDom, created_at: 'Just now' }, ...prev]
@@ -408,16 +558,25 @@ export default function UserBlacklist({ activeMode }) {
     }
   }
 
-  const handleRemoveCountryBlock = async (code, name, siteId) => {
-    setCountryBlocks(prev => prev.filter(b => b.country_code !== code))
-    try {
-      await api.removeUserCountryBlock(code, siteId || selectedWebsite)
-      showToast(`${name || code} unblocked successfully.`)
-      fetchCountryBlocks(true, selectedWebsite)
-    } catch (err) {
-      showToast(err.message || 'Failed to unblock country.', 'error')
-      fetchCountryBlocks(true, selectedWebsite)
-    }
+  // ── Instant Optimistic Country Unblock ──────────────────────────────────────
+  const handleRemoveCountryBlock = (code, name, siteId) => {
+    const previousBlocks = [...countryBlocks]
+    // 1. Instant optimistic removal from UI
+    setCountryBlocks(prev => prev.filter(b => (b.country_code || '').toUpperCase() !== (code || '').toUpperCase()))
+    
+    // 2. Instant Toast feedback
+    showToast(`${name || code} unblocked successfully. Edge policies updated.`, 'success')
+
+    // 3. Background sync
+    api.removeUserCountryBlock(code, siteId || selectedWebsite)
+      .then(() => {
+        const updated = (userStore.get('country_blocks') || []).filter(b => (b.country_code || '').toUpperCase() !== (code || '').toUpperCase())
+        userStore.set('country_blocks', updated)
+      })
+      .catch(err => {
+        setCountryBlocks(previousBlocks)
+        showToast(err.message || 'Failed to unblock country. Restoring rule.', 'error')
+      })
   }
 
   const getIpOriginInfo = (entry) => {
@@ -450,7 +609,25 @@ export default function UserBlacklist({ activeMode }) {
 
   return (
     <div style={S.page}>
-      <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes mdfShimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        @keyframes mdfFadeIn {
+          from { opacity: 0; transform: translateY(4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .mdf-shimmer {
+          background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
+          background-size: 200% 100%;
+          animation: mdfShimmer 1.5s infinite ease-in-out;
+        }
+        .mdf-tab-pane {
+          animation: mdfFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+      `}</style>
 
       {/* ── Toast ── */}
       {feedbackMsg && (
@@ -460,7 +637,9 @@ export default function UserBlacklist({ activeMode }) {
           border: `1px solid ${feedbackMsg.type === 'error' ? '#FECACA' : '#DCFCE7'}`,
           borderRadius: '10px', marginBottom: '16px',
           color: feedbackMsg.type === 'error' ? '#991B1B' : '#15803D',
-          fontSize: '13px', fontWeight: '600'
+          fontSize: '13px', fontWeight: '600',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+          animation: 'mdfFadeIn 0.18s ease-out'
         }}>
           {feedbackMsg.type === 'error'
             ? <AlertTriangle size={15} color="#DC2626" />
@@ -471,7 +650,7 @@ export default function UserBlacklist({ activeMode }) {
       )}
 
       {/* ── Dedicated Page Header ── */}
-      <div style={{ marginBottom: '20px' }}>
+      <div style={{ marginBottom: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '8px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
@@ -499,11 +678,13 @@ export default function UserBlacklist({ activeMode }) {
             </p>
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-
-
             <button
               style={S.btn('#FFFFFF', '#10201E', '#D9E1DC')}
-              onClick={() => { fetchBlacklist(true, selectedWebsite); fetchCountryBlocks(true, selectedWebsite) }}
+              onClick={() => {
+                if (activeTab === 'ip') fetchBlacklist(true, selectedWebsite)
+                else if (activeTab === 'whitelist') fetchWhitelist(true)
+                else fetchCountryBlocks(true, selectedWebsite)
+              }}
               disabled={refreshing}
             >
               <RotateCw size={13} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
@@ -529,10 +710,57 @@ export default function UserBlacklist({ activeMode }) {
         </div>
       </div>
 
+      {/* ── In-Page Sub-Navigation Tabs ── */}
+      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #D9E1DC', marginBottom: '20px', paddingBottom: '0' }}>
+        {[
+          { id: 'ip', label: 'IP Blocklist', count: entries.length, icon: Ban, path: '/user/access/ip-blocklist' },
+          { id: 'whitelist', label: 'IP Allowlist', count: whitelistEntries.length, icon: ShieldCheck, path: '/user/access/ip-allowlist' },
+          { id: 'country', label: 'Country Blocking', count: countryBlocks.length, icon: Globe, path: '/user/access/country-blocking' },
+        ].map(tab => {
+          const isActive = activeTab === tab.id
+          const Icon = tab.icon
+          return (
+            <button
+              key={tab.id}
+              onClick={() => navigate(tab.path)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '9px 16px',
+                borderRadius: '8px 8px 0 0',
+                border: 'none',
+                borderBottom: isActive ? '2px solid #0B2522' : '2px solid transparent',
+                background: isActive ? '#FFFFFF' : 'transparent',
+                color: isActive ? '#0B2522' : '#60716B',
+                fontWeight: isActive ? '700' : '600',
+                fontSize: '13px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                marginBottom: '-1px'
+              }}
+            >
+              <Icon size={14} color={isActive ? '#0B2522' : '#60716B'} />
+              <span>{tab.label}</span>
+              <span style={{
+                fontSize: '11px',
+                padding: '1px 7px',
+                borderRadius: '999px',
+                background: isActive ? '#E8EEE8' : '#F1F5F9',
+                color: isActive ? '#0B2522' : '#64748B',
+                fontWeight: '700'
+              }}>
+                {tab.count}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
       {/* ════ SECTION A: IP BLACKLIST ════ */}
       {activeTab === 'ip' && (
-        <>
-          {/* Stats row — Clean Enterprise Standard */}
+        <div className="mdf-tab-pane">
+          {/* Stats row */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', marginBottom: '12px' }}>
             {[
               { label: 'Total Blocked', value: entries.length },
@@ -543,7 +771,13 @@ export default function UserBlacklist({ activeMode }) {
             ].map(s => (
               <div key={s.label} style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '8px', padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)' }}>
                 <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{s.label}</div>
-                <div style={{ fontSize: '16px', fontWeight: '700', color: '#10201E', fontVariantNumeric: 'tabular-nums' }}>{s.value}</div>
+                <div style={{ fontSize: '16px', fontWeight: '700', color: '#10201E', fontVariantNumeric: 'tabular-nums' }}>
+                  {loading && entries.length === 0 ? (
+                    <div className="mdf-shimmer" style={{ width: '28px', height: '18px', borderRadius: '4px' }} />
+                  ) : (
+                    s.value
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -587,7 +821,7 @@ export default function UserBlacklist({ activeMode }) {
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
               {selectedIps.length > 0 && (
-                <button style={S.btn('#FFFFFF', '#DC2626', '#D9E1DC')} onClick={handleBulkUnblock} disabled={bulkUnblocking}>
+                <button style={S.btn('#FFFFFF', '#DC2626', '#FECACA')} onClick={handleBulkUnblock} disabled={bulkUnblocking}>
                   <Trash2 size={13} />
                   {bulkUnblocking ? 'Unblocking...' : `Unblock ${selectedIps.length}`}
                 </button>
@@ -624,13 +858,8 @@ export default function UserBlacklist({ activeMode }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan="8" style={{ textAlign: 'center', padding: '60px 20px', color: '#94A3B8' }}>
-                        <RotateCw size={20} style={{ animation: 'spin 1s linear infinite', display: 'block', margin: '0 auto 10px' }} />
-                        Loading...
-                      </td>
-                    </tr>
+                  {loading && entries.length === 0 ? (
+                    <TableSkeletonRows count={6} />
                   ) : filteredEntries.length === 0 ? (
                     <tr>
                       <td colSpan="8" style={{ textAlign: 'center', padding: '60px 20px', color: '#94A3B8' }}>
@@ -705,8 +934,8 @@ export default function UserBlacklist({ activeMode }) {
                           <button
                             onClick={() => handleUnblock(entry.ip, entry.website_id)}
                             style={S.btnSm('#FFFFFF', '#10201E', '#D9E1DC')}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#DC2626'; e.currentTarget.style.color = '#FFFFFF' }}
-                            onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.color = '#DC2626' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#DC2626'; e.currentTarget.style.color = '#FFFFFF'; e.currentTarget.style.borderColor = '#DC2626' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.color = '#10201E'; e.currentTarget.style.borderColor = '#D9E1DC' }}
                           >
                             Unblock
                           </button>
@@ -718,13 +947,10 @@ export default function UserBlacklist({ activeMode }) {
               </table>
             </div>
 
-            {/* Mobile View: High-density stream cards */}
+            {/* Mobile View */}
             <div className="mdf-access-mobile-list" style={{ padding: '12px' }}>
-              {loading ? (
-                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94A3B8' }}>
-                  <RotateCw size={20} style={{ animation: 'spin 1s linear infinite', display: 'block', margin: '0 auto 10px' }} />
-                  Loading...
-                </div>
+              {loading && entries.length === 0 ? (
+                <MobileCardsSkeleton count={4} />
               ) : filteredEntries.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94A3B8' }}>
                   <ShieldCheck size={32} style={{ display: 'block', margin: '0 auto 10px', color: '#86EFAC' }} />
@@ -754,49 +980,46 @@ export default function UserBlacklist({ activeMode }) {
                     return (
                       <div key={entry.id || entry.ip || i} style={{
                         background: isSelected ? '#FFF7F7' : '#FFFFFF',
-                        border: `1px solid ${isSelected ? '#FECACA' : '#D9E1DC'}`,
+                        border: '1px solid #D9E1DC',
                         borderRadius: '10px',
                         padding: '12px',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '8px',
+                        marginBottom: '8px',
                         boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)'
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                            <button onClick={() => toggleSelectIp(entry.ip)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
+                            <button onClick={() => toggleSelectIp(entry.ip)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}>
                               {isSelected ? <CheckSquare size={16} color="#DC2626" /> : <Square size={16} color="#CBD5E1" />}
                             </button>
                             {origin.flagUrl && (
                               <img src={origin.flagUrl} alt="" onError={e => { e.target.style.display = 'none' }}
-                                style={{ width: '18px', height: '13px', borderRadius: '2px', objectFit: 'cover', flexShrink: 0 }} />
+                                style={{ width: '18px', height: '13px', borderRadius: '2px', objectFit: 'cover' }} />
                             )}
-                            <code style={{ fontFamily: 'monospace', fontSize: '13px', fontWeight: '700', color: '#0F172A', background: '#F1F5F9', padding: '2px 6px', borderRadius: '4px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <code style={{ fontFamily: 'monospace', fontWeight: '700', color: '#0F172A', fontSize: '13px', background: '#F1F5F9', padding: '2px 6px', borderRadius: '4px' }}>
                               {entry.ip}
                             </code>
-                            {isExpired && <span style={S.badge('#FEE2E2', '#DC2626', '#FECACA')}>Expired</span>}
                           </div>
                           <button
                             onClick={() => handleUnblock(entry.ip, entry.website_id)}
-                            style={{ ...S.btnSm('#FFFFFF', '#10201E', '#D9E1DC'), flexShrink: 0 }}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#DC2626'; e.currentTarget.style.color = '#FFFFFF' }}
-                            onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.color = '#10201E' }}
+                            style={{ ...S.btnSm('#FFFFFF', '#DC2626', '#D9E1DC'), flexShrink: 0 }}
                           >
                             Unblock
                           </button>
                         </div>
-
                         {entry.reason && (
-                          <div style={{ fontSize: '12px', color: '#475569', lineHeight: '1.4' }}>
+                          <div style={{ fontSize: '12px', color: '#60716B', lineHeight: '1.4' }}>
                             {entry.reason}
                           </div>
                         )}
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', fontSize: '11px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                           <span style={S.badge(isPerm ? '#FEF2F2' : '#FBFCFA', isPerm ? '#DC2626' : '#10201E', isPerm ? '#FECACA' : '#D9E1DC')}>
                             <Clock size={10} />
                             {entry.duration || entry.type || (isPerm ? 'Permanent' : 'Temp')}
                           </span>
+                          {isExpired && <span style={S.badge('#FEE2E2', '#DC2626', '#FECACA')}>Expired</span>}
                           <span style={S.badge('#FBFCFA', '#60716B', '#D9E1DC')}>
                             {entry.auto_blocked ? 'Auto' : 'Manual'}
                           </span>
@@ -825,13 +1048,12 @@ export default function UserBlacklist({ activeMode }) {
               )}
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* ════ SECTION B: COUNTRY BLACKLIST ════ */}
       {activeTab === 'country' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-
+        <div className="mdf-tab-pane" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {/* Stats */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', marginBottom: '10px' }}>
             {[
@@ -841,7 +1063,13 @@ export default function UserBlacklist({ activeMode }) {
             ].map(s => (
               <div key={s.label} style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '8px', padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)' }}>
                 <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{s.label}</div>
-                <div style={{ fontSize: '16px', fontWeight: '700', color: '#10201E', fontVariantNumeric: 'tabular-nums' }}>{s.value}</div>
+                <div style={{ fontSize: '16px', fontWeight: '700', color: '#10201E', fontVariantNumeric: 'tabular-nums' }}>
+                  {countryLoading && countryBlocks.length === 0 ? (
+                    <div className="mdf-shimmer" style={{ width: '28px', height: '18px', borderRadius: '4px' }} />
+                  ) : (
+                    s.value
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -1009,10 +1237,23 @@ export default function UserBlacklist({ activeMode }) {
               )}
             </div>
 
-            {(countryLoading && countryBlocks.length === 0) ? (
-              <div style={{ textAlign: 'center', padding: '50px 20px', color: '#94A3B8' }}>
-                <RotateCw size={22} style={{ animation: 'spin 1s linear infinite', display: 'block', margin: '0 auto 10px' }} />
-                Loading...
+            {countryLoading && countryBlocks.length === 0 ? (
+              <div className="mdf-country-desktop-table" style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid #D9E1DC' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead>
+                    <tr>
+                      <th style={S.th}>Country</th>
+                      <th style={S.th}>Code</th>
+                      <th style={S.th}>Reason</th>
+                      <th style={S.th}>Scope</th>
+                      <th style={S.th}>Status</th>
+                      <th style={{ ...S.th, textAlign: 'right' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <CountryTableSkeleton count={5} />
+                  </tbody>
+                </table>
               </div>
             ) : countryBlocks.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '50px 20px', color: '#94A3B8', background: '#FAFBF9', borderRadius: '12px', border: '1px dashed #D9E1DC' }}>
@@ -1093,7 +1334,7 @@ export default function UserBlacklist({ activeMode }) {
                   </table>
                 </div>
 
-                {/* Mobile View: High-density stream cards */}
+                {/* Mobile View */}
                 <div className="mdf-country-mobile-list">
                   {filteredCountryBlocks.map(block => {
                     const code = (block.country_code || '').toUpperCase().trim()
@@ -1110,6 +1351,7 @@ export default function UserBlacklist({ activeMode }) {
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '8px',
+                        marginBottom: '8px',
                         boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)'
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
@@ -1165,12 +1407,18 @@ export default function UserBlacklist({ activeMode }) {
 
       {/* ════ SECTION C: IP WHITELIST ════ */}
       {activeTab === 'whitelist' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div className="mdf-tab-pane" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {/* Stats */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px', marginBottom: '10px' }}>
             <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '8px', padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)' }}>
               <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Whitelisted IPs</div>
-              <div style={{ fontSize: '16px', fontWeight: '700', color: '#2A8B68', fontVariantNumeric: 'tabular-nums' }}>{whitelistEntries.length} Trusted</div>
+              <div style={{ fontSize: '16px', fontWeight: '700', color: '#2A8B68', fontVariantNumeric: 'tabular-nums' }}>
+                {whitelistLoading && whitelistEntries.length === 0 ? (
+                  <div className="mdf-shimmer" style={{ width: '28px', height: '18px', borderRadius: '4px' }} />
+                ) : (
+                  `${whitelistEntries.length} Trusted`
+                )}
+              </div>
             </div>
 
             <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '8px', padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)' }}>
@@ -1206,7 +1454,24 @@ export default function UserBlacklist({ activeMode }) {
               </button>
             </div>
 
-            {filteredWhitelistEntries.length === 0 ? (
+            {whitelistLoading && whitelistEntries.length === 0 ? (
+              <div className="mdf-whitelist-desktop-table" style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      <th style={{ padding: '10px 12px', fontWeight: '700' }}>Whitelisted IP</th>
+                      <th style={{ padding: '10px 12px', fontWeight: '700' }}>Reason & Description</th>
+                      <th style={{ padding: '10px 12px', fontWeight: '700' }}>Added By</th>
+                      <th style={{ padding: '10px 12px', fontWeight: '700' }}>Date Added</th>
+                      <th style={{ padding: '10px 12px', fontWeight: '700', textAlign: 'right' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <WhitelistTableSkeleton count={5} />
+                  </tbody>
+                </table>
+              </div>
+            ) : filteredWhitelistEntries.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 16px', color: '#60716B' }}>
                 <ShieldCheck size={32} color="#2A8B68" style={{ margin: '0 auto 10px', display: 'block' }} />
                 <div style={{ fontWeight: '700', color: '#10201E', fontSize: '14px' }}>
@@ -1270,7 +1535,7 @@ export default function UserBlacklist({ activeMode }) {
                   </table>
                 </div>
 
-                {/* Mobile View: High-density stream cards */}
+                {/* Mobile View */}
                 <div className="mdf-whitelist-mobile-list">
                   {filteredWhitelistEntries.map(item => (
                     <div key={item.id || item.ip} style={{
@@ -1281,6 +1546,7 @@ export default function UserBlacklist({ activeMode }) {
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '8px',
+                      marginBottom: '8px',
                       boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)'
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
@@ -1402,6 +1668,7 @@ export default function UserBlacklist({ activeMode }) {
           </div>
         </div>
       )}
+
       {/* ── Add Whitelist IP Modal ── */}
       {showWhitelistModal && (
         <div
