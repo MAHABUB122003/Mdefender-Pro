@@ -1,4 +1,4 @@
-import { useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 
 /**
  * HeroDashboard3D
@@ -13,6 +13,7 @@ import { useRef, useEffect, useMemo } from 'react';
  * - Zero artificial button/badge clutter (no Explore Dashboard, no fake counters)
  */
 export default function HeroDashboard3D() {
+  const [imgLoaded, setImgLoaded] = useState(false);
   const containerRef = useRef(null);
   const stageRef = useRef(null);
   const imageRef = useRef(null);
@@ -29,21 +30,35 @@ export default function HeroDashboard3D() {
   const rotationX = useRef(0.24); // Spherical axial tilt
   const animFrameId = useRef(null);
 
-  // Real Global Anycast Scrubbing Centers with lat/long in radians
-  const popNodes = useMemo(() => [
-    { id: 'lhr', name: 'London', lat: (51.50 * Math.PI) / 180, lon: (-0.12 * Math.PI) / 180 },
-    { id: 'fra', name: 'Frankfurt', lat: (50.11 * Math.PI) / 180, lon: (8.68 * Math.PI) / 180 },
-    { id: 'jfk', name: 'New York', lat: (40.71 * Math.PI) / 180, lon: (-74.00 * Math.PI) / 180 },
-    { id: 'sfo', name: 'San Francisco', lat: (37.77 * Math.PI) / 180, lon: (-122.41 * Math.PI) / 180 },
-    { id: 'dxb', name: 'Dubai', lat: (25.20 * Math.PI) / 180, lon: (55.27 * Math.PI) / 180 },
-    { id: 'sin', name: 'Singapore', lat: (1.35 * Math.PI) / 180, lon: (103.81 * Math.PI) / 180 },
-    { id: 'tyo', name: 'Tokyo', lat: (35.67 * Math.PI) / 180, lon: (139.65 * Math.PI) / 180 },
-    { id: 'syd', name: 'Sydney', lat: (-33.86 * Math.PI) / 180, lon: (151.20 * Math.PI) / 180 },
-    { id: 'gru', name: 'São Paulo', lat: (-23.55 * Math.PI) / 180, lon: (-46.63 * Math.PI) / 180 },
-    { id: 'cpt', name: 'Cape Town', lat: (-33.92 * Math.PI) / 180, lon: (18.42 * Math.PI) / 180 }
-  ], []);
+  // Real Global Anycast Scrubbing Centers with lat/long in radians + precomputed trigonometric constants
+  const popNodes = useMemo(() => {
+    const rawNodes = [
+      { id: 'lhr', name: 'London', latDeg: 51.50, lonDeg: -0.12 },
+      { id: 'fra', name: 'Frankfurt', latDeg: 50.11, lonDeg: 8.68 },
+      { id: 'jfk', name: 'New York', latDeg: 40.71, lonDeg: -74.00 },
+      { id: 'sfo', name: 'San Francisco', latDeg: 37.77, lonDeg: -122.41 },
+      { id: 'dxb', name: 'Dubai', latDeg: 25.20, lonDeg: 55.27 },
+      { id: 'sin', name: 'Singapore', latDeg: 1.35, lonDeg: 103.81 },
+      { id: 'tyo', name: 'Tokyo', latDeg: 35.67, lonDeg: 139.65 },
+      { id: 'syd', name: 'Sydney', latDeg: -33.86, lonDeg: 151.20 },
+      { id: 'gru', name: 'São Paulo', latDeg: -23.55, lonDeg: -46.63 },
+      { id: 'cpt', name: 'Cape Town', latDeg: -33.92, lonDeg: 18.42 }
+    ];
+    return rawNodes.map((n) => {
+      const lat = (n.latDeg * Math.PI) / 180;
+      const lon = (n.lonDeg * Math.PI) / 180;
+      return {
+        id: n.id,
+        name: n.name,
+        lat,
+        lon,
+        sinLat: Math.sin(lat),
+        cosLat: Math.cos(lat),
+      };
+    });
+  }, []);
 
-  // Pre-computed continental surface coordinates for glowing 3D cyber grid
+  // Pre-computed continental surface coordinates for glowing 3D cyber grid with precalculated trigonometric values
   const globePoints = useMemo(() => {
     const points = [];
     const regions = [
@@ -63,11 +78,13 @@ export default function HeroDashboard3D() {
 
     regions.forEach((reg) => {
       for (let i = 0; i < reg.density; i++) {
-        const lat = reg.minLat + pseudoRandom() * (reg.maxLat - reg.minLat);
-        const lon = reg.minLon + pseudoRandom() * (reg.maxLon - reg.minLon);
+        const lat = (reg.minLat + pseudoRandom() * (reg.maxLat - reg.minLat)) * (Math.PI / 180);
+        const lon = (reg.minLon + pseudoRandom() * (reg.maxLon - reg.minLon)) * (Math.PI / 180);
         points.push({
-          lat: (lat * Math.PI) / 180,
-          lon: (lon * Math.PI) / 180,
+          lat,
+          lon,
+          sinLat: Math.sin(lat),
+          cosLat: Math.cos(lat),
           size: 1.1 + pseudoRandom() * 0.9,
           isOrange: pseudoRandom() > 0.65 // Highlight key defense nodes in amber orange
         });
@@ -115,7 +132,7 @@ export default function HeroDashboard3D() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    let dpr = window.devicePixelRatio || 1;
+    let dpr = Math.min(window.devicePixelRatio || 1, 2);
     let width = 0;
     let height = 0;
 
@@ -126,6 +143,8 @@ export default function HeroDashboard3D() {
       // Aspect ratio of the image: 1376 / 768 = 1.791666
       height = Math.round(width * (768 / 1376));
 
+      if (width <= 0 || height <= 0) return;
+
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
       canvas.style.width = `${width}px`;
@@ -133,7 +152,13 @@ export default function HeroDashboard3D() {
     };
 
     resize();
-    window.addEventListener('resize', resize);
+
+    let ro = null;
+    if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
+      ro = new ResizeObserver(resize);
+      ro.observe(containerRef.current);
+    }
+    window.addEventListener('resize', resize, { passive: true });
 
     // Active Anycast Scrubbing Arc Pairs
     const arcPairs = [
@@ -177,6 +202,8 @@ export default function HeroDashboard3D() {
 
       const rotY = rotationY.current;
       const rotX = rotationX.current;
+      const cosRotX = Math.cos(rotX);
+      const sinRotX = Math.sin(rotX);
 
       // -----------------------------------------------------------------
       // 1. DYNAMIC ROTATING WIREFRAME MERIDIANS & PARALLELS
@@ -201,9 +228,9 @@ export default function HeroDashboard3D() {
       const latitudes = [-50, -25, 0, 25, 50];
       latitudes.forEach((latDeg) => {
         const latRad = (latDeg * Math.PI) / 180;
-        const ringY = -R * Math.sin(latRad) * Math.cos(rotX);
+        const ringY = -R * Math.sin(latRad) * cosRotX;
         const ringRadius = R * Math.cos(latRad);
-        const ringH = ringRadius * Math.sin(rotX);
+        const ringH = ringRadius * sinRotX;
 
         ctx.strokeStyle = latDeg === 0 ? 'rgba(232, 121, 47, 0.45)' : 'rgba(40, 116, 93, 0.24)';
         ctx.lineWidth = latDeg === 0 ? 1.4 : 0.8;
@@ -219,12 +246,14 @@ export default function HeroDashboard3D() {
       // -----------------------------------------------------------------
       for (let i = 0; i < globePoints.length; i++) {
         const pt = globePoints[i];
-        const x3d = R * Math.cos(pt.lat) * Math.sin(pt.lon + rotY);
-        const y1 = R * Math.sin(pt.lat);
-        const z1 = R * Math.cos(pt.lat) * Math.cos(pt.lon + rotY);
+        const sinLonRot = Math.sin(pt.lon + rotY);
+        const cosLonRot = Math.cos(pt.lon + rotY);
+        const x3d = R * pt.cosLat * sinLonRot;
+        const y1 = R * pt.sinLat;
+        const z1 = R * pt.cosLat * cosLonRot;
 
-        const y3d = y1 * Math.cos(rotX) - z1 * Math.sin(rotX);
-        const z3d = y1 * Math.sin(rotX) + z1 * Math.cos(rotX);
+        const y3d = y1 * cosRotX - z1 * sinRotX;
+        const z3d = y1 * sinRotX + z1 * cosRotX;
 
         // Render front-facing dots with 3D depth attenuation
         if (z3d > -12) {
@@ -252,17 +281,21 @@ export default function HeroDashboard3D() {
         const a = popNodes[idxA];
         const b = popNodes[idxB];
 
-        const xA = R * Math.cos(a.lat) * Math.sin(a.lon + rotY);
-        const y1A = R * Math.sin(a.lat);
-        const z1A = R * Math.cos(a.lat) * Math.cos(a.lon + rotY);
-        const yA = y1A * Math.cos(rotX) - z1A * Math.sin(rotX);
-        const zA = y1A * Math.sin(rotX) + z1A * Math.cos(rotX);
+        const sinLonA = Math.sin(a.lon + rotY);
+        const cosLonA = Math.cos(a.lon + rotY);
+        const xA = R * a.cosLat * sinLonA;
+        const y1A = R * a.sinLat;
+        const z1A = R * a.cosLat * cosLonA;
+        const yA = y1A * cosRotX - z1A * sinRotX;
+        const zA = y1A * sinRotX + z1A * cosRotX;
 
-        const xB = R * Math.cos(b.lat) * Math.sin(b.lon + rotY);
-        const y1B = R * Math.sin(b.lat);
-        const z1B = R * Math.cos(b.lat) * Math.cos(b.lon + rotY);
-        const yB = y1B * Math.cos(rotX) - z1B * Math.sin(rotX);
-        const zB = y1B * Math.sin(rotX) + z1B * Math.cos(rotX);
+        const sinLonB = Math.sin(b.lon + rotY);
+        const cosLonB = Math.cos(b.lon + rotY);
+        const xB = R * b.cosLat * sinLonB;
+        const y1B = R * b.sinLat;
+        const z1B = R * b.cosLat * cosLonB;
+        const yB = y1B * cosRotX - z1B * sinRotX;
+        const zB = y1B * sinRotX + z1B * cosRotX;
 
         if (zA > -18 || zB > -18) {
           const pAx = cx + xA;
@@ -307,12 +340,14 @@ export default function HeroDashboard3D() {
       // 4. ANYCAST POP NODES & EXPANDING RADAR SCAN RINGS
       // -----------------------------------------------------------------
       popNodes.forEach((pop) => {
-        const x = R * Math.cos(pop.lat) * Math.sin(pop.lon + rotY);
-        const y1 = R * Math.sin(pop.lat);
-        const z1 = R * Math.cos(pop.lat) * Math.cos(pop.lon + rotY);
+        const sinLon = Math.sin(pop.lon + rotY);
+        const cosLon = Math.cos(pop.lon + rotY);
+        const x = R * pop.cosLat * sinLon;
+        const y1 = R * pop.sinLat;
+        const z1 = R * pop.cosLat * cosLon;
 
-        const y = y1 * Math.cos(rotX) - z1 * Math.sin(rotX);
-        const z = y1 * Math.sin(rotX) + z1 * Math.cos(rotX);
+        const y = y1 * cosRotX - z1 * sinRotX;
+        const z = y1 * sinRotX + z1 * cosRotX;
 
         if (z > -6) {
           const depthAlpha = Math.max(0, Math.min(1, (z + 6) / (R * 0.45)));
@@ -382,6 +417,7 @@ export default function HeroDashboard3D() {
     animFrameId.current = requestAnimationFrame(render);
 
     return () => {
+      if (ro) ro.disconnect();
       window.removeEventListener('resize', resize);
       if (animFrameId.current) cancelAnimationFrame(animFrameId.current);
     };
@@ -452,31 +488,61 @@ export default function HeroDashboard3D() {
         style={{
           position: 'relative',
           width: '100%',
+          aspectRatio: '1376 / 768',
           transform: 'rotateX(2.5deg) rotateY(-3.5deg) scale(1)',
-          background: 'transparent',
+          background: 'radial-gradient(ellipse at 50% 50%, rgba(232, 121, 47, 0.05) 0%, rgba(16, 185, 129, 0.03) 40%, rgba(247, 246, 241, 0.4) 100%)',
+          borderRadius: '12px',
           lineHeight: 0,
           userSelect: 'none',
         }}
       >
+        {/* Ambient Subtle Cyber Placeholder while image decodes */}
+        {!imgLoaded && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: '12px',
+              border: '1px solid rgba(232, 121, 47, 0.12)',
+              background: 'radial-gradient(circle at 50% 53%, rgba(232, 121, 47, 0.08) 0%, rgba(16, 185, 129, 0.04) 35%, #F7F6F1 80%)',
+              zIndex: 1,
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+
         {/* 
           Base High-Resolution Image:
-          Edges are pre-blended 100% seamlessly into the warm cream background (#F7F6F1)
+          Preloaded & ultra-optimized WebP with instant aspect-ratio reservation
         */}
         <picture>
           <source srcSet="/assets/hero_cyber_defense_cream.webp" type="image/webp" />
           <img
-            ref={imageRef}
+            ref={(el) => {
+              imageRef.current = el;
+              if (el && el.complete && !imgLoaded) {
+                setImgLoaded(true);
+              }
+            }}
             src="/assets/hero_cyber_defense_cream.jpg"
             alt="MDefender Pro Global Cyber Defense Intelligence Mesh"
             loading="eager"
+            fetchPriority="high"
+            decoding="async"
+            width={1376}
+            height={768}
+            onLoad={() => setImgLoaded(true)}
             style={{
               width: '100%',
               height: 'auto',
+              aspectRatio: '1376 / 768',
               display: 'block',
               objectFit: 'contain',
               pointerEvents: 'none',
               transform: 'translateZ(0)',
               borderRadius: '12px',
+              opacity: imgLoaded ? 1 : 0,
+              transition: 'opacity 0.28s ease-out',
             }}
           />
         </picture>
