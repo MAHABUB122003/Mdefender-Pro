@@ -63,6 +63,7 @@ backend/storage/
 storage/
 
 # Large Datasets & Archives
+blog_backup/
 *.csv
 *.zip
 !mdefender-pro.zip

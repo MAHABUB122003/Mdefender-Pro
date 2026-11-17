@@ -31,6 +31,43 @@ import {
 // ============================================================================
 // HELPER COMPONENTS FOR RICH ARTICLE DETAIL VIEW
 // ============================================================================
+function EditorialImage({ src, alt, className = '', style = {}, loading = 'lazy', fetchPriority = 'auto' }) {
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
+      {!loaded && (
+        <div
+          className="img-skeleton-shimmer"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 1,
+          }}
+        />
+      )}
+      <img
+        src={src}
+        alt={alt}
+        loading={loading}
+        fetchPriority={fetchPriority}
+        onLoad={() => setLoaded(true)}
+        ref={(img) => {
+          if (img && img.complete && !loaded) {
+            setLoaded(true);
+          }
+        }}
+        className={className}
+        style={{
+          ...style,
+          opacity: loaded ? 1 : 0,
+          transition: 'opacity 0.28s ease-out, transform 0.35s ease',
+        }}
+      />
+    </div>
+  );
+}
+
 function CodeSnippetBox({ code }) {
   const [copied, setCopied] = useState(false);
 
@@ -514,6 +551,15 @@ export default function Blog() {
       {/* Global CSS for Animations and Clean Editorial Cards */}
       <style>{`
         * { box-sizing: border-box; }
+        @keyframes imgShimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        .img-skeleton-shimmer {
+          background: linear-gradient(90deg, #F3F2EC 25%, #E6E5DC 50%, #F3F2EC 75%);
+          background-size: 200% 100%;
+          animation: imgShimmer 1.4s ease-in-out infinite;
+        }
         .threat-post-card {
           transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease;
         }
@@ -794,9 +840,11 @@ export default function Blog() {
                   background: '#F7F6F1',
                 }}
               >
-                <img
+                <EditorialImage
                   src={activeArticle.image}
                   alt={activeArticle.title}
+                  loading="eager"
+                  fetchPriority="high"
                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                 />
               </div>
@@ -1156,17 +1204,17 @@ export default function Blog() {
                       borderRight: '1px solid #E6ECE8',
                     }}
                   >
-                    <img
+                    <EditorialImage
                       src={featuredPost.image}
                       alt={featuredPost.title}
                       loading="eager"
+                      fetchPriority="high"
                       className="card-thumb-img"
                       style={{
                         width: '100%',
                         height: '100%',
                         objectFit: 'cover',
                         display: 'block',
-                        transition: 'transform 0.35s ease',
                       }}
                     />
                     <div
@@ -1174,6 +1222,7 @@ export default function Blog() {
                         position: 'absolute',
                         top: '14px',
                         left: '14px',
+                        zIndex: 2,
                         background: 'rgba(255, 255, 255, 0.94)',
                         backdropFilter: 'blur(8px)',
                         padding: '3px 10px',
@@ -1403,7 +1452,7 @@ export default function Blog() {
                     gap: '18px',
                   }}
                 >
-                  {filteredPosts.map((post) => (
+                  {filteredPosts.map((post, postIndex) => (
                     <article
                       key={post.id}
                       onClick={() => handleOpenArticle(post.id)}
@@ -1431,17 +1480,17 @@ export default function Blog() {
                             borderBottom: '1px solid #E6ECE8',
                           }}
                         >
-                          <img
+                          <EditorialImage
                             src={post.image}
                             alt={post.title}
-                            loading="lazy"
+                            loading={postIndex < 3 ? 'eager' : 'lazy'}
+                            fetchPriority={postIndex < 3 ? 'high' : 'auto'}
                             className="card-thumb-img"
                             style={{
                               width: '100%',
                               height: '100%',
                               objectFit: 'cover',
                               display: 'block',
-                              transition: 'transform 0.3s ease',
                             }}
                           />
                           <div
@@ -1449,6 +1498,7 @@ export default function Blog() {
                               position: 'absolute',
                               top: '10px',
                               left: '10px',
+                              zIndex: 2,
                               background: 'rgba(255, 255, 255, 0.94)',
                               backdropFilter: 'blur(6px)',
                               padding: '2px 8px',
