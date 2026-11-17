@@ -49,6 +49,10 @@ function storeTokens(data) {
       });
     } catch { }
   }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('mdefender_auth_state_changed'));
+    window.dispatchEvent(new Event('storage'));
+  }
 }
 
 export function clearTokens() {
@@ -64,6 +68,10 @@ export function clearTokens() {
         if (k.startsWith('mdf_cache_')) sessionStorage.removeItem(k);
       });
     } catch { }
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('mdefender_auth_state_changed'));
+    window.dispatchEvent(new Event('storage'));
   }
 }
 

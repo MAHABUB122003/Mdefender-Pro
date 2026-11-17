@@ -22,6 +22,30 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 
+// Bulletproof JWT token format & expiration validator
+function isTokenValid(token) {
+  if (!token || typeof token !== 'string') return false;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return false;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const payload = JSON.parse(jsonPayload);
+    if (payload.exp && Date.now() >= payload.exp * 1000) {
+      return false; // Token expired
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export default function PublicNavbar() {
   const loc = useLocation();
   const [scrolled, setScrolled] = useState(false);
@@ -74,16 +98,29 @@ export default function PublicNavbar() {
     }
   }, []);
 
-  // Real-time reactive authentication state synchronization
+  // Real-time reactive authentication state synchronization with JWT expiration check
   useEffect(() => {
     const syncAuth = () => {
       try {
         const token = localStorage.getItem('mdefender_access') || localStorage.getItem('mdefender_user_token');
+        const valid = isTokenValid(token);
+        if (!valid) {
+          if (token && typeof localStorage !== 'undefined') {
+            localStorage.removeItem('mdefender_access');
+            localStorage.removeItem('mdefender_refresh');
+            localStorage.removeItem('mdefender_user_name');
+            localStorage.removeItem('mdefender_user_plan');
+          }
+          setIsLoggedIn(false);
+          setUserName('');
+          return;
+        }
         const name = localStorage.getItem('mdefender_user_name') || '';
-        setIsLoggedIn(!!token);
+        setIsLoggedIn(true);
         setUserName(name);
       } catch {
         setIsLoggedIn(false);
+        setUserName('');
       }
     };
 

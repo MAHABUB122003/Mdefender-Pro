@@ -219,6 +219,7 @@ function App() {
       setUserState(null)
       userStore.remove('profile')
       userStore.remove('admin_profile')
+      api.clearTokens()
     }).finally(() => {
       setAuthChecking(false)
     })
