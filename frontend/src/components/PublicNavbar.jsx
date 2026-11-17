@@ -74,15 +74,29 @@ export default function PublicNavbar() {
     }
   }, []);
 
+  // Real-time reactive authentication state synchronization
   useEffect(() => {
-    try {
-      const token = localStorage.getItem('mdefender_access') || localStorage.getItem('mdefender_user_token');
-      const name = localStorage.getItem('mdefender_user_name') || '';
-      setIsLoggedIn(!!token);
-      setUserName(name);
-    } catch {
-      setIsLoggedIn(false);
-    }
+    const syncAuth = () => {
+      try {
+        const token = localStorage.getItem('mdefender_access') || localStorage.getItem('mdefender_user_token');
+        const name = localStorage.getItem('mdefender_user_name') || '';
+        setIsLoggedIn(!!token);
+        setUserName(name);
+      } catch {
+        setIsLoggedIn(false);
+      }
+    };
+
+    syncAuth();
+    window.addEventListener('storage', syncAuth);
+    window.addEventListener('mdefender_auth_state_changed', syncAuth);
+    window.addEventListener('focus', syncAuth);
+
+    return () => {
+      window.removeEventListener('storage', syncAuth);
+      window.removeEventListener('mdefender_auth_state_changed', syncAuth);
+      window.removeEventListener('focus', syncAuth);
+    };
   }, [loc.pathname]);
 
   useEffect(() => {
@@ -304,16 +318,16 @@ export default function PublicNavbar() {
           left: 0,
           right: 0,
           zIndex: 100,
-          background: scrolled ? 'rgba(247, 246, 241, 0.98)' : 'rgba(247, 246, 241, 0.92)',
+          background: scrolled ? 'rgba(247, 246, 241, 0.98)' : 'rgba(247, 246, 241, 0.94)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
-          borderBottom: '1px solid #D9E1DC',
+          borderBottom: '1px solid rgba(15, 23, 42, 0.08)',
           transition: 'all 0.25s ease',
         }}
       >
         <div
           style={{
-            maxWidth: '1240px',
+            maxWidth: '1280px',
             margin: '0 auto',
             height: '100%',
             padding: '0 28px',
@@ -393,15 +407,26 @@ export default function PublicNavbar() {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '5px',
-                  background: 'none',
+                  gap: '4px',
+                  background: (productsOpen || loc.pathname.startsWith('/products')) ? 'rgba(15, 23, 42, 0.06)' : 'transparent',
                   border: 'none',
                   fontSize: '13.5px',
-                  fontWeight: 600,
-                  color: (productsOpen || loc.pathname.startsWith('/products')) ? '#E8792F' : '#10201E',
+                  fontWeight: 500,
+                  color: (productsOpen || loc.pathname.startsWith('/products')) ? '#0F172A' : '#334155',
                   cursor: 'pointer',
-                  padding: '6px 2px',
-                  transition: 'color 0.18s ease',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  transition: 'all 0.16s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#0F172A';
+                  e.currentTarget.style.background = 'rgba(15, 23, 42, 0.05)';
+                }}
+                onMouseLeave={(e) => {
+                  if (!productsOpen && !loc.pathname.startsWith('/products')) {
+                    e.currentTarget.style.color = '#334155';
+                    e.currentTarget.style.background = 'transparent';
+                  }
                 }}
               >
                 <span>Products</span>
@@ -409,7 +434,7 @@ export default function PublicNavbar() {
                   size={13}
                   strokeWidth={2.4}
                   style={{
-                    color: (productsOpen || loc.pathname.startsWith('/products')) ? '#E8792F' : '#4A5D5A',
+                    color: (productsOpen || loc.pathname.startsWith('/products')) ? '#0F172A' : '#64748B',
                     transform: productsOpen ? 'rotate(180deg)' : 'rotate(0deg)',
                     transition: 'transform 0.2s ease, color 0.18s ease',
                   }}
@@ -542,15 +567,26 @@ export default function PublicNavbar() {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '5px',
-                  background: 'none',
+                  gap: '4px',
+                  background: (solutionsOpen || loc.pathname === '/solutions' || loc.pathname === '/about' || loc.pathname.startsWith('/solutions/')) ? 'rgba(15, 23, 42, 0.06)' : 'transparent',
                   border: 'none',
                   fontSize: '13.5px',
-                  fontWeight: 600,
-                  color: (solutionsOpen || loc.pathname === '/solutions' || loc.pathname === '/about' || loc.pathname.startsWith('/solutions/')) ? '#E8792F' : '#10201E',
+                  fontWeight: 500,
+                  color: (solutionsOpen || loc.pathname === '/solutions' || loc.pathname === '/about' || loc.pathname.startsWith('/solutions/')) ? '#0F172A' : '#334155',
                   cursor: 'pointer',
-                  padding: '6px 2px',
-                  transition: 'color 0.18s ease',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  transition: 'all 0.16s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#0F172A';
+                  e.currentTarget.style.background = 'rgba(15, 23, 42, 0.05)';
+                }}
+                onMouseLeave={(e) => {
+                  if (!solutionsOpen && loc.pathname !== '/solutions' && loc.pathname !== '/about' && !loc.pathname.startsWith('/solutions/')) {
+                    e.currentTarget.style.color = '#334155';
+                    e.currentTarget.style.background = 'transparent';
+                  }
                 }}
               >
                 <span>Solutions</span>
@@ -558,7 +594,7 @@ export default function PublicNavbar() {
                   size={13}
                   strokeWidth={2.4}
                   style={{
-                    color: (solutionsOpen || loc.pathname === '/solutions' || loc.pathname === '/about' || loc.pathname.startsWith('/solutions/')) ? '#E8792F' : '#4A5D5A',
+                    color: (solutionsOpen || loc.pathname === '/solutions' || loc.pathname === '/about' || loc.pathname.startsWith('/solutions/')) ? '#0F172A' : '#64748B',
                     transform: solutionsOpen ? 'rotate(180deg)' : 'rotate(0deg)',
                     transition: 'transform 0.2s ease, color 0.18s ease',
                   }}
@@ -666,28 +702,34 @@ export default function PublicNavbar() {
               )}
             </div>
 
-            {/* 4. Documentation Link */}
+            {/* 4. Threat Intel Link */}
             <Link
-              to="/docs"
-              onMouseEnter={() => prefetch('docs')}
-              onFocus={() => prefetch('docs')}
+              to="/threat-intelligence"
+              onMouseEnter={() => prefetch('threat')}
+              onFocus={() => prefetch('threat')}
               style={{
                 fontSize: '13.5px',
-                fontWeight: 600,
-                color: loc.pathname === '/docs' ? '#E8792F' : '#10201E',
+                fontWeight: 500,
+                color: (loc.pathname.startsWith('/threat-intelligence') || loc.pathname.startsWith('/blog')) ? '#0F172A' : '#334155',
                 textDecoration: 'none',
-                padding: '6px 2px',
-                transition: 'color 0.18s ease',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: (loc.pathname.startsWith('/threat-intelligence') || loc.pathname.startsWith('/blog')) ? 'rgba(15, 23, 42, 0.06)' : 'transparent',
+                transition: 'all 0.16s ease',
               }}
               onMouseEnter={(e) => {
-                prefetch('docs');
-                e.currentTarget.style.color = '#E8792F';
+                prefetch('threat');
+                e.currentTarget.style.color = '#0F172A';
+                e.currentTarget.style.background = 'rgba(15, 23, 42, 0.05)';
               }}
               onMouseLeave={(e) => {
-                if (loc.pathname !== '/docs') e.currentTarget.style.color = '#10201E';
+                if (!loc.pathname.startsWith('/threat-intelligence') && !loc.pathname.startsWith('/blog')) {
+                  e.currentTarget.style.color = '#334155';
+                  e.currentTarget.style.background = 'transparent';
+                }
               }}
             >
-              Docs
+              Threat Intel
             </Link>
 
             {/* 5. Pricing Link */}
@@ -697,47 +739,57 @@ export default function PublicNavbar() {
               onFocus={() => prefetch('pricing')}
               style={{
                 fontSize: '13.5px',
-                fontWeight: 600,
-                color: loc.pathname === '/pricing' ? '#E8792F' : '#10201E',
+                fontWeight: 500,
+                color: loc.pathname === '/pricing' ? '#0F172A' : '#334155',
                 textDecoration: 'none',
-                padding: '6px 2px',
-                transition: 'color 0.18s ease',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: loc.pathname === '/pricing' ? 'rgba(15, 23, 42, 0.06)' : 'transparent',
+                transition: 'all 0.16s ease',
               }}
               onMouseEnter={(e) => {
                 prefetch('pricing');
-                e.currentTarget.style.color = '#E8792F';
+                e.currentTarget.style.color = '#0F172A';
+                e.currentTarget.style.background = 'rgba(15, 23, 42, 0.05)';
               }}
               onMouseLeave={(e) => {
-                if (loc.pathname !== '/pricing') e.currentTarget.style.color = '#10201E';
+                if (loc.pathname !== '/pricing') {
+                  e.currentTarget.style.color = '#334155';
+                  e.currentTarget.style.background = 'transparent';
+                }
               }}
             >
               Pricing
             </Link>
 
-            {/* 6. Threat Intelligence Link */}
+            {/* 6. Documentation Link */}
             <Link
-              to="/threat-intelligence"
-              onMouseEnter={() => prefetch('threat')}
-              onFocus={() => prefetch('threat')}
+              to="/docs"
+              onMouseEnter={() => prefetch('docs')}
+              onFocus={() => prefetch('docs')}
               style={{
                 fontSize: '13.5px',
-                fontWeight: 600,
-                color: (loc.pathname.startsWith('/threat-intelligence') || loc.pathname.startsWith('/blog')) ? '#E8792F' : '#10201E',
+                fontWeight: 500,
+                color: loc.pathname === '/docs' ? '#0F172A' : '#334155',
                 textDecoration: 'none',
-                padding: '6px 2px',
-                transition: 'color 0.18s ease',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: loc.pathname === '/docs' ? 'rgba(15, 23, 42, 0.06)' : 'transparent',
+                transition: 'all 0.16s ease',
               }}
               onMouseEnter={(e) => {
-                prefetch('threat');
-                e.currentTarget.style.color = '#E8792F';
+                prefetch('docs');
+                e.currentTarget.style.color = '#0F172A';
+                e.currentTarget.style.background = 'rgba(15, 23, 42, 0.05)';
               }}
               onMouseLeave={(e) => {
-                if (!loc.pathname.startsWith('/threat-intelligence') && !loc.pathname.startsWith('/blog')) {
-                  e.currentTarget.style.color = '#10201E';
+                if (loc.pathname !== '/docs') {
+                  e.currentTarget.style.color = '#334155';
+                  e.currentTarget.style.background = 'transparent';
                 }
               }}
             >
-              Threat Intelligence
+              Docs
             </Link>
 
             {/* 7. About Us Link */}
@@ -745,52 +797,27 @@ export default function PublicNavbar() {
               to="/about"
               style={{
                 fontSize: '13.5px',
-                fontWeight: 600,
-                color: loc.pathname === '/about' ? '#E8792F' : '#10201E',
+                fontWeight: 500,
+                color: loc.pathname === '/about' ? '#0F172A' : '#334155',
                 textDecoration: 'none',
-                padding: '6px 2px',
-                transition: 'color 0.18s ease',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: loc.pathname === '/about' ? 'rgba(15, 23, 42, 0.06)' : 'transparent',
+                transition: 'all 0.16s ease',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.color = '#E8792F';
+                e.currentTarget.style.color = '#0F172A';
+                e.currentTarget.style.background = 'rgba(15, 23, 42, 0.05)';
               }}
               onMouseLeave={(e) => {
-                if (loc.pathname !== '/about') e.currentTarget.style.color = '#10201E';
+                if (loc.pathname !== '/about') {
+                  e.currentTarget.style.color = '#334155';
+                  e.currentTarget.style.background = 'transparent';
+                }
               }}
             >
               About
             </Link>
-
-            {isLoggedIn && (
-              <Link
-                to="/user/dashboard"
-                style={{
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: loc.pathname.startsWith('/user') ? '#E8792F' : '#10201E',
-                  textDecoration: 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '4px 10px',
-                  borderRadius: '8px',
-                  background: 'rgba(232, 121, 47, 0.08)',
-                  border: '1px solid rgba(232, 121, 47, 0.25)',
-                  transition: 'all 0.18s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = '#E8792F';
-                  e.currentTarget.style.borderColor = '#E8792F';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = loc.pathname.startsWith('/user') ? '#E8792F' : '#10201E';
-                  e.currentTarget.style.borderColor = 'rgba(232, 121, 47, 0.25)';
-                }}
-              >
-                <LayoutDashboard size={14} color="#E8792F" />
-                <span>Dashboard</span>
-              </Link>
-            )}
           </nav>
 
           {/* Desktop Right Action CTA */}
@@ -802,19 +829,19 @@ export default function PublicNavbar() {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '8px',
-                  padding: '0 18px',
-                  height: '40px',
-                  borderRadius: '10px',
+                  padding: '0 16px',
+                  height: '38px',
+                  borderRadius: '8px',
                   background: '#0B2522',
                   color: '#ffffff',
-                  fontSize: '13px',
-                  fontWeight: 700,
+                  fontSize: '13.5px',
+                  fontWeight: 600,
                   textDecoration: 'none',
-                  boxShadow: '0 2px 8px rgba(11, 37, 34, 0.15)',
-                  transition: 'all 0.2s ease',
+                  boxShadow: '0 2px 6px rgba(11, 37, 34, 0.12)',
+                  transition: 'all 0.18s ease',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#E8792F';
+                  e.currentTarget.style.background = '#15413C';
                   e.currentTarget.style.transform = 'translateY(-1px)';
                 }}
                 onMouseLeave={(e) => {
@@ -823,7 +850,7 @@ export default function PublicNavbar() {
                 }}
               >
                 <LayoutDashboard size={14} />
-                <span>{userName ? `Dashboard (${userName.split(' ')[0]})` : 'Dashboard'}</span>
+                <span>Dashboard</span>
                 <ArrowRight size={13} strokeWidth={2.4} />
               </Link>
             ) : (
@@ -834,19 +861,23 @@ export default function PublicNavbar() {
                   onFocus={() => prefetch('login')}
                   onTouchStart={() => prefetch('login')}
                   style={{
-                    fontSize: '13px',
+                    fontSize: '13.5px',
                     fontWeight: 500,
-                    color: '#10201E',
+                    color: '#334155',
                     textDecoration: 'none',
-                    padding: '6px 10px',
+                    padding: '6px 12px',
                     borderRadius: '8px',
-                    transition: 'color 0.18s ease',
+                    transition: 'all 0.16s ease',
                   }}
                   onMouseEnter={(e) => {
                     prefetch('login');
-                    e.currentTarget.style.color = '#E8792F';
+                    e.currentTarget.style.color = '#0F172A';
+                    e.currentTarget.style.background = 'rgba(15, 23, 42, 0.05)';
                   }}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = '#10201E')}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = '#334155';
+                    e.currentTarget.style.background = 'transparent';
+                  }}
                 >
                   Sign in
                 </Link>
@@ -859,21 +890,21 @@ export default function PublicNavbar() {
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '8px',
-                    padding: '0 16px',
-                    height: '40px',
-                    borderRadius: '10px',
+                    gap: '6px',
+                    padding: '0 15px',
+                    height: '38px',
+                    borderRadius: '8px',
                     background: '#0B2522',
                     color: '#ffffff',
-                    fontSize: '13px',
-                    fontWeight: 700,
+                    fontSize: '13.5px',
+                    fontWeight: 600,
                     textDecoration: 'none',
-                    boxShadow: '0 2px 8px rgba(11, 37, 34, 0.15)',
-                    transition: 'all 0.2s ease',
+                    boxShadow: '0 2px 6px rgba(11, 37, 34, 0.12)',
+                    transition: 'all 0.18s ease',
                   }}
                   onMouseEnter={(e) => {
                     prefetch('register');
-                    e.currentTarget.style.background = '#133935';
+                    e.currentTarget.style.background = '#15413C';
                     e.currentTarget.style.transform = 'translateY(-1px)';
                   }}
                   onMouseLeave={(e) => {
@@ -1026,7 +1057,7 @@ export default function PublicNavbar() {
                   <span>Pricing</span>
                 </Link>
 
-                {/* 5. Threat Intelligence (Direct Link) */}
+                {/* 5. Threat Intel (Direct Link) */}
                 <Link
                   to="/threat-intelligence"
                   onClick={() => setMobileOpen(false)}
@@ -1042,7 +1073,7 @@ export default function PublicNavbar() {
                     color: '#10201E',
                   }}
                 >
-                  <span>Threat Intelligence</span>
+                  <span>Threat Intel</span>
                 </Link>
 
                 {/* 6. About Us (Direct Link) */}
@@ -1422,21 +1453,21 @@ export default function PublicNavbar() {
 
       <style>{`
         .public-navbar-header {
-          height: 76px;
+          height: 72px;
         }
         .public-navbar-drawer {
-          top: 76px;
+          top: 72px;
           display: none !important;
         }
         .mdf-public-nav-desktop {
           display: flex;
           align-items: center;
-          gap: 24px;
+          gap: 6px;
         }
         .mdf-public-cta-desktop {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 8px;
         }
         .mdf-public-mobile-btn {
           display: none;
