@@ -12,8 +12,11 @@ import {
   ArrowRight,
   ArrowUpRight,
   Bug,
+  Building2,
   CheckCircle2,
+  Clock,
   Clock3,
+  Compass,
   Database,
   Fingerprint,
   Globe2,
@@ -21,8 +24,13 @@ import {
   LifeBuoy,
   RefreshCw,
   Server,
+  Share2,
   ShieldAlert,
   ShieldCheck,
+  ShoppingBag,
+  Sparkles,
+  TrendingUp,
+  User,
   Users,
 } from 'lucide-react';
 import api from '../api/api';
@@ -39,6 +47,22 @@ import {
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const THREAT_COLORS = ['#C0392B', '#E8792F', '#B7791F', '#2F6F62', '#6E7F7A', '#0B2B26'];
+
+const PERSONA_ICONS = {
+  owner: ShoppingBag,
+  agency: Building2,
+  freelance: User,
+  enterprise: ShieldCheck,
+  unassigned: Clock,
+};
+
+const PERSONA_COLORS = {
+  owner: '#12805C',
+  agency: '#2563EB',
+  freelance: '#D97706',
+  enterprise: '#7C3AED',
+  unassigned: '#64748B',
+};
 
 const fmt = (n) => Number(n || 0).toLocaleString();
 
@@ -73,7 +97,7 @@ export default function Dashboard() {
   const load = useCallback(async (manual = false) => {
     if (manual) setRefreshing(true);
     const [ov, st, he, fl, au] = await Promise.allSettled([
-      api.adminGetOverview(),
+      api.adminGetOverview({ fresh: manual }),
       api.getStats(),
       api.adminGetSystemHealth(),
       api.adminGetTenantWebsites(),
@@ -114,6 +138,40 @@ export default function Dashboard() {
   const openTickets = Number(overview?.support_tickets_open || 0);
   const quarantine = Number(overview?.quarantine_items || 0);
   const unverified = Number(overview?.unverified_users || 0);
+
+  // Demographics & Acquisition Intelligence State
+  const demographics = overview?.demographics || {};
+  const personas = demographics.personas || [];
+  const topPersona = demographics.top_persona || null;
+  const referrals = demographics.referrals || [];
+  const topReferral = demographics.top_referral || null;
+  const fleetSizes = demographics.fleet_sizes || [];
+  const totalOnboarded = Number(demographics.total_onboarded || 0);
+  const completionRate = Number(demographics.completion_rate || 0);
+
+  const referralChannels = useMemo(() => {
+    const defaultChannels = [
+      'Social Media (Facebook, LinkedIn, X)',
+      'Search Engine (Google, Bing)',
+      'AI Assistant (ChatGPT, Gemini, Copilot)',
+      'YouTube',
+      'Cybersecurity Community / Forum',
+      'Friend / Colleague Referral',
+      'Other'
+    ];
+    const map = new Map();
+    (referrals || []).forEach(r => map.set(r.name, r));
+    const combined = defaultChannels.map(ch => {
+      if (map.has(ch)) return map.get(ch);
+      return { name: ch, count: 0, percentage: 0.0 };
+    });
+    (referrals || []).forEach(r => {
+      if (!defaultChannels.includes(r.name)) {
+        combined.push(r);
+      }
+    });
+    return combined.sort((a, b) => b.count - a.count);
+  }, [referrals]);
 
   const riskySites = useMemo(
     () => [...sites].sort((a, b) => Number(a.security_score || 0) - Number(b.security_score || 0)).slice(0, 6),
@@ -233,9 +291,36 @@ export default function Dashboard() {
         .adm-ov-strip > div:last-child { border-right: 0; }
         .adm-ov-strip span { display: block; font-size: 10.5px; color: var(--md-ink-3); }
         .adm-ov-strip strong { font-size: 14px; font-weight: 650; color: var(--md-ink); font-variant-numeric: tabular-nums; }
+        .adm-demog-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .adm-demog-item { display: flex; flex-direction: column; gap: 7px; padding: 12px 14px; border-radius: 9px; background: var(--md-surface-sunken); border: 1px solid var(--md-line); transition: border-color .14s ease, background .14s ease; }
+        .adm-demog-item:hover { border-color: #d6d9cf; background: var(--md-surface-hover); }
+        .adm-demog-item.dominant { border-color: rgba(18, 128, 92, 0.35); background: rgba(18, 128, 92, 0.04); }
+        .adm-demog-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .adm-demog-title { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 650; color: var(--md-ink); }
+        .adm-demog-icon { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; flex-shrink: 0; }
+        .adm-demog-val { font-size: 12px; font-weight: 700; color: var(--md-ink); font-variant-numeric: tabular-nums; }
+        .adm-demog-pct { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .adm-demog-bar { width: 100%; height: 5px; border-radius: 999px; background: rgba(0,0,0,0.06); overflow: hidden; }
+        .adm-demog-bar-fill { height: 100%; border-radius: 999px; transition: width 0.4s ease; }
+        .adm-demog-desc { font-size: 10.5px; color: var(--md-ink-3); line-height: 1.3; }
+
+        .adm-ref-item { display: flex; flex-direction: column; gap: 5px; padding: 8px 12px; border-radius: 8px; background: var(--md-surface-sunken); border: 1px solid var(--md-line); }
+        .adm-ref-head { display: flex; align-items: center; justify-content: space-between; font-size: 11.5px; }
+        .adm-ref-name { font-weight: 600; color: var(--md-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%; }
+        .adm-ref-count { font-weight: 700; color: var(--md-ink); font-variant-numeric: tabular-nums; }
+
+        .adm-fleet-strip { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--md-line); }
+        .adm-fleet-box { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 6px; background: var(--md-surface-sunken); border: 1px solid var(--md-line); }
+        .adm-fleet-box span { font-size: 10px; font-weight: 600; color: var(--md-ink-3); }
+        .adm-fleet-box strong { font-size: 13px; font-weight: 700; color: var(--md-ink); font-variant-numeric: tabular-nums; }
+
         @media (max-width: 1200px) {
           .adm-ov-signals { grid-template-columns: repeat(2, minmax(0,1fr)); }
           .adm-ov-strip { grid-template-columns: repeat(3, minmax(0,1fr)); }
+        }
+        @media (max-width: 900px) {
+          .adm-demog-grid { grid-template-columns: 1fr; }
+          .adm-fleet-strip { grid-template-columns: repeat(2, minmax(0,1fr)); }
         }
         @media (max-width: 640px) {
           .adm-ov-signals { grid-template-columns: 1fr; }
@@ -371,6 +456,162 @@ export default function Dashboard() {
           ) : (
             <EmptyState icon={Server} title="Health checks unavailable" description="The system health endpoint did not return a response." />
           )}
+        </Card>
+      </div>
+
+      {/* Onboarding Demographics & Acquisition Intelligence */}
+      <div className="mdui-grid mdui-split">
+        <Card
+          title="Tenant Personas"
+          subtitle={`Audience segment · ${totalOnboarded} onboarded (${completionRate}% rate)`}
+          action={
+            topPersona?.title && topPersona?.id !== 'unassigned' ? (
+              <Badge tone="success" dot>
+                Top: {topPersona.title}
+              </Badge>
+            ) : null
+          }
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {topPersona && topPersona.id !== 'unassigned' && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                background: 'rgba(18, 128, 92, 0.08)',
+                border: '1px solid rgba(18, 128, 92, 0.25)',
+                fontSize: 11.5
+              }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 650, color: '#12805C' }}>
+                  <Sparkles size={13} /> Dominant Segment: {topPersona.title}
+                </span>
+                <span style={{ fontWeight: 700, color: '#12805C', fontVariantNumeric: 'tabular-nums' }}>
+                  {topPersona.percentage}% of all tenants ({topPersona.onboarded_percentage}% of onboarded)
+                </span>
+              </div>
+            )}
+
+            <div className="adm-demog-grid">
+              {personas.map((p) => {
+                const IconComp = PERSONA_ICONS[p.id] || User;
+                const color = PERSONA_COLORS[p.id] || '#28745D';
+                const isDominant = topPersona?.id === p.id && p.id !== 'unassigned';
+                return (
+                  <div key={p.id} className={`adm-demog-item ${isDominant ? 'dominant' : ''}`}>
+                    <div className="adm-demog-head">
+                      <div className="adm-demog-title">
+                        <span className="adm-demog-icon" style={{ background: `${color}18`, color }}>
+                          <IconComp size={13} strokeWidth={2.2} />
+                        </span>
+                        <span>{p.title}</span>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span className="adm-demog-val">{fmt(p.count)}</span>
+                        <span className="adm-demog-pct" style={{ marginLeft: 4, color }}>
+                          ({p.percentage}%)
+                        </span>
+                      </div>
+                    </div>
+                    <div className="adm-demog-bar">
+                      <div
+                        className="adm-demog-bar-fill"
+                        style={{ width: `${Math.min(100, Math.max(0, p.percentage))}%`, background: color }}
+                      />
+                    </div>
+                    <div className="adm-demog-desc">
+                      {p.description}
+                      {p.id !== 'unassigned' && totalOnboarded > 0 && (
+                        <span style={{ display: 'block', marginTop: 2, fontWeight: 600, color: 'var(--md-ink-2)' }}>
+                          {p.onboarded_percentage}% of completed onboarding
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </Card>
+
+        <Card
+          title="Acquisition & Fleet Scale"
+          subtitle="Where tenants discover MDefender Pro & fleet size"
+          action={
+            topReferral?.name ? (
+              <Badge tone="info">
+                Top: {topReferral.name.split('(')[0].trim()}
+              </Badge>
+            ) : null
+          }
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {topReferral && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                background: 'rgba(37, 99, 235, 0.08)',
+                border: '1px solid rgba(37, 99, 235, 0.22)',
+                fontSize: 11.5
+              }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 650, color: '#2563EB' }}>
+                  <Compass size={13} /> Primary Acquisition: {topReferral.name}
+                </span>
+                <span style={{ fontWeight: 700, color: '#2563EB', fontVariantNumeric: 'tabular-nums' }}>
+                  {topReferral.percentage}% of referrals ({fmt(topReferral.count)})
+                </span>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {referralChannels.slice(0, 5).map((ref) => {
+                return (
+                  <div key={ref.name} className="adm-ref-item">
+                    <div className="adm-ref-head">
+                      <span className="adm-ref-name" title={ref.name}>
+                        {ref.name}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span className="adm-ref-count">{fmt(ref.count)}</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: ref.count > 0 ? '#12805C' : 'var(--md-ink-3)', fontVariantNumeric: 'tabular-nums' }}>
+                          ({ref.percentage}%)
+                        </span>
+                      </div>
+                    </div>
+                    <div className="adm-demog-bar">
+                      <div
+                        className="adm-demog-bar-fill"
+                        style={{
+                          width: `${Math.min(100, Math.max(0, ref.percentage))}%`,
+                          background: ref.count > 0 ? '#2563EB' : 'rgba(0,0,0,0.1)'
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {fleetSizes.length > 0 && (
+              <div>
+                <div style={{ fontSize: 10.5, fontWeight: 650, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--md-ink-3)', marginBottom: 6 }}>
+                  Fleet Scale (Managed Sites per Tenant)
+                </div>
+                <div className="adm-fleet-strip">
+                  {fleetSizes.map((fl) => (
+                    <div key={fl.range} className="adm-fleet-box">
+                      <span>{fl.range.replace(' Websites', '').replace(' Enterprise Fleet', '+ Enterprise')}</span>
+                      <strong>{fl.percentage}% <span style={{ fontSize: 10.5, fontWeight: 500, color: 'var(--md-ink-3)' }}>({fl.count})</span></strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </Card>
       </div>
 

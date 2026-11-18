@@ -137,13 +137,13 @@ class PaymentService:
             except Exception as e:
                 _log.warning("Stripe Checkout Session creation failed, falling back: %s", e)
 
-        # Fallback instant session for development or direct activation
-        dummy_session_id = f"cs_live_{secrets.token_hex(16)}"
+        # Direct mock fallback removed: MDefender uses 100% genuine Paddle Billing Merchant of Record
         return {
-            "status": "success",
-            "checkout_url": f"{base_url}/payment/success?session_id={dummy_session_id}&plan={plan_key}&cycle={cycle}",
-            "session_id": dummy_session_id,
-            "mode": "sandbox"
+            "status": "error",
+            "message": "Legacy Stripe checkout is disabled. All transactions are securely processed via Paddle Billing.",
+            "checkout_url": None,
+            "session_id": None,
+            "mode": "paddle"
         }
 
     def verify_stripe_session(self, session_id, user):

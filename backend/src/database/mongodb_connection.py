@@ -180,6 +180,9 @@ class MongoDB:
         _ttl_idx('audit_logs', 'timestamp', 7776000)  # Auto-expire after 90 days (zero VPS bloat)
         _idx('audit_logs', 'action')
         _ttl_idx('security_events', 'timestamp', 2592000)  # Auto-expire after 30 days
+        _ttl_idx('attack_attempts', 'timestamp', 604800)  # Auto-expire after 7 days (zero VPS bloat)
+        _ttl_idx('attacks', 'timestamp', 2592000)  # Auto-expire after 30 days (zero VPS bloat)
+        _idx('blacklist', 'expires_at', expireAfterSeconds=0)  # Auto-purge expired temporary IP blocks
         _idx('monitoring_probes', [('domain', 1), ('checked_at', -1)])
         _ttl_idx('monitoring_probes', 'checked_at', 1209600)  # Auto-expire after 14 days
         _idx('monitoring_incidents', [('domain', 1), ('status', 1)])

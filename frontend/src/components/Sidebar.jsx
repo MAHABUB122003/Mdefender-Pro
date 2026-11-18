@@ -60,8 +60,8 @@ export default function Sidebar({ isOpen, isCollapsed, onToggleCollapse, onClose
     {
       label: 'Security operations',
       items: [
-        { to: '/admin/blacklist', label: 'Firewall & IP Rules', icon: ShieldAlert },
-        { to: '/admin/logs', label: 'Attack Logs', icon: FileText },
+        { to: '/admin/blacklist', label: 'Global IP Blacklist', icon: ShieldAlert },
+        { to: '/admin/logs', label: 'Global Threat Logs', icon: FileText },
         { to: '/admin/rules', label: 'Patches & Rules', icon: ShieldCheck },
         { to: '/admin/learning', label: 'Evasion Lab', icon: Brain },
         { to: '/admin/ddos', label: 'DDoS Shield', icon: Activity },

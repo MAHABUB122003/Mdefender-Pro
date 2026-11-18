@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import PublicNavbar from '../components/PublicNavbar';
 import HeroDashboard3D from '../components/HeroDashboard3D';
+import api from '../api/api';
+import { getStoredPricingConfig, subscribePricing, syncPricingWithBackend } from '../utils/pricingStore';
 import {
   Shield,
   ArrowRight,
@@ -28,6 +30,25 @@ import {
 } from 'lucide-react';
 
 export default function Landing() {
+  const [pricingConfig, setPricingConfig] = useState(() => getStoredPricingConfig());
+
+  useEffect(() => {
+    let mounted = true;
+    const unsubscribe = subscribePricing((newCfg) => {
+      if (mounted && newCfg) setPricingConfig(newCfg);
+    });
+    syncPricingWithBackend(api).then((cfg) => {
+      if (mounted && cfg) setPricingConfig(cfg);
+    });
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, []);
+
+  const monthlyRate = Number(pricingConfig.base_monthly_rate) || 4;
+  const currencySymbol = pricingConfig.currency_symbol || '$';
+
   // Interactive Live Threat Simulator States
   const [selectedAttack, setSelectedAttack] = useState('sqli');
   const attackScenarios = {
@@ -305,7 +326,7 @@ export default function Landing() {
                       e.currentTarget.style.borderColor = '#CBD8CF';
                     }}
                   >
-                    <span>View pricing ($4/site/mo)</span>
+                    <span>View pricing ({currencySymbol}{monthlyRate}/site/mo)</span>
                   </Link>
                 </div>
 
@@ -459,7 +480,7 @@ export default function Landing() {
                   margin: '0 auto',
                 }}
               >
-                Replace multiple disjointed plugins, costly enterprise firewalls, and manual maintenance with one high-speed platform. All enterprise services included at just $4/site/mo.
+                Replace multiple disjointed plugins, costly enterprise firewalls, and manual maintenance with one high-speed platform. All enterprise services included at just {currencySymbol}{monthlyRate}/site/mo.
               </p>
             </div>
 
@@ -2153,7 +2174,7 @@ export default function Landing() {
                   Start Defending Your Websites Today.
                 </h3>
                 <p style={{ fontSize: '14.5px', color: '#4A5D5A', margin: 0 }}>
-                  Deploy sub-millisecond Cloud WAF, L7 DDoS mitigation, and 14M+ malware intelligence in under 3 minutes. Just $4/site/mo afterwards.
+                  Deploy sub-millisecond Cloud WAF, L7 DDoS mitigation, and 14M+ malware intelligence in under 3 minutes. Just {currencySymbol}{monthlyRate}/site/mo afterwards.
                 </p>
               </div>
 
@@ -2184,7 +2205,7 @@ export default function Landing() {
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
-                  <span>Start 14-Day Free Trial</span>
+                  <span>Start {pricingConfig.trial_days || 14}-Day Free Trial</span>
                   <ArrowRight size={14} strokeWidth={2.4} />
                 </Link>
 
@@ -2205,7 +2226,7 @@ export default function Landing() {
                     transition: 'all 0.18s ease',
                   }}
                 >
-                  <span>View plans ($4/site)</span>
+                  <span>View plans ({currencySymbol}{monthlyRate}/site)</span>
                 </Link>
               </div>
             </div>

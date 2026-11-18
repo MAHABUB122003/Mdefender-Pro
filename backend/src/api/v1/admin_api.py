@@ -42,6 +42,17 @@ MODEL_META = {
     "malware": os.path.join(BACKEND_ROOT, "models", "malware_meta.json"),
 }
 
+# In-memory TTL cache for high-frequency admin overview requests (zero VPS pressure)
+_OVERVIEW_CACHE = {
+    "data": None,
+    "expires_at": 0.0
+}
+
+_USERS_METRICS_CACHE = {
+    "metrics": None,
+    "expires_at": 0.0
+}
+
 
 class UserActionBody(BaseModel):
     user_id: str
@@ -69,6 +80,17 @@ class GiftPlanBody(BaseModel):
     plan: str
     duration_days: Optional[int] = 30
     is_lifetime: Optional[bool] = False
+    website_limit: Optional[int] = 1
+    gift_note: Optional[str] = None
+
+
+class BulkUserActionBody(BaseModel):
+    user_ids: list[str]
+    action: str  # "delete", "suspend", "restore", "gift_plan"
+    plan: Optional[str] = "pro"
+    duration_days: Optional[int] = 30
+    is_lifetime: Optional[bool] = False
+    website_limit: Optional[int] = 1
     gift_note: Optional[str] = None
 
 
@@ -105,9 +127,20 @@ class DynamicPricingUpdateBody(BaseModel):
     features_included: Optional[list] = None
 
 
+class PaddleGatewayConfigBody(BaseModel):
+    environment: Optional[str] = "sandbox"
+    client_token: Optional[str] = ""
+    api_key: Optional[str] = ""
+    webhook_secret: Optional[str] = ""
+    price_id_monthly: Optional[str] = ""
+    price_id_yearly: Optional[str] = ""
+
+
 class VirtualPatchBody(BaseModel):
     cve_id: str
     name: str
+    rule_type: Optional[str] = "custom_rule"  # 'custom_rule' (SQLi, XSS, Webshells) or 'cve_patch' (Plugins)
+    category: Optional[str] = "SQL Injection"
     component: Optional[str] = "core"
     target_scope: Optional[str] = "all"
     pattern: str
@@ -120,7 +153,11 @@ class WhitelistRuleBody(BaseModel):
     url_pattern: str
     target_type: Optional[str] = "url"
     target_key: Optional[str] = ""
-    scope: Optional[str] = "global"
+    scope: Optional[str] = "global"  # 'global' or 'tenant'
+    user_email: Optional[str] = ""
+    domain: Optional[str] = ""
+    user_id: Optional[str] = ""
+    website_id: Optional[str] = ""
     reason: Optional[str] = ""
     is_active: Optional[bool] = True
 
@@ -172,6 +209,9 @@ async def list_users(request: Request, admin_email: str = Depends(get_current_ad
     persona = params.get("persona") or params.get("organization_type")
     search = params.get("q") or params.get("search")
     limit = min(int(params.get("limit", 100)), 500)
+    page = max(int(params.get("page", 1)), 1)
+    skip = (page - 1) * limit
+    fresh = params.get("fresh") == "true"
 
     if role and role != "all":
         query["role"] = role
@@ -193,7 +233,7 @@ async def list_users(request: Request, admin_email: str = Depends(get_current_ad
         rx = re.compile(re.escape(search.strip()), re.IGNORECASE)
         query["$or"] = [{"email": rx}, {"name": rx}, {"full_name": rx}, {"username": rx}]
 
-    users = list(db.users.find(query).sort("created_at", -1).limit(limit))
+    users = list(db.users.find(query).sort("created_at", -1).skip(skip).limit(limit))
 
     # Fetch locked accounts to flag users
     locked_emails = set()
@@ -205,34 +245,52 @@ async def list_users(request: Request, admin_email: str = Depends(get_current_ad
     except Exception:
         pass
 
+    # High-Performance Batch Optimization: Fetch all connected websites in ONE SINGLE QUERY
+    user_id_strs = [str(u["_id"]) for u in users]
+    user_id_objs = []
+    for u in users:
+        if ObjectId.is_valid(str(u["_id"])):
+            try:
+                user_id_objs.append(ObjectId(str(u["_id"])))
+            except Exception:
+                pass
+    user_emails = [str(u.get("email", "")).lower() for u in users if u.get("email")]
+
+    all_matched_sites = list(db.websites.find({
+        "$or": [
+            {"user_id": {"$in": user_id_strs + user_id_objs}},
+            {"user_email": {"$in": user_emails}}
+        ]
+    }))
+
+    # Index sites in memory by user_id and email
+    sites_by_uid = {}
+    sites_by_email = {}
+    for s in all_matched_sites:
+        s_obj = {
+            "id": str(s.get("_id")),
+            "domain": s.get("domain") or s.get("url") or "website",
+            "url": s.get("url") or "",
+            "waf_mode": s.get("waf_mode") or "protect",
+            "status": s.get("status") or "active",
+            "threats_blocked": s.get("total_blocked", 0),
+            "total_requests": s.get("total_requests", 0),
+            "last_ping": s.get("last_ping") or s.get("last_seen") or "",
+        }
+        s_uid = str(s.get("user_id") or "")
+        s_email = str(s.get("user_email") or "").lower()
+        if s_uid:
+            sites_by_uid.setdefault(s_uid, []).append(s_obj)
+        if s_email:
+            sites_by_email.setdefault(s_email, []).append(s_obj)
+
     user_list = []
     for u in users:
         uid = str(u.get("_id"))
         u_email = str(u.get("email", "")).lower()
 
-        # Resolve real connected WordPress websites from db.websites
-        matched_sites = list(db.websites.find({"user_id": uid}))
-        if not matched_sites and u_email:
-            matched_sites = list(db.websites.find({"user_email": u_email}))
-        if not matched_sites and ObjectId.is_valid(uid):
-            try:
-                matched_sites = list(db.websites.find({"user_id": ObjectId(uid)}))
-            except Exception:
-                pass
-
-        # Also fallback to embedded websites array or clients collection
-        site_objects = []
-        for s in matched_sites:
-            site_objects.append({
-                "id": str(s.get("_id")),
-                "domain": s.get("domain") or s.get("url") or "website",
-                "url": s.get("url") or "",
-                "waf_mode": s.get("waf_mode") or "protect",
-                "status": s.get("status") or "active",
-                "threats_blocked": s.get("total_blocked", 0),
-                "total_requests": s.get("total_requests", 0),
-                "last_ping": s.get("last_ping") or s.get("last_seen") or "",
-            })
+        # Instant in-memory lookup instead of roundtrip DB queries
+        site_objects = sites_by_uid.get(uid) or sites_by_email.get(u_email) or []
 
         if not site_objects and u.get("websites"):
             for w in u.get("websites"):
@@ -248,6 +306,8 @@ async def list_users(request: Request, admin_email: str = Depends(get_current_ad
                     "last_ping": "",
                 })
 
+        site_limit = u.get("website_limit") or u.get("max_sites") or (5 if u.get("plan", "free") == "free" else 100)
+
         user_list.append({
             "id": uid,
             "name": u.get("name") or u.get("full_name") or u.get("username") or "Tenant User",
@@ -262,6 +322,8 @@ async def list_users(request: Request, admin_email: str = Depends(get_current_ad
             "is_locked": u_email in locked_emails,
             "plan": u.get("plan", "free"),
             "plan_tier": u.get("plan_tier") or u.get("plan", "free"),
+            "website_limit": site_limit,
+            "max_sites": site_limit,
             "plan_expires": u.get("plan_expires").strftime("%Y-%m-%d") if isinstance(u.get("plan_expires"), datetime) else str(u.get("plan_expires") or ""),
             "api_key": u.get("api_key", ""),
             "organization_type": (u.get("organization_type") or "").strip().lower(),
@@ -274,10 +336,13 @@ async def list_users(request: Request, admin_email: str = Depends(get_current_ad
             "last_login": u.get("last_login").strftime("%Y-%m-%d %H:%M:%S") if isinstance(u.get("last_login"), datetime) else str(u.get("last_login") or ""),
         })
 
-    return success({
-        "users": user_list,
-        "total": db.users.count_documents(query),
-        "metrics": {
+    # Cache metrics for 60 seconds (instant response with zero DB load)
+    now_ts = time.time()
+    metrics = None
+    if not fresh and _USERS_METRICS_CACHE.get("metrics") and now_ts < _USERS_METRICS_CACHE.get("expires_at", 0):
+        metrics = _USERS_METRICS_CACHE["metrics"]
+    else:
+        metrics = {
             "total_users": db.users.count_documents({}),
             "verified_users": db.users.count_documents({"email_verified": True}),
             "pro_users": db.users.count_documents({"plan": {"$in": ["pro", "premium", "go", "enterprise"]}}),
@@ -289,7 +354,124 @@ async def list_users(request: Request, admin_email: str = Depends(get_current_ad
             "freelance_users": db.users.count_documents({"organization_type": "freelance"}),
             "enterprise_users": db.users.count_documents({"organization_type": "enterprise"}),
         }
+        _USERS_METRICS_CACHE["metrics"] = metrics
+        _USERS_METRICS_CACHE["expires_at"] = now_ts + 60.0
+
+    return success({
+        "users": user_list,
+        "total": db.users.count_documents(query),
+        "page": page,
+        "limit": limit,
+        "metrics": metrics
     })
+
+
+@router.post("/users/bulk-action")
+async def bulk_user_action(body: BulkUserActionBody, admin_email: str = Depends(get_current_admin)):
+    """Admin endpoint for batch operations: delete, suspend, restore, gift_plan across multiple tenants."""
+    db = get_db()
+    if not body.user_ids:
+        raise HTTPException(status_code=400, detail="No user IDs provided for bulk action")
+
+    target_ids = []
+    target_objs = []
+    for uid in body.user_ids:
+        target_ids.append(str(uid))
+        if ObjectId.is_valid(str(uid)):
+            try:
+                target_objs.append(ObjectId(str(uid)))
+            except Exception:
+                pass
+
+    user_query = {"$or": [{"_id": {"$in": target_ids + target_objs}}, {"id": {"$in": target_ids}}]}
+    target_users = list(db.users.find(user_query))
+    if not target_users:
+        raise HTTPException(status_code=404, detail="No matching tenants found")
+
+    action = body.action.lower().strip()
+    now = datetime.now()
+    modified_count = 0
+
+    if action == "delete":
+        for u in target_users:
+            u_id_str = str(u["_id"])
+            u_email = u.get("email")
+            db.users.delete_one({"_id": u["_id"]})
+            db.api_keys.delete_many({"$or": [{"user_id": u_id_str}, {"user_email": u_email}]})
+            db.sessions.delete_many({"user_id": u_id_str})
+            db.websites.delete_many({"$or": [{"user_id": u_id_str}, {"user_email": u_email}]})
+            modified_count += 1
+            AuditService().log(user_id=admin_email, action="tenant_bulk_deleted", ip_address="admin_panel",
+                               details={"target_email": u_email, "tenant_id": u_id_str})
+
+    elif action == "suspend":
+        res = db.users.update_many(
+            user_query,
+            {"$set": {"is_active": False, "status": "suspended", "suspended_at": now, "suspended_by": admin_email}}
+        )
+        modified_count = res.modified_count
+        AuditService().log(user_id=admin_email, action="tenant_bulk_suspended", ip_address="admin_panel",
+                           details={"affected_count": modified_count, "user_ids": target_ids})
+
+    elif action == "restore":
+        res = db.users.update_many(
+            user_query,
+            {"$set": {"is_active": True, "status": "active", "restored_at": now, "restored_by": admin_email}}
+        )
+        modified_count = res.modified_count
+        AuditService().log(user_id=admin_email, action="tenant_bulk_restored", ip_address="admin_panel",
+                           details={"affected_count": modified_count, "user_ids": target_ids})
+
+    elif action == "gift_plan":
+        plan_key = (body.plan or "pro").lower().strip()
+        limit_val = body.website_limit if (body.website_limit and body.website_limit > 0) else 1
+        days_val = body.duration_days or 30
+        is_life = body.is_lifetime or days_val >= 36500
+        expires_at = None if is_life else (now + timedelta(days=days_val))
+        note = body.gift_note or f"Bulk gifted by Super Admin ({admin_email})"
+
+        for u in target_users:
+            db.users.update_one(
+                {"_id": u["_id"]},
+                {
+                    "$set": {
+                        "plan": plan_key,
+                        "plan_tier": plan_key,
+                        "website_limit": limit_val,
+                        "max_sites": limit_val,
+                        "plan_expires": expires_at,
+                        "is_gift": True,
+                        "gift_note": note,
+                        "gifted_at": now,
+                        "gifted_by": admin_email,
+                        "updated_at": now
+                    }
+                }
+            )
+            try:
+                from src.services.subscription_service import SubscriptionService
+                SubscriptionService(db).grant_entitlement(
+                    user_id=str(u["_id"]),
+                    plan=plan_key,
+                    days=36500 if is_life else days_val,
+                    note={"granted_by": admin_email, "note": note, "website_limit": limit_val}
+                )
+            except Exception:
+                pass
+            modified_count += 1
+        AuditService().log(user_id=admin_email, action="tenant_bulk_plan_gifted", ip_address="admin_panel",
+                           details={"affected_count": modified_count, "plan": plan_key, "website_limit": limit_val})
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported bulk action: {action}")
+
+    # Invalidate caches
+    _USERS_METRICS_CACHE["metrics"] = None
+    _OVERVIEW_CACHE["data"] = None
+
+    return success({
+        "modified_count": modified_count,
+        "action": action
+    }, message=f"Bulk action '{action}' successfully applied to {modified_count} tenant(s).")
 
 
 @router.post("/users/unlock")
@@ -549,6 +731,7 @@ async def gift_user_plan(body: GiftPlanBody, admin_email: str = Depends(get_curr
         duration_desc = "30 Days"
 
     note = body.gift_note or f"Gifted by Super Admin ({admin_email})"
+    website_limit = body.website_limit if (body.website_limit and body.website_limit > 0) else 1
 
     db.users.update_one(
         {"_id": user["_id"]},
@@ -556,6 +739,8 @@ async def gift_user_plan(body: GiftPlanBody, admin_email: str = Depends(get_curr
             "$set": {
                 "plan": plan_key,
                 "plan_tier": plan_key,
+                "website_limit": website_limit,
+                "max_sites": website_limit,
                 "plan_expires": expires_at,
                 "payment_status": "gifted",
                 "is_gift": True,
@@ -574,20 +759,24 @@ async def gift_user_plan(body: GiftPlanBody, admin_email: str = Depends(get_curr
             user_id=str(user["_id"]),
             plan=plan_key,
             days=days_val,
-            note={"granted_by": admin_email, "note": note}
+            note={"granted_by": admin_email, "note": note, "website_limit": website_limit}
         )
     except Exception as e:
         logger.warning(f"Failed to sync entitlement during plan gift: {e}")
 
+    _USERS_METRICS_CACHE["metrics"] = None
+    _OVERVIEW_CACHE["data"] = None
+
     AuditService().log(user_id=admin_email, action="user_plan_gifted", ip_address="admin_panel",
-                       details={"target_user": user.get("email"), "plan": plan_key, "duration": duration_desc, "note": note})
+                       details={"target_user": user.get("email"), "plan": plan_key, "duration": duration_desc, "website_limit": website_limit, "note": note})
 
     return success({
         "email": user.get("email"),
         "plan": plan_key,
+        "website_limit": website_limit,
         "duration": duration_desc,
         "expires_at": expires_at.strftime("%Y-%m-%d") if expires_at else "Never (Lifetime)"
-    }, message=f"Successfully gifted {plan_key.upper()} plan ({duration_desc}) to {user.get('email')}!")
+    }, message=f"Successfully gifted {plan_key.upper()} plan ({duration_desc}, {website_limit} website quota) to {user.get('email')}!")
 
 
 @router.post("/users/plan")
@@ -799,6 +988,80 @@ async def update_admin_dynamic_pricing_config(body: DynamicPricingUpdateBody, ad
     return success(PlanService(db).get_dynamic_pricing_config(), message="Dynamic pricing configuration saved successfully.")
 
 
+@router.get("/billing/paddle-gateway")
+async def get_paddle_gateway_config(admin_email: str = Depends(get_current_admin)):
+    """Returns current Paddle payment gateway credentials and active environment mode."""
+    db = get_db()
+    from src.services.paddle_service import PaddleService
+    service = PaddleService(db=db)
+    dyn_cfg = PlanService(db).get_dynamic_pricing_config()
+    return success({
+        "environment": service.environment,
+        "client_token": service.client_token,
+        "api_key": service.api_key,
+        "webhook_secret": service.webhook_secret,
+        "price_id_monthly": dyn_cfg.get("price_id_monthly", ""),
+        "price_id_yearly": dyn_cfg.get("price_id_yearly", ""),
+        "configured": service.configured,
+    })
+
+
+@router.post("/billing/paddle-gateway")
+async def update_paddle_gateway_config(body: PaddleGatewayConfigBody, admin_email: str = Depends(get_current_admin)):
+    """Updates Paddle API keys, Client Token, Webhook Secret, and environment mode."""
+    db = get_db()
+    config_dict = {
+        "environment": (body.environment or "sandbox").strip().lower(),
+        "client_token": (body.client_token or "").strip(),
+        "api_key": (body.api_key or "").strip(),
+        "webhook_secret": (body.webhook_secret or "").strip(),
+        "price_id_monthly": (body.price_id_monthly or "").strip(),
+        "price_id_yearly": (body.price_id_yearly or "").strip(),
+    }
+    db.settings.update_one(
+        {"_type": "paddle_gateway"},
+        {"$set": {"config": config_dict, "updated_at": datetime.now()}},
+        upsert=True
+    )
+    # Automatically enable paddle_billing_enabled in feature_flags
+    FeatureFlagService(db).set_flag("paddle_billing_enabled", True)
+
+    # Sync price IDs to dynamic_pricing
+    PlanService(db).save_dynamic_pricing_config({
+        "price_id_monthly": config_dict["price_id_monthly"],
+        "price_id_yearly": config_dict["price_id_yearly"],
+    })
+
+    AuditService().log(
+        user_id=admin_email,
+        action="paddle_gateway_updated",
+        ip_address="admin_panel",
+        details={"environment": config_dict["environment"], "has_api_key": bool(config_dict["api_key"])}
+    )
+    return success(config_dict, message="Paddle Gateway credentials saved and activated.")
+
+
+@router.post("/billing/paddle-test-connection")
+async def test_paddle_connection(admin_email: str = Depends(get_current_admin)):
+    """Live validation of configured Paddle API credentials."""
+    db = get_db()
+    from src.services.paddle_service import PaddleService
+    service = PaddleService(db=db)
+    if not service.api_key:
+        return {"success": False, "message": "No API Key configured. Please enter your Paddle API key first."}
+    
+    result = await service.list_prices()
+    if result.get("error"):
+        return {"success": False, "message": f"Connection failed: {result['error']}"}
+    
+    prices = result.get("prices", [])
+    return success({
+        "environment": service.environment,
+        "prices_count": len(prices),
+        "message": f"Successfully verified connection to Paddle ({service.environment.upper()})! Found {len(prices)} catalog prices."
+    })
+
+
 # ==================== MULTI-TENANT WEBSITES ====================
 
 @router.get("/websites")
@@ -811,36 +1074,45 @@ async def list_tenant_websites(request: Request, admin_email: str = Depends(get_
     # 2. Also check db.clients for legacy records
     clients_cursor = list(db.clients.find().sort("created_at", -1))
 
-    # Deduplicate by domain and ID
+    def _clean_domain(d):
+        if not d:
+            return ""
+        d = str(d).strip().lower()
+        d = re.sub(r"^https?://", "", d)
+        return d.rstrip("/")
+
+    # True Deduplication across websites and legacy clients
     seen_domains = set()
     unified_list = []
 
     for w in websites_cursor:
-        dom = (w.get("domain") or "").strip().lower()
-        if dom:
+        dom = _clean_domain(w.get("domain") or w.get("url"))
+        if dom and dom not in seen_domains:
             seen_domains.add(dom)
-        unified_list.append((w, "websites"))
+            unified_list.append((w, "websites"))
 
     for c in clients_cursor:
-        dom = (c.get("domain") or "").strip().lower()
+        dom = _clean_domain(c.get("domain") or c.get("url"))
         if dom and dom not in seen_domains:
             seen_domains.add(dom)
             unified_list.append((c, "clients"))
 
+    # Batch fetch all owners to eliminate N+1 queries
+    u_ids = [str(w.get("user_id") or "") for w, _ in unified_list if w.get("user_id")]
+    u_objs = [ObjectId(uid) for uid in u_ids if ObjectId.is_valid(uid)]
+    user_docs = list(db.users.find({"$or": [{"_id": {"$in": u_ids + u_objs}}, {"id": {"$in": u_ids}}]}, {"email": 1}))
+    user_email_map = {str(ud["_id"]): ud.get("email") for ud in user_docs}
+    for ud in user_docs:
+        if ud.get("id"):
+            user_email_map[str(ud["id"])] = ud.get("email")
+
     result = []
     active_patches_count = db.virtual_patches.count_documents({"is_active": True})
+    now = datetime.now()
 
     for w, source_coll in unified_list:
         uid = str(w.get("user_id") or "")
-        u_email = w.get("user_email")
-        if not u_email and uid:
-            u_doc = None
-            if ObjectId.is_valid(uid):
-                u_doc = db.users.find_one({"_id": ObjectId(uid)})
-            if not u_doc:
-                u_doc = db.users.find_one({"_id": uid})
-            if u_doc:
-                u_email = u_doc.get("email")
+        u_email = w.get("user_email") or user_email_map.get(uid) or "Platform System"
 
         # Extract WP telemetry
         wp_conn = w.get("wordpress_connection") or {}
@@ -848,26 +1120,48 @@ async def list_tenant_websites(request: Request, admin_email: str = Depends(get_
         wp_v = wp_conn.get("wp_version") or w.get("wp_version") or "6.7.1"
         plugin_v = wp_conn.get("plugin_version") or w.get("plugin_version") or "4.3.0"
 
-        hb = w.get("last_activity") or w.get("last_heartbeat") or w.get("updated_at")
-        hb_str = hb.strftime("%Y-%m-%d %H:%M:%S") if isinstance(hb, datetime) else str(hb or "")
+        hb = w.get("last_activity") or w.get("last_heartbeat") or w.get("last_ping") or w.get("updated_at")
+        hb_dt = hb if isinstance(hb, datetime) else None
+        if not hb_dt and isinstance(hb, str) and hb:
+            try:
+                hb_dt = datetime.fromisoformat(hb)
+            except Exception:
+                pass
+        hb_str = hb_dt.strftime("%Y-%m-%d %H:%M:%S") if hb_dt else str(hb or "")
 
         c_at = w.get("created_at")
         cat_str = c_at.strftime("%Y-%m-%d %H:%M:%S") if isinstance(c_at, datetime) else str(c_at or "")
 
         mode = (w.get("waf_mode") or "protect").lower()
         origin = w.get("origin_server") or w.get("resolved_ip") or w.get("url") or "Origin Edge"
+        protection_enabled = bool(w.get("protection_enabled", True))
+        is_verified = bool(w.get("verified", True) or w.get("api_key"))
+
+        # Real Service Consumption Status Detection
+        if not is_verified or not w.get("api_key"):
+            calculated_status = "pending"
+        elif not protection_enabled or mode == "bypass":
+            calculated_status = "bypassed"
+        elif hb_dt and (now - hb_dt).total_seconds() < 900:  # Signal within 15 mins
+            calculated_status = "active"
+        elif hb_dt and (now - hb_dt).total_seconds() < 172800:  # Signal within 48 hours
+            calculated_status = "idle"
+        elif hb_dt:
+            calculated_status = "unreachable"
+        else:
+            calculated_status = "idle" if w.get("status") == "active" else (w.get("status") or "pending")
 
         result.append({
             "id": str(w["_id"]),
-            "domain": w.get("domain", ""),
-            "name": w.get("name") or w.get("domain", ""),
+            "domain": _clean_domain(w.get("domain") or w.get("url")),
+            "name": w.get("name") or _clean_domain(w.get("domain") or w.get("url")),
             "url": w.get("url") or f"https://{w.get('domain', '')}",
             "origin_server": origin,
             "security_level": w.get("security_level") or w.get("threat_level", "low"),
-            "status": "active" if w.get("protection_enabled", True) and w.get("verified", True) else (w.get("status") or "active"),
+            "status": calculated_status,
             "api_key": w.get("api_key", ""),
             "user_id": uid,
-            "user_email": u_email or "Platform System",
+            "user_email": u_email,
             "php_version": php_v,
             "wp_version": wp_v,
             "plugin_version": plugin_v,
@@ -880,7 +1174,7 @@ async def list_tenant_websites(request: Request, admin_email: str = Depends(get_
             "ssl_status": w.get("ssl_status", "valid"),
             "last_ping_latency_ms": w.get("last_ping_latency_ms") or 28.5,
             "active_patches_count": active_patches_count,
-            "protection_enabled": bool(w.get("protection_enabled", True)),
+            "protection_enabled": protection_enabled,
             "turnstile_enabled": bool(w.get("turnstile_enabled", False)),
             "login_two_factor": bool(w.get("login_two_factor", False)),
             "created_at": cat_str,
@@ -1267,7 +1561,12 @@ async def purge_user_gdpr(user_id: str, admin_email: str = Depends(get_current_a
 
 
 @router.get("/overview")
-async def admin_overview(admin_email: str = Depends(get_current_admin)):
+async def admin_overview(admin_email: str = Depends(get_current_admin), fresh: bool = False):
+    now_ts = time.time()
+    # High-Performance In-Memory Cache (60s TTL) - guarantees zero VPS CPU load under polling
+    if not fresh and _OVERVIEW_CACHE["data"] is not None and now_ts < _OVERVIEW_CACHE["expires_at"]:
+        return success(_OVERVIEW_CACHE["data"])
+
     db = get_db()
     now = datetime.now()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -1299,13 +1598,14 @@ async def admin_overview(admin_email: str = Depends(get_current_admin)):
         real_websites_count = _count("clients", {})
 
     # Real-world tenant onboarding demographics & discovery channel aggregation
-    persona_counts = {"agency": 0, "freelance": 0, "owner": 0, "enterprise": 0, "unassigned": 0}
+    persona_counts = {"owner": 0, "agency": 0, "freelance": 0, "enterprise": 0, "unassigned": 0}
     referral_counts = {}
     fleet_sizes = {}
     total_onboarded = 0
     total_users_count = 0
 
     try:
+        # Zero-bloat projection: only load demographic fields, skipping heavy security tokens/keys
         for u in db.users.find({}, {"organization_type": 1, "referral_source": 1, "fleet_size": 1}):
             total_users_count += 1
             org = (u.get("organization_type") or "").strip().lower()
@@ -1325,7 +1625,78 @@ async def admin_overview(admin_email: str = Depends(get_current_admin)):
     except Exception:
         pass
 
-    return success({
+    PERSONA_META = {
+        "owner": {"title": "Website & Business Owner", "description": "Personal, commercial, or e-commerce websites"},
+        "agency": {"title": "Digital Agency", "description": "Multi-client fleet management & client reporting"},
+        "freelance": {"title": "Freelance Webmaster", "description": "Independent developers & site maintainers"},
+        "enterprise": {"title": "Enterprise IT & SecOps", "description": "Corporate infrastructure & custom compliance"},
+        "unassigned": {"title": "Pending Onboarding", "description": "Registered tenants who have not finished step 1"}
+    }
+
+    # Total users is the definitive denominator so percentages always total 100%
+    denom = total_users_count if total_users_count > 0 else 1
+    onboarded_denom = total_onboarded if total_onboarded > 0 else 1
+
+    persona_list = []
+    top_persona = None
+    max_persona_cnt = -1
+
+    for p_id, p_meta in PERSONA_META.items():
+        cnt = persona_counts.get(p_id, 0)
+        # Global percentage across all registered tenants
+        pct = round((cnt / denom) * 100, 1)
+        # Percentage among tenants who completed onboarding
+        onboarded_pct = round((cnt / onboarded_denom) * 100, 1) if p_id != "unassigned" else 0.0
+        p_obj = {
+            "id": p_id,
+            "title": p_meta["title"],
+            "description": p_meta["description"],
+            "count": cnt,
+            "percentage": pct,
+            "onboarded_percentage": onboarded_pct
+        }
+        persona_list.append(p_obj)
+        if p_id != "unassigned" and cnt > max_persona_cnt:
+            max_persona_cnt = cnt
+            top_persona = p_obj
+
+    if not top_persona and persona_list:
+        top_persona = persona_list[0]
+
+    # Referral / Acquisition breakdown with percentage & rankings
+    total_referrals = sum(referral_counts.values())
+    referral_list = []
+    top_referral = None
+
+    for ref_name, cnt in sorted(referral_counts.items(), key=lambda x: x[1], reverse=True):
+        pct = round((cnt / total_referrals) * 100, 1) if total_referrals > 0 else 0.0
+        ref_obj = {
+            "name": ref_name,
+            "count": cnt,
+            "percentage": pct
+        }
+        referral_list.append(ref_obj)
+        if not top_referral:
+            top_referral = ref_obj
+
+    # Fleet size distribution breakdown
+    total_fleets = sum(fleet_sizes.values())
+    fleet_size_list = []
+    FLEET_ORDER = ['1 - 3 Websites', '4 - 10 Websites', '11 - 50 Websites', '50+ Enterprise Fleet']
+    all_fleet_keys = list(dict.fromkeys(FLEET_ORDER + list(fleet_sizes.keys())))
+    for f_range in all_fleet_keys:
+        cnt = fleet_sizes.get(f_range, 0)
+        if cnt > 0 or f_range in FLEET_ORDER:
+            pct = round((cnt / total_fleets) * 100, 1) if total_fleets > 0 else 0.0
+            fleet_size_list.append({
+                "range": f_range,
+                "count": cnt,
+                "percentage": pct
+            })
+
+    onboarding_completion_rate = round((total_onboarded / total_users_count) * 100, 1) if total_users_count > 0 else 0.0
+
+    overview_payload = {
         "users": total_users_count or _count("users", {}),
         "users_today": _count("users", {"created_at": {"$gte": today_start}}),
         "verified_users": _count("users", {"email_verified": True}),
@@ -1346,13 +1717,25 @@ async def admin_overview(admin_email: str = Depends(get_current_admin)):
         "blacklisted_ips": _count("blacklist", {}),
         "api_keys": _count("api_keys", {}),
         "demographics": {
-            "personas": persona_counts,
-            "referrals": referral_counts,
-            "fleet_sizes": fleet_sizes,
+            "personas": persona_list,
+            "persona_counts": persona_counts,
+            "top_persona": top_persona,
+            "referrals": referral_list,
+            "referral_counts": referral_counts,
+            "top_referral": top_referral,
+            "fleet_sizes": fleet_size_list,
+            "fleet_counts": fleet_sizes,
             "total_onboarded": total_onboarded,
+            "completion_rate": onboarding_completion_rate,
             "total_users": total_users_count or _count("users", {})
         }
-    })
+    }
+
+    # Store in memory cache with 60 seconds TTL
+    _OVERVIEW_CACHE["data"] = overview_payload
+    _OVERVIEW_CACHE["expires_at"] = now_ts + 60.0
+
+    return success(overview_payload)
 
 
 @router.get("/system-health")
@@ -1538,6 +1921,8 @@ async def create_virtual_patch(body: VirtualPatchBody, admin_email: str = Depend
     doc = {
         "cve_id": body.cve_id.strip().upper(),
         "name": body.name.strip(),
+        "rule_type": getattr(body, "rule_type", "custom_rule") or "custom_rule",
+        "category": getattr(body, "category", "SQL Injection") or "SQL Injection",
         "component": (body.component or "core").strip().lower(),
         "target_scope": body.target_scope or "all",
         "pattern": body.pattern.strip(),
@@ -1624,6 +2009,10 @@ async def create_whitelist_rule(body: WhitelistRuleBody, admin_email: str = Depe
         "target_type": body.target_type or "url",
         "target_key": body.target_key or "",
         "scope": body.scope or "global",
+        "user_email": (body.user_email or "").strip(),
+        "domain": (body.domain or "").strip(),
+        "user_id": (body.user_id or "").strip(),
+        "website_id": (body.website_id or "").strip(),
         "reason": body.reason or "Administrator Exception",
         "hits_bypassed": 0,
         "is_active": body.is_active is not False,
@@ -1632,6 +2021,25 @@ async def create_whitelist_rule(body: WhitelistRuleBody, admin_email: str = Depe
     }
     res = db.whitelist_rules.insert_one(doc)
     doc["_id"] = str(res.inserted_id)
+
+    # Sync to waf_whitelists for immediate engine lookup
+    try:
+        db.waf_whitelists.insert_one({
+            "name": f"Rule Exception: {body.url_pattern}",
+            "pattern": body.url_pattern.strip(),
+            "match_type": "url_path" if body.target_type == "url" else "contains",
+            "scope": body.scope or "global",
+            "user_email": (body.user_email or "").strip(),
+            "domain": (body.domain or "").strip(),
+            "user_id": (body.user_id or "").strip(),
+            "website_id": (body.website_id or "").strip(),
+            "description": body.reason or "Administrator Whitelist",
+            "is_active": True,
+            "created_by": admin_email,
+            "created_at": datetime.now(),
+        })
+    except Exception:
+        pass
 
     AuditService().log(
         user_id=admin_email,
@@ -1724,7 +2132,7 @@ async def test_attack_evasion(body: TestEvasionBody, admin_email: str = Depends(
         "matched_virtual_patch": matched_patch.get("cve_id") if matched_patch else None,
         "latency_ms": elapsed_ms,
         "suggested_hot_patch": {
-            "cve_id": "LOCAL-DRAFT",
+            "cve_id": f"RULE-RAPID-{int(time.time()) % 100000}",
             "name": "Rapid Fleet Blocker Signature",
             "component": "web-request",
             "pattern": suggested_pattern,

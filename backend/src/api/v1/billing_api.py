@@ -52,16 +52,19 @@ async def get_public_pricing_config():
 
 
 def _paddle(db):
-    return PaddleService()
+    return PaddleService(db=db)
 
 
 def _feature_enabled(db):
+    if PaddleService(db=db).configured:
+        return True
     return FeatureFlagService(db).is_enabled("paddle_billing_enabled")
 
 
 class CheckoutRequest(BaseModel):
     plan: str
     billing_cycle: str | None = "monthly"
+    sites_count: int | None = 1
     customer_email: str | None = None
     email: str | None = None
     return_url: str | None = None
@@ -114,17 +117,23 @@ async def create_checkout(body: CheckoutRequest, user=Depends(get_current_user_o
     plan = plan_service.get_plan(body.plan)
     price_id = plan_service.get_price_id(body.plan, body.billing_cycle)
     if not price_id:
+        dyn_config = plan_service.get_dynamic_pricing_config()
+        is_yearly = str(body.billing_cycle or "").lower() in ("yearly", "annually", "annual")
+        price_id = dyn_config.get("price_id_yearly") if is_yearly else dyn_config.get("price_id_monthly")
+
+    if not price_id:
         return success({"enabled": True, "checkout_url": None,
                         "message": f"No Paddle price configured for the {plan.get('name', body.plan)} ({body.billing_cycle}) plan"})
     
     uid = str(user.get("id") or user.get("_id")) if user else ""
     customer_email = (user.get("email", "") if user else "") or body.customer_email or body.email or ""
     return_url = body.return_url or body.success_url or "http://localhost:5173/settings"
+    quantity = max(1, int(body.sites_count or 1))
 
     checkout = await service.create_checkout_session(
-        items=[{"price_id": price_id, "quantity": 1}],
+        items=[{"price_id": price_id, "quantity": quantity}],
         customer_email=customer_email or None,
-        custom_data={"user_id": uid, "plan": body.plan, "billing_cycle": body.billing_cycle or "monthly"},
+        custom_data={"user_id": uid, "plan": body.plan, "billing_cycle": body.billing_cycle or "monthly", "sites_count": quantity},
         success_url=body.success_url or return_url,
         cancel_url=return_url,
     )

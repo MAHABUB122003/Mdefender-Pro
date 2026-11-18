@@ -59,7 +59,8 @@ export default function AdminUsers() {
   const [search, setSearch] = useState('')
   const [filterTab, setFilterTab] = useState('all') // 'all', 'pro', 'free', 'active', 'unverified', 'locked_suspended'
   const [selectedTenant, setSelectedTenant] = useState(null)
-  const [modalType, setModalType] = useState(null) // 'create', 'gift', 'password', null
+  const [modalType, setModalType] = useState(null) // 'create', 'gift', 'bulk_gift', 'password', null
+  const [selectedUserIds, setSelectedUserIds] = useState(new Set())
   const [actionLoading, setActionLoading] = useState(false)
   const [toastMessage, setToastMessage] = useState(null)
   const [copiedKey, setCopiedKey] = useState(null)
@@ -79,8 +80,10 @@ export default function AdminUsers() {
 
   const [giftForm, setGiftForm] = useState({
     plan: 'pro',
+    preset: '30', // '30', '90', '365', 'lifetime', 'custom'
     duration_days: 30,
-    is_lifetime: false,
+    limit_preset: '1', // '1', '5', '10', '25', '50', 'unlimited', 'custom'
+    custom_limit: 1,
     gift_note: ''
   })
 
@@ -165,24 +168,88 @@ export default function AdminUsers() {
     }
   }
 
-  const handleGiftPlan = async (e) => {
+  const handleGiftPlanSubmit = async (e) => {
     e.preventDefault()
-    if (!selectedTenant) return
     setActionLoading(true)
     try {
-      const payload = {
-        user_id: selectedTenant.id || selectedTenant._id,
-        plan: giftForm.plan,
-        duration_days: giftForm.is_lifetime ? 36500 : Number(giftForm.duration_days),
-        is_lifetime: giftForm.is_lifetime,
-        gift_note: giftForm.gift_note || `Gifted Pro ($4/site) by Super Admin`
+      const duration = giftForm.preset === 'lifetime'
+        ? 36500
+        : giftForm.preset === 'custom'
+          ? Math.max(1, Number(giftForm.duration_days) || 30)
+          : Number(giftForm.preset)
+
+      const limit = giftForm.limit_preset === 'unlimited'
+        ? -1
+        : giftForm.limit_preset === 'custom'
+          ? Math.max(1, Number(giftForm.custom_limit) || 1)
+          : Number(giftForm.limit_preset)
+
+      if (modalType === 'bulk_gift') {
+        const uids = Array.from(selectedUserIds)
+        if (uids.length === 0) return
+        await api.adminBulkUserAction({
+          action: 'gift_plan',
+          user_ids: uids,
+          plan: giftForm.plan,
+          duration_days: duration,
+          is_lifetime: giftForm.preset === 'lifetime',
+          website_limit: limit,
+          gift_note: giftForm.gift_note || `Bulk Gifted Pro ($4/site) by Super Admin`
+        })
+        showToast(`Pro Plan (${limit === -1 ? 'Unlimited' : limit + ' sites'}) gifted to ${uids.length} tenants!`)
+        setSelectedUserIds(new Set())
+      } else {
+        if (!selectedTenant) return
+        const payload = {
+          user_id: selectedTenant.id || selectedTenant._id,
+          plan: giftForm.plan,
+          duration_days: duration,
+          is_lifetime: giftForm.preset === 'lifetime',
+          website_limit: limit,
+          gift_note: giftForm.gift_note || `Gifted Pro ($4/site) by Super Admin`
+        }
+        await api.adminGiftPlan(payload)
+        showToast(`Pro Plan (${limit === -1 ? 'Unlimited' : limit + ' sites'}) gifted to ${selectedTenant.email}!`)
       }
-      await api.adminGiftPlan(payload)
-      showToast(`Pro Plan gifted to ${selectedTenant.email}!`)
       setModalType(null)
       fetchUsers()
     } catch (err) {
       showToast(err.message || 'Failed to gift plan', true)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleBulkAction = async (action) => {
+    const count = selectedUserIds.size
+    if (count === 0) return
+
+    let confirmMsg = ''
+    if (action === 'delete') {
+      confirmMsg = `WARNING: Are you sure you want to PERMANENTLY delete ${count} selected tenant account(s) and all their connected sites? This cannot be undone!`
+    } else if (action === 'suspend') {
+      confirmMsg = `Suspend ${count} selected tenant account(s)?`
+    } else if (action === 'restore') {
+      confirmMsg = `Restore and unblock ${count} selected tenant account(s)?`
+    }
+
+    if (!window.confirm(confirmMsg)) return
+
+    setActionLoading(true)
+    try {
+      const res = await api.adminBulkUserAction({
+        action,
+        user_ids: Array.from(selectedUserIds)
+      })
+      const affected = res?.data?.affected_count ?? count
+      showToast(`Bulk ${action} completed on ${affected} tenant(s)!`)
+      setSelectedUserIds(new Set())
+      if (selectedTenant && selectedUserIds.has(selectedTenant.id || selectedTenant._id)) {
+        setSelectedTenant(null)
+      }
+      fetchUsers()
+    } catch (err) {
+      showToast(err.message || `Failed to perform bulk ${action}`, true)
     } finally {
       setActionLoading(false)
     }
@@ -449,6 +516,29 @@ export default function AdminUsers() {
       return true
     })
   }, [users, search, filterTab])
+
+  const allFilteredSelected = useMemo(() => {
+    return filteredUsers.length > 0 && filteredUsers.every(u => selectedUserIds.has(u.id || u._id))
+  }, [filteredUsers, selectedUserIds])
+
+  const toggleSelectAll = () => {
+    if (allFilteredSelected) {
+      setSelectedUserIds(new Set())
+    } else {
+      const allIds = new Set(filteredUsers.map(u => u.id || u._id))
+      setSelectedUserIds(allIds)
+    }
+  }
+
+  const toggleSelectUser = (id, e) => {
+    e.stopPropagation()
+    setSelectedUserIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   return (
     <div style={{ maxWidth: '100%', boxSizing: 'border-box' }}>
@@ -786,6 +876,15 @@ export default function AdminUsers() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
             <thead>
               <tr style={{ background: '#F8F9FA', borderBottom: '1px solid #EFEFEF', color: '#64748B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <th style={{ padding: '12px 14px', width: '38px', textAlign: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    onChange={toggleSelectAll}
+                    style={{ width: '15px', height: '15px', accentColor: '#2563EB', cursor: 'pointer' }}
+                    title={allFilteredSelected ? 'Deselect all' : 'Select all tenants'}
+                  />
+                </th>
                 <th style={{ padding: '12px 18px', textAlign: 'left' }}>Tenant Identity & Persona</th>
                 <th style={{ padding: '12px 18px', textAlign: 'left' }}>Acquisition Channel</th>
                 <th style={{ padding: '12px 18px', textAlign: 'left' }}>Subscription</th>
@@ -796,16 +895,16 @@ export default function AdminUsers() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {loading && users.length === 0 ? (
                 <tr>
-                  <td colSpan="7" style={{ padding: '48px', textAlign: 'center', color: '#64748B' }}>
+                  <td colSpan="8" style={{ padding: '48px', textAlign: 'center', color: '#64748B' }}>
                     <RefreshCw size={20} className="animate-spin" style={{ margin: '0 auto 8px', color: '#2563EB' }} />
                     Loading tenant directory...
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan="7" style={{ padding: '48px', textAlign: 'center', color: '#64748B' }}>
+                  <td colSpan="8" style={{ padding: '48px', textAlign: 'center', color: '#64748B' }}>
                     No tenants found matching your filter criteria.
                   </td>
                 </tr>
@@ -813,6 +912,7 @@ export default function AdminUsers() {
                 filteredUsers.map((u) => {
                   const uid = u.id || u._id
                   const isSelected = selectedTenant && (selectedTenant.id || selectedTenant._id) === uid
+                  const isChecked = selectedUserIds.has(uid)
                   const siteCount = Array.isArray(u.websites) ? u.websites.length : (u.website_count || u.websites_count || 0)
                   const isSuspended = u.status === 'suspended' || u.is_active === false
                   const isPro = isProPlan(u.plan)
@@ -825,13 +925,23 @@ export default function AdminUsers() {
                       onClick={() => setSelectedTenant(u)}
                       style={{
                         borderBottom: '1px solid #F1F2F4',
-                        background: isSelected ? '#EFF6FF' : 'transparent',
+                        background: isChecked ? '#F5F3FF' : isSelected ? '#EFF6FF' : 'transparent',
                         cursor: 'pointer',
                         transition: 'background 0.12s ease'
                       }}
-                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#FBFBFB' }}
-                      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}
+                      onMouseEnter={e => { if (!isSelected && !isChecked) e.currentTarget.style.background = '#FBFBFB' }}
+                      onMouseLeave={e => { if (!isSelected && !isChecked) e.currentTarget.style.background = 'transparent' }}
                     >
+                      {/* Selection Checkbox */}
+                      <td style={{ padding: '13px 14px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={e => toggleSelectUser(uid, e)}
+                          style={{ width: '15px', height: '15px', accentColor: '#7C3AED', cursor: 'pointer' }}
+                        />
+                      </td>
+
                       {/* Identity & Persona */}
                       <td style={{ padding: '13px 18px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -965,7 +1075,12 @@ export default function AdminUsers() {
                             fontSize: '12px'
                           }}>
                             <Globe size={14} color={siteCount > 0 ? '#10B981' : '#94A3B8'} />
-                            <span>{siteCount} {siteCount === 1 ? 'Site' : 'Sites'}</span>
+                            <span>
+                              {siteCount} {u.website_limit && u.website_limit > 0 ? `/ ${u.website_limit}` : ''} {siteCount === 1 && (!u.website_limit || u.website_limit === 1) ? 'Site' : 'Sites'}
+                            </span>
+                            {u.website_limit === -1 && (
+                              <span style={{ fontSize: '10px', color: '#7C3AED', fontWeight: '700', padding: '0 4px', background: '#F5F3FF', borderRadius: '3px', border: '1px solid #DDD6FE' }}>Unlimited</span>
+                            )}
                           </span>
                           {Array.isArray(u.websites) && u.websites.length > 0 && (
                             <span style={{ fontSize: '11px', color: '#64748B', fontFamily: 'monospace' }}>
@@ -1473,7 +1588,17 @@ export default function AdminUsers() {
                 }}>
                   <button
                     type="button"
-                    onClick={() => { setModalType('gift'); setGiftForm({ plan: 'pro', duration_days: 30, is_lifetime: false, gift_note: '' }) }}
+                    onClick={() => {
+                      setGiftForm({
+                        plan: 'pro',
+                        preset: '30',
+                        duration_days: 30,
+                        limit_preset: String(selectedTenant?.website_limit || 1),
+                        custom_limit: selectedTenant?.website_limit || 1,
+                        gift_note: ''
+                      })
+                      setModalType('gift')
+                    }}
                     style={{
                       padding: '10px 12px',
                       borderRadius: '8px',
@@ -1807,8 +1932,8 @@ export default function AdminUsers() {
         </div>
       )}
 
-      {/* MODAL 2: GIFT PRO PLAN */}
-      {modalType === 'gift' && selectedTenant && (
+      {/* MODAL 2: GIFT PRO PLAN (SINGLE OR BULK) */}
+      {(modalType === 'gift' || modalType === 'bulk_gift') && (selectedTenant || modalType === 'bulk_gift') && (
         <div style={{
           position: 'fixed',
           inset: 0,
@@ -1826,8 +1951,9 @@ export default function AdminUsers() {
             border: '1px solid #EFEFEF',
             boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
             width: '100%',
-            maxWidth: '460px',
-            overflow: 'hidden'
+            maxWidth: '520px',
+            maxHeight: '90vh',
+            overflowY: 'auto'
           }}>
             <div style={{
               padding: '16px 20px',
@@ -1838,12 +1964,13 @@ export default function AdminUsers() {
               justifyContent: 'space-between'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Gift size={17} color="#7C3AED" />
-                <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: '#0F172A' }}>
-                  Gift Pro Subscription
+                <Gift size={18} color="#7C3AED" />
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#0F172A' }}>
+                  {modalType === 'bulk_gift' ? 'Bulk Gift Pro Subscription' : 'Gift Pro Subscription'}
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setModalType(null)}
                 style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer' }}
               >
@@ -1851,43 +1978,145 @@ export default function AdminUsers() {
               </button>
             </div>
 
-            <form onSubmit={handleGiftPlan} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', fontSize: '12.5px' }}>
-              <p style={{ margin: 0, color: '#475569' }}>
-                Granting subscription to: <strong style={{ color: '#0F172A' }}>{selectedTenant.email}</strong>
-              </p>
+            <form onSubmit={handleGiftPlanSubmit} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '12.5px' }}>
+              <div style={{ background: '#F8FAFC', padding: '10px 14px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                <span style={{ color: '#64748B', fontSize: '11.5px', display: 'block' }}>Target Recipient:</span>
+                <strong style={{ color: '#0F172A', fontSize: '13px' }}>
+                  {modalType === 'bulk_gift'
+                    ? `${selectedUserIds.size} Selected Tenant Accounts`
+                    : `${selectedTenant?.name || 'Tenant'} (${selectedTenant?.email})`}
+                </strong>
+              </div>
 
+              {/* Target Plan */}
               <div>
-                <label style={{ display: 'block', fontWeight: '600', color: '#334155', marginBottom: '5px' }}>Target Plan</label>
+                <label style={{ display: 'block', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Target Plan Tier</label>
                 <select
                   value={giftForm.plan}
                   onChange={e => setGiftForm({ ...giftForm, plan: e.target.value })}
                   style={{ width: '100%', padding: '8px 12px', borderRadius: '7px', border: '1px solid #CBD5E1', fontSize: '12.5px', background: '#FFFFFF', boxSizing: 'border-box' }}
                 >
                   <option value="pro">Pro ($4/Month per Site Model)</option>
-                  <option value="free">Revert to Free Tier</option>
+                  <option value="free">Revert / Downgrade to Free Tier</option>
                 </select>
               </div>
 
+              {/* Duration Presets */}
               <div>
-                <label style={{ display: 'block', fontWeight: '600', color: '#334155', marginBottom: '5px' }}>Duration (Days)</label>
-                <input
-                  type="number"
-                  disabled={giftForm.is_lifetime}
-                  value={giftForm.duration_days}
-                  onChange={e => setGiftForm({ ...giftForm, duration_days: e.target.value })}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '7px', border: '1px solid #CBD5E1', fontSize: '12.5px', boxSizing: 'border-box', opacity: giftForm.is_lifetime ? 0.4 : 1 }}
-                />
+                <label style={{ display: 'block', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+                  Subscription Duration
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: '6px', marginBottom: giftForm.preset === 'custom' ? '8px' : '0' }}>
+                  {[
+                    { id: '30', label: '30 Days' },
+                    { id: '90', label: '90 Days' },
+                    { id: '365', label: '1 Year' },
+                    { id: 'lifetime', label: 'Lifetime' },
+                    { id: 'custom', label: 'Custom' },
+                  ].map(p => {
+                    const active = giftForm.preset === p.id
+                    return (
+                      <button
+                        type="button"
+                        key={p.id}
+                        onClick={() => setGiftForm({ ...giftForm, preset: p.id })}
+                        style={{
+                          padding: '7px 10px',
+                          borderRadius: '6px',
+                          border: active ? '1px solid #7C3AED' : '1px solid #E2E8F0',
+                          background: active ? '#F5F3FF' : '#FFFFFF',
+                          color: active ? '#7C3AED' : '#334155',
+                          fontSize: '11.5px',
+                          fontWeight: active ? '700' : '500',
+                          cursor: 'pointer',
+                          transition: 'all 0.12s ease'
+                        }}
+                      >
+                        {p.label}
+                      </button>
+                    )
+                  })}
+                </div>
+                {giftForm.preset === 'custom' && (
+                  <div style={{ marginTop: '8px' }}>
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="Enter number of days"
+                      value={giftForm.duration_days}
+                      onChange={e => setGiftForm({ ...giftForm, duration_days: e.target.value })}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: '7px', border: '1px solid #CBD5E1', fontSize: '12.5px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                )}
               </div>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              {/* Website Limit Quota ($4/site model) */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label style={{ fontWeight: '600', color: '#334155' }}>
+                    Allowed Protected Websites Quota
+                  </label>
+                  <span style={{ fontSize: '11px', color: '#2563EB', fontWeight: '600' }}>$4/site billing rule</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: '6px', marginBottom: giftForm.limit_preset === 'custom' ? '8px' : '0' }}>
+                  {[
+                    { id: '1', label: '1 Site' },
+                    { id: '5', label: '5 Sites' },
+                    { id: '10', label: '10 Sites' },
+                    { id: '25', label: '25 Sites' },
+                    { id: '50', label: '50 Sites' },
+                    { id: 'unlimited', label: 'Unlimited' },
+                    { id: 'custom', label: 'Custom' },
+                  ].map(q => {
+                    const active = giftForm.limit_preset === q.id
+                    return (
+                      <button
+                        type="button"
+                        key={q.id}
+                        onClick={() => setGiftForm({ ...giftForm, limit_preset: q.id })}
+                        style={{
+                          padding: '7px 8px',
+                          borderRadius: '6px',
+                          border: active ? '1px solid #2563EB' : '1px solid #E2E8F0',
+                          background: active ? '#EFF6FF' : '#FFFFFF',
+                          color: active ? '#2563EB' : '#334155',
+                          fontSize: '11.5px',
+                          fontWeight: active ? '700' : '500',
+                          cursor: 'pointer',
+                          transition: 'all 0.12s ease'
+                        }}
+                      >
+                        {q.label}
+                      </button>
+                    )
+                  })}
+                </div>
+                {giftForm.limit_preset === 'custom' && (
+                  <div style={{ marginTop: '8px' }}>
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="Enter max websites quota (e.g. 100)"
+                      value={giftForm.custom_limit}
+                      onChange={e => setGiftForm({ ...giftForm, custom_limit: e.target.value })}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: '7px', border: '1px solid #CBD5E1', fontSize: '12.5px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Gift Note */}
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', color: '#334155', marginBottom: '5px' }}>Admin Audit Note (Optional)</label>
                 <input
-                  type="checkbox"
-                  checked={giftForm.is_lifetime}
-                  onChange={e => setGiftForm({ ...giftForm, is_lifetime: e.target.checked })}
-                  style={{ width: '16px', height: '16px', accentColor: '#7C3AED' }}
+                  type="text"
+                  placeholder="e.g. VIP Partner grant, Promotional campaign, Early adopter"
+                  value={giftForm.gift_note}
+                  onChange={e => setGiftForm({ ...giftForm, gift_note: e.target.value })}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '7px', border: '1px solid #CBD5E1', fontSize: '12.5px', boxSizing: 'border-box' }}
                 />
-                <span style={{ fontWeight: '600', color: '#0F172A' }}>Grant Lifetime Subscription (100 Years)</span>
-              </label>
+              </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', paddingTop: '12px', borderTop: '1px solid #EFEFEF' }}>
                 <button
@@ -1900,9 +2129,12 @@ export default function AdminUsers() {
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  style={{ padding: '8px 16px', borderRadius: '7px', background: '#7C3AED', color: '#FFFFFF', border: 'none', fontSize: '12.5px', fontWeight: '600', cursor: 'pointer' }}
+                  style={{ padding: '8px 18px', borderRadius: '7px', background: '#7C3AED', color: '#FFFFFF', border: 'none', fontSize: '12.5px', fontWeight: '600', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                 >
-                  {actionLoading ? 'Granting...' : 'Grant Subscription'}
+                  <Gift size={14} />
+                  <span>
+                    {actionLoading ? 'Granting...' : modalType === 'bulk_gift' ? `Grant to ${selectedUserIds.size} Tenants` : 'Grant Subscription'}
+                  </span>
                 </button>
               </div>
             </form>
@@ -1989,6 +2221,158 @@ export default function AdminUsers() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* FLOATING BULK ACTIONS TOOLBAR */}
+      {selectedUserIds.size > 0 && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 900,
+          background: '#0F172A',
+          color: '#FFFFFF',
+          padding: '10px 18px',
+          borderRadius: '12px',
+          boxShadow: '0 20px 35px -5px rgba(0, 0, 0, 0.35)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '14px',
+          border: '1px solid #334155',
+          maxWidth: '92vw',
+          flexWrap: 'wrap'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{
+              background: '#2563EB',
+              color: '#FFFFFF',
+              borderRadius: '999px',
+              padding: '2px 8px',
+              fontSize: '11px',
+              fontWeight: '700'
+            }}>
+              {selectedUserIds.size}
+            </span>
+            <span style={{ fontSize: '13px', fontWeight: '600' }}>
+              {selectedUserIds.size === 1 ? 'Tenant selected' : 'Tenants selected'}
+            </span>
+          </div>
+
+          <div style={{ height: '18px', width: '1px', background: '#334155' }} />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setGiftForm({
+                  plan: 'pro',
+                  preset: '30',
+                  duration_days: 30,
+                  limit_preset: '1',
+                  custom_limit: 1,
+                  gift_note: ''
+                })
+                setModalType('bulk_gift')
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                background: '#7C3AED',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: '7px',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              <Gift size={13} />
+              <span>Gift Pro Plan</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleBulkAction('suspend')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                background: '#1E293B',
+                color: '#F8FAFC',
+                border: '1px solid #334155',
+                borderRadius: '7px',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              <Lock size={13} />
+              <span>Suspend</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleBulkAction('restore')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                background: '#1E293B',
+                color: '#F8FAFC',
+                border: '1px solid #334155',
+                borderRadius: '7px',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              <Unlock size={13} />
+              <span>Restore</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleBulkAction('delete')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                background: '#DC2626',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: '7px',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              <Trash2 size={13} />
+              <span>Delete</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedUserIds(new Set())}
+              style={{
+                padding: '6px 8px',
+                background: 'transparent',
+                color: '#94A3B8',
+                border: 'none',
+                fontSize: '12px',
+                cursor: 'pointer',
+                textDecoration: 'underline'
+              }}
+            >
+              Deselect All
+            </button>
           </div>
         </div>
       )}

@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import api from '../api/api'
 
 import userStore from '../utils/userStore'
+import { getStoredPricingConfig } from '../utils/pricingStore'
 
 import copyToClipboard from '../utils/clipboard'
 
@@ -2647,7 +2648,7 @@ export default function UserWebsites() {
               Expand Your Fleet Capacity
             </h3>
             <p style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.6', margin: '0 0 24px' }}>
-              Your current site limit has been reached. Upgrade to Enterprise Pro for just $4.00/site/month (or $40/year with 2 months free) to protect additional domains with sub-millisecond edge ML filtering.
+              Your current site limit has been reached. Upgrade to Enterprise Pro for just {getStoredPricingConfig().currency_symbol || '$'}{Number(getStoredPricingConfig().base_monthly_rate).toFixed(2)}/site/month (or {getStoredPricingConfig().currency_symbol || '$'}{Number(getStoredPricingConfig().base_yearly_rate).toFixed(2)}/year with 2 months free) to protect additional domains with sub-millisecond edge ML filtering.
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button

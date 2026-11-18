@@ -1537,10 +1537,15 @@ class UserAPI:
         if isinstance(u_created, str):
             try: u_created = datetime.fromisoformat(u_created)
             except Exception: u_created = now_dt
-        trial_ends = user_doc.get('trial_ends_at') or (u_created + timedelta(days=14))
+        try:
+            from src.services.plan_service import PlanService
+            dyn_trial = int(PlanService(self.db).get_dynamic_pricing_config().get("trial_days") or 14)
+        except Exception:
+            dyn_trial = 14
+        trial_ends = user_doc.get('trial_ends_at') or (u_created + timedelta(days=dyn_trial))
         if isinstance(trial_ends, str):
             try: trial_ends = datetime.fromisoformat(trial_ends)
-            except Exception: trial_ends = u_created + timedelta(days=14)
+            except Exception: trial_ends = u_created + timedelta(days=dyn_trial)
         import math
         t_days_rem = max(0, int(math.ceil((trial_ends - now_dt).total_seconds() / 86400)))
 

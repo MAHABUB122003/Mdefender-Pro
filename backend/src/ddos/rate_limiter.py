@@ -44,7 +44,7 @@ class RateLimiter:
 
     @staticmethod
     def _unique_member(timestamp: float, ip: str) -> str:
-        return f"{timestamp}:{ip}"
+        return f"{timestamp}:{time.perf_counter_ns()}:{ip}"
 
     async def check_rate_limit(
         self, ip: str, user_type: str = "anonymous"

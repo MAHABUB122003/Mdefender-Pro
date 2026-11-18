@@ -142,6 +142,31 @@ class SubscriptionService:
         except Exception:
             pass
 
+        # Real-time automated fulfillment on completed transaction
+        if str(status).lower() in ("paid", "completed"):
+            try:
+                from bson import ObjectId
+                from datetime import timedelta
+                u_id = ObjectId(user_id) if ObjectId.is_valid(str(user_id)) else str(user_id)
+                custom = data.get("custom_data") or event.get("custom_data") or {}
+                plan = custom.get("plan") or "pro"
+                cycle = custom.get("billing_cycle") or "monthly"
+                duration = 365 if cycle == "yearly" else 30
+                sites = int(custom.get("sites_count") or custom.get("quantity") or 1)
+                self.db.users.update_one(
+                    {"_id": u_id},
+                    {"$set": {
+                        "plan": plan,
+                        "plan_tier": plan,
+                        "payment_status": "active",
+                        "purchased_slots": sites,
+                        "last_payment_date": datetime.now(),
+                        "plan_expires": datetime.now() + timedelta(days=duration)
+                    }}
+                )
+            except Exception:
+                pass
+
     # ---------- Admin-granted entitlement ----------
 
     def get_entitlement(self, user_id):
@@ -156,6 +181,7 @@ class SubscriptionService:
             "status": "active",
             "granted_by": note.get("granted_by") if note else None,
             "note": note.get("note") if note else None,
+            "website_limit": note.get("website_limit") if (note and note.get("website_limit") is not None) else None,
             "expires_at": expiry,
             "granted_at": datetime.now(),
         }

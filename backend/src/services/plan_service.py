@@ -236,6 +236,19 @@ class PlanService:
         if stored:
             config.update(stored)
 
+        # Fallback to paddle_gateway settings if dynamic_pricing doesn't have explicit price IDs
+        if not config.get("price_id_monthly") or not config.get("price_id_yearly"):
+            try:
+                gw_doc = self.db.settings.find_one({"_type": "paddle_gateway"})
+                if gw_doc and isinstance(gw_doc.get("config"), dict):
+                    gw_cfg = gw_doc["config"]
+                    if not config.get("price_id_monthly"):
+                        config["price_id_monthly"] = gw_cfg.get("price_id_monthly", "")
+                    if not config.get("price_id_yearly"):
+                        config["price_id_yearly"] = gw_cfg.get("price_id_yearly", "")
+            except Exception:
+                pass
+
         import os
         env_m = os.getenv("PADDLE_PRICE_PER_SITE_MONTHLY", "").strip()
         env_y = os.getenv("PADDLE_PRICE_PER_SITE_YEARLY", "").strip()
@@ -269,6 +282,19 @@ class PlanService:
                 {"$set": {"config": clean, "updated_at": __import__("datetime").datetime.now()}},
                 upsert=True,
             )
+            try:
+                # Also keep Pro plan pricing synchronized with dynamic per-site base rate
+                if "base_monthly_rate" in clean and "base_yearly_rate" in clean:
+                    self.db.settings.update_one(
+                        {"_type": "plans"},
+                        {"$set": {
+                            "plans.pro.monthly_price": clean["base_monthly_rate"],
+                            "plans.pro.yearly_price": clean["base_yearly_rate"],
+                            "updated_at": __import__("datetime").datetime.now()
+                        }}
+                    )
+            except Exception:
+                pass
             return True
         except Exception:
             return False

@@ -663,6 +663,25 @@ class WAFAPI:
                         user_id=user_id,
                         website_id=website_id
                     )
+
+                # Record confirmed threat in db.attacks for Global Threat Logs (auto-purged in 30 days via MongoDB TTL)
+                dom_name = str(event.get('domain') or '') if isinstance(event, dict) else ''
+                self.logger.log_attack(
+                    ip=ip,
+                    url=url_path,
+                    attack_type=atk_type,
+                    status='blocked',
+                    confidence=float(decision.get('confidence', 0.95)),
+                    details={
+                        'reason': decision.get('reason', ''),
+                        'risk_score': decision.get('risk_score', 80),
+                        'reference_id': decision.get('reference_id', '')
+                    },
+                    user_id=user_id,
+                    domain=dom_name,
+                    detection_source='rule' if 'rule' in str(decision.get('reason', '')).lower() else 'ml',
+                    website_id=website_id
+                )
             except Exception: pass
 
         # Zero-Bloat SaaS Architecture: Customer WordPress MySQL stores authentic local logs.

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/api';
 import userStore from '../utils/userStore';
+import { getStoredPricingConfig } from '../utils/pricingStore';
 import {
   Shield,
   Check,
@@ -16,59 +17,89 @@ import {
   CreditCard,
 } from 'lucide-react';
 
-const PLAN_META = {
-  go: {
-    name: 'Starter Fleet',
-    icon: Zap,
-    monthlyPrice: 4,
-    yearlyPrice: 40,
-    features: [
-      'Protected Domain & Origin Endpoints ($4/site/mo)',
-      '100,000 monthly clean requests',
-      '6.5M+ Threat Neural Classifier',
-      '20 Custom Regex Rules Builder',
-      'Standard Technical SLA',
-    ],
-  },
-  pro: {
-    name: 'Enterprise Pro',
-    icon: Sparkles,
-    monthlyPrice: 4,
-    yearlyPrice: 40,
-    features: [
-      'Full Fleet Protection ($4.00/site/mo or $40/site/yr)',
-      '1,000,000+ monthly clean requests',
-      'Full 2,000,000+ Hyper-Scale Signatures',
-      '639K+ Generative AI Prompt Injection Shield',
-      'Sub-Millisecond (0.12ms) Edge Inspection Latency',
-      '24/7 Priority Dedicated SLA Support',
-    ],
-  },
-  enterprise: {
-    name: 'Enterprise MSP',
-    icon: Globe,
-    monthlyPrice: 4,
-    yearlyPrice: 40,
-    features: [
-      'Custom Multi-Site Fleet with Bulk Volume Discounts',
-      '10,000,000+ monthly edge requests',
-      'Dedicated ML Neural Vectorizer Node',
-      'Full Anycast Layer 7 DDoS Scrubber',
-      '15-Minute Guaranteed SLA Response',
-    ],
-  },
-};
-
-export default function PaymentModal({ isOpen, onClose, plan = 'pro', billingCycle = 'monthly', onSuccess }) {
+export default function PaymentModal({
+  isOpen,
+  onClose,
+  plan = 'pro',
+  billingCycle = 'monthly',
+  siteCount = 1,
+  pricingConfig,
+  onSuccess
+}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
   const [onboardingNotice, setOnboardingNotice] = useState(null);
 
+  const activePricing = pricingConfig || getStoredPricingConfig();
+  const monthlyBase = Number(activePricing?.base_monthly_rate) || 4;
+  const yearlyBase = Number(activePricing?.base_yearly_rate) || 40;
+  const sym = activePricing?.currency_symbol || '$';
+  const count = Math.max(1, Number(siteCount) || 1);
+
+  // Dynamic tiers discount
+  const tiers = activePricing?.bulk_tiers || [];
+  let discountPercent = 0;
+  for (let i = tiers.length - 1; i >= 0; i--) {
+    if (count >= tiers[i].min_sites) {
+      discountPercent = tiers[i].discount_percent;
+      break;
+    }
+  }
+
   const isYearly = billingCycle.toLowerCase() === 'yearly';
+  const unitRate = isYearly ? yearlyBase : monthlyBase;
+  const rawTotal = count * unitRate;
+  const discountVal = (rawTotal * discountPercent) / 100;
+  const finalPrice = Math.max(0, rawTotal - discountVal);
+  const formattedPrice = finalPrice.toFixed(2);
+
+  const PLAN_META = {
+    go: {
+      name: 'Starter Fleet',
+      icon: Zap,
+      monthlyPrice: monthlyBase,
+      yearlyPrice: yearlyBase,
+      features: [
+        `Protected Domain & Origin Endpoints (${sym}${monthlyBase}/site/mo)`,
+        '100,000 monthly clean requests',
+        '6.5M+ Threat Neural Classifier',
+        '20 Custom Regex Rules Builder',
+        'Standard Technical SLA',
+      ],
+    },
+    pro: {
+      name: 'Enterprise Pro',
+      icon: Sparkles,
+      monthlyPrice: monthlyBase,
+      yearlyPrice: yearlyBase,
+      features: [
+        `Full Fleet Protection (${sym}${monthlyBase.toFixed(2)}/site/mo or ${sym}${yearlyBase}/site/yr)`,
+        '1,000,000+ monthly clean requests',
+        'Full 2,000,000+ Hyper-Scale Signatures',
+        '639K+ Generative AI Prompt Injection Shield',
+        'Sub-Millisecond (0.12ms) Edge Inspection Latency',
+        '24/7 Priority Dedicated SLA Support',
+      ],
+    },
+    enterprise: {
+      name: 'Enterprise MSP',
+      icon: Globe,
+      monthlyPrice: monthlyBase,
+      yearlyPrice: yearlyBase,
+      features: [
+        'Custom Multi-Site Fleet with Bulk Volume Discounts',
+        '10,000,000+ monthly edge requests',
+        'Dedicated ML Neural Vectorizer Node',
+        'Full Anycast Layer 7 DDoS Scrubber',
+        '15-Minute Guaranteed SLA Response',
+      ],
+    },
+  };
+
   const meta = PLAN_META[plan] || PLAN_META.pro;
   const planName = meta.name;
-  const usdPrice = isYearly ? meta.yearlyPrice : meta.monthlyPrice;
+  const usdPrice = formattedPrice;
   const PlanIcon = meta.icon;
 
   const cachedUser = userStore.get('profile') || null;
@@ -141,10 +172,11 @@ export default function PaymentModal({ isOpen, onClose, plan = 'pro', billingCyc
       const res = await api.createPaddleCheckout({
         plan,
         billing_cycle: billingCycle,
+        sites_count: count,
         customer_email: emailToSend,
         email: emailToSend,
         return_url: window.location.href,
-        success_url: window.location.origin + '/payment/success?plan=' + plan + '&cycle=' + billingCycle,
+        success_url: window.location.origin + '/payment/success?plan=' + plan + '&cycle=' + billingCycle + '&sites=' + count,
       });
 
       if (!res.success && res.error) {
@@ -187,7 +219,7 @@ export default function PaymentModal({ isOpen, onClose, plan = 'pro', billingCyc
 
       if (checkoutData.price_id && window.Paddle) {
         window.Paddle.Checkout.open({
-          items: [{ priceId: checkoutData.price_id, quantity: 1 }],
+          items: [{ priceId: checkoutData.price_id, quantity: count }],
           customer: emailToSend ? { email: emailToSend } : undefined,
           settings: {
             displayMode: 'overlay',
@@ -280,7 +312,7 @@ export default function PaymentModal({ isOpen, onClose, plan = 'pro', billingCyc
                 </h3>
               </div>
               <p style={{ margin: '2px 0 0', fontSize: '12.5px', color: '#60716B', fontWeight: 500 }}>
-                {planName} &middot; {isYearly ? `Annual Cycle ($${usdPrice}/yr)` : `Monthly Cycle ($${usdPrice}/mo)`}
+                {planName} &middot; {count > 1 ? `${count} Websites &middot; ` : ''}{isYearly ? `Annual Cycle (${sym}${usdPrice}/yr)` : `Monthly Cycle (${sym}${usdPrice}/mo)`}
               </p>
             </div>
           </div>
@@ -404,7 +436,7 @@ export default function PaymentModal({ isOpen, onClose, plan = 'pro', billingCyc
                   lineHeight: 1,
                 }}
               >
-                ${usdPrice}
+                {sym}{usdPrice}
               </div>
               <div style={{ fontSize: '11px', color: '#60716B', fontWeight: 600, marginTop: '2px' }}>
                 USD
@@ -566,7 +598,7 @@ export default function PaymentModal({ isOpen, onClose, plan = 'pro', billingCyc
             ) : (
               <>
                 <Lock size={15} strokeWidth={2.4} />
-                <span>Proceed to Secured Checkout &middot; ${usdPrice}</span>
+                <span>Proceed to Secured Checkout &middot; {sym}{usdPrice}</span>
                 <ArrowRight size={14} strokeWidth={2.4} />
               </>
             )}

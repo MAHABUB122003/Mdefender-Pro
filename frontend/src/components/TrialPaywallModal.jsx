@@ -27,6 +27,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import userStore from '../utils/userStore';
 import api from '../api/api';
+import { getStoredPricingConfig, subscribePricing, syncPricingWithBackend } from '../utils/pricingStore';
 
 const brandTokens = {
   deepForest: '#0B2522',
@@ -56,19 +57,8 @@ export default function TrialPaywallModal() {
   const [dismissed, setDismissed] = useState(false);
   const [billingCycle, setBillingCycle] = useState('monthly'); // 'monthly' | 'yearly'
   const [siteCount, setSiteCount] = useState(1);
-  const [dynamicPricing, setDynamicPricing] = useState({
-    base_monthly_rate: 4.0,
-    base_yearly_rate: 40.0,
-    currency: 'USD',
-    currency_symbol: '$',
-    trial_days: 14,
-    bulk_tiers: [
-      { min_sites: 1, max_sites: 9, discount_percent: 0, label: 'Starter Fleet' },
-      { min_sites: 10, max_sites: 24, discount_percent: 10, label: 'Growth Agency' },
-      { min_sites: 25, max_sites: 49, discount_percent: 15, label: 'Scale Partner' },
-      { min_sites: 50, max_sites: 500, discount_percent: 25, label: 'Enterprise MSP' }
-    ]
-  });
+  // Zero-flicker: initialize directly from instant persistent storage
+  const [dynamicPricing, setDynamicPricing] = useState(() => getStoredPricingConfig());
 
   // Check URL query param for instant live testing (e.g. ?test_trial_days=4 or ?test_trial_days=0)
   const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
@@ -84,12 +74,13 @@ export default function TrialPaywallModal() {
   ).toLowerCase();
   const isPro = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan);
 
+  const defaultTrialDays = Number(dynamicPricing?.trial_days) || 14;
   const rawTrial = testTrialParam !== null
     ? Number(testTrialParam)
     : (profile?.trial_days_remaining !== undefined
       ? profile.trial_days_remaining
       : (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_trial_days') : null));
-  const trialDays = rawTrial !== null ? Number(rawTrial) : 14;
+  const trialDays = rawTrial !== null ? Number(rawTrial) : defaultTrialDays;
 
   useEffect(() => {
     // If URL testing param is present, allow testing soft modal repeatedly without getting blocked by dismissed flag
@@ -105,16 +96,24 @@ export default function TrialPaywallModal() {
   }, [testTrialParam]);
 
   useEffect(() => {
-    // 1. Fetch live public dynamic pricing directly from database (ensuring zero fake data)
-    api.getPublicPricingConfig().then(res => {
-      const cfg = res?.data || res;
-      if (cfg && cfg.base_monthly_rate) {
-        setDynamicPricing(prev => ({ ...prev, ...cfg }));
+    let mounted = true;
+    // 1. Subscribe to instant cross-tab administrative pricing changes
+    const unsubscribe = subscribePricing((newCfg) => {
+      if (mounted && newCfg) {
+        setDynamicPricing(newCfg);
       }
-    }).catch(() => {});
+    });
 
-    // 2. Fetch authenticated profile to resolve current user's website count
+    // 2. Background sync directly from database
+    syncPricingWithBackend(api).then((cfg) => {
+      if (mounted && cfg) {
+        setDynamicPricing(cfg);
+      }
+    });
+
+    // 3. Fetch authenticated profile to resolve current user's website count
     api.getProfile().then(res => {
+      if (!mounted) return;
       const data = res?.data || res;
       if (data) {
         setProfile(data);
@@ -123,6 +122,11 @@ export default function TrialPaywallModal() {
         }
       }
     }).catch(() => {});
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
   }, []);
 
   // 1. If PRO, never show paywall
@@ -633,7 +637,7 @@ export default function TrialPaywallModal() {
             }}>
               <div>
                 <span style={{ fontWeight: '700', color: brandTokens.emeraldPrimary }}>
-                  {isSoftPrompt ? '14-Day Free Trial Protection Guarantee' : 'Autonomous AI Edge Firewall Fleet Protection'}
+                  {isSoftPrompt ? `${dynamicPricing.trial_days || 14}-Day Free Trial Protection Guarantee` : 'Autonomous AI Edge Firewall Fleet Protection'}
                 </span>
                 <div style={{ fontSize: '11.5px', color: brandTokens.textMuted }}>
                   Includes AST Machine Learning, 5.24M+ Checksums &amp; Anycast L7 DDoS Scrubber

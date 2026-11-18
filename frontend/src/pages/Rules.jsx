@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Shield,
   ShieldAlert,
@@ -38,7 +39,8 @@ import {
   CheckSquare,
   AlertTriangle,
   Send,
-  ArrowRight
+  ArrowRight,
+  FlaskConical
 } from 'lucide-react'
 import api from '../api/api'
 import { copyToClipboard } from '../utils/clipboard'
@@ -69,14 +71,17 @@ export default function Rules({ token }) {
   const [currentPage, setCurrentPage] = useState(1)
   const [copiedId, setCopiedId] = useState(null)
 
-  // Virtual Patches State
+  // Virtual Patches / Custom Attack Rules State
   const [patches, setPatches] = useState([])
+  const [selectedPatches, setSelectedPatches] = useState([])
   const [loadingPatches, setLoadingPatches] = useState(false)
   const [showPatchModal, setShowPatchModal] = useState(false)
   const [patchForm, setPatchForm] = useState({
+    rule_type: 'custom_rule', // 'custom_rule' | 'cve_patch'
     cve_id: '',
     name: '',
-    component: 'woocommerce',
+    category: 'SQL Injection',
+    component: 'fleet-waf',
     target_scope: 'all',
     pattern: '',
     action: 'block',
@@ -87,6 +92,7 @@ export default function Rules({ token }) {
 
   // Whitelist Exceptions State
   const [whitelists, setWhitelists] = useState([])
+  const [selectedWhitelists, setSelectedWhitelists] = useState([])
   const [loadingWhitelists, setLoadingWhitelists] = useState(false)
   const [showWhitelistModal, setShowWhitelistModal] = useState(false)
   const [whitelistForm, setWhitelistForm] = useState({
@@ -94,17 +100,12 @@ export default function Rules({ token }) {
     target_type: 'url',
     target_key: '',
     scope: 'global',
+    user_email: '',
+    domain: '',
     reason: '',
     is_active: true
   })
   const [savingWhitelist, setSavingWhitelist] = useState(false)
-
-  // Attack Evasion Lab State
-  const [evasionPayload, setEvasionPayload] = useState("UNION SELECT 1,2,gcol,4,password FROM wp_users-- -")
-  const [evasionUrl, setEvasionUrl] = useState("/wp-json/wp/v2/posts")
-  const [evasionMethod, setEvasionMethod] = useState("POST")
-  const [evasionLoading, setEvasionLoading] = useState(false)
-  const [evasionResult, setEvasionResult] = useState(null)
 
   // Global Toast
   const [toastMessage, setToastMessage] = useState(null)
@@ -112,6 +113,10 @@ export default function Rules({ token }) {
     setToastMessage({ text, isError })
     setTimeout(() => setToastMessage(null), 4000)
   }
+
+  // ID normalization helpers for robust selection
+  const getPatchId = (p) => String(p?._id || p?.id || '')
+  const getWhitelistId = (w) => String(w?._id || w?.id || '')
 
   // Load Data
   const fetchAll = async () => {
@@ -148,22 +153,26 @@ export default function Rules({ token }) {
     fetchAll()
   }, [])
 
-  // Virtual Patch Actions
+  // Virtual Patch / Custom Rule Actions
   const handlePublishPatch = async (e) => {
     if (e) e.preventDefault()
     if (!patchForm.cve_id || !patchForm.pattern) {
-      showToast('CVE ID and Regex Pattern are required', true)
+      showToast('Rule Identifier and Regex Pattern are required', true)
       return
     }
     setPublishingPatch(true)
     try {
       await api.adminCreateVirtualPatch(patchForm)
-      showToast(`Hot Patch ${patchForm.cve_id} published! Propagating to 500k sites via heartbeat.`)
+      showToast(patchForm.rule_type === 'custom_rule'
+        ? `Fleet Attack Rule ${patchForm.cve_id} deployed across all connected sites!`
+        : `Hot CVE Virtual Patch ${patchForm.cve_id} published across global fleet!`)
       setShowPatchModal(false)
       setPatchForm({
+        rule_type: 'custom_rule',
         cve_id: '',
         name: '',
-        component: 'core',
+        category: 'SQL Injection',
+        component: 'fleet-waf',
         target_scope: 'all',
         pattern: '',
         action: 'block',
@@ -173,7 +182,7 @@ export default function Rules({ token }) {
       const res = await api.adminGetVirtualPatches()
       if (res?.data?.patches) setPatches(res.data.patches)
     } catch (err) {
-      showToast(err.message || 'Failed to publish virtual patch', true)
+      showToast(err.message || 'Failed to publish rule/patch', true)
     } finally {
       setPublishingPatch(false)
     }
@@ -182,21 +191,100 @@ export default function Rules({ token }) {
   const handleTogglePatch = async (patchId) => {
     try {
       await api.adminToggleVirtualPatch(patchId)
-      setPatches(prev => prev.map(p => p._id === patchId ? { ...p, is_active: !p.is_active } : p))
-      showToast('Virtual patch status updated across cluster')
+      setPatches(prev => prev.map(p => getPatchId(p) === String(patchId) ? { ...p, is_active: !p.is_active } : p))
+      showToast('Rule enforcement status updated across cluster')
     } catch (err) {
       showToast(err.message || 'Failed to toggle patch', true)
     }
   }
 
   const handleDeletePatch = async (patchId) => {
-    if (!window.confirm('Delete this virtual patch from the global defense network?')) return
+    if (!window.confirm('Delete this defense rule/patch from the global network?')) return
     try {
       await api.adminDeleteVirtualPatch(patchId)
-      setPatches(prev => prev.filter(p => p._id !== patchId))
-      showToast('Virtual patch removed from fleet')
+      setPatches(prev => prev.filter(p => getPatchId(p) !== String(patchId)))
+      setSelectedPatches(prev => prev.filter(x => x !== String(patchId)))
+      showToast('Rule removed from fleet')
     } catch (err) {
       showToast(err.message || 'Failed to delete patch', true)
+    }
+  }
+
+  // Bulk Patch Handlers (Rock-Solid String-based Toggle)
+  const isAllPatchesSelected = patches.length > 0 && selectedPatches.length === patches.length
+
+  const handleToggleSelectAllPatches = () => {
+    if (isAllPatchesSelected) {
+      setSelectedPatches([])
+    } else {
+      setSelectedPatches(patches.map(p => getPatchId(p)).filter(Boolean))
+    }
+  }
+
+  const handleTogglePatchSelect = (id, e) => {
+    if (e) e.stopPropagation()
+    const strId = String(id || '')
+    if (!strId) return
+    setSelectedPatches(prev =>
+      prev.includes(strId) ? prev.filter(x => x !== strId) : [...prev, strId]
+    )
+  }
+
+  const handleBulkTogglePatches = async (makeActive) => {
+    if (selectedPatches.length === 0) return
+    try {
+      await Promise.all(selectedPatches.map(id => api.adminToggleVirtualPatch(id)))
+      setPatches(prev => prev.map(p => selectedPatches.includes(getPatchId(p)) ? { ...p, is_active: makeActive } : p))
+      showToast(`Updated ${selectedPatches.length} rules across fleet`)
+      setSelectedPatches([])
+    } catch (err) {
+      showToast(err.message || 'Failed bulk update', true)
+    }
+  }
+
+  const handleBulkDeletePatches = async () => {
+    if (selectedPatches.length === 0) return
+    if (!window.confirm(`Permanently delete ${selectedPatches.length} selected rules from fleet?`)) return
+    try {
+      await Promise.all(selectedPatches.map(id => api.adminDeleteVirtualPatch(id)))
+      setPatches(prev => prev.filter(p => !selectedPatches.includes(getPatchId(p))))
+      showToast(`Deleted ${selectedPatches.length} rules`)
+      setSelectedPatches([])
+    } catch (err) {
+      showToast(err.message || 'Failed bulk delete', true)
+    }
+  }
+
+  // Bulk Whitelist Handlers (Rock-Solid String-based Toggle)
+  const isAllWhitelistsSelected = whitelists.length > 0 && selectedWhitelists.length === whitelists.length
+
+  const handleToggleSelectAllWhitelists = () => {
+    if (isAllWhitelistsSelected) {
+      setSelectedWhitelists([])
+    } else {
+      setSelectedWhitelists(whitelists.map(w => getWhitelistId(w)).filter(Boolean))
+    }
+  }
+
+  const handleToggleWhitelistSelect = (id, e) => {
+    if (e) e.stopPropagation()
+    const strId = String(id || '')
+    if (!strId) return
+    setSelectedWhitelists(prev =>
+      prev.includes(strId) ? prev.filter(x => x !== strId) : [...prev, strId]
+    )
+  }
+
+  const handleBulkDeleteWhitelists = async () => {
+    if (selectedWhitelists.length === 0) return
+    if (!window.confirm(`Permanently remove ${selectedWhitelists.length} selected whitelist rules?`)) return
+    try {
+      await Promise.all(selectedWhitelists.map(id => api.adminDeleteWhitelist(id)))
+      setWhitelists(prev => prev.filter(w => !selectedWhitelists.includes(getWhitelistId(w))))
+      showToast(`Deleted ${selectedWhitelists.length} whitelist exceptions`)
+      setSelectedWhitelists([])
+    } catch (err) {
+      showToast(err.message || 'Failed bulk delete', true)
     }
   }
 
@@ -217,6 +305,8 @@ export default function Rules({ token }) {
         target_type: 'url',
         target_key: '',
         scope: 'global',
+        user_email: '',
+        domain: '',
         reason: '',
         is_active: true
       })
@@ -233,46 +323,12 @@ export default function Rules({ token }) {
     if (!window.confirm('Remove this whitelist exception? Traffic matching this path will resume normal inspection.')) return
     try {
       await api.adminDeleteWhitelist(ruleId)
-      setWhitelists(prev => prev.filter(w => w._id !== ruleId))
+      setWhitelists(prev => prev.filter(w => getWhitelistId(w) !== String(ruleId)))
+      setSelectedWhitelists(prev => prev.filter(x => x !== String(ruleId)))
       showToast('Whitelist rule deleted.')
     } catch (err) {
       showToast(err.message || 'Failed to delete whitelist rule', true)
     }
-  }
-
-  // Evasion Test Action
-  const handleRunEvasionTest = async () => {
-    if (!evasionPayload) return
-    setEvasionLoading(true)
-    try {
-      const res = await api.adminTestEvasion({
-        payload: evasionPayload,
-        url: evasionUrl,
-        method: evasionMethod
-      })
-      setEvasionResult(res?.data || null)
-    } catch (err) {
-      showToast(err.message || 'Evasion simulation failed', true)
-    } finally {
-      setEvasionLoading(false)
-    }
-  }
-
-  // 1-Click Convert Evasion to Hot Patch
-  const handleDeployEvasionHotPatch = (suggested) => {
-    if (!suggested) return
-    setPatchForm({
-      cve_id: suggested.cve_id,
-      name: suggested.name,
-      component: suggested.component,
-      target_scope: 'all',
-      pattern: suggested.pattern,
-      action: 'block',
-      severity: 'critical',
-      is_active: true
-    })
-    setActiveTab('patches')
-    setShowPatchModal(true)
   }
 
   // Copy helper
@@ -383,11 +439,11 @@ export default function Rules({ token }) {
                 fontWeight: '700',
                 letterSpacing: '0.4px'
               }}>
-                500K FLEET ACTIVE
+                GLOBAL FLEET ACTIVE
               </span>
             </div>
             <p style={{ color: '#64748B', fontSize: '13.5px', margin: '4px 0 0' }}>
-              Publish zero-day hot patches to 500k sites in &lt;60s without ML retraining. Manage False Positive URL whitelisting and test payload evasions.
+              Publish zero-day hot patches across all connected sites in &lt;60s without ML retraining. Manage False Positive URL whitelisting and test payload evasions.
             </p>
           </div>
         </div>
@@ -435,6 +491,27 @@ export default function Rules({ token }) {
             <span>+ Whitelist Exception</span>
           </button>
 
+          <Link
+            to="/admin/learning"
+            style={{
+              padding: '9px 14px',
+              borderRadius: '8px',
+              background: '#FAF5FF',
+              border: '1px solid #E9D5FF',
+              color: '#7C3AED',
+              fontSize: '13px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '7px',
+              textDecoration: 'none'
+            }}
+          >
+            <FlaskConical size={15} />
+            <span>Test Payloads in Evasion Lab ↗</span>
+          </Link>
+
           <button
             type="button"
             onClick={() => setShowPatchModal(true)}
@@ -453,8 +530,8 @@ export default function Rules({ token }) {
               boxShadow: '0 1px 3px rgba(37, 99, 235, 0.2)'
             }}
           >
-            <Flame size={15} />
-            <span>Publish Hot Patch</span>
+            <Plus size={15} />
+            <span>+ Add Blocking Rule</span>
           </button>
         </div>
       </div>
@@ -485,8 +562,8 @@ export default function Rules({ token }) {
             gap: '8px'
           }}
         >
-          <Flame size={15} />
-          <span>Hot CVE Virtual Patches ({patches.length})</span>
+          <ShieldAlert size={15} />
+          <span>Firewall Rules &amp; Virtual Patches ({patches.length})</span>
         </button>
 
         <button
@@ -509,28 +586,6 @@ export default function Rules({ token }) {
         >
           <CheckSquare size={15} />
           <span>False Positive Whitelists ({whitelists.length})</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('evasion')}
-          style={{
-            padding: '10px 18px',
-            borderRadius: '8px 8px 0 0',
-            border: 'none',
-            background: activeTab === 'evasion' ? '#FFFFFF' : 'transparent',
-            color: activeTab === 'evasion' ? '#2563EB' : '#64748B',
-            fontWeight: '700',
-            fontSize: '13.5px',
-            cursor: 'pointer',
-            borderBottom: activeTab === 'evasion' ? '2.5px solid #2563EB' : '2.5px solid transparent',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-        >
-          <Terminal size={15} />
-          <span>Attack Evasion Lab & Rapid Blocker</span>
         </button>
 
         <button
@@ -565,18 +620,33 @@ export default function Rules({ token }) {
           boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
           overflow: 'hidden'
         }}>
-          <div style={{ padding: '18px 24px', borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #D9E1DC', background: '#FFFFFF', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <h2 style={{ fontSize: '15px', fontWeight: '800', color: '#0F172A', margin: 0 }}>
-                Active Zero-Day Virtual Patches
+              <h2 style={{ fontSize: '15px', fontWeight: '800', color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ShieldAlert size={17} style={{ color: '#2563EB' }} />
+                <span>Active Fleet Blocking Rules &amp; Virtual Patches</span>
               </h2>
               <p style={{ fontSize: '12.5px', color: '#64748B', margin: '3px 0 0' }}>
-                These signatures are pushed immediately to all 500,000 WordPress sites via heartbeat without retraining the 7.5M ML classifier.
+                Fleet-wide attack signatures and virtual patches protecting all connected sites against zero-days and bypasses.
               </p>
             </div>
             <button
               type="button"
-              onClick={() => setShowPatchModal(true)}
+              onClick={() => {
+                setPatchForm({
+                  rule_type: 'custom_rule',
+                  cve_id: `RULE-ATTACK-${Math.floor(1000 + Math.random() * 9000)}`,
+                  name: '',
+                  category: 'SQL Injection',
+                  component: 'fleet-waf',
+                  target_scope: 'all',
+                  pattern: '',
+                  action: 'block',
+                  severity: 'critical',
+                  is_active: true
+                })
+                setShowPatchModal(true)
+              }}
               style={{
                 padding: '7px 14px',
                 borderRadius: '6px',
@@ -592,98 +662,209 @@ export default function Rules({ token }) {
               }}
             >
               <Plus size={14} />
-              <span>New CVE Patch</span>
+              <span>+ Add Blocking Rule</span>
             </button>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          {/* BULK ACTION BAR */}
+          {selectedPatches.length > 0 && (
+            <div style={{
+              background: '#EFF6FF',
+              borderBottom: '1px solid #DBEAFE',
+              padding: '10px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontSize: '12.5px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1E40AF', fontWeight: '700' }}>
+                <CheckSquare size={16} />
+                <span>{selectedPatches.length} Rules Selected</span>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => handleBulkTogglePatches(true)}
+                  style={{ padding: '5px 12px', borderRadius: '6px', background: '#ECFDF5', border: '1px solid #A7F3D0', color: '#059669', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                >
+                  Activate Selected
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleBulkTogglePatches(false)}
+                  style={{ padding: '5px 12px', borderRadius: '6px', background: '#F1F5F9', border: '1px solid #CBD5E1', color: '#475569', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                >
+                  Pause Selected
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBulkDeletePatches}
+                  style={{ padding: '5px 12px', borderRadius: '6px', background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                >
+                  Delete Selected
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: '850px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
               <thead>
-                <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                  <th style={{ padding: '12px 18px', fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>CVE / ID</th>
-                  <th style={{ padding: '12px 18px', fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>Vulnerability Description</th>
-                  <th style={{ padding: '12px 18px', fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>Component</th>
-                  <th style={{ padding: '12px 18px', fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>Scope</th>
-                  <th style={{ padding: '12px 18px', fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>Regex Pattern</th>
-                  <th style={{ padding: '12px 18px', fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>Fleet Blocks</th>
-                  <th style={{ padding: '12px 18px', fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>Status</th>
-                  <th style={{ padding: '12px 18px', fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
+                <tr style={{ background: '#FBFCFA', borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: '700' }}>
+                  <th style={{ width: '40px', padding: '14px 16px', textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={isAllPatchesSelected}
+                      onChange={handleToggleSelectAllPatches}
+                      style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                    />
+                  </th>
+                  <th style={{ padding: '14px 16px' }}>RULE / CVE ID</th>
+                  <th style={{ padding: '14px 16px' }}>DESCRIPTION</th>
+                  <th style={{ padding: '14px 16px' }}>COMPONENT</th>
+                  <th style={{ padding: '14px 16px' }}>SCOPE</th>
+                  <th style={{ padding: '14px 16px' }}>REGEX PATTERN</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'center' }}>BLOCKS</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'center' }}>STATUS</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'right' }}>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
                 {patches.length === 0 ? (
                   <tr>
-                    <td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>
-                      No virtual patches published yet. Click "Publish Hot Patch" to deploy one.
+                    <td colSpan={9} style={{ padding: '50px 20px', textAlign: 'center', color: '#64748B' }}>
+                      <ShieldAlert size={28} style={{ margin: '0 auto 8px', color: '#94A3B8', display: 'block' }} />
+                      <div style={{ fontWeight: '700', color: '#0F172A', fontSize: '14px' }}>No custom rules or virtual patches deployed</div>
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#64748B' }}>Click "+ Add Blocking Rule" to deploy an attack blocking signature across all sites.</p>
                     </td>
                   </tr>
                 ) : (
-                  patches.map(p => (
-                    <tr key={p._id} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '14px 18px', fontFamily: 'monospace', fontWeight: '700', color: '#2563EB', fontSize: '13px' }}>
-                        {p.cve_id}
-                      </td>
-                      <td style={{ padding: '14px 18px' }}>
-                        <div style={{ fontWeight: '700', color: '#0F172A', fontSize: '13.5px' }}>{p.name}</div>
-                        <span style={{ fontSize: '11px', color: '#64748B' }}>Severity: {p.severity} | Action: {p.action}</span>
-                      </td>
-                      <td style={{ padding: '14px 18px' }}>
-                        <span style={{ background: '#F1F5F9', border: '1px solid #E2E8F0', padding: '2px 8px', borderRadius: '4px', fontSize: '11.5px', fontWeight: '600', color: '#475569' }}>
-                          {p.component || 'core'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '14px 18px', fontSize: '12.5px', color: '#475569', fontWeight: '600' }}>
-                        {p.target_scope || 'all'}
-                      </td>
-                      <td style={{ padding: '14px 18px' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#F8FAFC', padding: '4px 8px', borderRadius: '6px', border: '1px solid #E2E8F0', maxWidth: '280px' }}>
-                          <span style={{ fontFamily: 'monospace', fontSize: '11.5px', color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {p.pattern}
+                  patches.map(p => {
+                    const patchId = getPatchId(p)
+                    const isSelected = selectedPatches.includes(patchId)
+                    const isCve = String(p.cve_id || '').toUpperCase().startsWith('CVE-')
+                    return (
+                      <tr
+                        key={patchId}
+                        style={{
+                          borderBottom: '1px solid #F1F5F9',
+                          background: isSelected ? '#FAFBF9' : '#FFFFFF',
+                          transition: 'background-color 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = '#F8FAFC' }}
+                        onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = isSelected ? '#FAFBF9' : '#FFFFFF' }}
+                      >
+                        <td style={{ padding: '14px 16px', textAlign: 'center', verticalAlign: 'middle' }} onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => handleTogglePatchSelect(patchId, e)}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                          />
+                        </td>
+                        <td style={{ padding: '14px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            background: isCve ? '#FEF3C7' : '#EFF6FF',
+                            border: isCve ? '1px solid #FDE68A' : '1px solid #DBEAFE',
+                            color: isCve ? '#92400E' : '#1D4ED8',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: '11.5px',
+                            fontWeight: '700'
+                          }}>
+                            {isCve ? <Bug size={12} /> : <ShieldAlert size={12} />}
+                            <span>{p.cve_id}</span>
                           </span>
+                        </td>
+                        <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
+                          <div style={{ fontWeight: '700', color: '#0F172A', fontSize: '12.5px' }}>{p.name}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', fontSize: '11px', color: '#60716B' }}>
+                            <span>Category: <strong>{p.category || (isCve ? 'Virtual Patch' : 'Attack Rule')}</strong></span>
+                            <span>&bull;</span>
+                            <span>Severity: <strong style={{ color: p.severity === 'critical' ? '#DC2626' : '#D97706', textTransform: 'capitalize' }}>{p.severity || 'critical'}</strong></span>
+                          </div>
+                        </td>
+                        <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
+                          <span style={{ background: '#F1F5F9', border: '1px solid #E2E8F0', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '700', color: '#475569' }}>
+                            {p.component || 'fleet-waf'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontSize: '11.5px', color: '#60716B', fontWeight: '600' }}>
+                          {p.target_scope === 'all' ? 'Entire Request' : p.target_scope}
+                        </td>
+                        <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#F8FAFC', padding: '3px 8px', borderRadius: '6px', border: '1px solid #E2E8F0', maxWidth: '260px' }}>
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {p.pattern}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(patchId, p.pattern)}
+                              title="Copy regex"
+                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B', display: 'flex' }}
+                            >
+                              {copiedId === patchId ? <Check size={11} style={{ color: '#059669' }} /> : <Copy size={11} />}
+                            </button>
+                          </div>
+                        </td>
+                        <td style={{ padding: '14px 16px', textAlign: 'center', verticalAlign: 'middle' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: '#FEF2F2',
+                            border: '1px solid #FECACA',
+                            color: '#DC2626',
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            fontSize: '11.5px',
+                            fontWeight: '800'
+                          }}>
+                            {p.hits_count || 0}
+                          </span>
+                        </td>
+                        <td style={{ padding: '14px 16px', textAlign: 'center', verticalAlign: 'middle' }}>
                           <button
                             type="button"
-                            onClick={() => handleCopy(p._id, p.pattern)}
-                            title="Copy regex"
-                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B', display: 'flex' }}
+                            onClick={() => handleTogglePatch(patchId)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '4px 12px',
+                              borderRadius: '9999px',
+                              fontSize: '11px',
+                              fontWeight: '700',
+                              border: p.is_active ? '1px solid #D9E1DC' : '1px solid #E2E8F0',
+                              cursor: 'pointer',
+                              background: p.is_active ? '#E8EEE8' : '#FAFBF9',
+                              color: p.is_active ? '#0B2522' : '#64748B'
+                            }}
                           >
-                            {copiedId === p._id ? <Check size={12} style={{ color: '#059669' }} /> : <Copy size={12} />}
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: p.is_active ? '#0B2522' : '#94A3B8' }} />
+                            <span>{p.is_active ? 'ACTIVE' : 'PAUSED'}</span>
                           </button>
-                        </div>
-                      </td>
-                      <td style={{ padding: '14px 18px', fontWeight: '800', color: '#DC2626', fontSize: '13.5px' }}>
-                        {p.hits_count || 0}
-                      </td>
-                      <td style={{ padding: '14px 18px' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleTogglePatch(p._id)}
-                          style={{
-                            padding: '4px 10px',
-                            borderRadius: '999px',
-                            fontSize: '11.5px',
-                            fontWeight: '700',
-                            border: 'none',
-                            cursor: 'pointer',
-                            background: p.is_active ? '#ECFDF5' : '#F1F5F9',
-                            color: p.is_active ? '#059669' : '#64748B',
-                            border: p.is_active ? '1px solid #A7F3D0' : '1px solid #CBD5E1'
-                          }}
-                        >
-                          {p.is_active ? 'ACTIVE' : 'PAUSED'}
-                        </button>
-                      </td>
-                      <td style={{ padding: '14px 18px', textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleDeletePatch(p._id)}
-                          title="Delete patch"
-                          style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '4px' }}
-                        >
-                          <Trash2 size={15} onMouseEnter={(e) => e.target.style.color = '#EF4444'} onMouseLeave={(e) => e.target.style.color = '#94A3B8'} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td style={{ padding: '14px 16px', textAlign: 'right', verticalAlign: 'middle' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePatch(patchId)}
+                            title="Delete rule"
+                            style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '4px' }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#DC2626'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = '#94A3B8'}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })
                 )}
               </tbody>
             </table>
@@ -731,65 +912,150 @@ export default function Rules({ token }) {
             </button>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          {/* BULK WHITELIST ACTION BAR */}
+          {selectedWhitelists.length > 0 && (
+            <div style={{
+              background: '#EFF6FF',
+              borderBottom: '1px solid #DBEAFE',
+              padding: '10px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontSize: '12.5px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1E40AF', fontWeight: '700' }}>
+                <CheckSquare size={16} />
+                <span>{selectedWhitelists.length} Whitelist Rules Selected</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleBulkDeleteWhitelists}
+                style={{ padding: '5px 12px', borderRadius: '6px', background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+              >
+                Delete Selected
+              </button>
+            </div>
+          )}
+
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: '850px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
               <thead>
-                <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                  <th style={{ padding: '12px 18px', fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>URL / Pattern</th>
-                  <th style={{ padding: '12px 18px', fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>Scope</th>
-                  <th style={{ padding: '12px 18px', fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>Target Type</th>
-                  <th style={{ padding: '12px 18px', fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>Reason / Description</th>
-                  <th style={{ padding: '12px 18px', fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>Requests Bypassed</th>
-                  <th style={{ padding: '12px 18px', fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
+                <tr style={{ background: '#FBFCFA', borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: '700' }}>
+                  <th style={{ width: '40px', padding: '14px 16px', textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={isAllWhitelistsSelected}
+                      onChange={handleToggleSelectAllWhitelists}
+                      style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                    />
+                  </th>
+                  <th style={{ padding: '14px 16px' }}>URL / PATTERN</th>
+                  <th style={{ padding: '14px 16px' }}>SCOPE</th>
+                  <th style={{ padding: '14px 16px' }}>TARGET TYPE</th>
+                  <th style={{ padding: '14px 16px' }}>REASON / DESCRIPTION</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'center' }}>REQUESTS BYPASSED</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'right' }}>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
                 {whitelists.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>
-                      No whitelist exceptions defined yet.
+                    <td colSpan={7} style={{ padding: '50px 20px', textAlign: 'center', color: '#64748B' }}>
+                      <CheckSquare size={28} style={{ margin: '0 auto 8px', color: '#94A3B8', display: 'block' }} />
+                      <div style={{ fontWeight: '700', color: '#0F172A', fontSize: '14px' }}>No whitelist exceptions defined yet</div>
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#64748B' }}>Add safe paths, webhook endpoints, or user-specific URLs to bypass 403 blocks.</p>
                     </td>
                   </tr>
                 ) : (
-                  whitelists.map(w => (
-                    <tr key={w._id} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '14px 18px', fontFamily: 'monospace', fontWeight: '700', color: '#0F172A', fontSize: '13px' }}>
-                        {w.url_pattern}
-                      </td>
-                      <td style={{ padding: '14px 18px' }}>
-                        <span style={{
-                          background: w.scope === 'global' ? '#EFF6FF' : '#F1F5F9',
-                          color: w.scope === 'global' ? '#2563EB' : '#475569',
-                          border: w.scope === 'global' ? '1px solid #DBEAFE' : '1px solid #E2E8F0',
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: '700'
-                        }}>
-                          {w.scope === 'global' ? 'GLOBAL FLEET' : 'TENANT ONLY'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '14px 18px', fontSize: '12.5px', color: '#64748B', fontWeight: '600' }}>
-                        {w.target_type || 'url'}
-                      </td>
-                      <td style={{ padding: '14px 18px', fontSize: '13px', color: '#334155' }}>
-                        {w.reason || 'Safe Exception'}
-                      </td>
-                      <td style={{ padding: '14px 18px', fontWeight: '800', color: '#059669', fontSize: '13.5px' }}>
-                        {w.hits_bypassed || 0}
-                      </td>
-                      <td style={{ padding: '14px 18px', textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteWhitelist(w._id)}
-                          title="Delete whitelist rule"
-                          style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '4px' }}
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                  whitelists.map(w => {
+                    const whitelistId = getWhitelistId(w)
+                    const isSelected = selectedWhitelists.includes(whitelistId)
+                    return (
+                      <tr
+                        key={whitelistId}
+                        style={{
+                          borderBottom: '1px solid #F1F5F9',
+                          background: isSelected ? '#FAFBF9' : '#FFFFFF',
+                          transition: 'background-color 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = '#F8FAFC' }}
+                        onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = isSelected ? '#FAFBF9' : '#FFFFFF' }}
+                      >
+                        <td style={{ padding: '14px 16px', textAlign: 'center', verticalAlign: 'middle' }} onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => handleToggleWhitelistSelect(whitelistId, e)}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                          />
+                        </td>
+                        <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
+                          <span style={{
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontWeight: '700',
+                            color: '#0F172A',
+                            fontSize: '12px',
+                            background: '#F8FAFC',
+                            border: '1px solid #E2E8F0',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            display: 'inline-block'
+                          }}>
+                            {w.url_pattern}
+                          </span>
+                        </td>
+                        <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
+                          <span style={{
+                            background: w.scope === 'global' ? '#EFF6FF' : '#FEF3C7',
+                            color: w.scope === 'global' ? '#2563EB' : '#B45309',
+                            border: w.scope === 'global' ? '1px solid #DBEAFE' : '1px solid #FDE68A',
+                            padding: '3px 9px',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            display: 'inline-block'
+                          }}>
+                            {w.scope === 'global' ? 'GLOBAL FLEET' : `TENANT: ${w.user_email || w.domain || 'Scoped'}`}
+                          </span>
+                        </td>
+                        <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontSize: '11.5px', color: '#64748B', fontWeight: '600' }}>
+                          {w.target_type || 'url'}
+                        </td>
+                        <td style={{ padding: '14px 16px', verticalAlign: 'middle', fontSize: '12.5px', color: '#334155' }}>
+                          {w.reason || 'Safe Exception'}
+                        </td>
+                        <td style={{ padding: '14px 16px', textAlign: 'center', verticalAlign: 'middle' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: '#ECFDF5',
+                            border: '1px solid #A7F3D0',
+                            color: '#059669',
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            fontSize: '11.5px',
+                            fontWeight: '800'
+                          }}>
+                            {w.hits_bypassed || 0}
+                          </span>
+                        </td>
+                        <td style={{ padding: '14px 16px', textAlign: 'right', verticalAlign: 'middle' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteWhitelist(whitelistId)}
+                            title="Delete whitelist rule"
+                            style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '4px' }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#DC2626'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = '#94A3B8'}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })
                 )}
               </tbody>
             </table>
@@ -797,249 +1063,26 @@ export default function Rules({ token }) {
         </div>
       )}
 
-      {/* TAB 3: ATTACK EVASION LAB & RAPID BLOCKER */}
-      {activeTab === 'evasion' && (
-        <div className="mdf-two-col-grid" style={{ gap: '24px' }}>
-          {/* Left Panel: Request Input */}
-          <div style={{
-            background: '#FFFFFF',
-            borderRadius: '12px',
-            border: '1px solid #E2E8F0',
-            padding: '24px',
-            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '9px', marginBottom: '16px' }}>
-              <Terminal size={18} style={{ color: '#2563EB' }} />
-              <h2 style={{ fontSize: '15.5px', fontWeight: '800', color: '#0F172A', margin: 0 }}>
-                Evasion Payload Tester
-              </h2>
-            </div>
-            <p style={{ fontSize: '13px', color: '#64748B', margin: '0 0 16px' }}>
-              Test zero-day evasion strings or unblocked payloads against the hybrid pipeline (Heuristics + Regex + ML Classifier).
-            </p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '10px', marginBottom: '14px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#475569', marginBottom: '4px' }}>
-                  Method
-                </label>
-                <select
-                  value={evasionMethod}
-                  onChange={(e) => setEvasionMethod(e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', fontWeight: '700' }}
-                >
-                  <option value="GET">GET</option>
-                  <option value="POST">POST</option>
-                  <option value="PUT">PUT</option>
-                  <option value="DELETE">DELETE</option>
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#475569', marginBottom: '4px' }}>
-                  Target Path
-                </label>
-                <input
-                  type="text"
-                  value={evasionUrl}
-                  onChange={(e) => setEvasionUrl(e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', fontFamily: 'monospace' }}
-                />
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '18px' }}>
-              <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#475569', marginBottom: '4px' }}>
-                Raw HTTP Payload / Obfuscated Exploit String
-              </label>
-              <textarea
-                rows={5}
-                value={evasionPayload}
-                onChange={(e) => setEvasionPayload(e.target.value)}
-                placeholder="Enter suspicious query, SQL injection, script tag, or webshell payload..."
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid #CBD5E1',
-                  fontFamily: 'monospace',
-                  fontSize: '12.5px',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={handleRunEvasionTest}
-              disabled={evasionLoading || !evasionPayload}
-              style={{
-                width: '100%',
-                padding: '11px',
-                borderRadius: '8px',
-                background: '#2563EB',
-                border: '1px solid #1D4ED8',
-                color: '#FFFFFF',
-                fontSize: '13.5px',
-                fontWeight: '700',
-                cursor: evasionLoading ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px'
-              }}
-            >
-              <Play size={15} className={evasionLoading ? 'animate-spin' : ''} />
-              <span>{evasionLoading ? 'Simulating Inspection...' : 'Run Evasion Inspection'}</span>
-            </button>
-          </div>
-
-          {/* Right Panel: Diagnostics & 1-Click Hot Patch Proposal */}
-          <div style={{
-            background: '#FFFFFF',
-            borderRadius: '12px',
-            border: '1px solid #E2E8F0',
-            padding: '24px',
-            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between'
-          }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #F1F5F9', paddingBottom: '14px', marginBottom: '18px' }}>
-                <h2 style={{ fontSize: '15.5px', fontWeight: '800', color: '#0F172A', margin: 0 }}>
-                  Inspection Diagnostics & Pipeline Breakdown
-                </h2>
-                <span style={{ fontSize: '12px', color: '#64748B' }}>Deterministic &amp; ML</span>
-              </div>
-
-              {!evasionResult ? (
-                <div style={{ padding: '40px 20px', textAlign: 'center', color: '#94A3B8' }}>
-                  <Bug size={32} style={{ margin: '0 auto 10px', opacity: 0.4 }} />
-                  <p style={{ margin: 0, fontSize: '13px' }}>Click "Run Evasion Inspection" to evaluate the payload against the live cluster engine.</p>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {/* Verdict Banner */}
-                  <div style={{
-                    padding: '14px 18px',
-                    borderRadius: '8px',
-                    background: evasionResult.decision === 'BLOCK' ? '#FEF2F2' : '#ECFDF5',
-                    border: evasionResult.decision === 'BLOCK' ? '1px solid #FECACA' : '1px solid #A7F3D0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      {evasionResult.decision === 'BLOCK' ? (
-                        <ShieldAlert size={20} style={{ color: '#DC2626' }} />
-                      ) : (
-                        <CheckCircle2 size={20} style={{ color: '#059669' }} />
-                      )}
-                      <div>
-                        <span style={{ fontSize: '14px', fontWeight: '800', color: evasionResult.decision === 'BLOCK' ? '#991B1B' : '#065F46' }}>
-                          DECISION: {evasionResult.decision}
-                        </span>
-                        <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
-                          Trigger: {evasionResult.rule_matched || 'Allowed (No Violation)'}
-                        </div>
-                      </div>
-                    </div>
-                    <span style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: '700', color: '#64748B' }}>
-                      {evasionResult.latency_ms} ms
-                    </span>
-                  </div>
-
-                  {/* ML Probability Bar */}
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', fontWeight: '600', marginBottom: '6px' }}>
-                      <span style={{ color: '#475569' }}>Cloud ML Threat Probability:</span>
-                      <span style={{ color: evasionResult.ml_threat_probability >= 0.6 ? '#DC2626' : '#059669', fontWeight: '800' }}>
-                        {(evasionResult.ml_threat_probability * 100).toFixed(1)}%
-                      </span>
-                    </div>
-                    <div style={{ width: '100%', height: '8px', background: '#F1F5F9', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{
-                        width: `${Math.min(100, evasionResult.ml_threat_probability * 100)}%`,
-                        height: '100%',
-                        background: evasionResult.ml_threat_probability >= 0.6 ? '#DC2626' : '#059669',
-                        transition: 'width 0.3s ease'
-                      }} />
-                    </div>
-                  </div>
-
-                  {/* 1-Click Hot Patch Proposal */}
-                  <div style={{
-                    background: '#F8FAFC',
-                    border: '1px solid #E2E8F0',
-                    borderRadius: '8px',
-                    padding: '14px',
-                    marginTop: '4px'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '12.5px', fontWeight: '700', color: '#0F172A' }}>
-                        Proposed Fleet Hot Patch Signature:
-                      </span>
-                      <span style={{ fontSize: '11px', color: '#2563EB', fontWeight: '700' }}>
-                        {evasionResult.suggested_hot_patch?.cve_id}
-                      </span>
-                    </div>
-                    <code style={{ display: 'block', fontSize: '11.5px', background: '#FFFFFF', border: '1px solid #CBD5E1', padding: '6px 8px', borderRadius: '4px', marginBottom: '10px', wordBreak: 'break-all' }}>
-                      {evasionResult.suggested_hot_patch?.pattern}
-                    </code>
-                    <button
-                      type="button"
-                      onClick={() => handleDeployEvasionHotPatch(evasionResult.suggested_hot_patch)}
-                      style={{
-                        padding: '7px 14px',
-                        borderRadius: '6px',
-                        background: '#DC2626',
-                        border: '1px solid #B91C1C',
-                        color: '#FFFFFF',
-                        fontSize: '12px',
-                        fontWeight: '700',
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                    >
-                      <Flame size={13} />
-                      <span>1-Click Deploy Fleet Hot Patch</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div style={{ fontSize: '12px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '16px' }}>
-              <Shield size={14} />
-              <span>Simulated against active 2,000 DFA batches and SGD ML weights without altering live traffic.</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: 2,000+ CORE WAF SIGNATURE ENGINE */}
+      {/* TAB 3: 2,000+ CORE WAF SIGNATURE ENGINE */}
       {activeTab === 'core' && (
         <div style={{
           background: '#FFFFFF',
           borderRadius: '12px',
-          border: '1px solid #E2E8F0',
+          border: '1px solid #D9E1DC',
           boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
           overflow: 'hidden'
         }}>
           {/* Filter Bar */}
           <div style={{
-            padding: '16px 24px',
-            borderBottom: '1px solid #E2E8F0',
+            padding: '14px 20px',
+            borderBottom: '1px solid #D9E1DC',
             display: 'flex',
             gap: '12px',
             alignItems: 'center',
             flexWrap: 'wrap'
           }}>
             <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
-              <Search size={15} style={{ position: 'absolute', left: '12px', top: '10px', color: '#94A3B8' }} />
+              <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
               <input
                 type="text"
                 placeholder="Search across 2,000+ batched signatures..."
@@ -1047,10 +1090,10 @@ export default function Rules({ token }) {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '8px 12px 8px 34px',
+                  padding: '7px 12px 7px 34px',
                   borderRadius: '6px',
-                  border: '1px solid #CBD5E1',
-                  fontSize: '13px',
+                  border: '1px solid #D9E1DC',
+                  fontSize: '12.5px',
                   boxSizing: 'border-box'
                 }}
               />
@@ -1060,12 +1103,13 @@ export default function Rules({ token }) {
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
               style={{
-                padding: '8px 12px',
+                padding: '7px 12px',
                 borderRadius: '6px',
-                border: '1px solid #CBD5E1',
-                fontSize: '13px',
+                border: '1px solid #D9E1DC',
+                fontSize: '12.5px',
                 fontWeight: '600',
-                background: '#FFFFFF'
+                background: '#FFFFFF',
+                color: '#10201E'
               }}
             >
               {CATEGORIES.map(cat => (
@@ -1074,16 +1118,24 @@ export default function Rules({ token }) {
             </select>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: '820px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
               <thead>
-                <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                  <th style={{ padding: '12px 18px', fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>Rule ID</th>
-                  <th style={{ padding: '12px 18px', fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>Signature Title</th>
-                  <th style={{ padding: '12px 18px', fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>Category</th>
-                  <th style={{ padding: '12px 18px', fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>Regular Expression</th>
-                  <th style={{ padding: '12px 18px', fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>Severity</th>
-                  <th style={{ padding: '12px 18px', fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>Action</th>
+                <tr style={{
+                  background: '#FBFCFA',
+                  borderBottom: '1px solid #D9E1DC',
+                  color: '#60716B',
+                  fontSize: '11px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                  fontWeight: '700'
+                }}>
+                  <th style={{ padding: '14px 16px' }}>Rule ID</th>
+                  <th style={{ padding: '14px 16px' }}>Signature Title</th>
+                  <th style={{ padding: '14px 16px' }}>Category</th>
+                  <th style={{ padding: '14px 16px' }}>Regular Expression</th>
+                  <th style={{ padding: '14px 16px' }}>Severity</th>
+                  <th style={{ padding: '14px 16px' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -1163,7 +1215,7 @@ export default function Rules({ token }) {
         </div>
       )}
 
-      {/* MODAL 1: PUBLISH HOT VIRTUAL PATCH */}
+      {/* MODAL 1: ADD BLOCKING RULE / VIRTUAL PATCH */}
       {showPatchModal && (
         <div style={{
           position: 'fixed',
@@ -1180,60 +1232,148 @@ export default function Rules({ token }) {
             borderRadius: '12px',
             border: '1px solid #E2E8F0',
             width: '100%',
-            maxWidth: '560px',
+            maxWidth: '580px',
             boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
             overflow: 'hidden'
           }}>
             <div style={{ padding: '18px 24px', borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
-                <Flame size={18} style={{ color: '#DC2626' }} />
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#0F172A' }}>
-                  Publish Hot CVE Virtual Patch
-                </h3>
+                {patchForm.rule_type === 'custom_rule' ? (
+                  <ShieldAlert size={19} style={{ color: '#2563EB' }} />
+                ) : (
+                  <Bug size={19} style={{ color: '#D97706' }} />
+                )}
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '15.5px', fontWeight: '800', color: '#0F172A' }}>
+                    {patchForm.rule_type === 'custom_rule' ? 'Deploy Custom Attack Rule' : 'Deploy CVE Virtual Patch'}
+                  </h3>
+                  <span style={{ fontSize: '11.5px', color: '#64748B' }}>
+                    {patchForm.rule_type === 'custom_rule'
+                      ? 'Block unhandled SQLi, XSS, Webshells, or zero-day bypass payloads across the fleet'
+                      : 'Virtual patch protecting specific WordPress plugins or CMS vulnerabilities'}
+                  </span>
+                </div>
               </div>
               <button type="button" onClick={() => setShowPatchModal(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B' }}>
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handlePublishPatch} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            {/* Rule Type Mode Selector */}
+            <div style={{ display: 'flex', background: '#F8FAFC', padding: '6px 24px', borderBottom: '1px solid #E2E8F0', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => setPatchForm(prev => ({
+                  ...prev,
+                  rule_type: 'custom_rule',
+                  cve_id: prev.cve_id.startsWith('CVE-') ? `RULE-ATTACK-${Math.floor(1000 + Math.random() * 9000)}` : prev.cve_id || `RULE-ATTACK-${Math.floor(1000 + Math.random() * 9000)}`,
+                  component: 'fleet-waf'
+                }))}
+                style={{
+                  flex: 1,
+                  padding: '7px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid',
+                  borderColor: patchForm.rule_type === 'custom_rule' ? '#93C5FD' : '#E2E8F0',
+                  background: patchForm.rule_type === 'custom_rule' ? '#EFF6FF' : '#FFFFFF',
+                  color: patchForm.rule_type === 'custom_rule' ? '#1D4ED8' : '#475569',
+                  fontWeight: '700',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <ShieldAlert size={14} />
+                <span>Custom Attack Rule (SQLi, XSS, Shells)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPatchForm(prev => ({
+                  ...prev,
+                  rule_type: 'cve_patch',
+                  cve_id: prev.cve_id.startsWith('RULE-') ? 'CVE-2024-' : prev.cve_id || 'CVE-2024-',
+                  component: 'woocommerce'
+                }))}
+                style={{
+                  flex: 1,
+                  padding: '7px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid',
+                  borderColor: patchForm.rule_type === 'cve_patch' ? '#FDE68A' : '#E2E8F0',
+                  background: patchForm.rule_type === 'cve_patch' ? '#FEF3C7' : '#FFFFFF',
+                  color: patchForm.rule_type === 'cve_patch' ? '#92400E' : '#475569',
+                  fontWeight: '700',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Bug size={14} />
+                <span>CVE Virtual Patch (Plugin Bug)</span>
+              </button>
+            </div>
+
+            <form onSubmit={handlePublishPatch} style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '14px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
-                    CVE ID *
+                  <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                    {patchForm.rule_type === 'custom_rule' ? 'Attack Rule Identifier *' : 'CVE Identifier (NVD / MITRE) *'}
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. CVE-2026-4421"
+                    placeholder={patchForm.rule_type === 'custom_rule' ? "e.g. RULE-SQLI-01 or RULE-WEBSHELL" : "e.g. CVE-2024-25600"}
                     value={patchForm.cve_id}
                     onChange={(e) => setPatchForm(prev => ({ ...prev, cve_id: e.target.value }))}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', fontWeight: '700', fontFamily: 'monospace' }}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', fontWeight: '700', fontFamily: "'JetBrains Mono', monospace" }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
-                    Affected Component
+                  <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                    {patchForm.rule_type === 'custom_rule' ? 'Attack Category' : 'Affected Plugin / Component'}
                   </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. woocommerce / elementor"
-                    value={patchForm.component}
-                    onChange={(e) => setPatchForm(prev => ({ ...prev, component: e.target.value }))}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px' }}
-                  />
+                  {patchForm.rule_type === 'custom_rule' ? (
+                    <select
+                      value={patchForm.category}
+                      onChange={(e) => setPatchForm(prev => ({ ...prev, category: e.target.value }))}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px', fontWeight: '600' }}
+                    >
+                      <option value="SQL Injection">SQL Injection</option>
+                      <option value="XSS">XSS (Cross-Site Scripting)</option>
+                      <option value="RCE & WebShells">RCE &amp; WebShells</option>
+                      <option value="LFI / Path Traversal">LFI / Path Traversal</option>
+                      <option value="CMS Vulnerabilities">CMS Vulnerabilities</option>
+                      <option value="Bots & Scanners">Bots &amp; Scanners</option>
+                      <option value="SSRF & XXE">SSRF &amp; XXE</option>
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder="e.g. woocommerce / elementor"
+                      value={patchForm.component}
+                      onChange={(e) => setPatchForm(prev => ({ ...prev, component: e.target.value }))}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px' }}
+                    />
+                  )}
                 </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
-                  Vulnerability / Patch Description *
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                  {patchForm.rule_type === 'custom_rule' ? 'Attack Description / Rule Title *' : 'Vulnerability / Patch Description *'}
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Unauthenticated Arbitrary File Upload in Plugin"
+                  placeholder={patchForm.rule_type === 'custom_rule' ? "e.g. Block Novel Union-Based SQL Injection Bypass" : "e.g. Unauthenticated Remote Code Execution in Bricks Builder"}
                   value={patchForm.name}
                   onChange={(e) => setPatchForm(prev => ({ ...prev, name: e.target.value }))}
                   style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px' }}
@@ -1242,8 +1382,8 @@ export default function Rules({ token }) {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
-                    Target Scope
+                  <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                    Target Request Scope
                   </label>
                   <select
                     value={patchForm.target_scope}
@@ -1259,49 +1399,61 @@ export default function Rules({ token }) {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
-                    Severity
+                  <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                    Action &amp; Severity
                   </label>
                   <select
                     value={patchForm.severity}
                     onChange={(e) => setPatchForm(prev => ({ ...prev, severity: e.target.value }))}
                     style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px' }}
                   >
-                    <option value="critical">Critical (Immediate Block)</option>
-                    <option value="high">High</option>
-                    <option value="medium">Medium</option>
+                    <option value="critical">Critical (Immediate 403 Block)</option>
+                    <option value="high">High (403 Block)</option>
+                    <option value="medium">Medium (Block &amp; Log)</option>
                   </select>
                 </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
-                  Regular Expression Pattern *
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                  {patchForm.rule_type === 'custom_rule' ? 'Malicious Attack Regex Pattern *' : 'Vulnerability Exploit Signature Regex *'}
                 </label>
                 <textarea
                   rows={3}
                   required
-                  placeholder="(?i)(vulnerable_action.*malicious_param)"
+                  placeholder="(?i)(union.*select.*from|eval\(base64_decode)"
                   value={patchForm.pattern}
                   onChange={(e) => setPatchForm(prev => ({ ...prev, pattern: e.target.value }))}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12.5px', fontFamily: 'monospace' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12px', fontFamily: "'JetBrains Mono', monospace" }}
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
                 <button
                   type="button"
                   onClick={() => setShowPatchModal(false)}
-                  style={{ padding: '9px 16px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#FFFFFF', color: '#475569', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
+                  style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#FFFFFF', color: '#475569', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={publishingPatch}
-                  style={{ padding: '9px 20px', borderRadius: '6px', border: 'none', background: '#DC2626', color: '#FFFFFF', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}
+                  style={{
+                    padding: '8px 20px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: patchForm.rule_type === 'custom_rule' ? '#2563EB' : '#DC2626',
+                    color: '#FFFFFF',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
                 >
-                  {publishingPatch ? 'Publishing...' : 'Publish to 500k Fleet'}
+                  {publishingPatch ? 'Deploying...' : (patchForm.rule_type === 'custom_rule' ? 'Deploy Fleet Attack Rule' : 'Publish CVE Virtual Patch')}
                 </button>
               </div>
             </form>
@@ -1369,10 +1521,34 @@ export default function Rules({ token }) {
                   onChange={(e) => setWhitelistForm(prev => ({ ...prev, scope: e.target.value }))}
                   style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px' }}
                 >
-                  <option value="global">Global (Applies to all 500,000 WordPress sites)</option>
-                  <option value="tenant">Tenant Specific (Scoped to complaining user)</option>
+                  <option value="global">Global (Applies to all connected websites)</option>
+                  <option value="tenant">Tenant Specific (Target specific user email or website)</option>
                 </select>
               </div>
+
+              {whitelistForm.scope === 'tenant' && (
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                    Target User Email or Website Domain *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. user@domain.com or mystore.com"
+                    value={whitelistForm.tenant_target || ''}
+                    onChange={(e) => setWhitelistForm(prev => ({
+                      ...prev,
+                      tenant_target: e.target.value,
+                      user_email: e.target.value.includes('@') ? e.target.value.trim() : '',
+                      domain: !e.target.value.includes('@') ? e.target.value.trim() : ''
+                    }))}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '13px' }}
+                  />
+                  <span style={{ fontSize: '11px', color: '#64748B', marginTop: '3px', display: 'block' }}>
+                    Enter customer email or site domain to isolate this whitelist only to their account.
+                  </span>
+                </div>
+              )}
 
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>

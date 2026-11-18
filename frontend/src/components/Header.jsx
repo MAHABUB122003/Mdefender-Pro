@@ -18,13 +18,13 @@ import {
 
 const pageNames = {
   '/admin/dashboard': 'Global Overview',
-  '/admin/users': 'Users & Fleets',
+  '/admin/users': 'Tenants & Users',
   '/admin/pricing': 'Dynamic SaaS Pricing',
   '/admin/clients': 'Protected Websites',
   '/admin/ddos': 'DDoS Shield',
-  '/admin/logs': 'Fleet Audit Logs',
+  '/admin/logs': 'Global Threat Logs',
   '/admin/rules': 'Virtual Patches & Rules',
-  '/admin/blacklist': 'IP Threat Network',
+  '/admin/blacklist': 'Global IP Blacklist',
   '/admin/learning': 'Attack Evasion Lab',
   '/admin/settings': 'System Settings',
   '/connect': 'Cluster Nodes',
@@ -188,7 +188,7 @@ export default function Header({ isCollapsed, onToggleCollapse, onToggleSidebar,
               </div>
               <div className="popover-foot">
                 <Link to="/admin/logs" onClick={() => setShowNotifications(false)}>
-                  View All Fleet Audit Logs →
+                  View All Global Threat Logs →
                 </Link>
               </div>
             </div>

@@ -439,9 +439,14 @@ export const api = {
   addClient: (data) => apiCall('/api/admin/clients', { method: 'POST', body: JSON.stringify(data) }),
   updateClient: (id, data) => apiCall(`/api/admin/clients?id=${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteClient: (id) => apiCall(`/api/admin/clients?id=${id}`, { method: 'DELETE' }),
-  getBlacklist: () => apiCall('/api/admin/blacklist'),
+  getBlacklist: (params) => {
+    const qs = params ? new URLSearchParams(params).toString() : ''
+    return apiCall(`/api/admin/blacklist${qs ? '?' + qs : ''}`)
+  },
   addBlacklist: (data) => apiCall('/api/admin/blacklist', { method: 'POST', body: JSON.stringify(data) }),
   removeBlacklist: (ip) => apiCall(`/api/admin/blacklist?ip=${encodeURIComponent(ip)}`, { method: 'DELETE' }),
+  promoteBlacklist: (ip) => apiCall('/api/admin/blacklist/promote', { method: 'POST', body: JSON.stringify({ ip }) }),
+  cleanExpiredBlacklist: () => apiCall('/api/admin/blacklist/clean-expired', { method: 'POST' }),
   getSettings: () => apiCall('/api/admin/settings'),
   updateSettings: (data) => apiCall('/api/admin/settings', { method: 'POST', body: JSON.stringify(data) }),
   changeAdminPassword: (data) => apiCall('/api/admin/change_password', { method: 'POST', body: JSON.stringify(data) }),
@@ -462,6 +467,7 @@ export const api = {
     return apiCall(`/api/v1/admin/users${qs ? '?' + qs : ''}`)
   },
   adminCreateUser: (data) => apiCall('/api/v1/admin/users/create', { method: 'POST', body: JSON.stringify(data) }),
+  adminBulkUserAction: (data) => apiCall('/api/v1/admin/users/bulk-action', { method: 'POST', body: JSON.stringify(data) }),
   adminGiftPlan: (data) => apiCall('/api/v1/admin/users/gift-plan', { method: 'POST', body: JSON.stringify(data) }),
   adminChangeUserPassword: (userId, newPassword) => apiCall('/api/v1/admin/users/change-password', { method: 'POST', body: JSON.stringify({ user_id: userId, new_password: newPassword }) }),
   adminUnlockUser: (userId) => apiCall('/api/v1/admin/users/unlock', { method: 'POST', body: JSON.stringify({ user_id: userId }) }),
@@ -479,6 +485,9 @@ export const api = {
   adminUpdatePricing: (plans) => apiCall('/api/v1/admin/pricing', { method: 'POST', body: JSON.stringify({ plans }) }),
   adminGetDynamicPricingConfig: () => apiCall('/api/v1/admin/pricing/config'),
   adminUpdateDynamicPricingConfig: (config) => apiCall('/api/v1/admin/pricing/config', { method: 'POST', body: JSON.stringify(config) }),
+  adminGetPaddleGateway: () => apiCall('/api/v1/admin/billing/paddle-gateway'),
+  adminUpdatePaddleGateway: (data) => apiCall('/api/v1/admin/billing/paddle-gateway', { method: 'POST', body: JSON.stringify(data) }),
+  adminTestPaddleConnection: () => apiCall('/api/v1/admin/billing/paddle-test-connection', { method: 'POST' }),
   getPublicPricingConfig: () => apiCall('/api/v1/pricing/config', { skipAuthRedirect: true }).catch(() => ({ data: null })),
 
   adminGetTenantWebsites: () => apiCall('/api/v1/admin/websites'),
@@ -505,7 +514,7 @@ export const api = {
   adminGetBroadcastNotices: () => apiCall('/api/v1/admin/broadcast-notice'),
   adminCreateBroadcastNotice: (data) => apiCall('/api/v1/admin/broadcast-notice', { method: 'POST', body: JSON.stringify(data) }),
 
-  adminGetOverview: () => apiCall('/api/v1/admin/overview'),
+  adminGetOverview: (params = {}) => apiCall(`/api/v1/admin/overview${params?.fresh ? '?fresh=true' : ''}`),
   adminGetSystemHealth: () => apiCall('/api/v1/admin/system-health'),
 
   getUserProfile: () => apiCall('/api/user/profile'),
@@ -732,9 +741,12 @@ export const api = {
     return apiCall(`/api/v1/admin/learning/reports${qs ? '?' + qs : ''}`)
   },
   adminDeleteLearningReport: (id) => apiCall(`/api/v1/admin/learning/reports/${id}`, { method: 'DELETE' }),
+  adminDismissReport: (id) => apiCall(`/api/v1/admin/learning/reports/${id}`, { method: 'DELETE' }),
   adminWhitelistPattern: (data) => apiCall('/api/v1/admin/learning/whitelist', { method: 'POST', body: JSON.stringify(data) }),
   adminBlacklistAttack: (data) => apiCall('/api/v1/admin/learning/blacklist', { method: 'POST', body: JSON.stringify(data) }),
+  adminBlacklistAndLearn: (data) => apiCall('/api/v1/admin/learning/blacklist', { method: 'POST', body: JSON.stringify(data) }),
   adminTestSandbox: (data) => apiCall('/api/v1/admin/learning/test', { method: 'POST', body: JSON.stringify(data) }),
+  adminRunSandboxTest: (data) => apiCall('/api/v1/admin/learning/test', { method: 'POST', body: JSON.stringify(data) }),
   adminRetrainWafModel: () => apiCall('/api/v1/admin/learning/retrain', { method: 'POST' }),
   adminGetLearnedSamples: (params = {}) => {
     const qs = new URLSearchParams(params).toString()
@@ -750,6 +762,7 @@ export const api = {
   adminUpdateDDoSConfig: (data) => apiCall('/api/admin/ddos/config', { method: 'POST', body: JSON.stringify(data) }),
   adminBlockDDoSIp: (ip, level = 4, duration = 3600) => apiCall('/api/admin/ddos/reputation/block', { method: 'POST', body: JSON.stringify({ ip, level, duration }) }),
   adminUnblockDDoSIp: (ip) => apiCall('/api/admin/ddos/reputation/unblock', { method: 'POST', body: JSON.stringify({ ip }) }),
+  adminSimulateDDoSSpike: (data = {}) => apiCall('/api/admin/ddos/simulate-spike', { method: 'POST', body: JSON.stringify(data) }),
 
   // Notification & Alerts APIs
   getNotifications: (params = {}) => {

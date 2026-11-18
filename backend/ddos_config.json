@@ -4,11 +4,130 @@
   "redis_url": "redis://localhost:6379/0",
   "use_redis": true,
   "fallback_to_memory": true,
-  "whitelist_ips": ["127.0.0.1", "::1", "localhost"],
-  "whitelist_paths": ["/health", "/api/admin/login"],
+  "rate_limits": {
+    "anonymous_rps": 10,
+    "anonymous_rpm": 200,
+    "anonymous_rph": 5000,
+    "authenticated_rps": 30,
+    "authenticated_rpm": 600,
+    "authenticated_rph": 15000,
+    "api_key_rps": 50,
+    "api_key_rpm": 1000,
+    "api_key_rph": 30000,
+    "admin_rps": 100,
+    "admin_rpm": 3000,
+    "admin_rph": 60000
+  },
+  "reputation": {
+    "initial_score": 0.0,
+    "max_score": 100.0,
+    "decay_rate": 0.5,
+    "decay_interval": 300,
+    "excess_request_penalty": 2.0,
+    "invalid_request_penalty": 5.0,
+    "not_found_penalty": 1.0,
+    "login_failure_penalty": 10.0,
+    "suspicious_ua_penalty": 3.0,
+    "block_threshold": 50,
+    "permanent_ban_threshold": 90
+  },
+  "burst": {
+    "window_seconds": 10,
+    "threshold_multiplier": 3.0,
+    "min_requests": 50,
+    "endpoint_threshold": 100,
+    "concurrent_threshold": 200
+  },
+  "progressive": {
+    "level1_delay": 0.5,
+    "level2_duration": 60,
+    "level3_duration": 300,
+    "level4_duration": 3600,
+    "escalation_enabled": true,
+    "escalation_threshold": 3
+  },
+  "geo": {
+    "enabled": false,
+    "whitelist_countries": [],
+    "blacklist_countries": [],
+    "block_message": "Access denied from your region"
+  },
+  "asn": {
+    "enabled": false,
+    "whitelist": [],
+    "blacklist": []
+  },
+  "challenge": {
+    "enabled": true,
+    "js_challenge": true,
+    "captcha_enabled": true,
+    "cookie_validation": true,
+    "challenge_duration": 300
+  },
+  "alerts": {
+    "enabled": false,
+    "email_enabled": false,
+    "email_recipients": [],
+    "slack_enabled": false,
+    "slack_webhook": "",
+    "discord_enabled": false,
+    "discord_webhook": "",
+    "telegram_enabled": false,
+    "telegram_bot_token": "",
+    "telegram_chat_id": "",
+    "webhook_enabled": false,
+    "webhook_url": "",
+    "alert_threshold": 50.0
+  },
+  "dynamic_limits": {
+    "enabled": true,
+    "cpu_threshold": 80.0,
+    "memory_threshold": 85.0,
+    "max_reduction": 0.5,
+    "check_interval": 30
+  },
+  "session": {
+    "enabled": true,
+    "max_duration": 3600,
+    "min_interval": 0.1,
+    "suspicious_threshold": 1000,
+    "tracking_enabled": true
+  },
+  "ua": {
+    "block_empty_ua": true,
+    "block_known_attacks": true,
+    "block_headless": true,
+    "block_scanners": true,
+    "custom_blocked": []
+  },
+  "fingerprint": {
+    "enabled": true,
+    "track_across_ips": true,
+    "suspicious_threshold": 5
+  },
+  "whitelist_ips": [
+    "127.0.0.1",
+    "::1",
+    "localhost"
+  ],
+  "whitelist_paths": [
+    "/health",
+    "/api/admin/login"
+  ],
   "blocked_user_agents": [
-    "sqlmap", "nikto", "nmap", "masscan", "havij", "w3af",
-    "acunetix", "netsparker", "openvas", "metasploit",
-    "burpsuite", "dirbuster", "gobuster", "ffuf"
+    "sqlmap",
+    "nikto",
+    "nmap",
+    "masscan",
+    "havij",
+    "w3af",
+    "acunetix",
+    "netsparker",
+    "openvas",
+    "metasploit",
+    "burpsuite",
+    "dirbuster",
+    "gobuster",
+    "ffuf"
   ]
 }

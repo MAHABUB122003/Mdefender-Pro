@@ -236,14 +236,20 @@ class LoginService:
         if hasattr(user_created, 'tzinfo') and user_created.tzinfo is None:
             user_created = user_created.replace(tzinfo=timezone.utc)
 
+        try:
+            from src.services.plan_service import PlanService
+            dyn_trial = int(PlanService(self.db).get_dynamic_pricing_config().get("trial_days") or 14)
+        except Exception:
+            dyn_trial = 14
+
         trial_ends = user.get('trial_ends_at')
         if not trial_ends:
-            trial_ends = user_created + timedelta(days=14)
+            trial_ends = user_created + timedelta(days=dyn_trial)
         elif isinstance(trial_ends, str):
             try:
                 trial_ends = datetime.fromisoformat(trial_ends)
             except Exception:
-                trial_ends = user_created + timedelta(days=14)
+                trial_ends = user_created + timedelta(days=dyn_trial)
         if hasattr(trial_ends, 'tzinfo') and trial_ends.tzinfo is None:
             trial_ends = trial_ends.replace(tzinfo=timezone.utc)
 

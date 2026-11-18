@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import PublicNavbar from '../components/PublicNavbar';
 import PaymentModal from '../components/PaymentModal';
 import api from '../api/api';
+import { getStoredPricingConfig, subscribePricing, syncPricingWithBackend } from '../utils/pricingStore';
 import {
   Shield,
   Zap,
@@ -179,14 +180,14 @@ const FEATURE_CATEGORIES = [
   },
 ];
 
-const FAQS = [
+const getFaqsList = (monthlyRate = 4, yearlyRate = 40, sym = '$', trialDays = 14) => [
   {
-    q: 'How does the $4 per website pricing model work?',
-    a: 'It is simple, transparent, and fair: you pay exactly $4 per month for each website you protect (or $40/year with 2 months free). There are no forced bundles or tier limits. If you have 1 website, you pay $4/mo. If you have 3 websites, you pay $12/mo. If you later add 2 more websites, you simply pay for 2 more. You never pay for unused slots.',
+    q: `How does the ${sym}${monthlyRate} per website pricing model work?`,
+    a: `It is simple, transparent, and fair: you pay exactly ${sym}${monthlyRate} per month for each website you protect (or ${sym}${yearlyRate}/year with 2 months free). There are no forced bundles or tier limits. If you have 1 website, you pay ${sym}${monthlyRate}/mo. If you have 3 websites, you pay ${sym}${monthlyRate * 3}/mo. If you later add 2 more websites, you simply pay for 2 more. You never pay for unused slots.`,
   },
   {
-    q: 'What is included in the 14-Day Free Trial?',
-    a: 'The 14-Day Free Trial gives you 100% full access to every enterprise feature on your first website. You get real-time AI WAF protection, deep checksum malware scans, WordPress hardening, post-hack recovery tools, and live attack telemetry. No credit card is required to get started.',
+    q: `What is included in the ${trialDays}-Day Free Trial?`,
+    a: `The ${trialDays}-Day Free Trial gives you 100% full access to every enterprise feature on your first website. You get real-time AI WAF protection, deep checksum malware scans, WordPress hardening, post-hack recovery tools, and live attack telemetry. No credit card is required to get started.`,
   },
   {
     q: 'Do I get all enterprise features if I only have 1 website?',
@@ -194,11 +195,11 @@ const FAQS = [
   },
   {
     q: 'Can existing users upgrade or add more websites from their dashboard?',
-    a: 'Yes! From your MDefender Pro user dashboard, you can add extra website slots at any time for $4/month with 1-click. You can pay securely with your card or digital payment method, and your new site slots activate instantly.',
+    a: `Yes! From your MDefender Pro user dashboard, you can add extra website slots at any time for ${sym}${monthlyRate}/month with 1-click. You can pay securely with your card or digital payment method, and your new site slots activate instantly.`,
   },
   {
     q: 'How does the annual billing discount work?',
-    a: 'Annual billing costs $40 per website per year (which equals just $3.33 per month). You save 17% — effectively getting 2 full months free every year. You can toggle between monthly and annual billing whenever you wish.',
+    a: `Annual billing costs ${sym}${yearlyRate} per website per year (which equals just ${sym}${(yearlyRate / 12).toFixed(2)} per month). You save effectively 2 full months free every year. You can toggle between monthly and annual billing whenever you wish.`,
   },
   {
     q: 'Which payment methods are supported?',
@@ -216,28 +217,29 @@ export default function Pricing() {
   const [sitesCount, setSitesCount] = useState(3);
   const [openFaq, setOpenFaq] = useState(null);
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
-  const [pricingConfig, setPricingConfig] = useState({
-    base_monthly_rate: 4,
-    base_yearly_rate: 40,
-    currency: 'USD',
-    currency_symbol: '$',
-    trial_days: 14,
-    bulk_tiers: [
-      { min_sites: 1, max_sites: 9, discount_percent: 0, label: 'Starter Fleet' },
-      { min_sites: 10, max_sites: 24, discount_percent: 10, label: 'Growth Agency' },
-      { min_sites: 25, max_sites: 49, discount_percent: 15, label: 'Scale Partner' },
-      { min_sites: 50, max_sites: 500, discount_percent: 25, label: 'Enterprise MSP' }
-    ]
-  });
+  // Zero-flicker: initialize directly from instant persistent storage
+  const [pricingConfig, setPricingConfig] = useState(() => getStoredPricingConfig());
 
   useEffect(() => {
     let mounted = true;
-    api.getPublicPricingConfig().then(res => {
-      if (mounted && res?.data && res.data.base_monthly_rate) {
-        setPricingConfig(prev => ({ ...prev, ...res.data }));
+    // Real-time synchronization across browser tabs and administrative updates
+    const unsubscribe = subscribePricing((newCfg) => {
+      if (mounted && newCfg) {
+        setPricingConfig(newCfg);
       }
-    }).catch(() => {});
-    return () => { mounted = false; };
+    });
+
+    // Background validation and fresh sync from database
+    syncPricingWithBackend(api).then((cfg) => {
+      if (mounted && cfg) {
+        setPricingConfig(cfg);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
   }, []);
 
   const monthlyRate = Number(pricingConfig.base_monthly_rate) || 4;
@@ -367,7 +369,7 @@ export default function Pricing() {
               }}
             >
               One transparent price.{' '}
-              <span style={{ color: '#E8792F' }}>$4/month per website.</span>
+              <span style={{ color: '#E8792F' }}>{pricingConfig.currency_symbol || '$'}{monthlyRate}/month per website.</span>
             </h1>
 
             {/* Subheading */}
@@ -380,7 +382,7 @@ export default function Pricing() {
                 margin: '0 auto 26px',
               }}
             >
-              No artificial feature gates or locked tiers. Start with a <strong>14-day full free trial</strong>,
+              No artificial feature gates or locked tiers. Start with a <strong>{pricingConfig.trial_days || 14}-day full free trial</strong>,
               then protect any number of WordPress sites with full enterprise AI WAF, deep malware inspection,
               and multi-site safe updates.
             </p>
@@ -414,7 +416,7 @@ export default function Pricing() {
                   transition: 'all 0.18s ease',
                 }}
               >
-                Monthly ($4 / site)
+                Monthly ({pricingConfig.currency_symbol || '$'}{monthlyRate} / site)
               </button>
 
               <button
@@ -437,7 +439,7 @@ export default function Pricing() {
                   transition: 'all 0.18s ease',
                 }}
               >
-                <span>Annual ($40 / site)</span>
+                <span>Annual ({pricingConfig.currency_symbol || '$'}{yearlyRate} / site)</span>
                 <span
                   style={{
                     background: '#E8792F',
@@ -970,7 +972,7 @@ export default function Pricing() {
                 margin: '0 auto',
               }}
             >
-              Whether you are protecting 1 personal website for $4/month or a fleet of 50 client sites,
+              Whether you are protecting 1 personal website for {pricingConfig.currency_symbol || '$'}{monthlyRate}/month or a fleet of 50 client sites,
               every website receives 100% of our enterprise cybersecurity, post-hack recovery, and safe update tools.
             </p>
           </div>
@@ -1129,7 +1131,7 @@ export default function Pricing() {
                     }}
                   >
                     <CheckCircle2 size={13} strokeWidth={2.4} />
-                    <span>Included in every $4/site license</span>
+                    <span>Included in every {pricingConfig.currency_symbol || '$'}{monthlyRate}/site license</span>
                   </div>
                 </div>
               );
@@ -1181,7 +1183,7 @@ export default function Pricing() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {FAQS.map((faq, i) => {
+              {getFaqsList(monthlyRate, yearlyRate, pricingConfig.currency_symbol || '$', pricingConfig.trial_days || 14).map((faq, i) => {
                 const isOpen = openFaq === i;
                 return (
                   <div
@@ -1537,6 +1539,8 @@ export default function Pricing() {
         onClose={() => setCheckoutModalOpen(false)}
         plan="pro"
         billingCycle={isYearly ? 'yearly' : 'monthly'}
+        siteCount={sitesCount}
+        pricingConfig={pricingConfig}
         onSuccess={() => {
           setCheckoutModalOpen(false);
           navigate('/user/dashboard');

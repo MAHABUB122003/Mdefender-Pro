@@ -1134,8 +1134,9 @@ async def admin_delete_client(request: Request, user: str = Depends(verify_admin
     return admin_api.delete_client(client_id)
 
 @app.get("/api/admin/blacklist")
-async def admin_get_blacklist(user: str = Depends(verify_admin_token)):
-    return admin_api.get_blacklist()
+async def admin_get_blacklist(request: Request, user: str = Depends(verify_admin_token)):
+    params = dict(request.query_params)
+    return admin_api.get_blacklist(params)
 
 @app.post("/api/admin/blacklist")
 async def admin_add_blacklist(request: Request, user: str = Depends(verify_admin_token)):
@@ -1146,6 +1147,16 @@ async def admin_add_blacklist(request: Request, user: str = Depends(verify_admin
 async def admin_delete_blacklist(request: Request, user: str = Depends(verify_admin_token)):
     ip = request.query_params.get('ip')
     return admin_api.remove_from_blacklist(ip)
+
+@app.post("/api/admin/blacklist/promote")
+async def admin_promote_blacklist(request: Request, user: str = Depends(verify_admin_token)):
+    data = await request.json()
+    ip = data.get('ip')
+    return admin_api.promote_to_permanent(ip)
+
+@app.post("/api/admin/blacklist/clean-expired")
+async def admin_clean_expired_blacklist(user: str = Depends(verify_admin_token)):
+    return admin_api.clean_expired_blacklist()
 
 @app.get("/api/admin/settings")
 async def admin_get_settings(user: str = Depends(verify_admin_token)):
@@ -1642,9 +1653,14 @@ async def process_payment_wallet(request: Request, user: dict = Depends(verify_u
 
 @app.get("/api/payment/history")
 async def get_user_payment_history(user: dict = Depends(verify_user_token_compat)):
-    from src.services.payment_service import PaymentService
-    service = PaymentService()
-    return service.get_user_payment_history(user)
+    db = get_db()
+    uid = str(user.get("_id") or user.get("id"))
+    txns = list(db.paddle_transactions.find({"user_id": uid}).sort("created_at", -1).limit(50))
+    for t in txns:
+        t["_id"] = str(t["_id"])
+        if "created_at" in t and hasattr(t["created_at"], "isoformat"):
+            t["created_at"] = t["created_at"].isoformat()
+    return {"status": "success", "data": txns}
 
 @app.get("/api/user/logs")
 async def user_get_logs(request: Request, user: dict = Depends(verify_user_token_compat)):

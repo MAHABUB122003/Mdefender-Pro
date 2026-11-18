@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import api from '../api/api';
 import userStore from '../utils/userStore';
+import { getStoredPricingConfig, subscribePricing, syncPricingWithBackend } from '../utils/pricingStore';
 import PaymentModal from '../components/PaymentModal';
 import {
   Shield,
@@ -98,19 +99,8 @@ export default function UserPricing() {
   const [toastMessage, setToastMessage] = useState(null);
   const [onboardingNotice, setOnboardingNotice] = useState(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [pricingConfig, setPricingConfig] = useState({
-    base_monthly_rate: 4,
-    base_yearly_rate: 40,
-    currency: 'USD',
-    currency_symbol: '$',
-    trial_days: 14,
-    bulk_tiers: [
-      { min_sites: 1, max_sites: 9, discount_percent: 0, label: 'Starter Fleet' },
-      { min_sites: 10, max_sites: 24, discount_percent: 10, label: 'Growth Agency' },
-      { min_sites: 25, max_sites: 49, discount_percent: 15, label: 'Scale Partner' },
-      { min_sites: 50, max_sites: 500, discount_percent: 25, label: 'Enterprise MSP' }
-    ]
-  });
+  // Zero-flicker: initialize directly from instant persistent storage
+  const [pricingConfig, setPricingConfig] = useState(() => getStoredPricingConfig());
 
   const showToast = (text, isError = false) => {
     setToastMessage({ text, isError });
@@ -147,11 +137,11 @@ export default function UserPricing() {
         api.getProfile(),
         api.getBillingSubscription(),
         api.getPaymentHistory(),
-        api.getPublicPricingConfig(),
+        syncPricingWithBackend(api),
       ]);
 
-      if (configRes.status === 'fulfilled' && configRes.value?.data?.base_monthly_rate) {
-        setPricingConfig(prev => ({ ...prev, ...configRes.value.data }));
+      if (configRes.status === 'fulfilled' && configRes.value?.base_monthly_rate) {
+        setPricingConfig(configRes.value);
       }
 
       if (profRes.status === 'fulfilled' && profRes.value?.data) {
@@ -174,6 +164,17 @@ export default function UserPricing() {
 
   useEffect(() => {
     fetchBilling();
+
+    // Subscribe to cross-tab administrative pricing updates
+    const unsubscribe = subscribePricing((newCfg) => {
+      if (newCfg) {
+        setPricingConfig(newCfg);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const currentPlanId = (profile?.plan || billingData?.plan_id || 'free').toLowerCase();
@@ -446,7 +447,7 @@ export default function UserPricing() {
             Subscription &amp; Website Slots
           </h1>
           <p style={{ margin: 0, fontSize: '14px', color: '#60716B', maxWidth: '640px', lineHeight: '1.55' }}>
-            Predictable per-website licensing: exactly <strong>$4 / website / month</strong>. Scale up or down anytime.
+            Predictable per-website licensing: exactly <strong>{pricingConfig.currency_symbol || '$'}{monthlyRate} / website / month</strong>. Scale up or down anytime.
             Every connected website receives full enterprise AI WAF, 5.24M checksum malware scanning, and post-hack recovery.
           </p>
         </div>
@@ -529,7 +530,7 @@ export default function UserPricing() {
               Select Number of Websites to Protect
             </h2>
             <p style={{ fontSize: '14px', color: '#60716B', lineHeight: '1.55', margin: '0 0 22px' }}>
-              Need to protect 1, 5, or 25 client websites? Add or remove site licenses dynamically at $4/month per site.
+              Need to protect 1, 5, or 25 client websites? Add or remove site licenses dynamically at {pricingConfig.currency_symbol || '$'}{monthlyRate}/month per site.
             </p>
 
             {/* Billing Cycle Toggle */}
@@ -559,7 +560,7 @@ export default function UserPricing() {
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  Monthly ($4 / site)
+                  Monthly ({pricingConfig.currency_symbol || '$'}{monthlyRate} / site)
                 </button>
                 <button
                   type="button"
@@ -579,7 +580,7 @@ export default function UserPricing() {
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  <span>Annual ($40 / site)</span>
+                  <span>Annual ({pricingConfig.currency_symbol || '$'}{yearlyRate} / site)</span>
                   <span
                     style={{
                       background: '#E8792F',
@@ -796,7 +797,7 @@ export default function UserPricing() {
       <div style={{ marginBottom: '44px' }}>
         <div style={{ marginBottom: '20px' }}>
           <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#10201E', margin: '0 0 4px', letterSpacing: '-0.02em' }}>
-            What is Included with Every Website License ($4/mo)
+            What is Included with Every Website License ({pricingConfig.currency_symbol || '$'}{monthlyRate}/mo)
           </h3>
           <p style={{ margin: 0, fontSize: '13px', color: '#60716B' }}>
             Zero tiered limitations. Every single connected website receives 100% of our enterprise tools.
@@ -965,6 +966,8 @@ export default function UserPricing() {
         onClose={() => setPaymentModalOpen(false)}
         plan="pro"
         billingCycle={isYearly ? 'yearly' : 'monthly'}
+        siteCount={sitesCount}
+        pricingConfig={pricingConfig}
         onSuccess={() => {
           setPaymentModalOpen(false);
           showToast(`Successfully upgraded to ${sitesCount} website licenses!`, false);

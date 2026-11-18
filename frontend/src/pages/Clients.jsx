@@ -151,16 +151,16 @@ export default function Clients() {
 
   const fleetMetrics = useMemo(() => {
     const total = websites.length
-    const protecting = websites.filter(w => (w.waf_mode || 'protect') === 'protect').length
-    const underAttack = websites.filter(w => w.waf_mode === 'under_attack').length
-    const monitoring = websites.filter(w => w.waf_mode === 'monitor').length
-    const bypass = websites.filter(w => w.waf_mode === 'bypass').length
+    const active = websites.filter(w => (w.status === 'active' || w.is_active_traffic) && w.waf_mode !== 'bypass').length
+    const idle = websites.filter(w => w.status === 'idle').length
+    const unreachable = websites.filter(w => w.status === 'unreachable').length
+    const bypass = websites.filter(w => w.status === 'bypassed' || w.waf_mode === 'bypass').length
     const totalThreats = websites.reduce((sum, w) => sum + (Number(w.threats_blocked) || 0), 0)
     return {
       total,
-      protecting,
-      underAttack,
-      monitoring,
+      active,
+      idle,
+      unreachable,
       bypass,
       totalThreats
     }
@@ -168,16 +168,19 @@ export default function Clients() {
 
   const filtered = useMemo(() => {
     return websites.filter(w => {
-      if (statusFilter === 'protect') {
-        if ((w.waf_mode || 'protect') !== 'protect') return false
-      } else if (statusFilter === 'under_attack') {
-        if (w.waf_mode !== 'under_attack') return false
-      } else if (statusFilter === 'monitor') {
-        if (w.waf_mode !== 'monitor') return false
+      const isActivelyProtected = (w.status === 'active' || w.is_active_traffic) && w.waf_mode !== 'bypass'
+      const isBypassed = w.status === 'bypassed' || w.waf_mode === 'bypass'
+
+      if (statusFilter === 'active') {
+        if (!isActivelyProtected) return false
+      } else if (statusFilter === 'idle') {
+        if (w.status !== 'idle') return false
+      } else if (statusFilter === 'unreachable') {
+        if (w.status !== 'unreachable') return false
       } else if (statusFilter === 'bypass') {
-        if (w.waf_mode !== 'bypass') return false
-      } else if (statusFilter !== 'all' && w.status !== statusFilter) {
-        return false
+        if (!isBypassed) return false
+      } else if (statusFilter !== 'all') {
+        if (w.status !== statusFilter && w.waf_mode !== statusFilter) return false
       }
 
       if (!search) return true
@@ -310,47 +313,57 @@ export default function Clients() {
       {/* Fleet Metric Strip Cards */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '16px',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '14px',
         marginBottom: '24px'
       }}>
         <div style={{ background: '#FFFFFF', padding: '16px 20px', borderRadius: '10px', border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748B', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748B', fontSize: '11.5px', fontWeight: '600', textTransform: 'uppercase' }}>
             <span>Protected Sites</span>
             <Globe size={16} style={{ color: '#2563EB' }} />
           </div>
           <div style={{ fontSize: '24px', fontWeight: '800', color: '#0F172A', marginTop: '6px' }}>
-            {fleetMetrics.total} <span style={{ fontSize: '12px', fontWeight: '500', color: '#64748B' }}>Active WP Nodes</span>
+            {fleetMetrics.total} <span style={{ fontSize: '12px', fontWeight: '500', color: '#64748B' }}>WP Fleet</span>
           </div>
         </div>
 
         <div style={{ background: '#FFFFFF', padding: '16px 20px', borderRadius: '10px', border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748B', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase' }}>
-            <span>Active WAF Shield</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#059669', fontSize: '11.5px', fontWeight: '600', textTransform: 'uppercase' }}>
+            <span>Actively Armed</span>
             <ShieldCheck size={16} style={{ color: '#059669' }} />
           </div>
           <div style={{ fontSize: '24px', fontWeight: '800', color: '#059669', marginTop: '6px' }}>
-            {fleetMetrics.protecting + fleetMetrics.underAttack} <span style={{ fontSize: '12px', fontWeight: '500', color: '#64748B' }}>Armed Sites</span>
+            {fleetMetrics.active} <span style={{ fontSize: '12px', fontWeight: '500', color: '#64748B' }}>Live Shields</span>
           </div>
         </div>
 
         <div style={{ background: '#FFFFFF', padding: '16px 20px', borderRadius: '10px', border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748B', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#D97706', fontSize: '11.5px', fontWeight: '600', textTransform: 'uppercase' }}>
+            <span>Idle / Standby</span>
+            <Clock size={16} style={{ color: '#D97706' }} />
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: '800', color: '#D97706', marginTop: '6px' }}>
+            {fleetMetrics.idle} <span style={{ fontSize: '12px', fontWeight: '500', color: '#64748B' }}>No Recent Signal</span>
+          </div>
+        </div>
+
+        <div style={{ background: '#FFFFFF', padding: '16px 20px', borderRadius: '10px', border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#DC2626', fontSize: '11.5px', fontWeight: '600', textTransform: 'uppercase' }}>
+            <span>Offline / Unreachable</span>
+            <XCircle size={16} style={{ color: '#DC2626' }} />
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: '800', color: fleetMetrics.unreachable > 0 ? '#DC2626' : '#64748B', marginTop: '6px' }}>
+            {fleetMetrics.unreachable} <span style={{ fontSize: '12px', fontWeight: '500', color: '#64748B' }}>Timed Out</span>
+          </div>
+        </div>
+
+        <div style={{ background: '#FFFFFF', padding: '16px 20px', borderRadius: '10px', border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748B', fontSize: '11.5px', fontWeight: '600', textTransform: 'uppercase' }}>
             <span>Threats Neutralized</span>
             <Flame size={16} style={{ color: '#DC2626' }} />
           </div>
           <div style={{ fontSize: '24px', fontWeight: '800', color: '#DC2626', marginTop: '6px' }}>
-            {fleetMetrics.totalThreats.toLocaleString()} <span style={{ fontSize: '12px', fontWeight: '500', color: '#64748B' }}>Blocked Fleet-Wide</span>
-          </div>
-        </div>
-
-        <div style={{ background: '#FFFFFF', padding: '16px 20px', borderRadius: '10px', border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748B', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase' }}>
-            <span>Platform Core SLA</span>
-            <Activity size={16} style={{ color: '#2563EB' }} />
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: '800', color: '#2563EB', marginTop: '6px' }}>
-            100% <span style={{ fontSize: '12px', fontWeight: '500', color: '#64748B' }}>Operational</span>
+            {fleetMetrics.totalThreats.toLocaleString()} <span style={{ fontSize: '12px', fontWeight: '500', color: '#64748B' }}>Fleet-Wide</span>
           </div>
         </div>
       </div>
@@ -386,10 +399,10 @@ export default function Clients() {
           }}>
             {[
               { id: 'all', label: `All Fleets (${fleetMetrics.total})` },
-              { id: 'protect', label: `Protecting (${fleetMetrics.protecting})` },
-              { id: 'under_attack', label: `Under Attack (${fleetMetrics.underAttack})` },
-              { id: 'monitor', label: `Monitoring (${fleetMetrics.monitoring})` },
-              { id: 'bypass', label: `Bypass (${fleetMetrics.bypass})` },
+              { id: 'active', label: `Actively Armed (${fleetMetrics.active})` },
+              { id: 'idle', label: `Standby (${fleetMetrics.idle})` },
+              { id: 'unreachable', label: `Unreachable (${fleetMetrics.unreachable})` },
+              { id: 'bypass', label: `Bypassed (${fleetMetrics.bypass})` },
             ].map(tab => {
               const active = statusFilter === tab.id
               return (
@@ -477,7 +490,16 @@ export default function Clients() {
                     {/* Domain & URL */}
                     <td style={{ padding: '14px 18px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981', flexShrink: 0 }} />
+                        <span style={{
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          background:
+                            w.waf_mode === 'bypass' || w.status === 'bypassed' ? '#94A3B8' :
+                            w.status === 'unreachable' ? '#DC2626' :
+                            w.status === 'idle' ? '#D97706' : '#10B981',
+                          flexShrink: 0
+                        }} />
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span style={{ fontWeight: '700', color: '#0F172A', fontSize: '13.5px' }}>
@@ -586,17 +608,91 @@ export default function Clients() {
 
                     {/* Health Status */}
                     <td style={{ padding: '14px 18px' }}>
-                      <span style={{
-                        background: '#ECFDF5',
-                        color: '#059669',
-                        padding: '2px 8px',
-                        borderRadius: '999px',
-                        fontSize: '11px',
-                        fontWeight: '700',
-                        border: '1px solid #A7F3D0'
-                      }}>
-                        ARMED
-                      </span>
+                      {w.waf_mode === 'bypass' || w.status === 'bypassed' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: '#F1F5F9',
+                            color: '#64748B',
+                            padding: '2px 8px',
+                            borderRadius: '999px',
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            border: '1px solid #CBD5E1',
+                            width: 'fit-content'
+                          }}>
+                            <ShieldAlert size={11} /> BYPASSED
+                          </span>
+                          <span style={{ fontSize: '10.5px', color: '#64748B' }}>
+                            Firewall disabled
+                          </span>
+                        </div>
+                      ) : w.status === 'unreachable' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: '#FEF2F2',
+                            color: '#DC2626',
+                            padding: '2px 8px',
+                            borderRadius: '999px',
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            border: '1px solid #FECACA',
+                            width: 'fit-content'
+                          }}>
+                            <XCircle size={11} /> UNREACHABLE
+                          </span>
+                          <span style={{ fontSize: '10.5px', color: '#DC2626' }}>
+                            {w.last_seen_human || 'Heartbeat timed out'}
+                          </span>
+                        </div>
+                      ) : w.status === 'idle' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: '#FFFBEB',
+                            color: '#D97706',
+                            padding: '2px 8px',
+                            borderRadius: '999px',
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            border: '1px solid #FDE68A',
+                            width: 'fit-content'
+                          }}>
+                            <Clock size={11} /> STANDBY
+                          </span>
+                          <span style={{ fontSize: '10.5px', color: '#64748B' }}>
+                            {w.last_seen_human || 'No recent signal'}
+                          </span>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: '#ECFDF5',
+                            color: '#059669',
+                            padding: '2px 8px',
+                            borderRadius: '999px',
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            border: '1px solid #A7F3D0',
+                            width: 'fit-content'
+                          }}>
+                            <ShieldCheck size={11} /> ARMED
+                          </span>
+                          <span style={{ fontSize: '10.5px', color: '#059669' }}>
+                            {w.last_seen_human || 'Signal OK'}
+                          </span>
+                        </div>
+                      )}
                     </td>
 
                     {/* Actions */}

@@ -1,43 +1,37 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler } from 'chart.js'
 import { Line } from 'react-chartjs-2'
+import {
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
+  Zap,
+  Activity,
+  Cpu,
+  HardDrive,
+  Users,
+  Ban,
+  RotateCw,
+  AlertTriangle,
+  Play,
+  Sliders,
+  CheckCircle2,
+  Clock,
+  Globe,
+  ArrowUpRight,
+  Search,
+  Check,
+  Copy,
+  Flame,
+  Radio,
+  Server,
+  Terminal
+} from 'lucide-react'
 import api from '../api/api'
 import adminStore from '../utils/adminStore'
+import { copyToClipboard } from '../utils/clipboard'
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler)
-
-function useAnimatedNumber(target, duration = 800) {
-  const [value, setValue] = useState(0)
-  const ref = useRef(null)
-  useEffect(() => {
-    if (target === 0) { setValue(0); return }
-    const startTime = performance.now()
-    function step(now) {
-      const progress = Math.min((now - startTime) / duration, 1)
-      const eased = 1 - Math.pow(1 - progress, 3)
-      setValue(Math.floor(eased * target))
-      if (progress < 1) ref.current = requestAnimationFrame(step)
-      else setValue(target)
-    }
-    ref.current = requestAnimationFrame(step)
-    return () => { if (ref.current) cancelAnimationFrame(ref.current) }
-  }, [target, duration])
-  return value.toLocaleString()
-}
-
-function StatCard({ icon, iconClass, value, label, trend }) {
-  const animated = useAnimatedNumber(value)
-  return (
-    <div className="stat-card">
-      <div className="stat-top">
-        <div className={`stat-icon-wrap ${iconClass}`}><i className={`fas ${icon}`}></i></div>
-      </div>
-      <div className="stat-number">{animated}</div>
-      <div className="stat-label">{label}</div>
-      {trend && <div className="stat-trend up"><i className="fas fa-arrow-up"></i> {trend}</div>}
-    </div>
-  )
-}
 
 export default function DDoSDashboard() {
   const cachedData = adminStore.get('ddos_dashboard')
@@ -48,10 +42,19 @@ export default function DDoSDashboard() {
   const [savingConfig, setSavingConfig] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
   const [toastMessage, setToastMessage] = useState(null)
+  const [simulating, setSimulating] = useState(false)
+  const [simulationResult, setSimulationResult] = useState(null)
+  const [copiedId, setCopiedId] = useState(null)
 
   const showToast = (msg, isError = false) => {
     setToastMessage({ text: msg, isError })
     setTimeout(() => setToastMessage(null), 4000)
+  }
+
+  const handleCopy = (id, text) => {
+    copyToClipboard(text)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 1800)
   }
 
   const fetchDashboard = useCallback(async (showLoading = false) => {
@@ -86,7 +89,7 @@ export default function DDoSDashboard() {
   useEffect(() => {
     fetchDashboard(!adminStore.get('ddos_dashboard'))
     fetchConfig()
-    const interval = setInterval(() => fetchDashboard(false), 12000)
+    const interval = setInterval(() => fetchDashboard(false), 10000)
     return () => clearInterval(interval)
   }, [fetchDashboard, fetchConfig])
 
@@ -127,16 +130,43 @@ export default function DDoSDashboard() {
     }
   }
 
+  const handleSimulateSpike = async () => {
+    setSimulating(true)
+    try {
+      const res = await api.adminSimulateDDoSSpike({ count: 25, ip: '198.51.100.88', user_type: 'anonymous' })
+      setSimulationResult(res)
+      showToast(`Simulated 25 RPS Spike: ${res.allowed} Allowed, ${res.blocked_429} Blocked (HTTP 429)!`)
+      fetchDashboard(false)
+    } catch (err) {
+      showToast(err.message || 'Simulation test failed', true)
+    } finally {
+      setSimulating(false)
+    }
+  }
+
+  const stats = data?.stats || {}
+  const sys = data?.system_metrics || {}
+  const topIps = data?.top_offenders || []
+  const alertsList = data?.alerts || []
+
+  const timelineLabels = data?.stats?.timeline?.length > 0
+    ? data.stats.timeline.map(t => t.time || '')
+    : ['00:00', '01:00', '02:00', '03:00', '04:00', '05:00']
+
+  const timelineValues = data?.stats?.timeline?.length > 0
+    ? data.stats.timeline.map(t => t.count || 0)
+    : [0, 0, 0, 0, 0, 0]
+
   const timelineData = {
-    labels: data?.stats?.timeline?.map(t => t.time || '') || ['00:00', '01:00', '02:00', '03:00', '04:00', '05:00'],
+    labels: timelineLabels,
     datasets: [{
       label: 'Requests/sec',
-      data: data?.stats?.timeline?.map(t => t.count || 0) || [],
-      borderColor: '#2563eb',
-      backgroundColor: 'rgba(37,99,235,0.08)',
-      borderWidth: 2.5,
+      data: timelineValues,
+      borderColor: '#2563EB',
+      backgroundColor: 'rgba(37,99,235,0.06)',
+      borderWidth: 2,
       fill: true,
-      tension: 0.4,
+      tension: 0.35,
       pointRadius: 2,
     }]
   }
@@ -146,365 +176,681 @@ export default function DDoSDashboard() {
     maintainAspectRatio: false,
     plugins: { legend: { display: false } },
     scales: {
-      y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 11 }, color: '#94a3b8' } },
-      x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#94a3b8', maxTicksLimit: 10 } }
+      y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 10 }, color: '#94A3B8' } },
+      x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#94A3B8', maxTicksLimit: 8 } }
     },
-    animation: { duration: 600 }
+    animation: { duration: 400 }
   }
 
-  const stats = data?.stats || {}
-  const sys = data?.system_metrics || {}
-  const topIps = data?.top_offenders || []
-  const alertsList = data?.alerts || []
-
   return (
-    <>
+    <div style={{ maxWidth: '100%', boxSizing: 'border-box' }}>
       {/* Toast Notification */}
       {toastMessage && (
         <div style={{
           position: 'fixed',
           bottom: '24px',
           right: '24px',
-          background: toastMessage.isError ? '#ef4444' : '#10b981',
-          color: '#ffffff',
-          padding: '12px 20px',
+          background: toastMessage.isError ? '#DC2626' : '#0F172A',
+          color: '#FFFFFF',
+          padding: '10px 18px',
           borderRadius: '8px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.2)',
           zIndex: 9999,
+          fontSize: '12.5px',
           fontWeight: '600',
           display: 'flex',
           alignItems: 'center',
-          gap: '10px'
+          gap: '8px'
         }}>
-          <i className={`fas ${toastMessage.isError ? 'fa-circle-exclamation' : 'fa-circle-check'}`}></i>
-          {toastMessage.text}
+          {toastMessage.isError ? <AlertTriangle size={15} /> : <CheckCircle2 size={15} color="#34D399" />}
+          <span>{toastMessage.text}</span>
         </div>
       )}
 
-      {/* Header Bar */}
+      {/* TOP HEADER STRIP — Compact & Clean (100% Logs.jsx Match) */}
       <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        border: '1px solid #e2e8f0',
-        padding: '16px 20px',
-        marginBottom: '20px',
+        background: '#FFFFFF',
+        borderRadius: '10px',
+        border: '1px solid #D9E1DC',
+        padding: '10px 16px',
+        marginBottom: '10px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: '14px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+        gap: '10px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{
-            width: '42px',
-            height: '42px',
-            borderRadius: '10px',
-            background: 'linear-gradient(135deg, #fee2e2, #fecdd3)',
-            color: '#dc2626',
-            display: 'flex',
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{
+            fontSize: '11px',
+            fontWeight: '700',
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+            color: '#DC2626',
+            background: '#FEF2F2',
+            border: '1px solid #FECACA',
+            padding: '3px 10px',
+            borderRadius: '20px',
+            display: 'inline-flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '19px'
+            gap: '6px'
           }}>
-            <i className="fas fa-shield-halved"></i>
-          </div>
-          <div>
-            <h1 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', margin: 0 }}>
-              Layer 7 Volumetric DDoS Mitigation Shield
-            </h1>
-            <p style={{ color: '#64748b', fontSize: '12.5px', margin: '3px 0 0' }}>
-              Real-time volumetric flood mitigation, IP reputation scoring, and automated rate-limiting policies.
-            </p>
-          </div>
+            <ShieldAlert size={12} />
+            <span>L7 Volumetric Shield</span>
+          </span>
+          <span style={{ fontSize: '13px', fontWeight: '700', color: '#10201E' }}>
+            Layer 7 Volumetric DDoS Mitigation & Rate Limiting
+          </span>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             type="button"
-            onClick={() => fetchDashboard(true)}
+            onClick={handleSimulateSpike}
+            disabled={simulating}
             style={{
-              padding: '7px 14px',
-              borderRadius: '8px',
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              color: '#475569',
-              fontSize: '12.5px',
-              fontWeight: '600',
-              cursor: 'pointer',
+              padding: '6px 13px',
+              borderRadius: '6px',
+              background: '#FAF5FF',
+              border: '1px solid #E9D5FF',
+              color: '#7C3AED',
+              fontSize: '12px',
+              fontWeight: '700',
+              cursor: simulating ? 'not-allowed' : 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px'
             }}
           >
-            <i className="fas fa-rotate"></i> Refresh Telemetry
+            <Play size={12} className={simulating ? 'animate-spin' : ''} />
+            <span>{simulating ? 'Testing Spike...' : '🧪 Test Rate-Limiter (Simulate 25 RPS)'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => fetchDashboard(true)}
+            disabled={loading}
+            style={{
+              padding: '6px 13px',
+              borderRadius: '6px',
+              background: '#FFFFFF',
+              border: '1px solid #D9E1DC',
+              color: '#475569',
+              fontSize: '12px',
+              fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <RotateCw size={12} className={loading ? 'animate-spin' : ''} />
+            <span>Refresh Telemetry</span>
           </button>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="stats-grid">
-        <StatCard icon="fa-bolt" iconClass="blue" value={stats.requests_per_second || 0} label="Requests / sec" trend="live stream" />
-        <StatCard icon="fa-shield-virus" iconClass="red" value={stats.active_threats || 0} label="Active Layer 7 Threats" />
-        <StatCard icon="fa-ban" iconClass="purple" value={data?.blocked_count || 0} label="DDoS Blocked IPs" />
-        <StatCard icon="fa-users" iconClass="green" value={data?.active_sessions || 0} label="Active HTTP Sessions" />
-      </div>
-
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', background: 'white', padding: '6px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-        {[
-          { id: 'overview', label: 'Live Traffic & Resources', icon: 'fa-chart-line' },
-          { id: 'reputation', label: 'Offending IPs & Ban List', icon: 'fa-ban' },
-          { id: 'alerts', label: `Security Alerts (${alertsList.length})`, icon: 'fa-bell' },
-          { id: 'config', label: 'Shield Configuration', icon: 'fa-sliders' }
-        ].map(tab => (
+      {/* SIMULATION RESULT ALERT BANNER */}
+      {simulationResult && (
+        <div style={{
+          background: '#EFF6FF',
+          border: '1px solid #BFDBFE',
+          borderRadius: '8px',
+          padding: '10px 14px',
+          marginBottom: '10px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '10px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CheckCircle2 size={16} color="#2563EB" />
+            <span style={{ fontSize: '12.5px', color: '#1E40AF', fontWeight: '600' }}>
+              <strong>Rate-Limiting Verification Successful:</strong> Injected <strong>{simulationResult.simulated_requests} requests</strong> within 1 sec. Allowed: <strong>{simulationResult.allowed}</strong> &bull; Dropped with HTTP 429: <strong style={{ color: '#DC2626' }}>{simulationResult.blocked_429}</strong> (Token Bucket active).
+            </span>
+          </div>
           <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '8px',
-              border: 'none',
-              background: activeTab === tab.id ? '#2563eb' : 'transparent',
-              color: activeTab === tab.id ? '#ffffff' : '#64748b',
-              fontWeight: '600',
-              fontSize: '13px',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.15s'
-            }}
+            onClick={() => setSimulationResult(null)}
+            style={{ background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer', fontSize: '12px', fontWeight: '700' }}
           >
-            <i className={`fas ${tab.icon}`}></i>
-            {tab.label}
+            Dismiss
           </button>
-        ))}
+        </div>
+      )}
+
+      {/* 4 DYNAMIC KPI CARDS — High-Density Slim Row (100% Logs.jsx Match) */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+        gap: '8px',
+        marginBottom: '12px'
+      }}>
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '8px',
+          border: '1px solid #D9E1DC',
+          padding: '8px 12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)'
+        }}>
+          <div style={{
+            width: '24px',
+            height: '24px',
+            borderRadius: '6px',
+            background: '#EFF6FF',
+            border: '1px solid #DBEAFE',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            <Zap size={13} color="#2563EB" />
+          </div>
+          <div>
+            <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Requests / sec
+            </div>
+            <div style={{ fontSize: '17px', fontWeight: '700', color: '#10201E', lineHeight: '1.1', marginTop: '1px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>{stats.requests_per_second || 0}</span>
+              <span style={{ fontSize: '9.5px', fontWeight: '700', padding: '1px 5px', borderRadius: '4px', background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}>
+                Live Stream
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '8px',
+          border: '1px solid #D9E1DC',
+          padding: '8px 12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)'
+        }}>
+          <div style={{
+            width: '24px',
+            height: '24px',
+            borderRadius: '6px',
+            background: '#FEF2F2',
+            border: '1px solid #FECACA',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            <ShieldAlert size={13} color="#DC2626" />
+          </div>
+          <div>
+            <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Active L7 Threats
+            </div>
+            <div style={{ fontSize: '17px', fontWeight: '700', color: '#DC2626', lineHeight: '1.1', marginTop: '1px' }}>
+              {stats.active_threats || 0} Events
+            </div>
+          </div>
+        </div>
+
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '8px',
+          border: '1px solid #D9E1DC',
+          padding: '8px 12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)'
+        }}>
+          <div style={{
+            width: '24px',
+            height: '24px',
+            borderRadius: '6px',
+            background: '#FAF5FF',
+            border: '1px solid #E9D5FF',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            <Ban size={13} color="#7C3AED" />
+          </div>
+          <div>
+            <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              DDoS Blocked IPs
+            </div>
+            <div style={{ fontSize: '17px', fontWeight: '700', color: '#7C3AED', lineHeight: '1.1', marginTop: '1px' }}>
+              {data?.blocked_count || 0}
+            </div>
+          </div>
+        </div>
+
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '8px',
+          border: '1px solid #D9E1DC',
+          padding: '8px 12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)'
+        }}>
+          <div style={{
+            width: '24px',
+            height: '24px',
+            borderRadius: '6px',
+            background: '#ECFDF5',
+            border: '1px solid #A7F3D0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            <Users size={13} color="#059669" />
+          </div>
+          <div>
+            <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Active HTTP Sessions
+            </div>
+            <div style={{ fontSize: '17px', fontWeight: '700', color: '#059669', lineHeight: '1.1', marginTop: '1px' }}>
+              {data?.active_sessions || 0}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Tab 1: Overview */}
+      {/* TABS NAVIGATION BAR (100% Logs.jsx Match) */}
+      <div style={{
+        display: 'flex',
+        gap: '6px',
+        marginBottom: '14px',
+        borderBottom: '1px solid #D9E1DC',
+        paddingBottom: '2px'
+      }}>
+        {[
+          { id: 'overview', label: 'Live Traffic & Resources', icon: Activity },
+          { id: 'reputation', label: `Offending IPs & Ban List (${topIps.length})`, icon: Ban },
+          { id: 'alerts', label: `Security Alerts (${alertsList.length})`, icon: ShieldAlert },
+          { id: 'config', label: 'Shield Configuration', icon: Sliders }
+        ].map(tab => {
+          const Icon = tab.icon
+          const isActive = activeTab === tab.id
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding: '9px 16px',
+                borderRadius: '8px 8px 0 0',
+                border: 'none',
+                background: isActive ? '#FFFFFF' : 'transparent',
+                color: isActive ? '#2563EB' : '#64748B',
+                fontWeight: '700',
+                fontSize: '13px',
+                cursor: 'pointer',
+                borderBottom: isActive ? '2.5px solid #2563EB' : '2.5px solid transparent',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <Icon size={14} />
+              <span>{tab.label}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* ==================== TAB 1: OVERVIEW ==================== */}
       {activeTab === 'overview' && (
-        <>
-          <div className="charts-grid">
-            <div className="chart-card">
-              <div className="chart-header">
-                <h3><i className="fas fa-chart-line" style={{ color: '#2563eb', marginRight: '6px' }}></i> Volumetric Request Velocity</h3>
-                <span className="chart-action">Live Stream</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {/* Charts Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '12px' }}>
+            {/* Chart: Request Velocity */}
+            <div style={{ background: '#FFFFFF', borderRadius: '10px', border: '1px solid #D9E1DC', padding: '14px 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Activity size={14} color="#2563EB" />
+                  <strong style={{ fontSize: '13px', color: '#0F172A' }}>Volumetric Request Velocity</strong>
+                </div>
+                <span style={{ fontSize: '10.5px', fontWeight: '700', color: '#059669', background: '#ECFDF5', padding: '2px 8px', borderRadius: '12px', border: '1px solid #A7F3D0' }}>
+                  Real-time Sliding Window
+                </span>
               </div>
-              <div className="chart-container" style={{ height: '220px' }}>
+              <div style={{ height: '190px' }}>
                 <Line data={timelineData} options={lineOptions} />
               </div>
             </div>
 
-            <div className="chart-card">
-              <div className="chart-header">
-                <h3><i className="fas fa-server" style={{ color: '#10b981', marginRight: '6px' }}></i> WAF Cluster Health</h3>
+            {/* Live System Metrics (Real psutil values) */}
+            <div style={{ background: '#FFFFFF', borderRadius: '10px', border: '1px solid #D9E1DC', padding: '14px 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Server size={14} color="#059669" />
+                  <strong style={{ fontSize: '13px', color: '#0F172A' }}>WAF Cluster Node Telemetry</strong>
+                </div>
+                <span style={{ fontSize: '11px', color: '#64748B' }}>Live Host Load (psutil)</span>
               </div>
-              <div style={{ padding: '10px 0' }}>
+
+              <div>
                 {[
-                  { label: 'CPU Load Capacity', value: sys.cpu_percent || 14.2, color: '#2563eb' },
-                  { label: 'RAM Memory Allocation', value: sys.memory_percent || 28.6, color: '#8b5cf6' },
-                  { label: 'HTTP Connection Pool', value: Math.min((sys.active_connections || 15) * 2, 100), color: '#10b981' },
-                ].map((item, i) => (
-                  <div key={i} style={{ marginBottom: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: '500', color: '#475569' }}>{item.label}</span>
-                      <span style={{ fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>{Number(item.value).toFixed(1)}%</span>
+                  { label: 'CPU Load Capacity', value: Number(sys.cpu_percent || 0).toFixed(1), unit: '%', color: '#2563EB', icon: Cpu },
+                  { label: 'RAM Memory Allocation', value: Number(sys.memory_percent || 0).toFixed(1), unit: '%', color: '#7C3AED', icon: HardDrive },
+                  { label: 'Established TCP Sockets', value: sys.active_connections || 0, unit: ' conns', color: '#059669', icon: Radio },
+                ].map((item, i) => {
+                  const Icon = item.icon
+                  const numVal = parseFloat(item.value) || 0
+                  return (
+                    <div key={i} style={{ marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontSize: '12px' }}>
+                        <span style={{ color: '#475569', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Icon size={13} color={item.color} />
+                          {item.label}
+                        </span>
+                        <span style={{ fontWeight: '700', color: '#0F172A', fontFamily: "'JetBrains Mono', monospace" }}>
+                          {item.value}{item.unit}
+                        </span>
+                      </div>
+                      <div style={{ height: '6px', background: '#F1F5F9', borderRadius: '3px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${Math.min(numVal, 100)}%`, background: item.color, borderRadius: '3px', transition: 'width 0.4s ease' }} />
+                      </div>
                     </div>
-                    <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${Math.min(item.value, 100)}%`, background: item.color, borderRadius: '4px', transition: 'width 0.5s' }}></div>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
+              </div>
+
+              <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #F1F5F9', fontSize: '11.5px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <ShieldCheck size={13} color="#059669" />
+                <span>Dynamic rate limiting adjusts multiplier when CPU &gt; 80% or RAM &gt; 85%.</span>
               </div>
             </div>
           </div>
 
-          <div className="quick-actions-section">
-            <div className="quick-actions-card">
-              <div className="section-header" style={{ marginBottom: '14px' }}>
-                <h3><i className="fas fa-crosshairs" style={{ color: '#ef4444', marginRight: '6px' }}></i> High-Velocity Attack Sources</h3>
+          {/* Dual Action Strip: High-Velocity Attack Sources & Mitigation Alerts */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '12px' }}>
+            {/* Left: High-Velocity Attack Sources */}
+            <div style={{ background: '#FFFFFF', borderRadius: '10px', border: '1px solid #D9E1DC', overflow: 'hidden' }}>
+              <div style={{ padding: '12px 16px', borderBottom: '1px solid #D9E1DC', background: '#FBFCFA', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Flame size={14} color="#DC2626" />
+                  <strong style={{ fontSize: '13px', color: '#0F172A' }}>High-Velocity Attack Sources</strong>
+                </div>
+                <span style={{ fontSize: '11px', color: '#64748B' }}>Reputation Engine</span>
               </div>
-              <form onSubmit={handleBlockIP} style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
-                <input
-                  type="text"
-                  placeholder="Enter IP to immediately rate-limit / block"
-                  value={blockIp}
-                  onChange={e => setBlockIp(e.target.value)}
-                  style={{ flex: 1, padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '13px', fontFamily: 'monospace' }}
-                />
-                <button type="submit" className="btn-primary" style={{ background: '#dc2626', padding: '8px 16px' }}>
-                  <i className="fas fa-ban"></i> Block IP
-                </button>
-              </form>
 
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: '11px', textTransform: 'uppercase' }}>
-                    <th style={{ padding: '8px 10px', textAlign: 'left' }}>#</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'left' }}>Client IP</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'left' }}>Threat Score</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'left' }}>Reputation Tier</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'right' }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topIps.length > 0 ? topIps.map((item, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '10px', fontSize: '12px' }}>{i + 1}</td>
-                      <td style={{ padding: '10px', fontSize: '12.5px', fontFamily: 'monospace', fontWeight: '600' }}>{item.ip}</td>
-                      <td style={{ padding: '10px', fontSize: '12px' }}>
-                        <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '700', background: (item.score || 0) >= 50 ? '#fee2e2' : '#fef3c7', color: (item.score || 0) >= 50 ? '#dc2626' : '#b45309' }}>
-                          {item.score || 0}/100
-                        </span>
-                      </td>
-                      <td style={{ padding: '10px', fontSize: '12px' }}>
-                        <span className={`badge ${(item.level || 0) >= 4 ? 'danger' : 'warning'}`}>
-                          Level {item.level || 0}
-                        </span>
-                      </td>
-                      <td style={{ padding: '10px', textAlign: 'right' }}>
-                        <button onClick={() => handleUnblockIP(item.ip)} style={{ padding: '4px 10px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '11.5px', fontWeight: '600', cursor: 'pointer' }}>
-                          Unblock
-                        </button>
-                      </td>
-                    </tr>
-                  )) : (
-                    <tr><td colSpan="5" style={{ textAlign: 'center', color: '#94a3b8', padding: '24px' }}>No high-velocity flood offenders detected</td></tr>
-                  )}
-                </tbody>
-              </table>
+              <div style={{ padding: '12px 16px' }}>
+                <form onSubmit={handleBlockIP} style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                  <input
+                    type="text"
+                    placeholder="Enter IP (e.g. 198.51.100.99) to immediately ban..."
+                    value={blockIp}
+                    onChange={e => setBlockIp(e.target.value)}
+                    style={{ flex: 1, padding: '7px 10px', border: '1px solid #D9E1DC', borderRadius: '6px', fontSize: '12px', fontFamily: "'JetBrains Mono', monospace", boxSizing: 'border-box' }}
+                  />
+                  <button
+                    type="submit"
+                    style={{ padding: '7px 14px', borderRadius: '6px', background: '#DC2626', color: '#FFFFFF', border: 'none', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                  >
+                    <Ban size={12} />
+                    <span>Block IP</span>
+                  </button>
+                </form>
+
+                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
+                    <thead>
+                      <tr style={{ background: '#FBFCFA', borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: '700' }}>
+                        <th style={{ padding: '8px 10px' }}>Client IP</th>
+                        <th style={{ padding: '8px 10px' }}>Flood Score</th>
+                        <th style={{ padding: '8px 10px' }}>Tier</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'right' }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {topIps.length > 0 ? topIps.map((item, i) => (
+                        <tr key={i} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px 10px', fontFamily: "'JetBrains Mono', monospace", fontWeight: '700', color: '#0F172A' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                              <span>{item.ip}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopy(item.ip, item.ip)}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 0 }}
+                              >
+                                {copiedId === item.ip ? <Check size={11} color="#059669" /> : <Copy size={11} />}
+                              </button>
+                            </div>
+                          </td>
+                          <td style={{ padding: '8px 10px' }}>
+                            <span style={{ padding: '2px 7px', borderRadius: '10px', fontSize: '10.5px', fontWeight: '700', background: (item.score || 0) >= 50 ? '#FEF2F2' : '#FEF3C7', color: (item.score || 0) >= 50 ? '#DC2626' : '#B45309', border: '1px solid ' + ((item.score || 0) >= 50 ? '#FECACA' : '#FDE68A') }}>
+                              {item.score || 0}/100
+                            </span>
+                          </td>
+                          <td style={{ padding: '8px 10px' }}>
+                            <span style={{ fontSize: '10.5px', fontWeight: '700', color: (item.level || 0) >= 4 ? '#DC2626' : '#B45309' }}>
+                              Level {item.level || 4}
+                            </span>
+                          </td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right' }}>
+                            <button
+                              onClick={() => handleUnblockIP(item.ip)}
+                              style={{ padding: '3px 8px', background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', borderRadius: '4px', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}
+                            >
+                              Unblock
+                            </button>
+                          </td>
+                        </tr>
+                      )) : (
+                        <tr>
+                          <td colSpan="4" style={{ textAlign: 'center', color: '#94A3B8', padding: '24px 10px' }}>
+                            No active high-velocity flood offenders detected
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
 
-            <div className="quick-actions-card">
-              <div className="section-header" style={{ marginBottom: '14px' }}>
-                <h3><i className="fas fa-clock-rotate-left" style={{ color: '#8b5cf6', marginRight: '6px' }}></i> Real-Time DDoS Mitigation Alerts</h3>
+            {/* Right: Real-Time Mitigation Alerts */}
+            <div style={{ background: '#FFFFFF', borderRadius: '10px', border: '1px solid #D9E1DC', overflow: 'hidden' }}>
+              <div style={{ padding: '12px 16px', borderBottom: '1px solid #D9E1DC', background: '#FBFCFA', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Clock size={14} color="#7C3AED" />
+                  <strong style={{ fontSize: '13px', color: '#0F172A' }}>Real-Time Mitigation Event Log</strong>
+                </div>
+                <span style={{ fontSize: '11px', color: '#64748B' }}>Sliding Stream</span>
               </div>
-              <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+
+              <div style={{ padding: '12px 16px', maxHeight: '270px', overflowY: 'auto' }}>
                 {alertsList.length > 0 ? alertsList.slice(0, 10).map((alert, i) => (
-                  <div key={i} style={{ display: 'flex', gap: '10px', padding: '10px 8px', borderBottom: '1px solid #f1f5f9' }}>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', flexShrink: 0, background: alert.severity === 'critical' ? '#fee2e2' : '#fef3c7', color: alert.severity === 'critical' ? '#dc2626' : '#b45309' }}>
-                      <i className={`fas ${alert.severity === 'critical' ? 'fa-triangle-exclamation' : 'fa-circle-info'}`}></i>
+                  <div key={i} style={{ display: 'flex', gap: '10px', padding: '8px 0', borderBottom: '1px solid #F1F5F9', alignItems: 'flex-start' }}>
+                    <div style={{ width: '24px', height: '24px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: alert.severity === 'critical' ? '#FEF2F2' : '#FEF3C7', color: alert.severity === 'critical' ? '#DC2626' : '#B45309', border: '1px solid ' + (alert.severity === 'critical' ? '#FECACA' : '#FDE68A') }}>
+                      <AlertTriangle size={12} />
                     </div>
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: '600', color: '#0f172a' }}>{alert.title || alert.message || 'Volumetric Spike Mitigated'}</div>
-                      <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '2px' }}>{alert.timestamp || 'Just now'} &bull; {alert.ip || 'Cluster Shield'}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '12.5px', fontWeight: '700', color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {alert.title || alert.message || 'Volumetric Spike Mitigated'}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#64748B', marginTop: '1px' }}>
+                        Source: <code style={{ fontFamily: "'JetBrains Mono', monospace", color: '#10201E' }}>{alert.ip || 'Cluster'}</code> &bull; {alert.timestamp || 'Just now'}
+                      </div>
                     </div>
                   </div>
                 )) : (
-                  <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '13px' }}>
-                    <i className="fas fa-shield-check" style={{ fontSize: '24px', color: '#16a34a', marginBottom: '8px', display: 'block' }}></i>
-                    All systems normal. No volumetric DDoS spikes in the last 60 minutes.
+                  <div style={{ textAlign: 'center', padding: '36px 16px', color: '#64748B' }}>
+                    <ShieldCheck size={28} color="#059669" style={{ margin: '0 auto 8px', display: 'block' }} />
+                    <div style={{ fontSize: '12.5px', fontWeight: '600', color: '#10201E' }}>Cluster Traffic Clean</div>
+                    <p style={{ margin: '3px 0 0', fontSize: '11.5px', color: '#87948D' }}>No volumetric request floods recorded in the last 60 minutes.</p>
                   </div>
                 )}
               </div>
             </div>
           </div>
-        </>
+        </div>
       )}
 
-      {/* Tab 2: Reputation Blocklist */}
+      {/* ==================== TAB 2: REPUTATION BLOCKLIST ==================== */}
       {activeTab === 'reputation' && (
-        <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '20px' }}>
-          <h3 style={{ margin: '0 0 14px', fontSize: '15px', color: '#0f172a' }}>Active Reputation Blacklist</h3>
-          <p style={{ color: '#64748b', fontSize: '12.5px', marginBottom: '16px' }}>
-            IPs that repeatedly exceeded volumetric thresholds or triggered aggressive HTTP request floods.
-          </p>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-            <thead>
-              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: '11px', textTransform: 'uppercase' }}>
-                <th style={{ padding: '10px 14px' }}>IP Address</th>
-                <th style={{ padding: '10px 14px' }}>Flood Score</th>
-                <th style={{ padding: '10px 14px' }}>Enforcement Level</th>
-                <th style={{ padding: '10px 14px', textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {topIps.length > 0 ? topIps.map((ipObj, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '12px 14px', fontFamily: 'monospace', fontWeight: '600' }}>{ipObj.ip}</td>
-                  <td style={{ padding: '12px 14px' }}>{ipObj.score || 0}/100</td>
-                  <td style={{ padding: '12px 14px' }}>
-                    <span className="badge danger">L{ipObj.level || 4} - Active Drop</span>
-                  </td>
-                  <td style={{ padding: '12px 14px', textAlign: 'right' }}>
-                    <button onClick={() => handleUnblockIP(ipObj.ip)} style={{ padding: '4px 10px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
-                      Unblock IP
-                    </button>
-                  </td>
-                </tr>
-              )) : (
-                <tr><td colSpan="4" style={{ textAlign: 'center', color: '#94a3b8', padding: '30px' }}>No active reputation blocks</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Tab 3: Alerts */}
-      {activeTab === 'alerts' && (
-        <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '20px' }}>
-          <h3 style={{ margin: '0 0 14px', fontSize: '15px', color: '#0f172a' }}>DDoS Mitigation Incident Log</h3>
-          {alertsList.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {alertsList.map((al, idx) => (
-                <div key={idx} style={{ padding: '12px 16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <strong style={{ fontSize: '13px', color: '#0f172a' }}>{al.title || al.message || 'Volumetric Flood Blocked'}</strong>
-                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>Source: {al.ip || 'Unknown'} &bull; Severity: <span style={{ color: al.severity === 'critical' ? '#dc2626' : '#d97706', fontWeight: '700' }}>{al.severity || 'high'}</span></div>
-                  </div>
-                  <span style={{ fontSize: '12px', color: '#94a3b8' }}>{al.timestamp || 'Just now'}</span>
-                </div>
-              ))}
+        <div style={{ background: '#FFFFFF', borderRadius: '10px', border: '1px solid #D9E1DC', overflow: 'hidden' }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid #D9E1DC', background: '#FBFCFA', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h3 style={{ margin: '0 0 2px', fontSize: '14px', color: '#0F172A', fontWeight: '800' }}>Active Volumetric Reputation Blacklist</h3>
+              <p style={{ color: '#64748B', fontSize: '12px', margin: 0 }}>IP addresses that repeatedly breached volumetric thresholds or triggered aggressive HTTP request floods.</p>
             </div>
-          ) : (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>No recent DDoS alerts recorded.</div>
-          )}
+            <span style={{ fontSize: '12px', color: '#64748B', fontWeight: '600' }}>{topIps.length} blocked endpoints</span>
+          </div>
+
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: '760px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+              <thead>
+                <tr style={{ background: '#FBFCFA', borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: '700' }}>
+                  <th style={{ padding: '12px 16px' }}>IP Address</th>
+                  <th style={{ padding: '12px 16px' }}>Flood Score</th>
+                  <th style={{ padding: '12px 16px' }}>Enforcement Level</th>
+                  <th style={{ padding: '12px 16px' }}>Trigger Reason</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topIps.length > 0 ? topIps.map((ipObj, i) => (
+                  <tr
+                    key={i}
+                    style={{ borderBottom: '1px solid #F1F5F9', transition: 'background-color 0.15s ease' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F8FAFC'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FFFFFF'}
+                  >
+                    <td style={{ padding: '12px 16px', fontFamily: "'JetBrains Mono', monospace", fontWeight: '700', color: '#0F172A' }}>
+                      {ipObj.ip}
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '700', background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
+                        {ipObj.score || 85}/100
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '6px', background: '#FEF2F2', color: '#DC2626' }}>
+                        L{ipObj.level || 4} - Active Drop
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 16px', color: '#64748B', fontSize: '12px' }}>
+                      {ipObj.reason || 'Auto-blocked: Volumetric flood & repeated violation'}
+                    </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      <button
+                        onClick={() => handleUnblockIP(ipObj.ip)}
+                        style={{ padding: '4px 10px', background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', borderRadius: '6px', fontSize: '11.5px', fontWeight: '700', cursor: 'pointer' }}
+                      >
+                        Unblock IP
+                      </button>
+                    </td>
+                  </tr>
+                )) : (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', color: '#94A3B8', padding: '40px 16px' }}>
+                      No active reputation blocks recorded
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
-      {/* Tab 4: Configuration */}
+      {/* ==================== TAB 3: ALERTS ==================== */}
+      {activeTab === 'alerts' && (
+        <div style={{ background: '#FFFFFF', borderRadius: '10px', border: '1px solid #D9E1DC', overflow: 'hidden' }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid #D9E1DC', background: '#FBFCFA' }}>
+            <h3 style={{ margin: '0 0 2px', fontSize: '14px', color: '#0F172A', fontWeight: '800' }}>DDoS Mitigation Incident Log</h3>
+            <p style={{ color: '#64748B', fontSize: '12px', margin: 0 }}>Historical volumetric spikes, burst detections, and IP threshold triggers.</p>
+          </div>
+
+          <div style={{ padding: '16px' }}>
+            {alertsList.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {alertsList.map((al, idx) => (
+                  <div key={idx} style={{ padding: '12px 16px', background: '#FFFFFF', borderRadius: '8px', border: '1px solid #D9E1DC', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: al.severity === 'critical' ? '#FEF2F2' : '#FEF3C7', color: al.severity === 'critical' ? '#DC2626' : '#B45309', border: '1px solid ' + (al.severity === 'critical' ? '#FECACA' : '#FDE68A') }}>
+                        <ShieldAlert size={14} />
+                      </div>
+                      <div>
+                        <strong style={{ fontSize: '13px', color: '#0F172A' }}>{al.title || al.message || 'Volumetric Flood Blocked'}</strong>
+                        <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
+                          Source: <code style={{ fontFamily: "'JetBrains Mono', monospace", color: '#0F172A' }}>{al.ip || 'Unknown'}</code> &bull; Severity: <span style={{ color: al.severity === 'critical' ? '#DC2626' : '#D97706', fontWeight: '700', textTransform: 'uppercase' }}>{al.severity || 'high'}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '12px', color: '#94A3B8' }}>{al.timestamp || 'Recent'}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#94A3B8', fontSize: '13px' }}>
+                <ShieldCheck size={32} color="#059669" style={{ margin: '0 auto 8px', display: 'block' }} />
+                No recent DDoS alerts recorded in this time window.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ==================== TAB 4: CONFIGURATION ==================== */}
       {activeTab === 'config' && (
-        <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '20px' }}>
-          <h3 style={{ margin: '0 0 14px', fontSize: '15px', color: '#0f172a' }}>DDoS Protection Policy & Rate Limits</h3>
-          <form onSubmit={handleSaveConfig} style={{ maxWidth: '600px' }}>
+        <div style={{ background: '#FFFFFF', borderRadius: '10px', border: '1px solid #D9E1DC', overflow: 'hidden' }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid #D9E1DC', background: '#FBFCFA' }}>
+            <h3 style={{ margin: '0 0 2px', fontSize: '14px', color: '#0F172A', fontWeight: '800' }}>DDoS Protection Policy &amp; Rate Limits</h3>
+            <p style={{ color: '#64748B', fontSize: '12px', margin: 0 }}>Configure token-bucket burst thresholds, sliding window tolerances, and automatic IP ban durations.</p>
+          </div>
+
+          <form onSubmit={handleSaveConfig} style={{ padding: '20px', maxWidth: '640px' }}>
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
                 Max Requests per Second (per IP)
               </label>
               <input
                 type="number"
                 value={config?.max_rps || 50}
                 onChange={e => setConfig({ ...config, max_rps: Number(e.target.value) })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #D9E1DC', fontSize: '13px', boxSizing: 'border-box' }}
               />
-              <span style={{ fontSize: '11.5px', color: '#64748b' }}>Connections exceeding this rate will receive HTTP 429 / CAPTCHA challenge.</span>
+              <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginTop: '4px' }}>
+                Connections exceeding this rate will automatically receive HTTP 429 Too Many Requests.
+              </span>
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
                 Temporary Ban Duration (Seconds)
               </label>
               <input
                 type="number"
                 value={config?.ban_duration_seconds || 3600}
                 onChange={e => setConfig({ ...config, ban_duration_seconds: Number(e.target.value) })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #D9E1DC', fontSize: '13px', boxSizing: 'border-box' }}
               />
+              <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginTop: '4px' }}>
+                Default progressive L4 ban duration (3600s = 1 hour).
+              </span>
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
                 Enforcement Mode
               </label>
               <select
                 value={config?.mode || 'protect'}
                 onChange={e => setConfig({ ...config, mode: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #D9E1DC', fontSize: '13px', background: '#FFFFFF', boxSizing: 'border-box' }}
               >
-                <option value="protect">Active Mitigation & Rate Drop (Recommended)</option>
-                <option value="monitor">Telemetry & Logging Only (Monitor Mode)</option>
+                <option value="protect">Active Mitigation &amp; Rate Drop (Recommended)</option>
+                <option value="monitor">Telemetry &amp; Logging Only (Monitor Mode)</option>
                 <option value="aggressive">Aggressive Volumetric Shield (Zero Tolerance)</option>
               </select>
             </div>
@@ -512,15 +858,14 @@ export default function DDoSDashboard() {
             <button
               type="submit"
               disabled={savingConfig}
-              className="btn-primary"
-              style={{ padding: '9px 20px', fontSize: '13px', fontWeight: '600' }}
+              style={{ padding: '9px 20px', borderRadius: '6px', background: '#2563EB', border: '1px solid #1D4ED8', color: '#FFFFFF', fontSize: '13px', fontWeight: '700', cursor: savingConfig ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
-              <i className={`fas ${savingConfig ? 'fa-spinner fa-spin' : 'fa-floppy-disk'}`}></i>
-              {savingConfig ? 'Saving...' : 'Save DDoS Policies'}
+              <RotateCw size={13} className={savingConfig ? 'animate-spin' : ''} />
+              <span>{savingConfig ? 'Saving Policies...' : 'Save DDoS Policies'}</span>
             </button>
           </form>
         </div>
       )}
-    </>
+    </div>
   )
 }

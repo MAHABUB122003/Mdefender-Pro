@@ -55,6 +55,7 @@ class DecisionEngine:
         self.semantic_analyzer = SemanticAnalyzer()
         from src.engine.bot_engine import BotEngine
         self.bot_engine = BotEngine()
+        self._db = None
         self._whitelist_cache = None
         self._whitelist_cache_time = 0.0
         self._threat_ips_cache = None
@@ -112,14 +113,17 @@ class DecisionEngine:
                 pass
         return self._db
 
-    def _check_whitelists(self, parsed):
+    def _check_whitelists(self, parsed, user_id=None, website_id=None, domain=None):
+        import fnmatch
         now = time.time()
-        # In-memory cached whitelists with 3600s TTL (Zero DB overhead on request path)
-        if self._whitelist_cache is None or (now - self._whitelist_cache_time) > 3600.0:
+        # In-memory cached whitelists with 30s TTL (Zero DB overhead on request path, fast admin sync)
+        if self._whitelist_cache is None or (now - self._whitelist_cache_time) > 30.0:
             try:
                 db = self._get_db()
                 if db is not None:
-                    self._whitelist_cache = list(db.waf_whitelists.find({"is_active": True}))
+                    wl1 = list(db.waf_whitelists.find({"is_active": True}))
+                    wl2 = list(db.whitelist_rules.find({"is_active": True}))
+                    self._whitelist_cache = wl1 + wl2
                     self._whitelist_cache_time = now
             except Exception:
                 self._whitelist_cache = []
@@ -130,23 +134,39 @@ class DecisionEngine:
 
         combined = parsed.get("combined_raw", "") or parsed.get("combined_normalized", "")
         url_path = parsed.get("path", "")
+        full_url = parsed.get("url", "") or url_path
         for wl in whitelists:
-            pat = wl.get("pattern", "")
+            # Check tenant/user scope
+            scope = wl.get("scope", "global")
+            if scope == "tenant":
+                target_u = str(wl.get("user_id") or wl.get("user_email") or "").strip()
+                target_d = str(wl.get("domain") or wl.get("website_id") or "").strip()
+                u_match = not target_u or (user_id and str(user_id) == target_u)
+                d_match = not target_d or (domain and str(domain) == target_d) or (website_id and str(website_id) == target_d)
+                if not (u_match and d_match):
+                    continue
+
+            pat = wl.get("url_pattern") or wl.get("pattern", "")
             mtype = wl.get("match_type", "contains")
+            name = wl.get("reason") or wl.get("name") or "Whitelist Rule Matched"
             if not pat:
                 continue
-            if mtype == "contains" and pat in combined:
-                return wl.get("name") or "Custom Whitelist"
-            elif mtype == "exact" and pat.strip() == combined.strip():
-                return wl.get("name") or "Custom Whitelist"
+
+            if "*" in pat:
+                if fnmatch.fnmatch(full_url, pat) or fnmatch.fnmatch(url_path, pat) or fnmatch.fnmatch(combined, pat):
+                    return name
+            if mtype == "contains" and (pat in combined or pat in full_url):
+                return name
+            elif mtype == "exact" and (pat.strip() == combined.strip() or pat.strip() == full_url.strip()):
+                return name
             elif mtype == "regex":
                 try:
-                    if re.search(pat, combined, re.IGNORECASE):
-                        return wl.get("name") or "Custom Whitelist"
+                    if re.search(pat, combined, re.IGNORECASE) or re.search(pat, full_url, re.IGNORECASE):
+                        return name
                 except Exception:
                     pass
-            elif mtype == "url_path" and (pat in url_path or url_path.startswith(pat)):
-                return wl.get("name") or "Path Whitelist"
+            elif (mtype == "url_path" or wl.get("target_type") == "url") and (pat in full_url or pat in url_path or url_path.startswith(pat)):
+                return name
         return None
 
     def _risk_level(self, score: int) -> str:
@@ -263,8 +283,8 @@ class DecisionEngine:
         parsed = self.request_parser.parse(request_data)
 
 
-        # --- 3.1 Dynamic Whitelist Rule Check ---
-        matched_whitelist = self._check_whitelists(parsed)
+        # --- 3.1 Dynamic Whitelist Rule Check (Global or Tenant Scoped) ---
+        matched_whitelist = self._check_whitelists(parsed, user_id=user_id, website_id=website_id, domain=domain)
         if matched_whitelist and not is_blacklisted:
             return {
                 "decision": "ALLOW",
