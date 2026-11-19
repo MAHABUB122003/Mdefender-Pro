@@ -302,6 +302,10 @@ class UserAPI:
         is_onboarded = bool(user.get('onboarded') or len(websites) > 0)
         default_workspace = f"{full_name.split()[0]}'s Workspace" if full_name else 'SecOps Fleet'
 
+        from src.services.license_slot_service import LicenseSlotService
+        slot_service = LicenseSlotService(self.db)
+        license_state = slot_service.resolve_user_license_state(user)
+
         return {
             'id': user_id_str,
             '_id': user_id_str,
@@ -310,7 +314,12 @@ class UserAPI:
             'full_name': full_name,
             'username': username,
             'email_verified': email_verified,
-            'plan': user.get('plan', 'free'),
+            'plan': license_state.get('plan', 'free'),
+            'effective_plan': license_state.get('plan', 'free'),
+            'trial_days_remaining': license_state.get('trial_days_remaining', 0),
+            'is_trial_active': license_state.get('is_trial_active', False),
+            'is_paid': license_state.get('is_paid', False),
+            'purchased_slots': license_state.get('purchased_slots', 0),
             'role': user.get('role', 'user'),
             'api_key': user.get('api_key', ''),
             'status': user.get('status', 'active'),
@@ -1559,6 +1568,8 @@ class UserAPI:
                 'email_verified': user_doc.get('email_verified', False),
                 'plan': effective_plan,
                 'trial_days_remaining': t_days_rem,
+                'is_paid': effective_plan not in ('free', 'starter') and t_days_rem <= 0 or user_doc.get('payment_status') == 'active',
+                'purchased_slots': int(user_doc.get('purchased_slots') or 0),
                 'trial_ends_at': self._format_dt(trial_ends, '%Y-%m-%d'),
                 'created_at': self._format_dt(user_doc.get('created_at'), '%Y-%m-%d'),
                 'last_login': self._format_dt(user_doc.get('last_login')),

@@ -3226,7 +3226,7 @@ async def wordpress_connect(request: Request):
 
     from src.services.subscription_service import SubscriptionService
     eff_plan = SubscriptionService(db).effective_plan(user)
-    is_pro = eff_plan in ("pro", "enterprise", "premium", "ultra", "go") or user.get("plan") in ("pro", "enterprise", "premium", "ultra", "go")
+    is_pro = eff_plan in ("pro", "enterprise", "premium", "ultra", "go")
 
     if is_pro:
         sub_status = "pro"
@@ -3335,7 +3335,7 @@ async def wordpress_sync(request: Request):
 
     from src.services.subscription_service import SubscriptionService
     eff_plan = SubscriptionService(db).effective_plan(user)
-    is_pro = eff_plan in ("pro", "enterprise", "premium", "ultra", "go") or user.get("plan") in ("pro", "enterprise", "premium", "ultra", "go")
+    is_pro = eff_plan in ("pro", "enterprise", "premium", "ultra", "go")
 
     if is_pro:
         sub_status = "pro"
