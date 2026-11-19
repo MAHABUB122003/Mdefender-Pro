@@ -15,7 +15,29 @@ import {
   Zap,
   Globe,
   CreditCard,
+  ChevronLeft,
+  Info,
 } from 'lucide-react';
+
+const COUNTRY_OPTIONS = [
+  { code: 'BD', name: 'Bangladesh' },
+  { code: 'US', name: 'United States' },
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'AU', name: 'Australia' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'FR', name: 'France' },
+  { code: 'NL', name: 'Netherlands' },
+  { code: 'SG', name: 'Singapore' },
+  { code: 'IN', name: 'India' },
+  { code: 'AE', name: 'United Arab Emirates' },
+  { code: 'MY', name: 'Malaysia' },
+  { code: 'SA', name: 'Saudi Arabia' },
+  { code: 'PK', name: 'Pakistan' },
+  { code: 'JP', name: 'Japan' },
+  { code: 'BR', name: 'Brazil' },
+  { code: 'OTHER', name: 'Other Countries' },
+];
 
 export default function PaymentModal({
   isOpen,
@@ -30,6 +52,25 @@ export default function PaymentModal({
   const [error, setError] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
   const [onboardingNotice, setOnboardingNotice] = useState(null);
+
+  // Billing form state
+  const [fullName, setFullName] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState('BD');
+  const [address1, setAddress1] = useState('');
+  const [address2, setAddress2] = useState('');
+  const [city, setCity] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [saveInfo, setSaveInfo] = useState(true);
+
+  // Mock Card fields (visual alignment with Stripe/Paddle enterprise checkout)
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCvc, setCardCvc] = useState('');
+
+  // Promo code state
+  const [showPromoInput, setShowPromoInput] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoApplied, setPromoApplied] = useState(false);
 
   const activePricing = pricingConfig || getStoredPricingConfig();
   const monthlyBase = Number(activePricing?.base_monthly_rate) || 4;
@@ -54,56 +95,14 @@ export default function PaymentModal({
   const finalPrice = Math.max(0, rawTotal - discountVal);
   const formattedPrice = finalPrice.toFixed(2);
 
-  const PLAN_META = {
-    go: {
-      name: 'Starter Fleet',
-      icon: Zap,
-      monthlyPrice: monthlyBase,
-      yearlyPrice: yearlyBase,
-      features: [
-        `Protected Domain & Origin Endpoints (${sym}${monthlyBase}/site/mo)`,
-        '100,000 monthly clean requests',
-        '6.5M+ Threat Neural Classifier',
-        '20 Custom Regex Rules Builder',
-        'Standard Technical SLA',
-      ],
-    },
-    pro: {
-      name: 'Enterprise Pro',
-      icon: Sparkles,
-      monthlyPrice: monthlyBase,
-      yearlyPrice: yearlyBase,
-      features: [
-        `Full Fleet Protection (${sym}${monthlyBase.toFixed(2)}/site/mo or ${sym}${yearlyBase}/site/yr)`,
-        '1,000,000+ monthly clean requests',
-        'Full 2,000,000+ Hyper-Scale Signatures',
-        '639K+ Generative AI Prompt Injection Shield',
-        'Sub-Millisecond (0.12ms) Edge Inspection Latency',
-        '24/7 Priority Dedicated SLA Support',
-      ],
-    },
-    enterprise: {
-      name: 'Enterprise MSP',
-      icon: Globe,
-      monthlyPrice: monthlyBase,
-      yearlyPrice: yearlyBase,
-      features: [
-        'Custom Multi-Site Fleet with Bulk Volume Discounts',
-        '10,000,000+ monthly edge requests',
-        'Dedicated ML Neural Vectorizer Node',
-        'Full Anycast Layer 7 DDoS Scrubber',
-        '15-Minute Guaranteed SLA Response',
-      ],
-    },
-  };
-
-  const meta = PLAN_META[plan] || PLAN_META.pro;
-  const planName = meta.name;
-  const usdPrice = formattedPrice;
-  const PlanIcon = meta.icon;
-
   const cachedUser = userStore.get('profile') || null;
   const loggedInEmail = cachedUser?.email || '';
+
+  useEffect(() => {
+    if (cachedUser?.name) {
+      setFullName(cachedUser.name);
+    }
+  }, [cachedUser]);
 
   useEffect(() => {
     if (isOpen) {
@@ -175,6 +174,8 @@ export default function PaymentModal({
         sites_count: count,
         customer_email: emailToSend,
         email: emailToSend,
+        billing_country: selectedCountry,
+        full_name: fullName,
         return_url: window.location.href,
         success_url: window.location.origin + '/payment/success?plan=' + plan + '&cycle=' + billingCycle + '&sites=' + count,
       });
@@ -246,85 +247,325 @@ export default function PaymentModal({
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(11, 37, 34, 0.68)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
+        background: 'rgba(11, 37, 34, 0.72)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 10000005,
-        padding: '20px',
-        animation: 'modalFadeIn 0.2s ease-out',
+        padding: '16px',
+        animation: 'mdfModalFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
+        className="mdf-checkout-card"
         style={{
           background: '#FFFFFF',
-          border: '1px solid #D9E1DC',
-          borderRadius: '18px',
+          borderRadius: '20px',
           width: '100%',
-          maxWidth: '480px',
-          maxHeight: '92vh',
-          overflowY: 'auto',
-          boxShadow: '0 25px 60px rgba(11, 37, 34, 0.22)',
-          color: '#10201E',
+          maxWidth: '880px',
+          maxHeight: '94vh',
+          display: 'flex',
+          boxShadow: '0 30px 90px rgba(11, 37, 34, 0.35)',
+          overflow: 'hidden',
           position: 'relative',
           fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif",
+          border: '1px solid #D9E1DC',
         }}
       >
-        {/* Header */}
+        {/* =========================================================================
+            LEFT COLUMN: Order Summary & Itemized Breakdown (WP Umbrella / Stripe style)
+            ========================================================================= */}
         <div
+          className="mdf-checkout-left"
           style={{
-            padding: '22px 26px 18px',
-            borderBottom: '1px solid #D9E1DC',
+            flex: '0 0 44%',
+            background: '#F8FAF9',
+            borderRight: '1px solid #E5EBE7',
+            padding: '36px 32px',
             display: 'flex',
+            flexDirection: 'column',
             justifyContent: 'space-between',
-            alignItems: 'center',
-            background: '#FBFCFA',
-            borderTopLeftRadius: '18px',
-            borderTopRightRadius: '18px',
+            overflowY: 'auto',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div
-              style={{
-                width: '38px',
-                height: '38px',
-                borderRadius: '10px',
-                background: '#E8EEE8',
-                border: '1px solid #D9E1DC',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#0B2522',
-              }}
-            >
-              <PlanIcon size={20} strokeWidth={2.4} style={{ color: '#E8792F' }} />
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#2A8B68' }} />
-                <h3 style={{ fontSize: '17px', fontWeight: 800, margin: 0, color: '#10201E', letterSpacing: '-0.02em' }}>
-                  Secured Checkout
-                </h3>
+          <div>
+            {/* Brand Logo & Back control */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '28px' }}>
+              <div
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  background: '#0B2522',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#FFFFFF',
+                  boxShadow: '0 4px 12px rgba(11, 37, 34, 0.25)',
+                  flexShrink: 0,
+                }}
+              >
+                <Shield size={22} strokeWidth={2.4} style={{ color: '#E8792F' }} />
               </div>
-              <p style={{ margin: '2px 0 0', fontSize: '12.5px', color: '#60716B', fontWeight: 500 }}>
-                {planName} &middot; {count > 1 ? `${count} Websites &middot; ` : ''}{isYearly ? `Annual Cycle (${sym}${usdPrice}/yr)` : `Monthly Cycle (${sym}${usdPrice}/mo)`}
-              </p>
+              <div>
+                <div style={{ fontSize: '18px', fontWeight: 800, color: '#10201E', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
+                  MDefender<span style={{ color: '#E8792F' }}> Pro</span>
+                </div>
+                <div style={{ fontSize: '10px', color: '#60716B', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  Enterprise WAF & Cloud Fleet
+                </div>
+              </div>
+            </div>
+
+            {/* Subscription Title & Big Price */}
+            <div style={{ marginBottom: '26px' }}>
+              <div style={{ fontSize: '13.5px', color: '#60716B', fontWeight: 600, marginBottom: '4px' }}>
+                Subscribe to MDefender Pro Fleet
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                <span style={{ fontSize: '38px', fontWeight: 850, color: '#10201E', letterSpacing: '-0.04em' }}>
+                  {sym}{formattedPrice}
+                </span>
+                <span style={{ fontSize: '13.5px', color: '#60716B', fontWeight: 600 }}>
+                  per {isYearly ? 'year' : 'month'}
+                </span>
+              </div>
+            </div>
+
+            {/* Itemized Line Items */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
+              {/* Primary Line Item */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#10201E' }}>
+                    MDefender Pro Fleet Security
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
+                    {count} {count > 1 ? 'Websites' : 'Website'} &middot; Billed {isYearly ? 'annually' : 'monthly'}
+                  </div>
+                </div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#10201E' }}>
+                  {sym}{rawTotal.toFixed(2)}
+                </div>
+              </div>
+
+              {/* Volume Fleet Discount (if applicable) */}
+              {discountPercent > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#2A8B68' }}>
+                      Volume Fleet Discount ({discountPercent}%)
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#2A8B68' }}>
+                    -{sym}{discountVal.toFixed(2)}
+                  </div>
+                </div>
+              )}
+
+              {/* Standard Enterprise Inclusions (WP Umbrella Style) */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '12.5px', color: '#31443E', fontWeight: 500 }}>
+                    AST Machine Learning Edge WAF
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#82938D' }}>
+                    Sub-millisecond latency inspection
+                  </div>
+                </div>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: '#2A8B68', background: '#EAF5F0', padding: '2px 8px', borderRadius: '4px' }}>
+                  Included
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '12.5px', color: '#31443E', fontWeight: 500 }}>
+                    5.24M+ Checksum Malware Scanner
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#82938D' }}>
+                    Continuous automated core integrity
+                  </div>
+                </div>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: '#2A8B68', background: '#EAF5F0', padding: '2px 8px', borderRadius: '4px' }}>
+                  Included
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '12.5px', color: '#31443E', fontWeight: 500 }}>
+                    L7 Anycast DDoS Mitigation
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#82938D' }}>
+                    Unlimited scrubbing capacity
+                  </div>
+                </div>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: '#2A8B68', background: '#EAF5F0', padding: '2px 8px', borderRadius: '4px' }}>
+                  Included
+                </span>
+              </div>
+            </div>
+
+            {/* Financial Summary */}
+            <div style={{ borderTop: '1px solid #E5EBE7', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#60716B' }}>
+                <span>Subtotal</span>
+                <span style={{ fontWeight: 600, color: '#10201E' }}>{sym}{formattedPrice}</span>
+              </div>
+
+              {/* Promotion Code Section */}
+              {!showPromoInput ? (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPromoInput(true)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      color: '#0B2522',
+                      fontSize: '12.5px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    <span>Add promotion code</span>
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '2px' }}>
+                  <input
+                    type="text"
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                    placeholder="Enter coupon code"
+                    style={{
+                      flex: 1,
+                      height: '32px',
+                      padding: '0 10px',
+                      fontSize: '12px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD8CF',
+                      textTransform: 'uppercase',
+                      outline: 'none',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (promoCode.trim()) setPromoApplied(true);
+                    }}
+                    style={{
+                      height: '32px',
+                      padding: '0 12px',
+                      background: '#0B2522',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Apply
+                  </button>
+                </div>
+              )}
+
+              {promoApplied && (
+                <div style={{ fontSize: '11.5px', color: '#2A8B68', fontWeight: 600 }}>
+                  ✓ Promotion code {promoCode} verified
+                </div>
+              )}
+
+              {/* Tax / VAT Calculation */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#60716B' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  Tax (VAT / GST)
+                  <span
+                    title="Estimated VAT/GST calculated based on billing location. Collected by Paddle as Merchant of Record."
+                    style={{ cursor: 'help', fontSize: '11.5px', color: '#82938D' }}
+                  >
+                    <Info size={12} />
+                  </span>
+                </span>
+                <span style={{ fontWeight: 600, color: '#10201E' }}>{sym}0.00</span>
+              </div>
+
+              {/* Total Due Today */}
+              <div
+                style={{
+                  borderTop: '1px solid #10201E',
+                  paddingTop: '14px',
+                  marginTop: '6px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'baseline',
+                }}
+              >
+                <span style={{ fontSize: '15px', fontWeight: 800, color: '#10201E' }}>
+                  Total due today
+                </span>
+                <span style={{ fontSize: '22px', fontWeight: 850, color: '#10201E', letterSpacing: '-0.03em' }}>
+                  {sym}{formattedPrice}
+                </span>
+              </div>
             </div>
           </div>
 
+          {/* Money-Back Assurance */}
+          <div
+            style={{
+              marginTop: '28px',
+              paddingTop: '16px',
+              borderTop: '1px solid #E5EBE7',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '11.5px',
+              color: '#60716B',
+            }}
+          >
+            <Shield size={14} style={{ color: '#2A8B68', flexShrink: 0 }} />
+            <span>30-day money-back guarantee &middot; Cancel anytime with 1-click</span>
+          </div>
+        </div>
+
+        {/* =========================================================================
+            RIGHT COLUMN: Payment Method, Contact & Billing Details (Enterprise Split)
+            ========================================================================= */}
+        <div
+          className="mdf-checkout-right"
+          style={{
+            flex: '1 1 56%',
+            background: '#FFFFFF',
+            padding: '36px 36px',
+            overflowY: 'auto',
+            position: 'relative',
+          }}
+        >
+          {/* Top Close Button */}
           <button
             type="button"
             onClick={onClose}
             aria-label="Close modal"
             style={{
-              background: '#FFFFFF',
-              border: '1px solid #D9E1DC',
-              borderRadius: '9px',
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              background: '#F0F4F2',
+              border: 'none',
+              borderRadius: '50%',
               width: '32px',
               height: '32px',
               color: '#60716B',
@@ -335,38 +576,387 @@ export default function PaymentModal({
               transition: 'all 0.15s ease',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#10201E';
+              e.currentTarget.style.background = '#E2EBE6';
               e.currentTarget.style.color = '#10201E';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#D9E1DC';
+              e.currentTarget.style.background = '#F0F4F2';
               e.currentTarget.style.color = '#60716B';
             }}
           >
             <X size={16} strokeWidth={2.4} />
           </button>
-        </div>
 
-        {/* Content Body */}
-        <div style={{ padding: '24px 26px 28px' }}>
+          {/* Express Payment Badges (Apple Pay / Google Pay / 1-Click) */}
+          <div style={{ marginBottom: '22px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={handleCheckout}
+                disabled={loading}
+                style={{
+                  height: '42px',
+                  background: '#000000',
+                  color: '#FFFFFF',
+                  borderRadius: '8px',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 700,
+                  fontSize: '14px',
+                  cursor: loading ? 'wait' : 'pointer',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.12)',
+                }}
+              >
+                <span> Pay</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleCheckout}
+                disabled={loading}
+                style={{
+                  height: '42px',
+                  background: '#00D66F',
+                  color: '#0B2522',
+                  borderRadius: '8px',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 800,
+                  fontSize: '13.5px',
+                  cursor: loading ? 'wait' : 'pointer',
+                  letterSpacing: '0.02em',
+                }}
+              >
+                <span>› link</span>
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                margin: '18px 0 14px',
+                color: '#82938D',
+                fontSize: '11px',
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+              }}
+            >
+              <div style={{ flex: 1, height: '1px', background: '#E5EBE7' }} />
+              <span style={{ padding: '0 12px' }}>OR PAY WITH CARD</span>
+              <div style={{ flex: 1, height: '1px', background: '#E5EBE7' }} />
+            </div>
+          </div>
+
+          {/* Contact Section */}
+          <div style={{ marginBottom: '18px' }}>
+            <label
+              style={{
+                display: 'block',
+                fontSize: '12px',
+                fontWeight: 700,
+                color: '#10201E',
+                marginBottom: '6px',
+              }}
+            >
+              Contact Email <span style={{ color: '#E8792F' }}>*</span>
+            </label>
+            <input
+              type="email"
+              required
+              readOnly={Boolean(loggedInEmail)}
+              value={loggedInEmail || guestEmail}
+              onChange={(e) => setGuestEmail(e.target.value)}
+              placeholder="you@domain.com"
+              style={{
+                width: '100%',
+                height: '40px',
+                padding: '0 12px',
+                borderRadius: '8px',
+                border: '1.5px solid #CBD8CF',
+                background: loggedInEmail ? '#F8FAF9' : '#FFFFFF',
+                fontSize: '13.5px',
+                color: '#10201E',
+                outline: 'none',
+                boxSizing: 'border-box',
+                fontFamily: 'inherit',
+              }}
+            />
+          </div>
+
+          {/* Payment Method Section */}
+          <div style={{ marginBottom: '18px' }}>
+            <label
+              style={{
+                display: 'block',
+                fontSize: '12px',
+                fontWeight: 700,
+                color: '#10201E',
+                marginBottom: '6px',
+              }}
+            >
+              Payment method
+            </label>
+            <div
+              style={{
+                border: '1.5px solid #CBD8CF',
+                borderRadius: '8px',
+                background: '#FFFFFF',
+                overflow: 'hidden',
+              }}
+            >
+              {/* Tab Header */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '9px 12px',
+                  background: '#F8FAF9',
+                  borderBottom: '1px solid #CBD8CF',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  color: '#10201E',
+                }}
+              >
+                <CreditCard size={15} style={{ color: '#0B2522' }} />
+                <span>Card</span>
+              </div>
+
+              {/* Card Inputs */}
+              <div style={{ padding: '12px' }}>
+                <div style={{ position: 'relative', marginBottom: '8px' }}>
+                  <input
+                    type="text"
+                    placeholder="Card number"
+                    value={cardNumber}
+                    onChange={(e) => setCardNumber(e.target.value)}
+                    style={{
+                      width: '100%',
+                      height: '38px',
+                      padding: '0 12px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD8CF',
+                      fontSize: '13px',
+                      color: '#10201E',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      right: '10px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      display: 'flex',
+                      gap: '4px',
+                      alignItems: 'center',
+                      fontSize: '10px',
+                      color: '#82938D',
+                      fontWeight: 700,
+                    }}
+                  >
+                    <span>VISA</span>
+                    <span>MC</span>
+                    <span>AMEX</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <input
+                    type="text"
+                    placeholder="MM / YY"
+                    value={cardExpiry}
+                    onChange={(e) => setCardExpiry(e.target.value)}
+                    style={{
+                      height: '38px',
+                      padding: '0 12px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD8CF',
+                      fontSize: '13px',
+                      color: '#10201E',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <input
+                    type="password"
+                    placeholder="Security code (CVC)"
+                    value={cardCvc}
+                    onChange={(e) => setCardCvc(e.target.value)}
+                    maxLength={4}
+                    style={{
+                      height: '38px',
+                      padding: '0 12px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD8CF',
+                      fontSize: '13px',
+                      color: '#10201E',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ fontSize: '11px', color: '#60716B', marginTop: '6px', lineHeight: 1.4 }}>
+              By subscribing, you authorize MDefender Pro to charge your selected payment method according to the terms until you cancel.
+            </div>
+
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '12px',
+                color: '#10201E',
+                marginTop: '8px',
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={saveInfo}
+                onChange={(e) => setSaveInfo(e.target.checked)}
+                style={{ accentColor: '#0B2522' }}
+              />
+              <span>Save my information for faster 1-click checkout</span>
+            </label>
+          </div>
+
+          {/* Billing Details Section */}
+          <div style={{ marginBottom: '22px' }}>
+            <label
+              style={{
+                display: 'block',
+                fontSize: '12px',
+                fontWeight: 700,
+                color: '#10201E',
+                marginBottom: '6px',
+              }}
+            >
+              Billing details
+            </label>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <input
+                type="text"
+                placeholder="Full name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                style={{
+                  height: '38px',
+                  padding: '0 12px',
+                  borderRadius: '6px',
+                  border: '1.5px solid #CBD8CF',
+                  fontSize: '13px',
+                  color: '#10201E',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
+
+              {/* Country Dropdown */}
+              <select
+                value={selectedCountry}
+                onChange={(e) => setSelectedCountry(e.target.value)}
+                style={{
+                  height: '38px',
+                  padding: '0 10px',
+                  borderRadius: '6px',
+                  border: '1.5px solid #CBD8CF',
+                  fontSize: '13px',
+                  color: '#10201E',
+                  background: '#FFFFFF',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  cursor: 'pointer',
+                }}
+              >
+                {COUNTRY_OPTIONS.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                type="text"
+                placeholder="Address line 1"
+                value={address1}
+                onChange={(e) => setAddress1(e.target.value)}
+                style={{
+                  height: '38px',
+                  padding: '0 12px',
+                  borderRadius: '6px',
+                  border: '1.5px solid #CBD8CF',
+                  fontSize: '13px',
+                  color: '#10201E',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <input
+                  type="text"
+                  placeholder="City"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  style={{
+                    height: '38px',
+                    padding: '0 12px',
+                    borderRadius: '6px',
+                    border: '1.5px solid #CBD8CF',
+                    fontSize: '13px',
+                    color: '#10201E',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+                <input
+                  type="text"
+                  placeholder="Postal code"
+                  value={postalCode}
+                  onChange={(e) => setPostalCode(e.target.value)}
+                  style={{
+                    height: '38px',
+                    padding: '0 12px',
+                    borderRadius: '6px',
+                    border: '1.5px solid #CBD8CF',
+                    fontSize: '13px',
+                    color: '#10201E',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Onboarding Notice Banner */}
           {onboardingNotice && (
             <div
               style={{
                 background: '#FFF8F4',
                 border: '1px solid #FCD3B6',
-                borderRadius: '12px',
-                padding: '16px',
-                marginBottom: '18px',
+                borderRadius: '10px',
+                padding: '14px',
+                marginBottom: '16px',
               }}
             >
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                <AlertTriangle size={18} style={{ color: '#E8792F', marginTop: '2px', flexShrink: 0 }} />
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                <AlertTriangle size={16} style={{ color: '#E8792F', marginTop: '2px', flexShrink: 0 }} />
                 <div>
-                  <h4 style={{ margin: '0 0 4px', fontSize: '13.5px', fontWeight: 800, color: '#A34F22' }}>
+                  <h4 style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: 800, color: '#A34F22' }}>
                     {onboardingNotice.title}
                   </h4>
-                  <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#873B11', lineHeight: 1.5 }}>
+                  <p style={{ margin: '0 0 8px', fontSize: '11.5px', color: '#873B11', lineHeight: 1.4 }}>
                     {onboardingNotice.message}
                   </p>
                   <a
@@ -376,170 +966,21 @@ export default function PaymentModal({
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '6px',
-                      padding: '6px 12px',
+                      gap: '4px',
+                      padding: '4px 10px',
                       background: '#0B2522',
                       color: '#ffffff',
-                      borderRadius: '6px',
-                      fontSize: '11.5px',
+                      borderRadius: '5px',
+                      fontSize: '11px',
                       fontWeight: 700,
                       textDecoration: 'none',
                     }}
                   >
                     <span>Open Paddle Dashboard</span>
-                    <ExternalLink size={12} />
+                    <ExternalLink size={11} />
                   </a>
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* Plan Summary Card */}
-          <div
-            style={{
-              background: '#F7F6F1',
-              border: '1px solid #D9E1DC',
-              borderRadius: '12px',
-              padding: '16px 18px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '20px',
-            }}
-          >
-            <div>
-              <span
-                style={{
-                  fontSize: '10px',
-                  color: '#E8792F',
-                  textTransform: 'uppercase',
-                  fontWeight: 800,
-                  letterSpacing: '0.1em',
-                }}
-              >
-                Plan Selection
-              </span>
-              <div style={{ fontSize: '16px', fontWeight: 800, color: '#10201E', marginTop: '2px' }}>
-                {planName}
-              </div>
-              <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
-                {isYearly ? 'Billed annually (Includes 20% discount)' : 'Billed monthly · Cancel anytime'}
-              </div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div
-                style={{
-                  fontSize: '28px',
-                  fontWeight: 850,
-                  color: '#10201E',
-                  letterSpacing: '-0.04em',
-                  lineHeight: 1,
-                }}
-              >
-                {sym}{usdPrice}
-              </div>
-              <div style={{ fontSize: '11px', color: '#60716B', fontWeight: 600, marginTop: '2px' }}>
-                USD
-              </div>
-            </div>
-          </div>
-
-          {/* Included Features Snapshot */}
-          <div style={{ marginBottom: '20px' }}>
-            <div
-              style={{
-                fontSize: '11px',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                color: '#60716B',
-                letterSpacing: '0.1em',
-                marginBottom: '10px',
-              }}
-            >
-              Included In This Deployment
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {meta.features.map((feat, idx) => (
-                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: '#10201E' }}>
-                  <Check size={14} strokeWidth={2.6} style={{ color: '#2A8B68', flexShrink: 0 }} />
-                  <span>{feat}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Email input for unauthenticated / guest checkout */}
-          {!loggedInEmail ? (
-            <div style={{ marginBottom: '20px' }}>
-              <label
-                style={{
-                  display: 'block',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  color: '#10201E',
-                  marginBottom: '6px',
-                }}
-              >
-                Your Email Address <span style={{ color: '#E8792F' }}>*</span>
-              </label>
-              <input
-                type="email"
-                required
-                value={guestEmail}
-                onChange={(e) => setGuestEmail(e.target.value)}
-                placeholder="you@company.com"
-                style={{
-                  width: '100%',
-                  height: '42px',
-                  padding: '0 14px',
-                  borderRadius: '10px',
-                  border: '1.5px solid #CBD8CF',
-                  background: '#FFFFFF',
-                  fontSize: '13.5px',
-                  color: '#10201E',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                  fontFamily: 'inherit',
-                  transition: 'border-color 0.15s ease',
-                }}
-                onFocus={(e) => (e.target.style.borderColor = '#0B2522')}
-                onBlur={(e) => (e.target.style.borderColor = '#CBD8CF')}
-              />
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginTop: '6px',
-                  fontSize: '11.5px',
-                  color: '#60716B',
-                }}
-              >
-                <span>For receipt and edge license key</span>
-                <Link
-                  to="/user/login"
-                  style={{ color: '#E8792F', textDecoration: 'none', fontWeight: 600 }}
-                >
-                  Already have an account? Sign in
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <div
-              style={{
-                marginBottom: '20px',
-                padding: '10px 14px',
-                borderRadius: '8px',
-                background: '#E8EEE8',
-                fontSize: '12px',
-                color: '#10201E',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <span>Logged in as: <strong>{loggedInEmail}</strong></span>
-              <span style={{ color: '#2A8B68', fontWeight: 700 }}>Active</span>
             </div>
           )}
 
@@ -551,8 +992,8 @@ export default function PaymentModal({
                 background: '#FFF4ED',
                 border: '1px solid #FCD3B6',
                 color: '#A34F22',
-                fontSize: '12.5px',
-                marginBottom: '18px',
+                fontSize: '12px',
+                marginBottom: '16px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
@@ -563,7 +1004,7 @@ export default function PaymentModal({
             </div>
           )}
 
-          {/* Action Checkout Button */}
+          {/* Primary CTA Button (WP Umbrella / Stripe Style: Clear "Subscribe") */}
           <button
             type="button"
             onClick={handleCheckout}
@@ -571,62 +1012,75 @@ export default function PaymentModal({
             style={{
               width: '100%',
               height: '46px',
-              borderRadius: '10px',
+              borderRadius: '8px',
               background: '#0B2522',
               color: '#FFFFFF',
               border: 'none',
-              fontSize: '14px',
-              fontWeight: 700,
+              fontSize: '15px',
+              fontWeight: 800,
               cursor: loading ? 'wait' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px',
-              boxShadow: '0 4px 16px rgba(11, 37, 34, 0.22)',
-              marginBottom: '16px',
-              transition: 'all 0.18s ease',
+              boxShadow: '0 4px 14px rgba(11, 37, 34, 0.22)',
+              marginBottom: '14px',
+              transition: 'background 0.15s ease',
             }}
             onMouseEnter={(e) => {
-              if (!loading) e.currentTarget.style.background = '#153B34';
+              if (!loading) e.currentTarget.style.background = '#133E39';
             }}
             onMouseLeave={(e) => {
               if (!loading) e.currentTarget.style.background = '#0B2522';
             }}
           >
             {loading ? (
-              <span>Preparing Secured Gateway...</span>
+              <span>Connecting to Secured Gateway...</span>
             ) : (
               <>
                 <Lock size={15} strokeWidth={2.4} />
-                <span>Proceed to Secured Checkout &middot; {sym}{usdPrice}</span>
-                <ArrowRight size={14} strokeWidth={2.4} />
+                <span>Subscribe</span>
               </>
             )}
           </button>
 
-          {/* Security Guarantee Strip */}
+          {/* Security & MoR Assurance */}
           <div
             style={{
               textAlign: 'center',
-              fontSize: '11.5px',
-              color: '#60716B',
-              lineHeight: 1.5,
+              fontSize: '11px',
+              color: '#82938D',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '6px',
             }}
           >
-            <Shield size={13} style={{ color: '#2A8B68', flexShrink: 0 }} />
-            <span>256-bit encrypted edge transaction. 30-day money-back guarantee.</span>
+            <Shield size={12} style={{ color: '#2A8B68', flexShrink: 0 }} />
+            <span>Encrypted Edge Transaction &middot; Powered by Paddle Merchant of Record</span>
           </div>
         </div>
       </div>
 
       <style>{`
-        @keyframes modalFadeIn {
+        @keyframes mdfModalFadeIn {
           from { opacity: 0; transform: scale(0.97); }
           to { opacity: 1; transform: scale(1); }
+        }
+        @media (max-width: 768px) {
+          .mdf-checkout-card {
+            flex-direction: column !important;
+            max-height: 96vh !important;
+          }
+          .mdf-checkout-left {
+            flex: none !important;
+            padding: 24px 20px !important;
+            border-right: none !important;
+            border-bottom: 1px solid #E5EBE7 !important;
+          }
+          .mdf-checkout-right {
+            padding: 24px 20px !important;
+          }
         }
       `}</style>
     </div>

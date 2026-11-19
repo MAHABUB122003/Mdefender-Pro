@@ -856,8 +856,8 @@ export default function TrialPaywallModal() {
                 {checkoutLoading
                   ? 'Connecting to Secure Gateway...'
                   : (isSoftPrompt
-                      ? `Keep My ${siteCount} ${siteCount === 1 ? 'Website' : 'Websites'} Protected & Auto-Renew ($0 Today)`
-                      : `Activate ${siteCount} ${siteCount === 1 ? 'Website' : 'Websites'} Protection ($${totalAmount.toFixed(2)})`)}
+                      ? `Keep My ${siteCount} ${siteCount === 1 ? 'Website' : 'Websites'} Protected ($0 Today)`
+                      : `Start My Subscription • $${totalAmount.toFixed(2)}/${billingCycle === 'yearly' ? 'yr' : 'mo'}`)}
               </span>
               <ArrowRight size={16} />
             </button>
