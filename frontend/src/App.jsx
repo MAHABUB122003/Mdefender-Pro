@@ -296,13 +296,13 @@ function App() {
           } />
 
           <Route path="/register" element={
-            userState ? <Navigate to={getPostLoginTarget(userState)} replace /> : <Register />
+            (userState && typeof localStorage !== 'undefined' && !!localStorage.getItem('mdefender_access')) ? <Navigate to={getPostLoginTarget(userState)} replace /> : <Register />
           } />
           <Route path="/user/login" element={
-            userState ? <Navigate to={getPostLoginTarget(userState)} replace /> : <UserLogin onLoginSuccess={(u) => setUserState(u)} />
+            (userState && typeof localStorage !== 'undefined' && !!localStorage.getItem('mdefender_access')) ? <Navigate to={getPostLoginTarget(userState)} replace /> : <UserLogin onLoginSuccess={(u) => setUserState(u)} />
           } />
           <Route path="/login" element={
-            userState ? <Navigate to={getPostLoginTarget(userState)} replace /> : <UserLogin onLoginSuccess={(u) => setUserState(u)} />
+            (userState && typeof localStorage !== 'undefined' && !!localStorage.getItem('mdefender_access')) ? <Navigate to={getPostLoginTarget(userState)} replace /> : <UserLogin onLoginSuccess={(u) => setUserState(u)} />
           } />
 
           {/* Persistent User Layout with Strict Zero-Trust Onboarding Route Guard */}

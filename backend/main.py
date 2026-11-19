@@ -3422,4 +3422,5 @@ if __name__ == '__main__':
     print("  POST /api/auth/forgot-password")
     print("  POST /api/auth/admin/login")
     print("="*40 + "\n")
-    uvicorn.run("main:app", host='0.0.0.0', port=int(os.getenv('PORT', '8000')), reload=True)
+    is_dev = os.getenv('ENV', 'production').lower() in ('development', 'dev')
+    uvicorn.run("main:app", host='0.0.0.0', port=int(os.getenv('PORT', '8000')), reload=is_dev)

@@ -281,14 +281,18 @@ export const api = {
       return data;
     }),
 
-  logout: () => {
+  logout: async () => {
+    try {
+      await apiCall('/api/auth/logout', { method: 'POST', skipAuthRedirect: true });
+    } catch {}
     clearTokens();
-    return apiCall('/api/auth/logout', { method: 'POST' });
   },
 
-  logoutAll: () => {
+  logoutAll: async () => {
+    try {
+      await apiCall('/api/auth/logout-all', { method: 'POST', skipAuthRedirect: true });
+    } catch {}
     clearTokens();
-    return apiCall('/api/auth/logout-all', { method: 'POST' });
   },
 
   refreshToken: () => apiCall('/api/auth/refresh', {

@@ -108,7 +108,13 @@ class PasswordService:
         Returns:
             bool: True if password matches hash
         """
-        return self._pwd_context.verify(password, hashed)
+        if not password or not hashed or not isinstance(hashed, str):
+            return False
+        try:
+            return bool(self._pwd_context.verify(password, hashed))
+        except Exception as exc:
+            logger.warning(f"Password verification caught format error: {exc}")
+            return False
 
     def needs_rehash(self, hashed: str) -> bool:
         """

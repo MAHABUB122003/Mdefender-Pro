@@ -49,7 +49,7 @@ class LoginService:
         user = self._find_user(identifier)
         if not user:
             # Prevent timing-based user enumeration attacks with constant-time dummy bcrypt verification
-            self.password_service.verify_password(password, '$2b$12$e868NmvM/3vF9R4Uu96PqOsq13Xz6.Gq1U0s72p9E3oR0m16FpM6C')
+            self.password_service.verify_password(password, '$2b$12$oKT9pzHV6YwGbEZSj1yioup57aUeP7b.a6/RNOKrG9c2uBItvo9/S')
 
             pending = self.db.pending_registrations.find_one({
                 '$or': [{'email': identifier}, {'username': identifier}]
@@ -236,32 +236,31 @@ class LoginService:
         if hasattr(user_created, 'tzinfo') and user_created.tzinfo is None:
             user_created = user_created.replace(tzinfo=timezone.utc)
 
-        try:
-            from src.services.plan_service import PlanService
-            dyn_trial = int(PlanService(self.db).get_dynamic_pricing_config().get("trial_days") or 14)
-        except Exception:
-            dyn_trial = 14
-
         trial_ends = user.get('trial_ends_at')
         if not trial_ends:
+            try:
+                from src.services.plan_service import PlanService
+                dyn_trial = int(PlanService(self.db).get_dynamic_pricing_config().get("trial_days") or 14)
+            except Exception:
+                dyn_trial = 14
             trial_ends = user_created + timedelta(days=dyn_trial)
         elif isinstance(trial_ends, str):
             try:
                 trial_ends = datetime.fromisoformat(trial_ends)
             except Exception:
-                trial_ends = user_created + timedelta(days=dyn_trial)
+                trial_ends = user_created + timedelta(days=14)
         if hasattr(trial_ends, 'tzinfo') and trial_ends.tzinfo is None:
             trial_ends = trial_ends.replace(tzinfo=timezone.utc)
 
         import math
         trial_days_remaining = max(0, int(math.ceil((trial_ends - now_dt).total_seconds() / 86400)))
 
-        # Resolve website count and onboarding flag
+        # Resolve website count and onboarding flag (limit to 100 to prevent slow full-table scans)
         websites_count = 0
         try:
             websites_count = self.db.websites.count_documents({
                 '$or': [{'user_id': str(user_id)}, {'user_id': user['_id']}]
-            })
+            }, limit=100)
         except Exception:
             pass
         # Once onboarded, user permanently remains onboarded
@@ -297,13 +296,7 @@ class LoginService:
 
     def _find_user(self, identifier: str):
         ident = identifier.strip().lower()
-        user = self.db.users.find_one({'email': ident})
-        if user:
-            return user
-        user = self.db.users.find_one({'username': ident})
-        if user:
-            return user
-        return None
+        return self.db.users.find_one({'$or': [{'email': ident}, {'username': ident}]})
 
     def admin_login(self, username: str, password: str,
                     ip_address: str = '', user_agent: str = '') -> Dict:

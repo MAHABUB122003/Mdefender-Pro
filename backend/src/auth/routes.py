@@ -25,7 +25,7 @@ from src.auth.jwt_service import JWTService
 from src.auth.cookie_service import CookieService
 from src.auth.csrf_service import CSRFService
 from src.auth.email_sender import AuthEmailService
-from src.auth.dependencies import get_current_user, get_current_admin, verify_csrf_token
+from src.auth.dependencies import get_current_user, get_current_user_optional, get_current_admin, verify_csrf_token
 from src.database.mongodb_connection import MongoDB
 from src.utils.objectid import to_object_id
 
@@ -151,7 +151,8 @@ async def resend_verification(data: ResendVerificationRequest, request: Request)
 
 @auth_router.post('/login')
 async def login(data: LoginRequest, request: Request, response: Response):
-    result = login_service.login(
+    result = await asyncio.to_thread(
+        login_service.login,
         email_or_username=data.email_or_username,
         password=data.password,
         ip_address=get_client_ip(request),
@@ -219,7 +220,8 @@ async def verify_mfa(data: MFAChallengeRequest, request: Request, response: Resp
 
 @auth_router.post('/admin/login')
 async def admin_login(data: AdminLoginRequest, request: Request, response: Response):
-    result = login_service.admin_login(
+    result = await asyncio.to_thread(
+        login_service.admin_login,
         username=data.username,
         password=data.password,
         ip_address=get_client_ip(request),
@@ -336,44 +338,53 @@ async def refresh_token(request: Request, response: Response):
 # ─── Logout ───
 
 @auth_router.post('/logout')
-async def logout(request: Request, response: Response, user: dict = Depends(get_current_user)):
-    refresh_token = cookie_service.get_refresh_token(request)
-    if refresh_token:
-        payload = jwt_service.decode_refresh_token(refresh_token)
-        if payload and payload.get('session_id'):
-            session_service.invalidate_session(payload['session_id'])
+async def logout(request: Request, response: Response, user: Optional[dict] = Depends(get_current_user_optional)):
+    try:
+        refresh_token = cookie_service.get_refresh_token(request)
+        if refresh_token:
+            payload = jwt_service.decode_refresh_token(refresh_token)
+            if payload and payload.get('session_id'):
+                session_service.invalidate_session(payload['session_id'])
+    except Exception:
+        pass
 
     cookie_service.clear_auth_cookies(response)
 
-    audit_service.log(
-        user_id=user['id'],
-        action='logout',
-        ip_address=get_client_ip(request),
-        user_agent=get_user_agent(request),
-        status='success',
-    )
+    if user and user.get('id'):
+        try:
+            audit_service.log(
+                user_id=user['id'],
+                action='logout',
+                ip_address=get_client_ip(request),
+                user_agent=get_user_agent(request),
+                status='success',
+            )
+        except Exception:
+            pass
 
     return {'status': 'success', 'message': 'Logged out successfully'}
 
 
 @auth_router.post('/logout-all')
-async def logout_all(request: Request, response: Response, user: dict = Depends(get_current_user)):
-    session_service.invalidate_all_user_sessions(user['id'])
-
-    db.refresh_tokens.update_many(
-        {'user_id': user['id']},
-        {'$set': {'revoked': True}}
-    )
-
+async def logout_all(request: Request, response: Response, user: Optional[dict] = Depends(get_current_user_optional)):
     cookie_service.clear_auth_cookies(response)
 
-    audit_service.log(
-        user_id=user['id'],
-        action='logout_all',
-        ip_address=get_client_ip(request),
-        user_agent=get_user_agent(request),
-        status='success',
-    )
+    if user and user.get('id'):
+        try:
+            session_service.invalidate_all_user_sessions(user['id'])
+            db.refresh_tokens.update_many(
+                {'user_id': user['id']},
+                {'$set': {'revoked': True}}
+            )
+            audit_service.log(
+                user_id=user['id'],
+                action='logout_all',
+                ip_address=get_client_ip(request),
+                user_agent=get_user_agent(request),
+                status='success',
+            )
+        except Exception:
+            pass
 
     return {'status': 'success', 'message': 'Logged out from all devices'}
 
