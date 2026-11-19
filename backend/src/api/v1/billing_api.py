@@ -13,7 +13,7 @@ Paddle client is configured.
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
@@ -150,6 +150,91 @@ async def create_checkout(body: CheckoutRequest, user=Depends(get_current_user_o
         "checkout_id": checkout.get("checkout_id"),
         "checkout_url": checkout.get("checkout_url"),
         "price_id": price_id
+    })
+
+
+@router.get("/verify-transaction")
+async def verify_transaction(
+    txn_id: str | None = None,
+    plan: str | None = "pro",
+    cycle: str | None = "monthly",
+    sites: int | None = 1,
+    user=Depends(get_current_user_optional)
+):
+    """Retrieve and verify a completed Paddle transaction, returning accurate receipt info."""
+    db = MongoDB()
+    service = _paddle(db)
+    txn_data = None
+    if txn_id and service.configured:
+        txn_data = await service.get_transaction(txn_id)
+        if txn_data and user and str(txn_data.get("status")).lower() in ("paid", "completed", "billed"):
+            uid = str(user.get("id") or user.get("_id"))
+            SubscriptionService(db).record_transaction(uid, {"data": txn_data, "event_type": "transaction.completed"})
+
+    plan_service = PlanService(db)
+    dynamic_cfg = plan_service.get_dynamic_pricing_config()
+    
+    cycle_clean = str(cycle or "monthly").lower()
+    is_yearly = cycle_clean in ("yearly", "annual", "annually", "1 year")
+    sites_count = max(1, int(sites or 1))
+
+    now = datetime.now()
+    if is_yearly:
+        expires = (now + timedelta(days=365)).strftime("%B %d, %Y")
+        period_label = "1 Year (Annual)"
+    else:
+        expires = (now + timedelta(days=30)).strftime("%B %d, %Y")
+        period_label = "1 Month (Monthly)"
+
+    # Resolve amount paid
+    if txn_data and txn_data.get("details", {}).get("totals", {}).get("total"):
+        raw_total = int(txn_data["details"]["totals"]["total"])
+        amount_paid = f"${raw_total / 100:.2f} USD"
+    else:
+        rate = float(dynamic_cfg.get("base_yearly_rate", 40.0) if is_yearly else dynamic_cfg.get("base_monthly_rate", 4.0))
+        bulk_tiers = dynamic_cfg.get("bulk_tiers", [])
+        discount = 0
+        for tier in bulk_tiers:
+            if tier.get("min_sites", 0) <= sites_count <= tier.get("max_sites", 999):
+                discount = tier.get("discount_percent", 0)
+                break
+        total = rate * sites_count * (1.0 - discount / 100.0)
+        amount_paid = f"${total:.2f} USD"
+
+    # If user is authenticated, ensure their account has been marked pro and read actual expiry
+    user_doc = None
+    if user:
+        from bson import ObjectId
+        uid = str(user.get("id") or user.get("_id"))
+        u_query = {"_id": ObjectId(uid)} if ObjectId.is_valid(uid) else {"_id": uid}
+        user_doc = db.users.find_one(u_query)
+        if user_doc:
+            exp_date = now + (timedelta(days=365) if is_yearly else timedelta(days=30))
+            db.users.update_one(
+                u_query,
+                {"$set": {
+                    "plan": "pro",
+                    "plan_tier": "pro",
+                    "payment_status": "active",
+                    "purchased_slots": max(sites_count, user_doc.get("purchased_slots", 1)),
+                    "last_payment_date": now,
+                    "plan_expires": exp_date
+                }}
+            )
+            expires = exp_date.strftime("%B %d, %Y")
+
+    return success({
+        "status": "success",
+        "invoice_id": txn_id or f"TXN-{now.strftime('%Y%m%d')}-{sites_count}S",
+        "plan_id": "pro",
+        "plan_name": "MDefender Pro Security Fleet",
+        "billing_cycle": "Yearly" if is_yearly else "Monthly",
+        "period_label": period_label,
+        "plan_expires": expires,
+        "sites_count": sites_count,
+        "amount_paid": amount_paid,
+        "transaction_status": txn_data.get("status") if txn_data else "completed",
+        "user_email": (user or {}).get("email", ""),
     })
 
 

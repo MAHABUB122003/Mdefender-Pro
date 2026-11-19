@@ -660,6 +660,10 @@ export const api = {
   getBillingConfig: () => apiCall('/api/v1/billing/config', { skipAuthRedirect: true }),
   getBillingPlans: () => apiCall('/api/v1/billing/plans', { skipAuthRedirect: true }),
   createPaddleCheckout: (data) => apiCall('/api/v1/billing/checkout', { method: 'POST', body: JSON.stringify(data), skipAuthRedirect: true }),
+  verifyPaddleTransaction: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return apiCall(`/api/v1/billing/verify-transaction${qs ? '?' + qs : ''}`, { skipAuthRedirect: true });
+  },
   getBillingSubscription: () => apiCall('/api/v1/billing/subscription'),
   cancelSubscription: () => apiCall('/api/v1/billing/cancel', { method: 'POST' }),
   changeBillingPlan: (plan) => apiCall('/api/v1/billing/change-plan', { method: 'POST', body: JSON.stringify({ plan }) }),

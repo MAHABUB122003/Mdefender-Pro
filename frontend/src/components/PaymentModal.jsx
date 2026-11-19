@@ -202,7 +202,7 @@ export default function PaymentModal({
             settings: {
               displayMode: 'overlay',
               theme: 'light',
-              successUrl: window.location.origin + '/payment/success?plan=' + plan + '&cycle=' + billingCycle,
+              successUrl: `${window.location.origin}/payment/success?plan=${plan}&cycle=${billingCycle}&sites=${count}${checkoutData.checkout_id ? `&txn_id=${checkoutData.checkout_id}` : ''}`,
             },
           });
           onClose();
@@ -224,7 +224,7 @@ export default function PaymentModal({
           settings: {
             displayMode: 'overlay',
             theme: 'light',
-            successUrl: window.location.origin + '/payment/success?plan=' + plan + '&cycle=' + billingCycle,
+            successUrl: `${window.location.origin}/payment/success?plan=${plan}&cycle=${billingCycle}&sites=${count}`,
           },
         });
         onClose();

@@ -110,6 +110,20 @@ class PaddleService:
         except Exception as e:
             return {"error": f"Paddle request failed: {e}"}
 
+    async def get_transaction(self, transaction_id):
+        """Fetch a Paddle transaction by ID (txn_...)."""
+        if not self.api_key or not transaction_id:
+            return None
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.get(f"{self.base_url}/transactions/{transaction_id}",
+                                        headers=self._headers())
+                if resp.status_code == 200:
+                    return resp.json().get("data")
+        except Exception:
+            pass
+        return None
+
     async def get_subscription(self, subscription_id):
         if not self.api_key:
             return None
