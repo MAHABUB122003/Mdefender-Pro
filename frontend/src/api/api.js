@@ -676,6 +676,7 @@ export const api = {
   getLicenseSlotsStatus: () => apiCall('/api/v1/billing/license-slots/status'),
   assignLicenseSlot: (website_id) => apiCall('/api/v1/billing/license-slots/assign', { method: 'POST', body: JSON.stringify({ website_id }) }),
   releaseLicenseSlot: (website_id) => apiCall('/api/v1/billing/license-slots/release', { method: 'POST', body: JSON.stringify({ website_id }) }),
+  swapLicenseSlot: (release_website_id, assign_website_id) => apiCall('/api/v1/billing/license-slots/swap', { method: 'POST', body: JSON.stringify({ release_website_id, assign_website_id }) }),
 
   getPaymentConfig: () => apiCall('/api/payment/config'),
   createStripeCheckoutSession: (data) => apiCall('/api/payment/create-checkout-session', { method: 'POST', body: JSON.stringify(data) }),

@@ -194,6 +194,7 @@ class LicenseSlotService:
                 "domain": w.get("domain", ""),
                 "is_licensed": is_lic,
                 "license_status": status,
+                "protection_paused": bool(w.get("protection_paused", False)),
                 "is_protected": is_lic and bool(w.get("is_active", True)),
                 "created_at": w.get("created_at").isoformat() if isinstance(w.get("created_at"), datetime) else str(w.get("created_at") or "")
             })
@@ -230,15 +231,21 @@ class LicenseSlotService:
             target_licensed_ids = valid_site_ids[:total_slots]
         # Case 2: Paid active subscription -> Exactly up to purchased_slots
         elif state["is_paid"]:
-            if len(filtered_ids) > total_slots:
-                # User had more sites licensed than purchased (e.g. came from trial)
-                # Keep only up to total_slots
-                target_licensed_ids = filtered_ids[:total_slots]
-            elif len(filtered_ids) == 0 and len(valid_site_ids) > 0:
-                # Initial allocation only: auto-assign available slots up to total_slots
-                target_licensed_ids = valid_site_ids[:total_slots]
-            else:
-                target_licensed_ids = filtered_ids[:total_slots]
+            # Retain currently active valid sites
+            target_licensed_ids = [sid for sid in filtered_ids if sid in valid_site_id_set]
+            if len(target_licensed_ids) > total_slots:
+                # Trim excess if total_slots decreased (e.g. downgraded or transitioned from trial)
+                target_licensed_ids = target_licensed_ids[:total_slots]
+            elif len(target_licensed_ids) < total_slots:
+                # User has available unused slots!
+                # Automatically assign available slots to any connected websites
+                # that have not been explicitly paused by the user.
+                slots_remaining = total_slots - len(target_licensed_ids)
+                available_sites = [
+                    str(w["_id"]) for w in websites
+                    if str(w["_id"]) not in target_licensed_ids and not bool(w.get("protection_paused", False))
+                ]
+                target_licensed_ids.extend(available_sites[:slots_remaining])
         # Case 3: Trial expired and no active payment -> Zero licensed
         else:
             target_licensed_ids = []
@@ -331,6 +338,7 @@ class LicenseSlotService:
                 "is_licensed": True,
                 "license_status": "active" if state["is_paid"] else "trial",
                 "is_protected": True,
+                "protection_paused": False,
                 "licensed_at": datetime.now()
             }}
         )
@@ -380,6 +388,7 @@ class LicenseSlotService:
                 "is_licensed": False,
                 "license_status": "unlicensed",
                 "is_protected": False,
+                "protection_paused": True,
                 "unlicensed_at": datetime.now()
             }}
         )
@@ -388,6 +397,99 @@ class LicenseSlotService:
             {"$or": [{"website_id": wid_str}, {"website_id": ObjectId(wid_str) if ObjectId.is_valid(wid_str) else wid_str}, {"domain": website.get("domain", "")}]},
             {"$set": {"status": "unlicensed", "license_status": "unlicensed", "is_licensed": False}}
         )
+
+        _invalidate_cache(user_id=uid_str, website_id=wid_str)
+        try:
+            from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+            push_instant_sync_to_wordpress(user_id=uid_str, website_id=wid_str, wait=True)
+        except Exception:
+            pass
+        return True, f"License slot released from {website.get('domain') or 'website'}. Slot is now available."
+
+    def swap_slot(self, user_id, release_website_id: str, assign_website_id: str) -> Tuple[bool, str]:
+        """Atomically swap a license slot from an active website to a paused website."""
+        user_doc = self._get_user_doc(user_id)
+        if not user_doc:
+            return False, "User account not found."
+
+        uid_str = str(user_doc["_id"])
+        rel_id = str(release_website_id).strip()
+        asg_id = str(assign_website_id).strip()
+
+        if rel_id == asg_id:
+            return False, "Cannot swap a website with itself."
+
+        rel_query = {"_id": ObjectId(rel_id)} if ObjectId.is_valid(rel_id) else {"_id": rel_id}
+        asg_query = {"_id": ObjectId(asg_id)} if ObjectId.is_valid(asg_id) else {"_id": asg_id}
+
+        rel_site = self.db.websites.find_one(rel_query)
+        asg_site = self.db.websites.find_one(asg_query)
+
+        if not rel_site or not asg_site:
+            return False, "One or both websites not found."
+
+        if str(rel_site.get("user_id")) not in (uid_str, str(user_doc.get("_id"))) or str(asg_site.get("user_id")) not in (uid_str, str(user_doc.get("_id"))):
+            return False, "Unauthorized access to websites."
+
+        current_licensed = [str(x) for x in user_doc.get("licensed_website_ids", []) if x]
+        if rel_id not in current_licensed:
+            return False, f"{rel_site.get('domain')} does not currently hold an active license slot."
+
+        # Swap atomically: replace rel_id with asg_id
+        new_licensed = [asg_id if x == rel_id else x for x in current_licensed]
+        if asg_id not in new_licensed:
+            new_licensed.append(asg_id)
+        new_licensed = list(dict.fromkeys(new_licensed))
+
+        user_query = {"_id": ObjectId(uid_str)} if ObjectId.is_valid(uid_str) else {"_id": uid_str}
+        self.db.users.update_one(
+            user_query,
+            {"$set": {"licensed_website_ids": new_licensed}}
+        )
+
+        # Update released website
+        self.db.websites.update_one(
+            rel_query,
+            {"$set": {
+                "is_licensed": False,
+                "license_status": "unlicensed",
+                "is_protected": False,
+                "protection_paused": True,
+                "unlicensed_at": datetime.now()
+            }}
+        )
+        self.db.wordpress_sites.update_one(
+            {"$or": [{"website_id": rel_id}, {"website_id": ObjectId(rel_id) if ObjectId.is_valid(rel_id) else rel_id}, {"domain": rel_site.get("domain", "")}]},
+            {"$set": {"status": "unlicensed", "license_status": "unlicensed", "is_licensed": False}}
+        )
+
+        # Update newly assigned website
+        self.db.websites.update_one(
+            asg_query,
+            {"$set": {
+                "is_licensed": True,
+                "license_status": "active",
+                "is_protected": True,
+                "protection_paused": False,
+                "licensed_at": datetime.now()
+            }}
+        )
+        self.db.wordpress_sites.update_one(
+            {"$or": [{"website_id": asg_id}, {"website_id": ObjectId(asg_id) if ObjectId.is_valid(asg_id) else asg_id}, {"domain": asg_site.get("domain", "")}]},
+            {"$set": {"status": "online", "license_status": "active", "is_licensed": True}}
+        )
+
+        _invalidate_cache(user_id=uid_str, website_id=rel_id)
+        _invalidate_cache(user_id=uid_str, website_id=asg_id)
+
+        try:
+            from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+            push_instant_sync_to_wordpress(user_id=uid_str, website_id=rel_id, wait=True)
+            push_instant_sync_to_wordpress(user_id=uid_str, website_id=asg_id, wait=True)
+        except Exception:
+            pass
+
+        return True, f"Protection swapped: {rel_site.get('domain')} is now paused, and {asg_site.get('domain')} is now actively protected."
 
         _invalidate_cache(user_id=uid_str, website_id=wid_str)
         try:

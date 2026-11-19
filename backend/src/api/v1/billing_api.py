@@ -341,6 +341,11 @@ class SlotActionRequest(BaseModel):
     website_id: str
 
 
+class SlotSwapRequest(BaseModel):
+    release_website_id: str
+    assign_website_id: str
+
+
 @router.get("/license-slots/status")
 async def get_license_slots_status(user=Depends(get_current_user)):
     """Return real-time allocation status: total slots, used slots, available slots, and site states."""
@@ -373,4 +378,20 @@ async def release_license_slot(body: SlotActionRequest, user=Depends(get_current
     if not ok:
         raise HTTPException(status_code=400, detail=msg)
     return success({"message": msg, "website_id": body.website_id, "is_licensed": False})
+
+
+@router.post("/license-slots/swap")
+async def swap_license_slot(body: SlotSwapRequest, user=Depends(get_current_user)):
+    """Atomically swap a license slot between two websites."""
+    db = MongoDB()
+    user_id = str(user.get("id") or user.get("_id"))
+    slot_service = LicenseSlotService(db)
+    ok, msg = slot_service.swap_slot(user_id, body.release_website_id, body.assign_website_id)
+    if not ok:
+        raise HTTPException(status_code=400, detail=msg)
+    return success({
+        "message": msg,
+        "release_website_id": body.release_website_id,
+        "assign_website_id": body.assign_website_id
+    })
 

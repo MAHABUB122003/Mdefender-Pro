@@ -1686,51 +1686,32 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None, wait=False):
             # Direct local disk fast-cache synchronization for 0ms zero-latency updates
             try:
                 import json
+                is_target_mahabub = any("localhost/mahabub" in (ws.get("url") or ws.get("domain") or "") for ws in ([ref_ws] if website_id else w_sites))
                 disk_paths = [
-
                     os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "plugin_source", "mdefender-pro", "includes", "data", "waf_fast_cache.json")),
-
-                    r"C:\xampp\htdocs\mahabub\wp-content\plugins\mdefender-pro\includes\data\waf_fast_cache.json",
-
                 ]
+                if is_target_mahabub:
+                    disk_paths.append(r"C:\xampp\htdocs\mahabub\wp-content\plugins\mdefender-pro\includes\data\waf_fast_cache.json")
 
                 for dp in disk_paths:
-
                     try:
-
                         os.makedirs(os.path.dirname(dp), exist_ok=True)
-
                         with open(dp, "w", encoding="utf-8") as f:
-
                             json.dump(fast_cache_json, f, indent=2)
-
                     except Exception:
-
                         pass
 
-
-
                 # Direct MySQL option sync for local XAMPP WordPress database if accessible
-
                 try:
-
                     import phpserialize
-
                 except Exception:
-
                     phpserialize = None
 
-
-
                 # Fallback to PHP helper script to update WordPress options via mysqli
-
                 try:
-
                     import subprocess
-
                     php_exe = r"C:\xampp\php\php.exe"
-
-                    is_local_mahabub = any("localhost/mahabub" in (ws.get("url") or ws.get("domain") or "") for ws in w_sites)
+                    is_local_mahabub = is_target_mahabub
                     if os.path.exists(php_exe) and is_local_mahabub:
                         mahabub_doc = next((ws for ws in w_sites if "localhost/mahabub" in (ws.get("url") or ws.get("domain") or "")), ref_ws)
                         mb_harden = mahabub_doc.get("hardening") or {}

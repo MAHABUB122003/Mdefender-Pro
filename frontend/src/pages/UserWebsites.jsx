@@ -82,8 +82,11 @@ export default function UserWebsites() {
   const [feedbackMsg, setFeedbackMsg] = useState(null)
   const [slotSummary, setSlotSummary] = useState(null)
   const [slotActionLoading, setSlotActionLoading] = useState({})
-
-
+  const [pauseModalSite, setPauseModalSite] = useState(null)
+  const [swapModalTargetSite, setSwapModalTargetSite] = useState(null)
+  const [selectedSwapReleaseId, setSelectedSwapReleaseId] = useState('')
+  const [swappingSlot, setSwappingSlot] = useState(false)
+  const pricingConfig = getStoredPricingConfig() || {}
 
   // Dedicated WordPress Websites with strictly synchronized license slot states
   const wpWebsites = useMemo(() => {
@@ -105,6 +108,7 @@ export default function UserWebsites() {
         return {
           ...w,
           is_licensed: isLic,
+          protection_paused: slotMatch ? Boolean(slotMatch.protection_paused) : Boolean(w.protection_paused),
           license_status: slotMatch?.license_status || w.license_status || (isLic ? 'active' : 'unlicensed')
         }
       })
@@ -363,6 +367,66 @@ export default function UserWebsites() {
       })
     } finally {
       setSlotActionLoading(prev => ({ ...prev, [siteId]: false }))
+    }
+  }
+
+  const handleToggleProtection = (w) => {
+    if (!w) return
+    const siteId = w.id || w._id
+    if (slotSummary?.is_trial_active) {
+      setFeedbackMsg({
+        type: 'success',
+        text: '🛡️ 14-Day Free Trial Active: All connected websites are automatically protected.'
+      })
+      return
+    }
+
+    if (w.is_licensed) {
+      // Prompt confirmation before pausing
+      setPauseModalSite(w)
+    } else {
+      // Currently paused / unlicensed
+      if (slotSummary && slotSummary.available_slots > 0) {
+        handleAssignSlot(siteId)
+      } else {
+        // All slots in use -> open swap modal
+        const activeSites = wpWebsites.filter(site => site.is_licensed)
+        const defaultSwapId = activeSites.length > 0 ? (activeSites[0].id || activeSites[0]._id) : ''
+        setSelectedSwapReleaseId(defaultSwapId)
+        setSwapModalTargetSite(w)
+      }
+    }
+  }
+
+  const handleConfirmPause = async () => {
+    if (!pauseModalSite) return
+    const siteId = pauseModalSite.id || pauseModalSite._id
+    setPauseModalSite(null)
+    await handleReleaseSlot(siteId)
+  }
+
+  const handleSwapSlot = async () => {
+    if (!swapModalTargetSite || !selectedSwapReleaseId) return
+    const targetId = swapModalTargetSite.id || swapModalTargetSite._id
+    setSwappingSlot(true)
+    setFeedbackMsg(null)
+    try {
+      const res = await api.swapLicenseSlot(selectedSwapReleaseId, targetId)
+      setFeedbackMsg({
+        type: 'success',
+        text: res?.data?.message || 'Protection swapped successfully!'
+      })
+      setSwapModalTargetSite(null)
+      userStore.invalidate('websites')
+      userStore.invalidate('dashboard')
+      await Promise.all([fetchData(true), fetchSlots()])
+    } catch (err) {
+      setFeedbackMsg({
+        type: 'error',
+        text: err.message || 'Failed to swap license slot.'
+      })
+    } finally {
+      setSwappingSlot(false)
     }
   }
 
@@ -1376,52 +1440,102 @@ export default function UserWebsites() {
               Manage WordPress site API keys, edge security status, and Under Attack enforcement.
             </p>
 
-            {/* Active Fleet License Slot Quota Meter */}
+            {/* Active Fleet License Capacity & Status Bar */}
             {slotSummary && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                marginTop: '8px',
-                flexWrap: 'wrap'
-              }}>
-                <span style={{
-                  fontSize: '11px',
-                  fontWeight: '750',
-                  padding: '3px 10px',
-                  borderRadius: '6px',
-                  background: slotSummary.available_slots > 0 ? '#E8F3EC' : '#FAFBF9',
-                  color: slotSummary.available_slots > 0 ? '#28745D' : '#10201E',
-                  border: `1px solid ${slotSummary.available_slots > 0 ? '#CFE2D4' : '#D9E1DC'}`,
-                  display: 'inline-flex',
+              slotSummary.is_trial_active ? (
+                <div style={{
+                  display: 'flex',
                   alignItems: 'center',
-                  gap: '6px'
+                  justifyContent: 'space-between',
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  marginTop: '12px',
+                  background: '#ECFDF5',
+                  border: '1px solid #A7F3D0',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  color: '#065F46',
+                  flexWrap: 'wrap',
+                  gap: '8px'
                 }}>
-                  <ShieldCheck size={13} color={slotSummary.available_slots > 0 ? '#28745D' : '#10201E'} />
-                  <span>
-                    License Allocation: <strong>{slotSummary.used_slots} / {slotSummary.total_slots} Slots Assigned</strong>
-                    {slotSummary.available_slots > 0 ? ` (${slotSummary.available_slots} Available)` : ' (All Slots In Use)'}
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                    <ShieldCheck size={16} color="#059669" />
+                    <span>
+                      14-Day Enterprise Trial Active &bull; All connected websites automatically protected ({wpWebsites.length} Active)
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '11px', color: '#047857', fontWeight: '500' }}>
+                    Full WAF + Malware Quarantine Active
                   </span>
-                </span>
+                </div>
+              ) : (
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  marginTop: '12px',
+                  background: '#FAFBF9',
+                  border: '1px solid #D9E1DC'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                      <ShieldCheck size={16} color={slotSummary.available_slots > 0 ? '#059669' : '#10201E'} />
+                      <span style={{ fontSize: '12px', fontWeight: '750', color: '#10201E' }}>
+                        Fleet Protection Capacity: <strong style={{ color: '#059669' }}>{slotSummary.used_slots}</strong> of {slotSummary.total_slots} Slots Assigned
+                      </span>
+                      <span style={{
+                        fontSize: '11px',
+                        padding: '2px 8px',
+                        borderRadius: '999px',
+                        fontWeight: '700',
+                        background: slotSummary.available_slots > 0 ? '#E8F3EC' : '#F1F5F3',
+                        color: slotSummary.available_slots > 0 ? '#059669' : '#64748B'
+                      }}>
+                        {slotSummary.available_slots > 0 ? `${slotSummary.available_slots} Available` : 'All Slots In Use'}
+                      </span>
+                    </div>
 
-                {slotSummary.available_slots === 0 && wpWebsites.some(w => !w.is_licensed) && (
-                  <Link
-                    to="/user/pricing"
-                    style={{
-                      fontSize: '11px',
-                      fontWeight: '800',
-                      color: '#E8792F',
-                      textDecoration: 'none',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}
-                  >
-                    <span>+ Scale Fleet Licenses ($4/mo)</span>
-                    <ArrowRight size={12} />
-                  </Link>
-                )}
-              </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowUpgradeModal(true)}
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: '750',
+                        color: '#059669',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: 0,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <span>+ Scale Fleet Licenses (+${pricingConfig?.bulk_tiers?.[0]?.unit_price || 4}/mo)</span>
+                      <ArrowRight size={12} />
+                    </button>
+                  </div>
+
+                  {/* Visual Capacity Fill Meter */}
+                  <div style={{
+                    width: '100%',
+                    height: '6px',
+                    background: '#E2E8F0',
+                    borderRadius: '999px',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${Math.min(100, (slotSummary.used_slots / Math.max(1, slotSummary.total_slots)) * 100)}%`,
+                      background: slotSummary.available_slots > 0 ? '#10B981' : '#059669',
+                      borderRadius: '999px',
+                      transition: 'width 0.3s ease'
+                    }} />
+                  </div>
+                </div>
+              )
             )}
 
           </div>
@@ -1606,9 +1720,9 @@ export default function UserWebsites() {
 
                       }}>
 
-                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981' }} />
+                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: w.is_licensed ? '#10B981' : '#9CA3AF' }} />
 
-                        <span>{w.status || 'Active'}</span>
+                        <span>{w.is_licensed ? (w.status || 'Active') : 'Paused'}</span>
 
                       </span>
 
@@ -1630,11 +1744,55 @@ export default function UserWebsites() {
                         <span>WordPress Plugin</span>
                       </span>
 
-                      {/* License Slot State & Action Button */}
-                      {w.is_licensed ? (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      {/* Modern High-End Protection Toggle Switch & Status */}
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={w.is_licensed}
+                          disabled={slotSummary?.is_trial_active || slotActionLoading[w.id || w._id]}
+                          onClick={() => handleToggleProtection(w)}
+                          title={
+                            slotSummary?.is_trial_active
+                              ? '14-Day Free Trial: All websites are automatically protected.'
+                              : w.is_licensed
+                              ? 'Click to pause protection and release slot'
+                              : 'Click to activate protection'
+                          }
+                          style={{
+                            position: 'relative',
+                            width: '40px',
+                            height: '22px',
+                            borderRadius: '999px',
+                            background: w.is_licensed ? '#059669' : '#D1D5DB',
+                            border: 'none',
+                            cursor: (slotSummary?.is_trial_active || slotActionLoading[w.id || w._id]) ? 'default' : 'pointer',
+                            padding: '2px',
+                            transition: 'background 0.2s ease, opacity 0.2s ease',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            outline: 'none',
+                            opacity: slotActionLoading[w.id || w._id] ? 0.6 : 1,
+                            flexShrink: 0
+                          }}
+                        >
+                          <span
+                            style={{
+                              display: 'block',
+                              width: '18px',
+                              height: '18px',
+                              borderRadius: '50%',
+                              background: '#FFFFFF',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+                              transform: w.is_licensed ? 'translateX(18px)' : 'translateX(0px)',
+                              transition: 'transform 0.2s ease'
+                            }}
+                          />
+                        </button>
+
+                        {w.is_licensed ? (
                           <span style={{
-                            fontSize: '10px',
+                            fontSize: '10.5px',
                             padding: '2px 8px',
                             borderRadius: '6px',
                             background: '#F0FDF4',
@@ -1646,96 +1804,50 @@ export default function UserWebsites() {
                             gap: '4px'
                           }}>
                             <CheckCircle2 size={11} color="#15803D" />
-                            <span>Licensed (Protected)</span>
+                            <span>{slotSummary?.is_trial_active ? 'Trial Protected' : 'Protected (ON)'}</span>
                           </span>
-                          <button
-                            type="button"
-                            disabled={slotActionLoading[w.id || w._id]}
-                            onClick={() => handleReleaseSlot(w.id || w._id)}
-                            title="Release this license slot so it can be assigned to another website"
-                            style={{
-                              fontSize: '10px',
-                              fontWeight: '600',
-                              padding: '2px 7px',
+                        ) : (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{
+                              fontSize: '10.5px',
+                              padding: '2px 8px',
                               borderRadius: '6px',
-                              background: '#FFFFFF',
+                              background: '#F3F4F6',
                               color: '#6B7280',
-                              border: '1px solid #D1D5DB',
-                              cursor: slotActionLoading[w.id || w._id] ? 'wait' : 'pointer',
+                              border: '1px solid #E5E7EB',
+                              fontWeight: '700',
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '3px',
-                              transition: 'all 0.15s ease'
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.color = '#B45309'; e.currentTarget.style.borderColor = '#F59E0B'; }}
-                            onMouseLeave={e => { e.currentTarget.style.color = '#6B7280'; e.currentTarget.style.borderColor = '#D1D5DB'; }}
-                          >
-                            <span>{slotActionLoading[w.id || w._id] ? 'Releasing...' : 'Release Slot'}</span>
-                          </button>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{
-                            fontSize: '10px',
-                            padding: '2px 8px',
-                            borderRadius: '6px',
-                            background: '#FEF3C7',
-                            color: '#B45309',
-                            border: '1px solid #FDE68A',
-                            fontWeight: '700',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}>
-                            <AlertTriangle size={11} color="#B45309" />
-                            <span>Unlicensed (Protection Paused)</span>
-                          </span>
+                              gap: '4px'
+                            }}>
+                              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#9CA3AF' }} />
+                              <span>Protection Paused</span>
+                            </span>
 
-                          {slotSummary && slotSummary.available_slots > 0 ? (
-                            <button
-                              type="button"
-                              disabled={slotActionLoading[w.id || w._id]}
-                              onClick={() => handleAssignSlot(w.id || w._id)}
-                              style={{
-                                fontSize: '10.5px',
-                                fontWeight: '750',
-                                padding: '3px 9px',
-                                borderRadius: '6px',
-                                background: '#0B2522',
-                                color: '#FFFFFF',
-                                border: 'none',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '3px',
-                                transition: 'all 0.15s ease'
-                              }}
-                            >
-                              <ShieldCheck size={11} color="#10B981" />
-                              <span>{slotActionLoading[w.id || w._id] ? 'Claiming...' : 'Assign Slot'}</span>
-                            </button>
-                          ) : (
-                            <Link
-                              to="/user/pricing"
-                              style={{
-                                fontSize: '10.5px',
-                                fontWeight: '750',
-                                padding: '3px 8px',
-                                borderRadius: '6px',
-                                background: '#FFFBEB',
-                                color: '#B45309',
-                                border: '1px solid #FDE68A',
-                                textDecoration: 'none',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '3px'
-                              }}
-                            >
-                              <span>Add Slot (+$4/mo)</span>
-                            </Link>
-                          )}
-                        </div>
-                      )}
+                            {slotSummary && slotSummary.available_slots === 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleProtection(w)}
+                                style={{
+                                  fontSize: '10px',
+                                  fontWeight: '750',
+                                  padding: '2px 7px',
+                                  borderRadius: '5px',
+                                  background: '#FFFBEB',
+                                  color: '#B45309',
+                                  border: '1px solid #FDE68A',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px'
+                                }}
+                              >
+                                <span>Swap Slot</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
 
 
 
@@ -2097,66 +2209,35 @@ export default function UserWebsites() {
                           <span>Open WP-Admin (1-Click SSO)</span>
                         </button>
 
-                        {/* License Slot Reassignment Action */}
-                        {w.is_licensed ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setActiveMenuSiteId(null)
-                              handleReleaseSlot(w.id || w._id)
-                            }}
-                            style={{
-                              width: '100%',
-                              padding: '8px 12px',
-                              background: 'none',
-                              border: 'none',
-                              borderRadius: '8px',
-                              color: '#B45309',
-                              fontSize: '12px',
-                              fontWeight: '600',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              textAlign: 'left',
-                              transition: 'background 0.12s ease'
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#FFFBEB' }}
-                            onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
-                          >
-                            <Sliders size={14} color="#B45309" />
-                            <span>Release License Slot</span>
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setActiveMenuSiteId(null)
-                              handleAssignSlot(w.id || w._id)
-                            }}
-                            style={{
-                              width: '100%',
-                              padding: '8px 12px',
-                              background: 'none',
-                              border: 'none',
-                              borderRadius: '8px',
-                              color: '#059669',
-                              fontSize: '12px',
-                              fontWeight: '700',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              textAlign: 'left',
-                              transition: 'background 0.12s ease'
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#ECFDF5' }}
-                            onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
-                          >
-                            <ShieldCheck size={14} color="#059669" />
-                            <span>Assign License Slot</span>
-                          </button>
-                        )}
+                        {/* License Protection Toggle Action */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveMenuSiteId(null)
+                            handleToggleProtection(w)
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            background: 'none',
+                            border: 'none',
+                            borderRadius: '8px',
+                            color: w.is_licensed ? '#B45309' : '#059669',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            textAlign: 'left',
+                            transition: 'background 0.12s ease'
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = w.is_licensed ? '#FFFBEB' : '#ECFDF5' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
+                        >
+                          <Sliders size={14} color={w.is_licensed ? '#B45309' : '#059669'} />
+                          <span>{w.is_licensed ? 'Pause Protection (Release Slot)' : 'Activate Protection (Claim Slot)'}</span>
+                        </button>
 
 
 
@@ -2643,6 +2724,273 @@ export default function UserWebsites() {
       )}
 
 
+
+      {/* Pause Protection Confirmation Modal (Accidental Click Guard) */}
+      {pauseModalSite && (
+        <div
+          onClick={() => setPauseModalSite(null)}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+            padding: '20px'
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#ffffff', borderRadius: '16px', border: '1px solid #E5E7EB',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', width: '100%', maxWidth: '440px',
+              padding: '24px', textAlign: 'left', color: '#111827'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '16px' }}>
+              <div style={{
+                width: '42px', height: '42px', borderRadius: '12px', background: '#FEF3C7',
+                color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <AlertTriangle size={22} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: '800', margin: '0 0 4px', color: '#111827' }}>
+                  Pause Protection?
+                </h3>
+                <p style={{ fontSize: '13px', color: '#6B7280', margin: 0, wordBreak: 'break-all' }}>
+                  <strong>{pauseModalSite.domain || pauseModalSite.name}</strong>
+                </p>
+              </div>
+            </div>
+
+            <div style={{
+              background: '#FFFBEB',
+              border: '1px solid #FDE68A',
+              borderRadius: '10px',
+              padding: '12px 14px',
+              fontSize: '12.5px',
+              lineHeight: '1.5',
+              color: '#92400E',
+              marginBottom: '20px'
+            }}>
+              Toggling off protection releases this website's license slot back into your fleet pool. <strong>Real-time WAF inspection will pause</strong>, and incoming traffic will pass directly to WordPress until protection is resumed.
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setPauseModalSite(null)}
+                style={{
+                  padding: '9px 16px',
+                  background: '#FFFFFF',
+                  color: '#374151',
+                  border: '1px solid #D1D5DB',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={slotActionLoading[pauseModalSite.id || pauseModalSite._id]}
+                onClick={handleConfirmPause}
+                style={{
+                  padding: '9px 18px',
+                  background: '#DC2626',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <span>{slotActionLoading[pauseModalSite.id || pauseModalSite._id] ? 'Pausing...' : 'Confirm Pause'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Slot Swap & Fleet Scaling Modal */}
+      {swapModalTargetSite && (
+        <div
+          onClick={() => setSwapModalTargetSite(null)}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+            padding: '20px'
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#ffffff', borderRadius: '18px', border: '1px solid #E5E7EB',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', width: '100%', maxWidth: '480px',
+              padding: '24px', textAlign: 'left', color: '#111827'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '38px', height: '38px', borderRadius: '10px', background: '#ECFDF5',
+                  color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <ShieldCheck size={20} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '16px', fontWeight: '800', margin: 0, color: '#111827' }}>
+                    All License Slots in Use ({slotSummary?.used_slots || 0}/{slotSummary?.total_slots || 0})
+                  </h3>
+                  <p style={{ fontSize: '12px', color: '#6B7280', margin: '2px 0 0' }}>
+                    Choose how you want to protect <strong>{swapModalTargetSite.domain || swapModalTargetSite.name}</strong>:
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSwapModalTargetSite(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: '4px' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Option 1: Swap Protection */}
+            <div style={{
+              border: '1px solid #E5E7EB',
+              borderRadius: '12px',
+              padding: '14px',
+              marginBottom: '14px',
+              background: '#FAFAFA'
+            }}>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>Option A: Swap Protection with Active Website</span>
+              </div>
+              <p style={{ fontSize: '12px', color: '#6B7280', margin: '0 0 10px', lineHeight: '1.4' }}>
+                Select which active website to pause so that <strong>{swapModalTargetSite.domain || swapModalTargetSite.name}</strong> receives real-time WAF protection:
+              </p>
+
+              {wpWebsites.filter(site => site.is_licensed).length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '160px', overflowY: 'auto' }}>
+                  {wpWebsites.filter(site => site.is_licensed).map(activeSite => {
+                    const activeId = activeSite.id || activeSite._id
+                    const isSelected = selectedSwapReleaseId === activeId
+                    return (
+                      <label
+                        key={activeId}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          border: `1.5px solid ${isSelected ? '#059669' : '#E5E7EB'}`,
+                          background: isSelected ? '#ECFDF5' : '#FFFFFF',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: isSelected ? '700' : '500',
+                          color: isSelected ? '#065F46' : '#374151',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <input
+                            type="radio"
+                            name="swapReleaseSite"
+                            value={activeId}
+                            checked={isSelected}
+                            onChange={() => setSelectedSwapReleaseId(activeId)}
+                            style={{ accentColor: '#059669', cursor: 'pointer' }}
+                          />
+                          <span>{activeSite.domain || activeSite.name}</span>
+                        </div>
+                        <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: '#DEF7EC', color: '#03543F', fontWeight: '700' }}>
+                          Active
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div style={{ fontSize: '12px', color: '#9CA3AF' }}>No active websites available to swap.</div>
+              )}
+
+              <button
+                type="button"
+                disabled={!selectedSwapReleaseId || swappingSlot}
+                onClick={handleSwapSlot}
+                style={{
+                  width: '100%',
+                  marginTop: '12px',
+                  padding: '9px',
+                  background: (!selectedSwapReleaseId || swappingSlot) ? '#9CA3AF' : '#0B2522',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: '700',
+                  cursor: (!selectedSwapReleaseId || swappingSlot) ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Zap size={14} color="#34D399" />
+                <span>{swappingSlot ? 'Swapping Protection...' : 'Swap Protection Slot'}</span>
+              </button>
+            </div>
+
+            {/* Option 2: Scale Fleet Licenses */}
+            <div style={{
+              border: '1px solid #D1FAE5',
+              borderRadius: '12px',
+              padding: '12px 14px',
+              background: '#F0FDF4',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px'
+            }}>
+              <div>
+                <div style={{ fontSize: '12.5px', fontWeight: '800', color: '#065F46' }}>
+                  Option B: Add More Slots
+                </div>
+                <div style={{ fontSize: '11.5px', color: '#047857', marginTop: '2px' }}>
+                  Scale your fleet for just ${pricingConfig?.bulk_tiers?.[0]?.unit_price || 4}/website/mo
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSwapModalTargetSite(null)
+                  setShowUpgradeModal(true)
+                }}
+                style={{
+                  padding: '7px 12px',
+                  background: '#059669',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '7px',
+                  fontSize: '12px',
+                  fontWeight: '750',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                + Add Slot
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Upgrade Limit Prompt Modal (Clean White Theme) */}
 
