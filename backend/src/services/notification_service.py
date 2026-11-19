@@ -50,6 +50,9 @@ DEFAULT_PREFERENCES = {
     "malware_detected": True,
     "api_key_revoked": True,
     "subscription_expired": True,
+    "trial_reminder": True,
+    "trial_expired": True,
+    "subscription_renewal": True,
     "scan_completed": False,
     "config_issue": True,
     "policy_states": dict(DEFAULT_POLICY_STATES),
@@ -68,6 +71,9 @@ SEVERITY = {
     "malware_detected": "critical",
     "api_key_revoked": "warning",
     "subscription_expired": "warning",
+    "trial_reminder": "warning",
+    "trial_expired": "critical",
+    "subscription_renewal": "info",
     "scan_completed": "info",
     "config_issue": "critical",
 }
@@ -96,6 +102,9 @@ DEFAULT_COOLDOWNS = {
     "wp_admin_alert": 3600,
     "critical_attack": 3600,
     "malware_detected": 900,
+    "trial_reminder": 86400,
+    "trial_expired": 86400,
+    "subscription_renewal": 86400,
 }
 
 # Thread-safe in-memory cooldown cache to avoid DB hits on burst events

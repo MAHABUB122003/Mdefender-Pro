@@ -234,6 +234,18 @@ async def _report_scheduler_loop():
         await asyncio.sleep(300)
 
 
+async def _subscription_watchdog_loop():
+    """Background watchdog for trial expiration, Day-10 reminders, and renewal notices."""
+    await asyncio.sleep(45)
+    while True:
+        try:
+            from src.services.subscription_service import SubscriptionService
+            await asyncio.to_thread(lambda: SubscriptionService().check_and_process_subscription_lifecycle(batch_limit=50))
+        except Exception as e:
+            print(f"[Subscription Watchdog] Notice: {e}")
+        await asyncio.sleep(300)
+
+
 @app.on_event("startup")
 async def startup_event():
     port = os.getenv('PORT', '8000')
@@ -264,6 +276,7 @@ async def startup_event():
     asyncio.create_task(_stats_flush_loop())
     asyncio.create_task(_uptime_monitor_loop())
     asyncio.create_task(_report_scheduler_loop())
+    asyncio.create_task(_subscription_watchdog_loop())
 
     # Pre-load in-memory IP filter sets (eliminates first-hit DB delay)
     try:

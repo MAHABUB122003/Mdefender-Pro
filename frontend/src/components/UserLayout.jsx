@@ -34,12 +34,25 @@ export default function UserLayout({ children, onLogout }) {
   const location = useLocation()
   const navigate = useNavigate()
 
-  // Strict Onboarding Route Guard: Only un-onboarded accounts are redirected to onboarding
+  // Strict Onboarding & Expired Trial Route Guard:
   useEffect(() => {
     const cachedProfile = userStore.get('profile')
     if (cachedProfile && cachedProfile.role !== 'super_admin' && !cachedProfile.is_admin) {
       if (!cachedProfile.onboarded) {
         navigate('/onboarding', { replace: true })
+        return
+      }
+
+      // If trial is expired and user has not paid, prevent manual URL access to protected dashboard pages
+      const isExpired = Number(cachedProfile.trial_days_remaining) <= 0 && !cachedProfile.is_paid
+      const isAllowedRoute = (
+        location.pathname === '/user/pricing' ||
+        location.pathname === '/user/plans' ||
+        location.pathname === '/user/support' ||
+        location.pathname.startsWith('/payment')
+      )
+      if (isExpired && !isAllowedRoute) {
+        navigate('/user/pricing', { replace: true })
       }
     }
   }, [location.pathname, navigate])

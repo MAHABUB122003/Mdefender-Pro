@@ -366,6 +366,10 @@ class RegistrationService:
 
             # Valid OTP! Now, and ONLY now, create the user in db.users
             api_key = generate_api_key()
+            now_utc = datetime.now(timezone.utc)
+            trial_duration_days = 14
+            trial_ends_utc = now_utc + timedelta(days=trial_duration_days)
+
             user_doc = {
                 'full_name': pending.get('full_name', '').strip(),
                 'name': pending.get('name', '').strip(),
@@ -380,6 +384,11 @@ class RegistrationService:
                 'plan': 'free',
                 'role': 'user',
                 'is_active': True,
+                'payment_status': 'trialing',
+                'trial_started_at': now_utc,
+                'trial_ends_at': trial_ends_utc,
+                'purchased_slots': 0,
+                'licensed_website_ids': [],
                 'token_version': 0,
                 'websites': [],
                 'onboarded': False,
@@ -394,8 +403,8 @@ class RegistrationService:
                 'total_blocked': 0,
                 'plan_expires': None,
                 'ddos_enabled': True,
-                'created_at': datetime.now(timezone.utc),
-                'updated_at': datetime.now(timezone.utc),
+                'created_at': now_utc,
+                'updated_at': now_utc,
                 'last_login': None,
             }
 

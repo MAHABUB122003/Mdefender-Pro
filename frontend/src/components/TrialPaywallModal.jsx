@@ -24,7 +24,7 @@ import {
   AlertTriangle,
   Award
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import userStore from '../utils/userStore';
 import api from '../api/api';
 import { getStoredPricingConfig, subscribePricing, syncPricingWithBackend } from '../utils/pricingStore';
@@ -54,6 +54,7 @@ const brandTokens = {
 
 export default function TrialPaywallModal() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [dismissed, setDismissed] = useState(false);
   const [billingCycle, setBillingCycle] = useState('monthly'); // 'monthly' | 'yearly'
   const [siteCount, setSiteCount] = useState(1);
@@ -62,6 +63,15 @@ export default function TrialPaywallModal() {
 
   const cachedProfile = userStore.get('profile') || userStore.get('dashboard')?.user || null;
   const [profile, setProfile] = useState(() => cachedProfile);
+
+  // Allow unrestricted access to billing/pricing and support pages so expired users can complete payment
+  const isBillingOrSupportRoute = (
+    location.pathname === '/user/pricing' ||
+    location.pathname === '/user/plans' ||
+    location.pathname === '/user/support' ||
+    location.pathname.startsWith('/payment')
+  );
+  if (isBillingOrSupportRoute) return null;
 
   // TAMPER-PROOF SECURITY SHIELD:
   // URL testing overrides (?test_trial_days, ?test_pro) MUST ONLY be honored for:
@@ -80,11 +90,13 @@ export default function TrialPaywallModal() {
   const testProParam = isPrivilegedAdmin && urlParams ? urlParams.get('test_pro') : null;
 
   // Authoritative server resolution: NEVER trust client localStorage over authenticated server state
-  const userPlan = (testProParam === 'true'
-    ? 'pro'
-    : (profile?.plan || 'free')
-  ).toLowerCase();
-  const isPro = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan);
+  const isPaidActive = Boolean(
+    testProParam === 'true' ||
+    profile?.is_paid ||
+    profile?.is_admin ||
+    profile?.role === 'super_admin' ||
+    (profile?.payment_status === 'active' && profile?.plan && profile?.plan !== 'free')
+  );
 
   const defaultTrialDays = Number(dynamicPricing?.trial_days) || 14;
   const rawTrial = testTrialParam !== null
@@ -141,8 +153,8 @@ export default function TrialPaywallModal() {
     };
   }, []);
 
-  // 1. If PRO, never show paywall
-  if (isPro) return null;
+  // 1. If actively paid or admin, never show paywall
+  if (isPaidActive) return null;
 
   // 2. Days 1 to 9: Silent (modal hidden, full dashboard access)
   if (trialDays > 4) return null;

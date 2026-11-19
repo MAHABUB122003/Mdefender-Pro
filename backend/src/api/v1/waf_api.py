@@ -340,6 +340,23 @@ async def analyze(body: WafAnalyzeRequest, request: Request):
             "reference_id": None,
         })
 
+    # License Slot Verification: Unlicensed sites or expired accounts have paid protection paused
+    from src.services.license_slot_service import LicenseSlotService
+    is_lic, lic_reason = LicenseSlotService(db).verify_edge_license(
+        website_id=str(website.get("_id") or website.get("id")),
+        domain=website.get("domain") or body.domain,
+        user_id=auth_data.get("user_id")
+    )
+    if not is_lic:
+        return success({
+            "decision": "ALLOW",
+            "action": "allowed",
+            "reason": f"Protection paused: {lic_reason}",
+            "risk_score": 0,
+            "reference_id": None,
+            "license_required": True,
+        })
+
     decision_engine = DecisionEngine()
     req_data = body.request or {}
 

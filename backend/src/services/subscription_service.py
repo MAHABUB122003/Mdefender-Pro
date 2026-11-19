@@ -188,6 +188,87 @@ class SubscriptionService:
         self.db.entitlements.update_one({"user_id": str(user_id)}, {"$set": doc}, upsert=True)
         return doc
 
+    def check_and_process_subscription_lifecycle(self, batch_limit=50):
+        """Automated background watchdog for subscription lifecycles, Day-10 reminders, and trial expiration."""
+        from src.services.license_slot_service import LicenseSlotService
+        from src.services.notification_service import NotificationService
+        slot_service = LicenseSlotService(self.db)
+        notif_service = NotificationService(self.db)
+
+        users = list(self.db.users.find(
+            {"role": {"$ne": "super_admin"}},
+            {"_id": 1, "email": 1, "plan": 1, "payment_status": 1, "trial_ends_at": 1, "created_at": 1, "plan_expires": 1, "licensed_website_ids": 1}
+        ).limit(batch_limit))
+
+        results = {"reminders_sent": 0, "expirations_handled": 0, "renewals_reminded": 0}
+
+        for user_doc in users:
+            try:
+                uid_str = str(user_doc["_id"])
+                state = slot_service.resolve_user_license_state(user_doc)
+
+                # 1. Day-10 Free Trial Payment Reminder (4 days remaining)
+                if state.get("is_trial_active") and state.get("trial_days_remaining") <= 4 and state.get("trial_days_remaining") > 0:
+                    days_left = state["trial_days_remaining"]
+                    sent = notif_service.notify(
+                        uid_str,
+                        title=f"Free Trial Notice: {days_left} Days Remaining",
+                        message=f"Your 14-day MDefender fleet free trial has {days_left} day(s) remaining. Add your payment method to ensure continuous zero-downtime edge protection.",
+                        category="trial_reminder",
+                        dedupe_key=f"day10_{uid_str}",
+                        cooldown_seconds=86400
+                    )
+                    if sent:
+                        results["reminders_sent"] += 1
+
+                # 2. Trial Expiration Execution
+                elif not state.get("is_paid") and state.get("trial_days_remaining", 0) <= 0:
+                    current_payment_status = str(user_doc.get("payment_status") or "").lower()
+                    if current_payment_status in ("trialing", "trial_active", "none", ""):
+                        # Mark user as expired and revoke website protections
+                        u_query = {"_id": ObjectId(uid_str)} if ObjectId.is_valid(uid_str) else {"_id": uid_str}
+                        self.db.users.update_one(u_query, {"$set": {"payment_status": "trial_expired", "purchased_slots": 0, "licensed_website_ids": []}})
+
+                        # Deactivate website active status
+                        self.db.websites.update_many(
+                            {"user_id": {"$in": [uid_str, ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str]}},
+                            {"$set": {"is_licensed": False, "license_status": "trial_expired", "is_protected": False, "updated_at": datetime.now()}}
+                        )
+
+                        notif_service.notify(
+                            uid_str,
+                            title="14-Day Free Trial Concluded: Edge Protection Paused",
+                            message="Your 14-day free trial has concluded. Upgrade to an active fleet subscription to reactivate autonomous edge WAF filtering and malware protection.",
+                            category="trial_expired",
+                            dedupe_key=f"expired_{uid_str}",
+                            cooldown_seconds=86400
+                        )
+                        results["expirations_handled"] += 1
+
+                # 3. Upcoming Renewal Reminder (within 3 days of expiration)
+                elif state.get("is_paid") and user_doc.get("plan_expires"):
+                    from src.services.license_slot_service import _normalize_to_utc
+                    exp_dt = _normalize_to_utc(user_doc.get("plan_expires"), None)
+                    now_utc = datetime.now(timezone.utc)
+                    if exp_dt and exp_dt > now_utc:
+                        days_to_exp = int(math.ceil((exp_dt - now_utc).total_seconds() / 86400))
+                        if 0 < days_to_exp <= 3:
+                            sent = notif_service.notify(
+                                uid_str,
+                                title=f"Upcoming Renewal Notice: {days_to_exp} Days",
+                                message=f"Your MDefender subscription will automatically renew in {days_to_exp} day(s). Please verify your payment details remain up to date.",
+                                category="subscription_renewal",
+                                dedupe_key=f"renewal_{uid_str}_{exp_dt.strftime('%Y%m')}",
+                                cooldown_seconds=86400
+                            )
+                            if sent:
+                                results["renewals_reminded"] += 1
+
+            except Exception:
+                pass
+
+        return results
+
     def revoke_entitlement(self, user_id):
         result = self.db.entitlements.update_one(
             {"user_id": str(user_id)},
@@ -401,11 +482,29 @@ class SubscriptionService:
         )
 
     async def change_plan(self, user, plan):
-        """Change the user's plan. Persists on the user record; if a Paddle
-        subscription exists, requests a scheduled change (best-effort)."""
+        """Change the user's plan. Only allowed if user is admin, downgrading to free, or has an active Paddle subscription."""
         user_id = self._user_id(user)
-        from bson import ObjectId
+        sub = self.get_active_subscription(user)
+        is_admin = isinstance(user, dict) and (user.get("is_admin") or user.get("role") in ("admin", "super_admin"))
+
+        if plan != "free" and not sub and not is_admin:
+            return {
+                "plan": plan,
+                "applied": False,
+                "error": "CHECKOUT_REQUIRED",
+                "message": "An active subscription or checkout is required to activate a paid plan."
+            }
+
         now = datetime.now()
+        # If downgrading to free and an active subscription exists, schedule cancellation on Paddle
+        if plan == "free" and sub:
+            from src.services.paddle_service import PaddleService
+            try:
+                await PaddleService(db=self.db).cancel_subscription(sub.get("paddle_subscription_id"))
+            except Exception:
+                pass
+
+        from bson import ObjectId
         u_cond = [{"_id": str(user_id)}, {"email": str(user_id)}]
         try:
             if ObjectId.is_valid(str(user_id)):
@@ -420,12 +519,11 @@ class SubscriptionService:
             {"$set": {"plan": plan, "status": "active", "updated_at": now}}
         )
         changed = result.modified_count > 0
-        sub = self.get_active_subscription(user)
         scheduled = None
-        if sub:
+        if sub and plan != "free":
             from src.services.paddle_service import PaddleService
             try:
-                scheduled = await PaddleService().update_subscription_scheduled_change(
+                scheduled = await PaddleService(db=self.db).update_subscription_scheduled_change(
                     sub.get("paddle_subscription_id")
                 )
             except Exception:
@@ -459,3 +557,84 @@ class SubscriptionService:
                 pass
         self.db.entitlements.update_one({"user_id": str(user_id)}, {"$set": doc}, upsert=True)
         return doc
+
+    def check_and_process_subscription_lifecycle(self, batch_limit=50):
+        """Automated background watchdog for subscription lifecycles, Day-10 reminders, and trial expiration."""
+        from src.services.license_slot_service import LicenseSlotService
+        from src.services.notification_service import NotificationService
+        slot_service = LicenseSlotService(self.db)
+        notif_service = NotificationService(self.db)
+
+        users = list(self.db.users.find(
+            {"role": {"$ne": "super_admin"}},
+            {"_id": 1, "email": 1, "plan": 1, "payment_status": 1, "trial_ends_at": 1, "created_at": 1, "plan_expires": 1, "licensed_website_ids": 1}
+        ).limit(batch_limit))
+
+        results = {"reminders_sent": 0, "expirations_handled": 0, "renewals_reminded": 0}
+
+        for user_doc in users:
+            try:
+                uid_str = str(user_doc["_id"])
+                state = slot_service.resolve_user_license_state(user_doc)
+
+                # 1. Day-10 Free Trial Payment Reminder (4 days remaining)
+                if state.get("is_trial_active") and state.get("trial_days_remaining") <= 4 and state.get("trial_days_remaining") > 0:
+                    days_left = state["trial_days_remaining"]
+                    sent = notif_service.notify(
+                        uid_str,
+                        title=f"Free Trial Notice: {days_left} Days Remaining",
+                        message=f"Your 14-day MDefender fleet free trial has {days_left} day(s) remaining. Add your payment method to ensure continuous zero-downtime edge protection.",
+                        category="trial_reminder",
+                        dedupe_key=f"day10_{uid_str}",
+                        cooldown_seconds=86400
+                    )
+                    if sent:
+                        results["reminders_sent"] += 1
+
+                # 2. Trial Expiration Execution
+                elif not state.get("is_paid") and state.get("trial_days_remaining", 0) <= 0:
+                    current_payment_status = str(user_doc.get("payment_status") or "").lower()
+                    if current_payment_status in ("trialing", "trial_active", "none", ""):
+                        # Mark user as expired and revoke website protections
+                        u_query = {"_id": ObjectId(uid_str)} if ObjectId.is_valid(uid_str) else {"_id": uid_str}
+                        self.db.users.update_one(u_query, {"$set": {"payment_status": "trial_expired", "purchased_slots": 0, "licensed_website_ids": []}})
+
+                        # Deactivate website active status
+                        self.db.websites.update_many(
+                            {"user_id": {"$in": [uid_str, ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str]}},
+                            {"$set": {"is_licensed": False, "license_status": "trial_expired", "is_protected": False, "updated_at": datetime.now()}}
+                        )
+
+                        notif_service.notify(
+                            uid_str,
+                            title="14-Day Free Trial Concluded: Edge Protection Paused",
+                            message="Your 14-day free trial has concluded. Upgrade to an active fleet subscription to reactivate autonomous edge WAF filtering and malware protection.",
+                            category="trial_expired",
+                            dedupe_key=f"expired_{uid_str}",
+                            cooldown_seconds=86400
+                        )
+                        results["expirations_handled"] += 1
+
+                # 3. Upcoming Renewal Reminder (within 3 days of expiration)
+                elif state.get("is_paid") and user_doc.get("plan_expires"):
+                    from src.services.license_slot_service import _normalize_to_utc
+                    exp_dt = _normalize_to_utc(user_doc.get("plan_expires"), None)
+                    now_utc = datetime.now(timezone.utc)
+                    if exp_dt and exp_dt > now_utc:
+                        days_to_exp = int(math.ceil((exp_dt - now_utc).total_seconds() / 86400))
+                        if 0 < days_to_exp <= 3:
+                            sent = notif_service.notify(
+                                uid_str,
+                                title=f"Upcoming Renewal Notice: {days_to_exp} Days",
+                                message=f"Your MDefender subscription will automatically renew in {days_to_exp} day(s). Please verify your payment details remain up to date.",
+                                category="subscription_renewal",
+                                dedupe_key=f"renewal_{uid_str}_{exp_dt.strftime('%Y%m')}",
+                                cooldown_seconds=86400
+                            )
+                            if sent:
+                                results["renewals_reminded"] += 1
+
+            except Exception:
+                pass
+
+        return results

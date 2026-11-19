@@ -124,7 +124,7 @@ from pydantic import BaseModel, Field
 
 
 
-from src.api.v1.deps import get_owned_website
+from src.api.v1.deps import get_owned_website, get_licensed_website
 
 
 
@@ -4399,14 +4399,7 @@ class WebsiteScanTriggerRequest(BaseModel):
 
 
 async def trigger_website_scan(website_id: str, body: WebsiteScanTriggerRequest = None, user=Depends(get_current_user)):
-
-
-
-
-
-
-
-    website = get_owned_website(user, website_id)
+    website = get_licensed_website(user, website_id)
 
 
 
@@ -5820,14 +5813,7 @@ async def get_website_scans(website_id: str, limit: int = 10, user=Depends(get_c
 
 
 async def quarantine_website_file(website_id: str, body: dict = None, user=Depends(get_current_user)):
-
-
-
-
-
-
-
-    website = get_owned_website(user, website_id)
+    website = get_licensed_website(user, website_id)
 
 
 
@@ -6061,14 +6047,7 @@ async def view_website_file(website_id: str, body: dict = None, user=Depends(get
 
 
 async def repair_website_core_file(website_id: str, body: dict = None, user=Depends(get_current_user)):
-
-
-
-
-
-
-
-    website = get_owned_website(user, website_id)
+    website = get_licensed_website(user, website_id)
 
 
 
@@ -9703,8 +9682,16 @@ async def execute_remote_action(website_id: str, body: RemoteActionRequest, user
         if ObjectId.is_valid(str(user["id"])):
             u_cond.append({"user_id": ObjectId(str(user["id"]))})
         websites = list(db.websites.find({"$or": u_cond, "platform": {"$regex": "^wordpress", "$options": "i"}}))
+        if not user.get("is_admin") and user.get("role") not in ("admin", "super_admin"):
+            from src.services.license_slot_service import LicenseSlotService
+            lic_state = LicenseSlotService(db).resolve_user_license_state(user)
+            if not lic_state.get("is_paid") and not lic_state.get("is_trial_active"):
+                raise HTTPException(status_code=402, detail="Active subscription required for fleet remote actions.")
+            user_doc = db.users.find_one({"_id": ObjectId(str(user["id"]))}) if ObjectId.is_valid(str(user["id"])) else db.users.find_one({"_id": str(user["id"])})
+            target_ids = set([str(x) for x in (user_doc.get("licensed_website_ids", []) if user_doc else [])])
+            websites = [w for w in websites if str(w.get("_id")) in target_ids]
     else:
-        website = get_owned_website(user, website_id)
+        website = get_licensed_website(user, website_id)
         websites = [website]
 
     if not websites:
@@ -10256,8 +10243,16 @@ async def execute_posthack_action(website_id: str, body: PostHackActionRequest, 
             if dedup_key not in seen_keys:
                 seen_keys.add(dedup_key)
                 websites.append(w)
+        if not is_admin:
+            from src.services.license_slot_service import LicenseSlotService
+            lic_state = LicenseSlotService(db).resolve_user_license_state(user)
+            if not lic_state.get("is_paid") and not lic_state.get("is_trial_active"):
+                raise HTTPException(status_code=402, detail="Active subscription required for emergency post-hack recovery actions.")
+            user_doc = db.users.find_one({"_id": ObjectId(u_id_str)}) if ObjectId.is_valid(u_id_str) else db.users.find_one({"_id": u_id_str})
+            target_ids = set([str(x) for x in (user_doc.get("licensed_website_ids", []) if user_doc else [])])
+            websites = [w for w in websites if str(w.get("_id")) in target_ids]
     else:
-        website = get_owned_website(user, website_id)
+        website = get_licensed_website(user, website_id)
         websites = [website]
 
     if not websites:
@@ -11606,22 +11601,8 @@ async def get_website_backups(website_id: str, user=Depends(get_current_user)):
 
 
 async def create_website_backup(website_id: str, body: CreateBackupRequest, user=Depends(get_current_user)):
-
-
-
-
-
-
-
     """Create a new full, database, files, or custom disaster recovery snapshot."""
-
-
-
-
-
-
-
-    website = get_owned_website(user, website_id)
+    website = get_licensed_website(user, website_id)
 
 
 
@@ -11846,22 +11827,8 @@ async def download_website_backup(website_id: str, filename: str, user=Depends(g
 
 
 async def restore_website_backup(website_id: str, filename: str, user=Depends(get_current_user)):
-
-
-
-
-
-
-
     """1-Click Disaster Recovery: Reconstitute database and files from backup archive."""
-
-
-
-
-
-
-
-    website = get_owned_website(user, website_id)
+    website = get_licensed_website(user, website_id)
 
 
 
@@ -12873,7 +12840,7 @@ async def get_safe_updates_history(website_id: str, user=Depends(get_current_use
 @router.post("/{website_id}/safe-updates/run")
 async def run_safe_update_pipeline(website_id: str, body: SafeUpdateRequest, user=Depends(get_current_user)):
     """Execute 4-phase safe update: Snapshot -> Baseline -> Update -> Synthetic Probes -> Rollback if failed."""
-    website = get_owned_website(user, website_id)
+    website = get_licensed_website(user, website_id)
     db = MongoDB()
 
     target_url = website.get("url") or website.get("domain") or ""
@@ -13087,7 +13054,7 @@ async def get_website_hardening_overview(website_id: str, refresh: bool = False,
 @router.post("/{website_id}/hardening/apply-preset")
 async def apply_hardening_preset(website_id: str, body: HardeningProfileRequest, user=Depends(get_current_user)):
     """Enforce full security profile across origin (Essential, Balanced, Strict)."""
-    website = get_owned_website(user, website_id)
+    website = get_licensed_website(user, website_id)
     db = MongoDB()
     target_url = website.get("url") or website.get("domain") or ""
     if target_url and not target_url.startswith("http"):
@@ -13145,7 +13112,7 @@ async def apply_hardening_preset(website_id: str, body: HardeningProfileRequest,
 @router.post("/{website_id}/hardening/toggle")
 async def toggle_hardening_control(website_id: str, body: HardeningToggleRequest, user=Depends(get_current_user)):
     """Toggle a specific granular hardening directive with pre-flight check."""
-    website = get_owned_website(user, website_id)
+    website = get_licensed_website(user, website_id)
     db = MongoDB()
 
     # Update MongoDB immediately so state persists with zero latency
@@ -13277,7 +13244,7 @@ async def get_website_database_status(website_id: str, user=Depends(get_current_
 @router.post("/{website_id}/database/optimize")
 async def optimize_website_database(website_id: str, body: DatabaseOptimizeRequest, user=Depends(get_current_user)):
     """Run non-destructive database optimization (revisions, transients, spam, table defragmentation)."""
-    website = get_owned_website(user, website_id)
+    website = get_licensed_website(user, website_id)
     target_url = website.get("url") or website.get("domain") or ""
     if target_url and not target_url.startswith("http"):
         target_url = "http://localhost/mahabub" if "localhost" in target_url else f"https://{target_url}"
@@ -13317,6 +13284,15 @@ async def bulk_optimize_databases(body: DatabaseOptimizeRequest, user=Depends(ge
     # Filter by specific website_ids if provided
     if body.website_ids:
         sites = [s for s in sites if str(s.get("_id", "")) in body.website_ids or str(s.get("id", "")) in body.website_ids]
+
+    if not user.get("is_admin") and user.get("role") not in ("admin", "super_admin"):
+        from src.services.license_slot_service import LicenseSlotService
+        lic_state = LicenseSlotService(db).resolve_user_license_state(user)
+        if not lic_state.get("is_paid") and not lic_state.get("is_trial_active"):
+            raise HTTPException(status_code=402, detail="Active subscription required for database optimization.")
+        user_doc = db.users.find_one({"_id": ObjectId(user_id_str)}) if ObjectId.is_valid(user_id_str) else db.users.find_one({"_id": user_id_str})
+        target_ids = set([str(x) for x in (user_doc.get("licensed_website_ids", []) if user_doc else [])])
+        sites = [s for s in sites if str(s.get("_id")) in target_ids or str(s.get("id")) in target_ids]
 
     results = []
 
@@ -13471,6 +13447,15 @@ async def bulk_enforce_environment_lockdown(body: EnvironmentLockdownRequest, us
 
     if body.website_ids:
         sites = [s for s in sites if str(s.get("_id", "")) in body.website_ids or str(s.get("id", "")) in body.website_ids]
+
+    if not user.get("is_admin") and user.get("role") not in ("admin", "super_admin"):
+        from src.services.license_slot_service import LicenseSlotService
+        lic_state = LicenseSlotService(db).resolve_user_license_state(user)
+        if not lic_state.get("is_paid") and not lic_state.get("is_trial_active"):
+            raise HTTPException(status_code=402, detail="Active subscription required for environment lockdown.")
+        user_doc = db.users.find_one({"_id": ObjectId(user_id_str)}) if ObjectId.is_valid(user_id_str) else db.users.find_one({"_id": user_id_str})
+        target_ids = set([str(x) for x in (user_doc.get("licensed_website_ids", []) if user_doc else [])])
+        sites = [s for s in sites if str(s.get("_id")) in target_ids or str(s.get("id")) in target_ids]
 
     results = []
 
@@ -13658,6 +13643,15 @@ async def bulk_scan_fleet_reputation(body: ReputationScanRequest = ReputationSca
 
     if body.website_ids:
         sites = [s for s in sites if str(s.get("_id", "")) in body.website_ids or str(s.get("id", "")) in body.website_ids]
+
+    if not user.get("is_admin") and user.get("role") not in ("admin", "super_admin"):
+        from src.services.license_slot_service import LicenseSlotService
+        lic_state = LicenseSlotService(db).resolve_user_license_state(user)
+        if not lic_state.get("is_paid") and not lic_state.get("is_trial_active"):
+            raise HTTPException(status_code=402, detail="Active subscription required for fleet reputation scans.")
+        user_doc = db.users.find_one({"_id": ObjectId(user_id_str)}) if ObjectId.is_valid(user_id_str) else db.users.find_one({"_id": user_id_str})
+        target_ids = set([str(x) for x in (user_doc.get("licensed_website_ids", []) if user_doc else [])])
+        sites = [s for s in sites if str(s.get("_id")) in target_ids or str(s.get("id")) in target_ids]
 
     rep_svc = ReputationService()
     results = []

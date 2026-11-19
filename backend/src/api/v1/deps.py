@@ -104,6 +104,30 @@ def get_owned_website(user, website_id):
     return website
 
 
+def get_licensed_website(user, website_id):
+    """Resolve an owned website and verify that it holds an active license slot.
+    Guarantees that unlicensed websites cannot access paid/active security services.
+    """
+    website = get_owned_website(user, website_id)
+    if user.get("is_admin") or user.get("role") in ("admin", "super_admin"):
+        return website
+
+    wid_str = str(website.get("_id") or website.get("id"))
+    from src.services.license_slot_service import LicenseSlotService
+    db = get_db()
+    is_lic, reason = LicenseSlotService(db).verify_edge_license(
+        website_id=wid_str,
+        domain=website.get("domain"),
+        user_id=str(user.get("id") or user.get("_id"))
+    )
+    if not is_lic:
+        raise HTTPException(
+            status_code=403,
+            detail=f"License slot required: {reason} Please assign an active license slot to this website from your MDefender Dashboard."
+        )
+    return website
+
+
 def require_super_admin(admin_email, db=None):
     db = db or get_db()
     admin = db.users.find_one({"email": admin_email})

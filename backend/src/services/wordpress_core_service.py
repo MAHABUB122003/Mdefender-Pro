@@ -529,7 +529,13 @@ class WordPressCoreService:
         if not latest_ver:
             raise RuntimeError("The official WordPress version could not be verified")
 
+        user_doc = self.db.users.find_one({"_id": ObjectId(user_id)}) if ObjectId.is_valid(user_id) else self.db.users.find_one({"_id": user_id})
+        is_admin = bool(user_doc and (user_doc.get("is_admin") or user_doc.get("role") in ("admin", "super_admin")))
+
         sites = list(self.db.websites.find({"user_id": user_id}))
+        if user_doc and not is_admin:
+            target_ids = set([str(x) for x in user_doc.get("licensed_website_ids", [])])
+            sites = [s for s in sites if str(s.get("_id")) in target_ids]
         results = []
         for site in sites:
             connection = site.get("wordpress_connection") or {}

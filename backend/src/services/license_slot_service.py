@@ -12,7 +12,7 @@ Implements bulletproof, non-bypassable license slot enforcement:
 import time
 import logging
 import math
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from bson import ObjectId
 from typing import Dict, Any, List, Optional, Tuple
 
@@ -23,6 +23,22 @@ logger = logging.getLogger("mdefender.license_slots")
 # Thread-safe in-memory cache for high-frequency edge verification: { cache_key: (is_licensed, expiry_timestamp) }
 _LICENSE_CACHE: Dict[str, Tuple[bool, float]] = {}
 CACHE_TTL_SECONDS = 15.0
+
+
+def _normalize_to_utc(val, fallback=None):
+    """Safely normalize strings, naive datetimes, or aware datetimes to UTC timezone-aware datetime."""
+    if val is None:
+        return fallback
+    if isinstance(val, str):
+        try:
+            val = datetime.fromisoformat(val.replace("Z", "+00:00"))
+        except Exception:
+            return fallback
+    if isinstance(val, datetime):
+        if val.tzinfo is None:
+            return val.replace(tzinfo=timezone.utc)
+        return val.astimezone(timezone.utc)
+    return fallback
 
 
 def _invalidate_cache(user_id: str = None, website_id: str = None):
@@ -65,20 +81,9 @@ class LicenseSlotService:
 
     def resolve_user_license_state(self, user_doc: Dict[str, Any]) -> Dict[str, Any]:
         """Resolve a user's total purchased slots, trial days, and subscription state."""
-        now_dt = datetime.now()
-        u_created = user_doc.get("created_at") or now_dt
-        if isinstance(u_created, str):
-            try:
-                u_created = datetime.fromisoformat(u_created)
-            except Exception:
-                u_created = now_dt
-
-        trial_ends = user_doc.get("trial_ends_at") or (u_created + timedelta(days=14))
-        if isinstance(trial_ends, str):
-            try:
-                trial_ends = datetime.fromisoformat(trial_ends)
-            except Exception:
-                trial_ends = u_created + timedelta(days=14)
+        now_dt = datetime.now(timezone.utc)
+        u_created = _normalize_to_utc(user_doc.get("created_at"), now_dt)
+        trial_ends = _normalize_to_utc(user_doc.get("trial_ends_at"), u_created + timedelta(days=14))
 
         t_days_rem = max(0, int(math.ceil((trial_ends - now_dt).total_seconds() / 86400)))
 
@@ -87,29 +92,31 @@ class LicenseSlotService:
         role = str(user_doc.get("role") or "user").lower()
         is_admin_user = role in ("admin", "super_admin")
 
-        # Check active subscription in db.subscriptions (Paddle / Stripe webhook source of truth)
+        # Check active subscription in db.subscriptions (Paddle webhook source of truth)
         uid_str = str(user_doc["_id"])
         sub = self.db.subscriptions.find_one({"user_id": uid_str, "status": {"$in": ["active", "trialing"]}})
         if sub:
             plan = str(sub.get("plan") or plan).lower()
             payment_status = "active"
 
-        # Check plan expiration timestamp
-        plan_expires = user_doc.get("plan_expires")
-        if isinstance(plan_expires, str):
-            try:
-                plan_expires = datetime.fromisoformat(plan_expires)
-            except Exception:
-                plan_expires = None
+        # Check active admin-granted entitlement in db.entitlements
+        ent = self.db.entitlements.find_one({"user_id": uid_str, "status": "active"})
+        ent_active = False
+        if ent:
+            ent_exp = _normalize_to_utc(ent.get("expires_at"), None)
+            if ent_exp is None or ent_exp > now_dt:
+                ent_active = True
+                plan = str(ent.get("plan") or plan).lower()
 
-        has_subscription_expired = bool(plan_expires and plan_expires < now_dt and not sub)
+        # Check plan expiration timestamp
+        plan_expires = _normalize_to_utc(user_doc.get("plan_expires"), None)
+        has_subscription_expired = bool(plan_expires and plan_expires < now_dt and not sub and not ent_active)
 
         # Check if user has active paid subscription or admin entitlement
-        is_paid = is_admin_user or (
+        is_paid = is_admin_user or ent_active or (
             not has_subscription_expired and (
-                (payment_status in ("active", "trialing") and plan != "free") or (
-                    plan in ("go", "pro", "enterprise", "premium", "ultra") and payment_status != "canceled"
-                )
+                (sub is not None and sub.get("status") in ("active", "trialing")) or
+                (payment_status == "active" and plan != "free" and (not plan_expires or plan_expires > now_dt))
             )
         )
         is_trial_active = (not is_paid) and (t_days_rem > 0)

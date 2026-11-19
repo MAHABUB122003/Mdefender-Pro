@@ -60,7 +60,7 @@ from pydantic import BaseModel
 
 
 
-from src.api.v1.deps import get_owned_website
+from src.api.v1.deps import get_owned_website, get_licensed_website
 from src.api.v1.waf_api import (
     find_user_website_exact,
     normalize_target_identity,
@@ -2440,12 +2440,9 @@ async def get_wordpress_core_status(user=Depends(get_current_user)):
 
 
 @router.post("/core/{website_id}/verify-checksums")
-
 async def verify_site_core_checksums(website_id: str, user=Depends(get_current_user)):
-
     """Run real MD5 verification against official WordPress.org SVN release checksums."""
-
-    get_owned_website(user, website_id)
+    get_licensed_website(user, website_id)
 
     user_id = str(user.get("id") or user.get("_id") or "")
 
@@ -2486,44 +2483,33 @@ async def update_core_auto_update_policy(website_id: str, body: CorePolicyReques
 
 
 @router.post("/core/{website_id}/update")
-
 async def update_site_core(website_id: str, user=Depends(get_current_user)):
-
     """Trigger 1-click update to the latest official stable WordPress release."""
-
-    get_owned_website(user, website_id)
-
+    get_licensed_website(user, website_id)
     user_id = str(user.get("id") or user.get("_id") or "")
-
     svc = WordPressCoreService()
-
     res = svc.update_core(website_id=website_id, user_id=user_id)
-
     return success(res)
 
 
-
-
-
 @router.post("/core/update-all")
-
 async def update_all_sites_core(user=Depends(get_current_user)):
-
     """Trigger bulk upgrade across all fleet sites to latest official stable WordPress release."""
-
+    if not user.get("is_admin") and user.get("role") not in ("admin", "super_admin"):
+        from src.services.license_slot_service import LicenseSlotService
+        lic_state = LicenseSlotService(MongoDB()).resolve_user_license_state(user)
+        if not lic_state.get("is_paid") and not lic_state.get("is_trial_active"):
+            raise HTTPException(status_code=402, detail="Active subscription required for fleet updates.")
     user_id = str(user.get("id") or user.get("_id") or "")
-
     svc = WordPressCoreService()
-
     res = svc.update_all_fleet(user_id=user_id)
-
     return success(res)
 
 
 @router.post("/core/{website_id}/repair-all")
 async def repair_all_site_core_files(website_id: str, user=Depends(get_current_user)):
     """One-click repair all corrupted/modified core files on the WordPress website."""
-    get_owned_website(user, website_id)
+    get_licensed_website(user, website_id)
     user_id = str(user.get("id") or user.get("_id") or "")
     svc = WordPressCoreService()
     try:
