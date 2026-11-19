@@ -669,7 +669,9 @@ export const api = {
     return apiCall(`/api/v1/billing/verify-transaction${qs ? '?' + qs : ''}`, { skipAuthRedirect: true });
   },
   getBillingSubscription: () => apiCall('/api/v1/billing/subscription'),
-  cancelSubscription: () => apiCall('/api/v1/billing/cancel', { method: 'POST' }),
+  cancelSubscription: () => apiCall('/api/v1/billing/cancel-auto-renew', { method: 'POST' }),
+  cancelAutoRenew: () => apiCall('/api/v1/billing/cancel-auto-renew', { method: 'POST' }),
+  reactivateAutoRenew: () => apiCall('/api/v1/billing/reactivate-auto-renew', { method: 'POST' }),
   changeBillingPlan: (plan) => apiCall('/api/v1/billing/change-plan', { method: 'POST', body: JSON.stringify({ plan }) }),
 
   // Fleet License Slot Allocation & Quota Management

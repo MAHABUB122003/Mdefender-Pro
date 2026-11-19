@@ -27,6 +27,9 @@ import {
   Activity,
   ShieldCheck,
   CheckCircle2,
+  Calendar,
+  Clock,
+  ExternalLink,
 } from 'lucide-react';
 
 const CAPABILITIES = [
@@ -99,12 +102,50 @@ export default function UserPricing() {
   const [toastMessage, setToastMessage] = useState(null);
   const [onboardingNotice, setOnboardingNotice] = useState(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [reactivating, setReactivating] = useState(false);
   // Zero-flicker: initialize directly from instant persistent storage
   const [pricingConfig, setPricingConfig] = useState(() => getStoredPricingConfig());
 
   const showToast = (text, isError = false) => {
     setToastMessage({ text, isError });
     setTimeout(() => setToastMessage(null), 5000);
+  };
+
+  const handleCancelAutoRenew = async () => {
+    setCancelling(true);
+    try {
+      const res = await api.cancelAutoRenew();
+      if (res?.success || res?.status === 'success') {
+        showToast(res?.message || 'Auto-renewal has been turned off.');
+        setCancelModalOpen(false);
+        fetchBilling();
+      } else {
+        showToast(res?.error?.message || 'Failed to cancel auto-renewal', true);
+      }
+    } catch (e) {
+      showToast(e?.message || 'Cancellation error', true);
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const handleReactivateAutoRenew = async () => {
+    setReactivating(true);
+    try {
+      const res = await api.reactivateAutoRenew();
+      if (res?.success || res?.status === 'success') {
+        showToast(res?.message || 'Auto-renewal reactivated successfully.');
+        fetchBilling();
+      } else {
+        showToast(res?.error?.message || 'Failed to reactivate auto-renewal', true);
+      }
+    } catch (e) {
+      showToast(e?.message || 'Reactivation error', true);
+    } finally {
+      setReactivating(false);
+    }
   };
 
   const isYearly = billingCycle === 'yearly';
@@ -178,8 +219,19 @@ export default function UserPricing() {
   }, []);
 
   const currentPlanId = (profile?.plan || billingData?.plan_id || 'free').toLowerCase();
-  const isPaidActive = currentPlanId !== 'free' && profile?.payment_status === 'active';
-  const allocatedSlots = profile?.website_limit || profile?.website_slots || (currentPlanId === 'free' ? 1 : 10);
+  const isPaidActive = (currentPlanId !== 'free' && (profile?.payment_status === 'active' || billingData?.is_paid || profile?.is_paid));
+  const allocatedSlots = profile?.website_limit || profile?.website_slots || profile?.purchased_slots || (currentPlanId === 'free' ? 1 : 10);
+  const isAutoRenewOn = billingData?.auto_renew !== undefined
+    ? Boolean(billingData.auto_renew && !billingData.cancel_at_period_end)
+    : Boolean(profile?.auto_renew !== false && !profile?.cancel_at_period_end);
+  const cycleEndDate = profile?.plan_expires || billingData?.plan_expires || billingData?.subscription?.next_billed_at;
+  const formattedCycleEnd = cycleEndDate && !isNaN(new Date(cycleEndDate).getTime())
+    ? new Date(cycleEndDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+    : null;
+  const currentBillingCycle = profile?.billing_cycle || billingData?.billing_cycle || 'monthly';
+  const currentRateText = billingData?.current_rate
+    ? `$${billingData.current_rate}/${currentBillingCycle === 'yearly' ? 'yr' : 'mo'}`
+    : `$${(monthlyRate * allocatedSlots).toFixed(2)}/mo`;
 
   const handleSitesChange = (val) => {
     const num = parseInt(val, 10);
@@ -208,10 +260,11 @@ export default function UserPricing() {
         }
       }
 
-      // 2. Request backend to create transaction with custom quantity
+      // 2. Request backend to create transaction with custom quantity and dynamic discount
       const userEmail = profile?.email || userStore.get('profile')?.email || '';
       const res = await api.createPaddleCheckout({
         plan: 'pro',
+        sites_count: sitesCount,
         quantity: sitesCount,
         sites: sitesCount,
         billing_cycle: billingCycle,
@@ -444,7 +497,7 @@ export default function UserPricing() {
         </div>
       )}
 
-      {/* Header Banner & Status Bar */}
+      {/* Active Fleet Subscription & Billing Management Card */}
       <div
         style={{
           background: '#ffffff',
@@ -453,96 +506,275 @@ export default function UserPricing() {
           marginBottom: '28px',
           border: '1px solid #D9E1DC',
           boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '20px',
         }}
       >
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
-            <span
-              style={{
-                padding: '4px 10px',
-                borderRadius: '20px',
-                fontSize: '11px',
-                fontWeight: '800',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                background: '#E8EEE8',
-                color: '#0B2522',
-                border: '1px solid #D9E1DC',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-            >
-              <ShieldCheck size={13} strokeWidth={2.4} style={{ color: '#059669' }} />
-              <span>Active Security Workspace</span>
-            </span>
-
-            <span
-              style={{
-                padding: '4px 10px',
-                borderRadius: '20px',
-                fontSize: '11px',
-                fontWeight: '800',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                background: isPaidActive ? '#E8F3EC' : '#FFF4ED',
-                color: isPaidActive ? '#059669' : '#E8792F',
-                border: `1px solid ${isPaidActive ? '#CFE2D4' : '#FCD3B6'}`,
-              }}
-            >
-              {isPaidActive ? 'PRO SUBSCRIPTION ACTIVE' : '14-DAY FREE TRIAL'}
-            </span>
-          </div>
-
-          <h1 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 6px', color: '#10201E', letterSpacing: '-0.03em' }}>
-            Subscription &amp; Website Slots
-          </h1>
-          <p style={{ margin: 0, fontSize: '14px', color: '#60716B', maxWidth: '640px', lineHeight: '1.55' }}>
-            Predictable per-website licensing: exactly <strong>{pricingConfig.currency_symbol || '$'}{monthlyRate} / website / month</strong>. Scale up or down anytime.
-            Every connected website receives full enterprise AI WAF, 5.24M checksum malware scanning, and post-hack recovery.
-          </p>
-        </div>
-
-        {/* Current Account Status Quick Box */}
         <div
           style={{
-            background: '#F7F6F1',
-            border: '1px solid #D9E1DC',
-            borderRadius: '14px',
-            padding: '16px 22px',
-            minWidth: '240px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            flexWrap: 'wrap',
+            gap: '20px',
           }}
         >
-          <div style={{ fontSize: '11px', color: '#60716B', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.08em', marginBottom: '4px' }}>
-            Allocated Website Licenses
-          </div>
-          <div style={{ fontSize: '20px', fontWeight: '800', color: '#10201E', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span
-              style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: isPaidActive ? '#059669' : '#E8792F',
-                boxShadow: isPaidActive ? '0 0 6px rgba(5, 150, 105, 0.4)' : 'none',
-              }}
-            />
-            <span>{allocatedSlots} Website {allocatedSlots === 1 ? 'Slot' : 'Slots'}</span>
-          </div>
-          {profile?.plan_expires && !isNaN(new Date(profile.plan_expires).getTime()) && (
-            <div style={{ fontSize: '11px', color: '#60716B', marginTop: '4px' }}>
-              Current cycle valid through: {new Date(profile.plan_expires).toLocaleDateString()}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
+              <span
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '20px',
+                  fontSize: '11px',
+                  fontWeight: '800',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  background: '#E8EEE8',
+                  color: '#0B2522',
+                  border: '1px solid #D9E1DC',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <ShieldCheck size={13} strokeWidth={2.4} style={{ color: '#059669' }} />
+                <span>Active Security Workspace</span>
+              </span>
+
+              <span
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '20px',
+                  fontSize: '11px',
+                  fontWeight: '800',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  background: isPaidActive ? '#E8F3EC' : '#FFF4ED',
+                  color: isPaidActive ? '#059669' : '#E8792F',
+                  border: `1px solid ${isPaidActive ? '#CFE2D4' : '#FCD3B6'}`,
+                }}
+              >
+                {isPaidActive ? 'PRO SUBSCRIPTION ACTIVE' : '14-DAY FREE TRIAL'}
+              </span>
+
+              {isPaidActive && (
+                <span
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '20px',
+                    fontSize: '11px',
+                    fontWeight: '800',
+                    background: isAutoRenewOn ? '#ECFDF5' : '#FFFBEB',
+                    color: isAutoRenewOn ? '#047857' : '#B45309',
+                    border: `1px solid ${isAutoRenewOn ? '#A7F3D0' : '#FCD34D'}`,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <span
+                    style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      background: isAutoRenewOn ? '#059669' : '#D97706',
+                      boxShadow: isAutoRenewOn ? '0 0 6px #059669' : 'none',
+                    }}
+                  />
+                  <span>{isAutoRenewOn ? 'Auto-Renew: ON' : 'Auto-Renew: OFF (Cancels at period end)'}</span>
+                </span>
+              )}
             </div>
-          )}
+
+            <h1 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 6px', color: '#10201E', letterSpacing: '-0.03em' }}>
+              Active Fleet Subscription &amp; Billing Management
+            </h1>
+            <p style={{ margin: 0, fontSize: '14px', color: '#60716B', maxWidth: '680px', lineHeight: '1.55' }}>
+              Manage multi-site security capacity, view active billing rates, toggle automatic renewal, and download official payment receipts.
+              Scale or pause your fleet anytime with zero retroactive fees.
+            </p>
+          </div>
+
+          {/* Quick Action Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {isPaidActive ? (
+              <>
+                {isAutoRenewOn ? (
+                  <button
+                    type="button"
+                    onClick={() => setCancelModalOpen(true)}
+                    style={{
+                      padding: '9px 16px',
+                      borderRadius: '10px',
+                      border: '1px solid #FECACA',
+                      background: '#FEF2F2',
+                      color: '#DC2626',
+                      fontSize: '12.5px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#FEE2E2')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = '#FEF2F2')}
+                  >
+                    <RotateCcw size={13} strokeWidth={2.2} />
+                    <span>Cancel Auto-Renew</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleReactivateAutoRenew}
+                    disabled={reactivating}
+                    style={{
+                      padding: '9px 16px',
+                      borderRadius: '10px',
+                      border: 'none',
+                      background: '#059669',
+                      color: '#FFFFFF',
+                      fontSize: '12.5px',
+                      fontWeight: '700',
+                      cursor: reactivating ? 'wait' : 'pointer',
+                      boxShadow: '0 4px 12px rgba(5, 150, 105, 0.25)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    {reactivating ? (
+                      <>
+                        <RefreshCw size={13} className="animate-spin" />
+                        <span>Reactivating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check size={14} strokeWidth={2.4} />
+                        <span>Turn Auto-Renew Back ON</span>
+                      </>
+                    )}
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('fleet-calculator')?.scrollIntoView({ behavior: 'smooth' })}
+                  style={{
+                    padding: '9px 16px',
+                    borderRadius: '10px',
+                    border: '1px solid #D9E1DC',
+                    background: '#FFFFFF',
+                    color: '#10201E',
+                    fontSize: '12.5px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#F8FAF9')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = '#FFFFFF')}
+                >
+                  Scale Fleet Licenses
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => document.getElementById('fleet-calculator')?.scrollIntoView({ behavior: 'smooth' })}
+                style={{
+                  padding: '9px 18px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: '#0B2522',
+                  color: '#FFFFFF',
+                  fontSize: '13px',
+                  fontWeight: '800',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(11, 37, 34, 0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <span>Upgrade to Pro Fleet</span>
+                <ArrowRight size={15} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 4-Metric Information Grid */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '16px',
+            marginTop: '24px',
+            paddingTop: '22px',
+            borderTop: '1px solid #E6ECE8',
+          }}
+        >
+          {/* Metric 1: Capacity */}
+          <div style={{ background: '#F8FAF9', borderRadius: '12px', padding: '16px 18px', border: '1px solid #E6ECE8' }}>
+            <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#60716B', fontWeight: '700', letterSpacing: '0.05em', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Shield size={13} style={{ color: '#059669' }} />
+              <span>Allocated Fleet Capacity</span>
+            </div>
+            <div style={{ fontSize: '20px', fontWeight: '800', color: '#10201E', marginBottom: '4px' }}>
+              {allocatedSlots} Website {allocatedSlots === 1 ? 'Slot' : 'Slots'}
+            </div>
+            <div style={{ fontSize: '12px', color: '#60716B' }}>
+              {isPaidActive ? 'Full Layer-7 AST WAF & malware hunter' : '1 site licensed in 14-day free trial'}
+            </div>
+          </div>
+
+          {/* Metric 2: Rate */}
+          <div style={{ background: '#F8FAF9', borderRadius: '12px', padding: '16px 18px', border: '1px solid #E6ECE8' }}>
+            <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#60716B', fontWeight: '700', letterSpacing: '0.05em', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <CreditCard size={13} style={{ color: '#059669' }} />
+              <span>Active Billing Rate</span>
+            </div>
+            <div style={{ fontSize: '20px', fontWeight: '800', color: '#10201E', marginBottom: '4px' }}>
+              {isPaidActive ? currentRateText : '$0.00 / Free Trial'}
+            </div>
+            <div style={{ fontSize: '12px', color: '#60716B' }}>
+              {isPaidActive ? `Billed ${currentBillingCycle} · Zero unexpected fees` : 'No credit card required during trial'}
+            </div>
+          </div>
+
+          {/* Metric 3: Expiry or Renewal */}
+          <div style={{ background: '#F8FAF9', borderRadius: '12px', padding: '16px 18px', border: '1px solid #E6ECE8' }}>
+            <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#60716B', fontWeight: '700', letterSpacing: '0.05em', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Calendar size={13} style={{ color: '#059669' }} />
+              <span>{isAutoRenewOn ? 'Next Renewal Date' : 'Protection Valid Until'}</span>
+            </div>
+            <div style={{ fontSize: '20px', fontWeight: '800', color: '#10201E', marginBottom: '4px' }}>
+              {formattedCycleEnd || (isPaidActive ? 'Active Cycle' : `${profile?.trial_days_remaining ?? 14} Days Left`)}
+            </div>
+            <div style={{ fontSize: '12px', color: isAutoRenewOn ? '#059669' : '#D97706', fontWeight: '600' }}>
+              {isPaidActive
+                ? (isAutoRenewOn ? '● Recurring rollover enabled' : '○ Will safely pause ($0 billed)')
+                : 'Full security capabilities active'}
+            </div>
+          </div>
+
+          {/* Metric 4: Zero Debt Guarantee */}
+          <div style={{ background: '#F8FAF9', borderRadius: '12px', padding: '16px 18px', border: '1px solid #E6ECE8' }}>
+            <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#60716B', fontWeight: '700', letterSpacing: '0.05em', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Sparkles size={13} style={{ color: '#059669' }} />
+              <span>Fair Billing Guarantee</span>
+            </div>
+            <div style={{ fontSize: '16px', fontWeight: '800', color: '#10201E', marginBottom: '4px', marginTop: '2px' }}>
+              Zero Inactive Fees
+            </div>
+            <div style={{ fontSize: '12px', color: '#60716B', lineHeight: '1.4' }}>
+              Pause anytime. If paused for 2 months, you pay $0. Renewal cycle restarts the day you reactivate.
+            </div>
+          </div>
         </div>
       </div>
 
       {/* ===================== INTERACTIVE UPGRADE & SCALE CALCULATOR ===================== */}
       <div
+        id="fleet-calculator"
         style={{
           background: '#ffffff',
           borderRadius: '20px',
@@ -967,54 +1199,234 @@ export default function UserPricing() {
                 <th style={{ padding: '12px 16px', fontWeight: '700' }}>Amount</th>
                 <th style={{ padding: '12px 16px', fontWeight: '700' }}>Method</th>
                 <th style={{ padding: '12px 16px', fontWeight: '700' }}>Status</th>
+                <th style={{ padding: '12px 16px', fontWeight: '700' }}>Receipt</th>
               </tr>
             </thead>
             <tbody>
-              {paymentHistory.length > 0 ? (
-                paymentHistory.map((inv, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #D9E1DC' }}>
-                    <td style={{ padding: '14px 16px', fontFamily: 'monospace', fontWeight: '600', color: '#0B2522' }}>
-                      {inv.invoice_id || inv.transaction_id || `TXN-${idx + 1}`}
-                    </td>
-                    <td style={{ padding: '14px 16px', color: '#60716B' }}>
-                      {inv.created_at || inv.billed_at || 'Recent'}
-                    </td>
-                    <td style={{ padding: '14px 16px', fontWeight: '750', color: '#10201E' }}>
-                      ${inv.amount || totalPrice}.00 USD
-                    </td>
-                    <td style={{ padding: '14px 16px', color: '#60716B' }}>
-                      <CreditCard size={14} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle' }} />
-                      <span>Electronic Gateway</span>
-                    </td>
-                    <td style={{ padding: '14px 16px' }}>
-                      <span
-                        style={{
-                          padding: '3px 9px',
-                          borderRadius: '999px',
-                          background: '#E8F3EC',
-                          color: '#28745D',
-                          border: '1px solid #CFE2D4',
-                          fontSize: '11px',
-                          fontWeight: '800',
-                        }}
-                      >
-                        PAID &amp; ACTIVE
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} style={{ padding: '36px 16px', textAlign: 'center', color: '#60716B' }}>
-                    <FileText size={24} style={{ display: 'block', margin: '0 auto 8px', opacity: 0.5 }} />
-                    No prior invoices recorded. Your account has {allocatedSlots} website {allocatedSlots === 1 ? 'slot' : 'slots'} available.
-                  </td>
-                </tr>
-              )}
+              {(() => {
+                const allInvoices = (paymentHistory && paymentHistory.length > 0)
+                  ? paymentHistory
+                  : (billingData?.transactions || billingData?.payments || []);
+
+                if (allInvoices.length === 0) {
+                  return (
+                    <tr>
+                      <td colSpan={6} style={{ padding: '36px 16px', textAlign: 'center', color: '#60716B' }}>
+                        <FileText size={24} style={{ display: 'block', margin: '0 auto 8px', opacity: 0.5 }} />
+                        No prior invoices recorded. Your account has {allocatedSlots} website {allocatedSlots === 1 ? 'slot' : 'slots'} available.
+                      </td>
+                    </tr>
+                  );
+                }
+
+                return allInvoices.map((inv, idx) => {
+                  const rawAmount = inv.amount !== undefined && inv.amount !== null ? inv.amount : totalPrice;
+                  const numAmt = parseFloat(rawAmount);
+                  const displayAmt = !isNaN(numAmt) ? `$${numAmt.toFixed(2)} USD` : `${rawAmount} USD`;
+
+                  const rawDate = inv.billed_at || inv.created_at;
+                  let displayDate = 'Recent';
+                  if (rawDate) {
+                    const parsed = new Date(rawDate);
+                    displayDate = !isNaN(parsed.getTime())
+                      ? parsed.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                      : String(rawDate);
+                  }
+
+                  const txnId = inv.transaction_id || inv.invoice_id || inv.id || `TXN-${idx + 1}`;
+                  const isPaidStatus = String(inv.status || 'paid').toLowerCase() === 'paid' || String(inv.status || '').toLowerCase() === 'completed';
+
+                  return (
+                    <tr key={idx} style={{ borderBottom: '1px solid #D9E1DC' }}>
+                      <td style={{ padding: '14px 16px', fontFamily: 'monospace', fontWeight: '600', color: '#0B2522' }}>
+                        {txnId}
+                      </td>
+                      <td style={{ padding: '14px 16px', color: '#60716B' }}>
+                        {displayDate}
+                      </td>
+                      <td style={{ padding: '14px 16px', fontWeight: '750', color: '#10201E' }}>
+                        {displayAmt}
+                      </td>
+                      <td style={{ padding: '14px 16px', color: '#60716B' }}>
+                        <CreditCard size={14} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle' }} />
+                        <span>Paddle Gateway / Card</span>
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <span
+                          style={{
+                            padding: '3px 9px',
+                            borderRadius: '999px',
+                            background: isPaidStatus ? '#E8F3EC' : '#FFF4ED',
+                            color: isPaidStatus ? '#28745D' : '#E8792F',
+                            border: `1px solid ${isPaidStatus ? '#CFE2D4' : '#FCD3B6'}`,
+                            fontSize: '11px',
+                            fontWeight: '800',
+                          }}
+                        >
+                          {isPaidStatus ? 'PAID & ACTIVE' : String(inv.status || 'PROCESSED').toUpperCase()}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        {inv.receipt_url && inv.receipt_url !== '#' ? (
+                          <a
+                            href={inv.receipt_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              color: '#059669',
+                              fontWeight: '700',
+                              fontSize: '12px',
+                              textDecoration: 'none',
+                            }}
+                          >
+                            <span>Receipt</span>
+                            <ExternalLink size={12} />
+                          </a>
+                        ) : (
+                          <span style={{ color: '#9CA3AF', fontSize: '12px' }}>Official Receipt</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                });
+              })()}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Cancel Auto-Renew Confirmation Modal */}
+      {cancelModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(11, 37, 34, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '20px',
+          }}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '20px',
+              maxWidth: '520px',
+              width: '100%',
+              padding: '30px',
+              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.25)',
+              border: '1px solid #D9E1DC',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '18px' }}>
+              <div
+                style={{
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '12px',
+                  background: '#FEF3C7',
+                  color: '#B45309',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <AlertTriangle size={24} strokeWidth={2.2} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#10201E' }}>
+                  Turn Off Automatic Renewal?
+                </h3>
+                <p style={{ margin: 0, fontSize: '13px', color: '#60716B' }}>
+                  Review what happens when automatic renewal is cancelled.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ background: '#F8FAF9', borderRadius: '12px', padding: '18px', marginBottom: '22px', border: '1px solid #E6ECE8', fontSize: '13px', lineHeight: '1.6', color: '#334155' }}>
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
+                <CheckCircle2 size={18} style={{ color: '#059669', flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <strong style={{ color: '#10201E' }}>Full protection remains active</strong> until <strong>{formattedCycleEnd || 'the end of your current period'}</strong>. No sudden disconnection.
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
+                <CheckCircle2 size={18} style={{ color: '#059669', flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <strong style={{ color: '#10201E' }}>Zero recurring charges ($0)</strong> after period ends. Your card will never be charged automatically.
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
+                <CheckCircle2 size={18} style={{ color: '#059669', flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <strong style={{ color: '#10201E' }}>Safe pause &amp; zero data loss</strong> — When expired, protection safely pauses. Your websites, settings, and logs remain completely intact.
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <CheckCircle2 size={18} style={{ color: '#059669', flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <strong style={{ color: '#10201E' }}>Zero retroactive fees</strong> — If you stay inactive for 1 or 2 months, you owe $0 for that time. When you decide to renew, your new cycle begins fresh on that day.
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button
+                type="button"
+                onClick={() => setCancelModalOpen(false)}
+                disabled={cancelling}
+                style={{
+                  padding: '11px 18px',
+                  borderRadius: '10px',
+                  border: '1px solid #D9E1DC',
+                  background: '#ffffff',
+                  color: '#10201E',
+                  fontWeight: '700',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                }}
+              >
+                Keep Auto-Renew Active
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelAutoRenew}
+                disabled={cancelling}
+                style={{
+                  padding: '11px 20px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: '#DC2626',
+                  color: '#ffffff',
+                  fontWeight: '700',
+                  fontSize: '13px',
+                  cursor: cancelling ? 'wait' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 14px rgba(220, 38, 38, 0.25)',
+                }}
+              >
+                {cancelling ? (
+                  <>
+                    <RefreshCw size={14} className="animate-spin" />
+                    <span>Turning off...</span>
+                  </>
+                ) : (
+                  <span>Yes, Turn Off Auto-Renew</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Internal Payment Modal for Card/Bank Checkout */}
       {paymentModalOpen && (

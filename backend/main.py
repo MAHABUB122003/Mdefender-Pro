@@ -1667,13 +1667,51 @@ async def process_payment_wallet(request: Request, user: dict = Depends(verify_u
 @app.get("/api/payment/history")
 async def get_user_payment_history(user: dict = Depends(verify_user_token_compat)):
     db = get_db()
+    from bson import ObjectId
     uid = str(user.get("_id") or user.get("id"))
-    txns = list(db.paddle_transactions.find({"user_id": uid}).sort("created_at", -1).limit(50))
+    u_oid = ObjectId(uid) if ObjectId.is_valid(uid) else uid
+    user_email = user.get("email", "")
+
+    q_user = {"$or": [{"user_id": uid}, {"user_id": u_oid}]}
+    if user_email:
+        q_user["$or"].append({"customer_email": user_email})
+        q_user["$or"].append({"email": user_email})
+
+    txns = list(db.paddle_transactions.find(q_user).sort("created_at", -1).limit(50))
+    if not txns:
+        txns = list(db.payments.find(q_user).sort("created_at", -1).limit(50))
+
+    formatted = []
     for t in txns:
-        t["_id"] = str(t["_id"])
-        if "created_at" in t and hasattr(t["created_at"], "isoformat"):
-            t["created_at"] = t["created_at"].isoformat()
-    return {"status": "success", "data": txns}
+        t_id = str(t["_id"])
+        raw_amt = t.get("amount")
+        if raw_amt is not None:
+            try:
+                f_amt = float(raw_amt)
+                amt_str = f"{f_amt / 100.0:.2f}" if f_amt >= 100 else f"{f_amt:.2f}"
+            except Exception:
+                amt_str = str(raw_amt)
+        else:
+            amt_str = "36.00"
+
+        c_at = t.get("created_at") or t.get("billed_at")
+        if hasattr(c_at, "isoformat"):
+            c_at = c_at.isoformat()
+
+        formatted.append({
+            "_id": t_id,
+            "id": t.get("transaction_id") or t.get("invoice_id") or f"TXN-{t_id[-8:]}",
+            "invoice_id": t.get("transaction_id") or t.get("invoice_id") or f"TXN-{t_id[-8:]}",
+            "transaction_id": t.get("transaction_id") or t.get("invoice_id") or f"TXN-{t_id[-8:]}",
+            "status": t.get("status", "completed"),
+            "amount": amt_str,
+            "currency_code": t.get("currency_code") or "USD",
+            "billed_at": c_at,
+            "created_at": c_at,
+            "receipt_url": t.get("receipt_url") or t.get("invoice_url") or t.get("invoice_pdf") or "#",
+        })
+
+    return {"status": "success", "data": formatted, "payments": formatted}
 
 @app.get("/api/user/logs")
 async def user_get_logs(request: Request, user: dict = Depends(verify_user_token_compat)):

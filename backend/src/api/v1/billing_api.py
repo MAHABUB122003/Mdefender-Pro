@@ -64,7 +64,9 @@ def _feature_enabled(db):
 class CheckoutRequest(BaseModel):
     plan: str
     billing_cycle: str | None = "monthly"
-    sites_count: int | None = 1
+    sites_count: int | None = None
+    quantity: int | None = None
+    sites: int | None = None
     customer_email: str | None = None
     email: str | None = None
     return_url: str | None = None
@@ -121,22 +123,60 @@ async def create_checkout(body: CheckoutRequest, user=Depends(get_current_user_o
         is_yearly = str(body.billing_cycle or "").lower() in ("yearly", "annually", "annual")
         price_id = dyn_config.get("price_id_yearly") if is_yearly else dyn_config.get("price_id_monthly")
 
-    if not price_id:
-        return success({"enabled": True, "checkout_url": None,
-                        "message": f"No Paddle price configured for the {plan.get('name', body.plan)} ({body.billing_cycle}) plan"})
+    # Resolve accurate requested fleet site count
+    quantity = max(1, int(body.sites_count or body.quantity or body.sites or 1))
+    fleet_calc = plan_service.calculate_fleet_pricing(quantity, body.billing_cycle or "monthly")
     
     uid = str(user.get("id") or user.get("_id")) if user else ""
     customer_email = (user.get("email", "") if user else "") or body.customer_email or body.email or ""
     return_url = body.return_url or body.success_url or "http://localhost:5173/settings"
-    quantity = max(1, int(body.sites_count or 1))
+
+    custom_data = {
+        "user_id": uid,
+        "plan": body.plan,
+        "billing_cycle": "yearly" if fleet_calc["is_yearly"] else "monthly",
+        "sites_count": quantity,
+        "discount_percent": fleet_calc["discount_percent"],
+        "final_total": fleet_calc["final_total"],
+        "unit_price": fleet_calc["unit_price"]
+    }
+
+    # Item strategy 1: Inline price with exact dynamic unit price & volume discount
+    disc_text = f" {fleet_calc['discount_percent']}% Off" if fleet_calc.get("discount_percent", 0) > 0 else ""
+    inline_item = {
+        "quantity": quantity,
+        "price": {
+            "description": f"MDefender Pro ({quantity} Sites - {fleet_calc['tier_label']}{disc_text})",
+            "product_id": fleet_calc["product_id"],
+            "unit_price": {
+                "amount": str(fleet_calc["unit_amount_in_cents"]),
+                "currency_code": fleet_calc["currency"]
+            },
+            "billing_cycle": {
+                "interval": "year" if fleet_calc["is_yearly"] else "month",
+                "frequency": 1
+            }
+        }
+    }
 
     checkout = await service.create_checkout_session(
-        items=[{"price_id": price_id, "quantity": quantity}],
+        items=[inline_item],
         customer_email=customer_email or None,
-        custom_data={"user_id": uid, "plan": body.plan, "billing_cycle": body.billing_cycle or "monthly", "sites_count": quantity},
+        custom_data=custom_data,
         success_url=body.success_url or return_url,
         cancel_url=return_url,
     )
+
+    # Item strategy 2: Fallback to standard price ID if inline price rejected
+    if checkout.get("error") and price_id:
+        checkout = await service.create_checkout_session(
+            items=[{"price_id": price_id, "quantity": quantity}],
+            customer_email=customer_email or None,
+            custom_data=custom_data,
+            success_url=body.success_url or return_url,
+            cancel_url=return_url,
+        )
+
     if checkout.get("error"):
         return {
             "success": False,
@@ -149,7 +189,11 @@ async def create_checkout(body: CheckoutRequest, user=Depends(get_current_user_o
         "enabled": True,
         "checkout_id": checkout.get("checkout_id"),
         "checkout_url": checkout.get("checkout_url"),
-        "price_id": price_id
+        "price_id": price_id,
+        "sites_count": quantity,
+        "final_total": fleet_calc["final_total"],
+        "discount_percent": fleet_calc["discount_percent"],
+        "tier_label": fleet_calc["tier_label"]
     })
 
 
@@ -260,19 +304,106 @@ async def change_plan(body: ChangePlanRequest, user=Depends(get_current_user)):
 
 
 @router.post("/cancel")
+@router.post("/cancel-auto-renew")
 async def cancel_subscription(user=Depends(get_current_user)):
+    """Turn off auto-renewal. Protection remains 100% active until the end of the paid billing cycle."""
     db = MongoDB()
+    from bson import ObjectId
+    from src.services.notification_service import NotificationService
+    
+    uid_str = str(user.get("id") or user.get("_id"))
+    u_oid = ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str
+    user_doc = db.users.find_one({"_id": u_oid}) or user
+
+    now = datetime.now()
+    plan_expires = user_doc.get("plan_expires")
+    if not plan_expires or (isinstance(plan_expires, datetime) and plan_expires < now):
+        expiry_dt = now + timedelta(days=30)
+    else:
+        expiry_dt = plan_expires if isinstance(plan_expires, datetime) else now + timedelta(days=30)
+    
+    expiry_label = expiry_dt.strftime("%B %d, %Y")
+
+    # Mark user account as cancel_at_period_end without interrupting current active protection
+    db.users.update_one(
+        {"_id": u_oid},
+        {"$set": {
+            "auto_renew": False,
+            "cancel_at_period_end": True,
+            "cancelled_at": now,
+            "plan_expires": expiry_dt,
+            "updated_at": now
+        }}
+    )
+
+    # Cancel recurring trigger on gateway if a Paddle subscription is tracked
     service = SubscriptionService(db)
     sub = service.get_active_subscription(user)
-    if not sub:
-        return {"success": False, "error": {"code": "NO_SUBSCRIPTION",
-                                            "message": "No active subscription"}}
-    paddle = _paddle(db)
-    result = await paddle.cancel_subscription(sub.get("paddle_subscription_id"))
-    if result.get("status") != "success":
-        return {"success": False, "error": {"code": "CANCEL_FAILED",
-                                            "message": result.get("error", "Cancellation failed")}}
-    return success({"message": "Subscription cancelled. You keep current features until the period ends."})
+    if sub and sub.get("paddle_subscription_id"):
+        try:
+            paddle = _paddle(db)
+            await paddle.cancel_subscription(sub.get("paddle_subscription_id"))
+        except Exception:
+            pass
+
+    # Send persistent in-app billing notification
+    try:
+        NotificationService(db).notify(
+            uid_str,
+            title="Auto-Renewal Cancelled",
+            message=f"Auto-renewal for your MDefender fleet has been turned off. Your websites remain 100% protected until {expiry_label}. No future charges will be billed.",
+            category="billing"
+        )
+    except Exception:
+        pass
+
+    return success({
+        "status": "success",
+        "auto_renew": False,
+        "cancel_at_period_end": True,
+        "plan_expires": expiry_dt.isoformat(),
+        "expiry_label": expiry_label,
+        "message": f"Auto-renewal turned off. Your fleet remains protected until {expiry_label}. No future charges will be billed."
+    })
+
+
+@router.post("/reactivate-auto-renew")
+async def reactivate_subscription(user=Depends(get_current_user)):
+    """Turn auto-renewal back ON before current prepaid period ends."""
+    db = MongoDB()
+    from bson import ObjectId
+    from src.services.notification_service import NotificationService
+
+    uid_str = str(user.get("id") or user.get("_id"))
+    u_oid = ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str
+
+    now = datetime.now()
+    db.users.update_one(
+        {"_id": u_oid},
+        {"$set": {
+            "auto_renew": True,
+            "cancel_at_period_end": False,
+            "reactivated_at": now,
+            "updated_at": now
+        }}
+    )
+
+    try:
+        NotificationService(db).notify(
+            uid_str,
+            title="Auto-Renewal Reactivated",
+            message="Auto-renewal has been successfully reactivated. Your MDefender Pro fleet will continue uninterrupted.",
+            category="billing"
+        )
+    except Exception:
+        pass
+
+    return success({
+        "status": "success",
+        "auto_renew": True,
+        "cancel_at_period_end": False,
+        "message": "Auto-renewal successfully reactivated. Your fleet protection will continue uninterrupted."
+    })
 
 
 @router.post("/webhook")

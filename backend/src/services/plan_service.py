@@ -148,6 +148,12 @@ DEFAULT_DYNAMIC_PRICING = {
 }
 
 
+# In-memory ultra-lightweight pricing cache (zero MongoDB overhead on hot paths)
+_PRICING_CACHE = None
+_PRICING_CACHE_TIME = 0
+_PRICING_CACHE_TTL = 300  # 5 minutes
+
+
 class PlanService:
     def __init__(self, db=None):
         self.db = db or MongoDB()
@@ -223,7 +229,15 @@ class PlanService:
             return False
 
     def get_dynamic_pricing_config(self):
-        """Resolve dynamic per-site pricing configuration. DB override wins; falls back to defaults."""
+        """Resolve dynamic per-site pricing configuration. DB override wins; falls back to defaults.
+        Cached in-memory to prevent MongoDB contention across high user volumes.
+        """
+        global _PRICING_CACHE, _PRICING_CACHE_TIME
+        import time
+        now = time.time()
+        if _PRICING_CACHE is not None and (now - _PRICING_CACHE_TIME) < _PRICING_CACHE_TTL:
+            return dict(_PRICING_CACHE)
+
         stored = {}
         try:
             doc = self.db.settings.find_one({"_type": "dynamic_pricing"})
@@ -257,7 +271,61 @@ class PlanService:
         if env_y and not config.get("price_id_yearly"):
             config["price_id_yearly"] = env_y
 
+        _PRICING_CACHE = dict(config)
+        _PRICING_CACHE_TIME = now
         return config
+
+    def calculate_fleet_pricing(self, sites_count: int, billing_cycle: str = "monthly") -> dict:
+        """Computes exact dynamic price and bulk discount tier based on Admin settings.
+        Zero gateway manual updates needed — mathematically deterministic.
+        """
+        config = self.get_dynamic_pricing_config()
+        cycle_clean = str(billing_cycle or "monthly").lower()
+        is_yearly = cycle_clean in ("yearly", "annual", "annually", "1 year")
+
+        count = max(1, int(sites_count or 1))
+        monthly_rate = float(config.get("base_monthly_rate") or 4.0)
+        yearly_rate = float(config.get("base_yearly_rate") or 40.0)
+        base_rate = yearly_rate if is_yearly else monthly_rate
+
+        tiers = config.get("bulk_tiers") or DEFAULT_DYNAMIC_PRICING["bulk_tiers"]
+        active_tier = {"discount_percent": 0, "label": "Starter Fleet"}
+        for t in sorted(tiers, key=lambda x: int(x.get("min_sites", 0)), reverse=True):
+            if count >= int(t.get("min_sites", 0)):
+                active_tier = t
+                break
+
+        discount_percent = int(active_tier.get("discount_percent", 0))
+        raw_total = count * base_rate
+        discount_amount = (raw_total * discount_percent) / 100.0
+        final_total = max(0.0, raw_total - discount_amount)
+        unit_price = round(final_total / count, 2)
+        effective_monthly = round(final_total / 12.0, 2) if is_yearly else round(final_total, 2)
+
+        import os
+        product_id = os.getenv("PADDLE_PRODUCT_ID", "pro_01m7r3fnmwga2hzeyat6m1p90s")
+
+        return {
+            "sites_count": count,
+            "billing_cycle": "yearly" if is_yearly else "monthly",
+            "is_yearly": is_yearly,
+            "base_rate": base_rate,
+            "monthly_rate": monthly_rate,
+            "yearly_rate": yearly_rate,
+            "tier_label": active_tier.get("label", "Standard"),
+            "discount_percent": discount_percent,
+            "raw_total": round(raw_total, 2),
+            "discount_amount": round(discount_amount, 2),
+            "final_total": round(final_total, 2),
+            "unit_price": unit_price,
+            "effective_monthly": effective_monthly,
+            "amount_in_cents": int(round(final_total * 100)),
+            "unit_amount_in_cents": int(round(unit_price * 100)),
+            "currency": config.get("currency", "USD"),
+            "currency_symbol": config.get("currency_symbol", "$"),
+            "product_id": product_id,
+            "price_id": config.get("price_id_yearly" if is_yearly else "price_id_monthly", "")
+        }
 
     def save_dynamic_pricing_config(self, new_config: dict):
         """Admin override of dynamic per-site pricing and tiers."""
@@ -283,6 +351,11 @@ class PlanService:
                 upsert=True,
             )
             try:
+                # Invalidate in-memory cache on update
+                global _PRICING_CACHE, _PRICING_CACHE_TIME
+                _PRICING_CACHE = None
+                _PRICING_CACHE_TIME = 0
+
                 # Also keep Pro plan pricing synchronized with dynamic per-site base rate
                 if "base_monthly_rate" in clean and "base_yearly_rate" in clean:
                     self.db.settings.update_one(
