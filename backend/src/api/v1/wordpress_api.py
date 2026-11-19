@@ -1539,173 +1539,152 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
 
             if website_id:
-
                 matched_ws = [ws for ws in w_sites if str(ws.get("_id")) == str(website_id) or str(ws.get("id")) == str(website_id) or ws.get("domain") == str(website_id)]
-
                 ref_ws = matched_ws[0] if matched_ws else (w_sites[0] if w_sites else (ws_match or {}))
-
             else:
-
                 ref_ws = w_sites[0] if w_sites else (ws_match or {})
 
-            sync_payload = {
+            # Strict License Slot Gate: Check whether this tenant / website is actively licensed
+            from src.services.license_slot_service import LicenseSlotService
+            slot_service = LicenseSlotService(db)
+            target_wid = str(ref_ws.get("_id") or ref_ws.get("id") or website_id or "")
+            target_domain = ref_ws.get("domain", "")
+            is_site_licensed, lic_reason = slot_service.verify_edge_license(
+                website_id=target_wid,
+                domain=target_domain,
+                user_id=u_str
+            )
 
-                "status": "ok",
-
-                "blacklist": blacklist,
-
-                "whitelist": whitelist,
-
-                "blocked_countries": blocked_countries,
-
-                "user_rules": user_rules,
-
-                "url_whitelists": url_whitelists,
-
-                "config": {
-
-                    "waf_mode": ref_ws.get("waf_mode", "protect"),
-
-                    "learning_mode": bool(ref_ws.get("learning_mode", False)),
-
-                    "confidence_threshold": float(ref_ws.get("confidence_threshold") or 0.7),
-
-                    "disable_xmlrpc": bool(ref_ws.get("disable_xmlrpc", True)),
-
-                    "block_uploads_php": bool(ref_ws.get("block_uploads_php", True)),
-
-                    "disable_directory_listing": bool(ref_ws.get("disable_directory_listing", True)),
-
-                    "prevent_user_enumeration": bool(ref_ws.get("prevent_user_enumeration", True)),
-
-                    "disable_file_editing": bool(ref_ws.get("disable_file_editing", True)),
-
-                    "hide_wp_version": bool(ref_ws.get("hide_wp_version", True)),
-
-                    "security_headers": bool(ref_ws.get("security_headers", True)),
-
-                    "file_permissions_check": bool(ref_ws.get("file_permissions_check", True)),
-
-                    "login_two_factor": bool(ref_ws.get("login_two_factor") or ref_ws.get("two_factor_enabled") or user_sec_doc.get("two_factor_enabled", False)),
-
-                    "two_factor_enabled": bool(ref_ws.get("two_factor_enabled") or ref_ws.get("login_two_factor") or user_sec_doc.get("two_factor_enabled", False)),
-
-                    "two_factor_roles": str(ref_ws.get("two_factor_roles") or user_sec_doc.get("two_factor_roles") or u_cfg.get("two_factor_roles", "admins")),
-                    "two_factor_secret": str(ref_ws.get("two_factor_secret") or user_sec_doc.get("two_factor_secret") or ""),
-                    "two_factor_recovery_codes": ref_ws.get("two_factor_recovery_codes") or user_sec_doc.get("two_factor_recovery_codes") or [],
-
-                    "two_factor_method_totp": bool(u_cfg.get("two_factor_method_totp", True)),
-
-                    "two_factor_method_email": bool(u_cfg.get("two_factor_method_email", True)),
-
-                    "two_factor_method_backup": bool(u_cfg.get("two_factor_method_backup", True)),
-
-                    "two_factor_max_attempts": int(u_cfg.get("two_factor_max_attempts", 3)),
-
-                    "two_factor_lockout_hours": int(u_cfg.get("two_factor_lockout_hours", 24)),
-
-                    "two_factor_remember_days": int(u_cfg.get("two_factor_remember_days", 0)),
-
-                    "rate_limit": int(ref_ws.get("rate_limit_per_minute") or u_cfg.get("rate_limit_per_minute", 120)),
-
-                    "auto_block_enabled": bool(ref_ws.get("auto_block_enabled", u_cfg.get("auto_block_enabled", True))),
-
-                    "auto_block_threshold": u_cfg.get("auto_block_threshold", 10),
-
-                    "auto_block_window": u_cfg.get("auto_block_window_hours", 24) * 3600,
-
-                    "auto_block_duration": (u_cfg.get("auto_block_duration_hours", 24) or 24) * 3600,
-
-                    "ddos_enabled": u_cfg.get("ddos_mitigation_enabled", True),
-
-                    "under_attack_mode": bool(ref_ws.get("under_attack_mode", False)),
-
-                    "custom_login_slug": ref_ws.get("custom_login_slug", ""),
-
-                    "hide_login_url": bool(ref_ws.get("hide_login_url", False)),
-
-                    "login_redirect_type": ref_ws.get("login_redirect_type", "404"),
-
-                    "bot_challenge_mode": ref_ws.get("bot_challenge_mode", "hold_press"),
-
-                    "max_login_attempts": int(ref_ws.get("max_login_attempts") or u_cfg.get("login_lockout_threshold", 5)),
-
-                    "login_lockout_duration": int(ref_ws.get("login_lockout_duration") or u_cfg.get("login_lockout_duration_minutes", 60)),
-
-                    "login_lockout_scope": str(ref_ws.get("login_lockout_scope") or u_cfg.get("login_lockout_scope", "gateway_only")),
-
-                    "rate_limit_action": str(ref_ws.get("rate_limit_action") or u_cfg.get("rate_limit_action", "throttle_429")),
-
-                    "hold_press_enabled": bool(ref_ws.get("hold_press_enabled", u_cfg.get("hold_press_enabled", False))),
-
-                    "hold_press_duration_ms": int(ref_ws.get("hold_press_duration_ms") or u_cfg.get("hold_press_duration_ms", 2000)),
-
-                    "turnstile_enabled": bool(ref_ws.get("turnstile_enabled", u_cfg.get("turnstile_enabled", False))),
-
-                    "turnstile_mode": ref_ws.get("turnstile_mode") or u_cfg.get("turnstile_mode", "site_wide"),
-
-                    "turnstile_theme": ref_ws.get("turnstile_theme") or u_cfg.get("turnstile_theme", "auto"),
-
-                    "turnstile_site_key": ref_ws.get("turnstile_site_key") or u_cfg.get("turnstile_site_key", ""),
-
-                    "turnstile_secret_key": ref_ws.get("turnstile_secret_key") or u_cfg.get("turnstile_secret_key", ""),
-                    "admin_ip_whitelist_enabled": bool(ref_ws.get("admin_ip_whitelist_enabled", False)),
-                    "admin_ip_whitelist": ref_ws.get("admin_ip_whitelist") or [],
-
-                },
-
-                "synced_at": datetime.now().isoformat(),
-
-            }
-
-
-
-            # Direct local disk fast-cache synchronization for 0ms zero-latency updates
-
-            try:
-
-                import json
-
+            if not is_site_licensed:
+                sub_status = "trial_expired" if ("trial" in (lic_reason or "").lower()) else "unlicensed"
+                sync_payload = {
+                    "status": "unlicensed",
+                    "license_status": sub_status,
+                    "is_licensed": False,
+                    "blacklist": [],
+                    "whitelist": whitelist,
+                    "blocked_countries": [],
+                    "user_rules": [],
+                    "url_whitelists": url_whitelists,
+                    "config": {
+                        "waf_mode": "disabled",
+                        "learning_mode": False,
+                        "is_licensed": False,
+                        "protection_enabled": False,
+                        "subscription_status": sub_status,
+                        "license_status": sub_status,
+                        "under_attack_mode": False,
+                        "turnstile_enabled": False,
+                        "auto_block_enabled": False,
+                        "ddos_enabled": False,
+                        "hold_press_enabled": False,
+                        "rate_limit": 1000,
+                    },
+                    "synced_at": datetime.now().isoformat(),
+                }
+                fast_cache_json = {
+                    "enabled": False,
+                    "connected": False,
+                    "is_licensed": False,
+                    "license_status": sub_status,
+                    "waf_mode": "disabled",
+                    "updated_at": int(datetime.now().timestamp()),
+                    "blacklist_ips": {},
+                    "whitelist_ips": {},
+                    "blocked_countries": [],
+                    "local_server_country": "BD",
+                }
+            else:
+                sync_payload = {
+                    "status": "ok",
+                    "license_status": "active",
+                    "is_licensed": True,
+                    "blacklist": blacklist,
+                    "whitelist": whitelist,
+                    "blocked_countries": blocked_countries,
+                    "user_rules": user_rules,
+                    "url_whitelists": url_whitelists,
+                    "config": {
+                        "waf_mode": ref_ws.get("waf_mode", "protect"),
+                        "learning_mode": bool(ref_ws.get("learning_mode", False)),
+                        "is_licensed": True,
+                        "protection_enabled": True,
+                        "subscription_status": "active",
+                        "license_status": "active",
+                        "confidence_threshold": float(ref_ws.get("confidence_threshold") or 0.7),
+                        "disable_xmlrpc": bool(ref_ws.get("disable_xmlrpc", True)),
+                        "block_uploads_php": bool(ref_ws.get("block_uploads_php", True)),
+                        "disable_directory_listing": bool(ref_ws.get("disable_directory_listing", True)),
+                        "prevent_user_enumeration": bool(ref_ws.get("prevent_user_enumeration", True)),
+                        "disable_file_editing": bool(ref_ws.get("disable_file_editing", True)),
+                        "hide_wp_version": bool(ref_ws.get("hide_wp_version", True)),
+                        "security_headers": bool(ref_ws.get("security_headers", True)),
+                        "file_permissions_check": bool(ref_ws.get("file_permissions_check", True)),
+                        "login_two_factor": bool(ref_ws.get("login_two_factor") or ref_ws.get("two_factor_enabled") or user_sec_doc.get("two_factor_enabled", False)),
+                        "two_factor_enabled": bool(ref_ws.get("two_factor_enabled") or ref_ws.get("login_two_factor") or user_sec_doc.get("two_factor_enabled", False)),
+                        "two_factor_roles": str(ref_ws.get("two_factor_roles") or user_sec_doc.get("two_factor_roles") or u_cfg.get("two_factor_roles", "admins")),
+                        "two_factor_secret": str(ref_ws.get("two_factor_secret") or user_sec_doc.get("two_factor_secret") or ""),
+                        "two_factor_recovery_codes": ref_ws.get("two_factor_recovery_codes") or user_sec_doc.get("two_factor_recovery_codes") or [],
+                        "two_factor_method_totp": bool(u_cfg.get("two_factor_method_totp", True)),
+                        "two_factor_method_email": bool(u_cfg.get("two_factor_method_email", True)),
+                        "two_factor_method_backup": bool(u_cfg.get("two_factor_method_backup", True)),
+                        "two_factor_max_attempts": int(u_cfg.get("two_factor_max_attempts", 3)),
+                        "two_factor_lockout_hours": int(u_cfg.get("two_factor_lockout_hours", 24)),
+                        "two_factor_remember_days": int(u_cfg.get("two_factor_remember_days", 0)),
+                        "rate_limit": int(ref_ws.get("rate_limit_per_minute") or u_cfg.get("rate_limit_per_minute", 120)),
+                        "auto_block_enabled": bool(ref_ws.get("auto_block_enabled", u_cfg.get("auto_block_enabled", True))),
+                        "auto_block_threshold": u_cfg.get("auto_block_threshold", 10),
+                        "auto_block_window": u_cfg.get("auto_block_window_hours", 24) * 3600,
+                        "auto_block_duration": (u_cfg.get("auto_block_duration_hours", 24) or 24) * 3600,
+                        "ddos_enabled": u_cfg.get("ddos_mitigation_enabled", True),
+                        "under_attack_mode": bool(ref_ws.get("under_attack_mode", False)),
+                        "custom_login_slug": ref_ws.get("custom_login_slug", ""),
+                        "hide_login_url": bool(ref_ws.get("hide_login_url", False)),
+                        "login_redirect_type": ref_ws.get("login_redirect_type", "404"),
+                        "bot_challenge_mode": ref_ws.get("bot_challenge_mode", "hold_press"),
+                        "max_login_attempts": int(ref_ws.get("max_login_attempts") or u_cfg.get("login_lockout_threshold", 5)),
+                        "login_lockout_duration": int(ref_ws.get("login_lockout_duration") or u_cfg.get("login_lockout_duration_minutes", 60)),
+                        "login_lockout_scope": str(ref_ws.get("login_lockout_scope") or u_cfg.get("login_lockout_scope", "gateway_only")),
+                        "rate_limit_action": str(ref_ws.get("rate_limit_action") or u_cfg.get("rate_limit_action", "throttle_429")),
+                        "hold_press_enabled": bool(ref_ws.get("hold_press_enabled", u_cfg.get("hold_press_enabled", False))),
+                        "hold_press_duration_ms": int(ref_ws.get("hold_press_duration_ms") or u_cfg.get("hold_press_duration_ms", 2000)),
+                        "turnstile_enabled": bool(ref_ws.get("turnstile_enabled", u_cfg.get("turnstile_enabled", False))),
+                        "turnstile_mode": ref_ws.get("turnstile_mode") or u_cfg.get("turnstile_mode", "site_wide"),
+                        "turnstile_theme": ref_ws.get("turnstile_theme") or u_cfg.get("turnstile_theme", "auto"),
+                        "turnstile_site_key": ref_ws.get("turnstile_site_key") or u_cfg.get("turnstile_site_key", ""),
+                        "turnstile_secret_key": ref_ws.get("turnstile_secret_key") or u_cfg.get("turnstile_secret_key", ""),
+                        "admin_ip_whitelist_enabled": bool(ref_ws.get("admin_ip_whitelist_enabled", False)),
+                        "admin_ip_whitelist": ref_ws.get("admin_ip_whitelist") or [],
+                    },
+                    "synced_at": datetime.now().isoformat(),
+                }
                 bl_map = {}
-
                 for bip in blacklist:
-
                     if bip:
-
                         cip = str(bip).strip()
-
                         bl_map[cip] = True
-
                         if cip == "127.0.0.1":
-
                             bl_map["::1"] = True
-
                             bl_map["0.0.0.0"] = True
-
                         elif cip == "::1":
-
                             bl_map["127.0.0.1"] = True
-
                             bl_map["0.0.0.0"] = True
-
-
 
                 fast_cache_json = {
-
                     "enabled": True,
-
+                    "connected": True,
+                    "is_licensed": True,
+                    "license_status": "active",
+                    "waf_mode": ref_ws.get("waf_mode", "protect"),
                     "updated_at": int(datetime.now().timestamp()),
-
                     "blacklist_ips": bl_map,
-
                     "blocked_countries": blocked_countries,
-
                     "local_server_country": "BD",
-
                 }
 
-
-
+            # Direct local disk fast-cache synchronization for 0ms zero-latency updates
+            try:
+                import json
                 disk_paths = [
 
                     os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "plugin_source", "mdefender-pro", "includes", "data", "waf_fast_cache.json")),
@@ -1797,11 +1776,22 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
                         admin_ips_str = "\n".join([str(ip).strip() for ip in admin_ips if str(ip).strip()])
 
+                        is_lic_val = 'yes' if is_site_licensed else 'no'
+                        sub_stat_val = 'active' if is_site_licensed else sub_status
+                        prot_en_val = 'yes' if is_site_licensed else 'no'
+                        mode_val = (ref_ws.get("waf_mode", "protect") if is_site_licensed else 'disabled')
+
                         php_code = f"""
 
                         $c = @mysqli_connect('127.0.0.1', 'root', '', 'mahabub');
 
                         if ($c) {{
+
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_is_licensed', '{is_lic_val}', 'yes') ON DUPLICATE KEY UPDATE option_value = '{is_lic_val}'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_subscription_status', '{sub_stat_val}', 'yes') ON DUPLICATE KEY UPDATE option_value = '{sub_stat_val}'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_license_status', '{sub_stat_val}', 'yes') ON DUPLICATE KEY UPDATE option_value = '{sub_stat_val}'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_protection_enabled', '{prot_en_val}', 'yes') ON DUPLICATE KEY UPDATE option_value = '{prot_en_val}'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_mode', '{mode_val}', 'yes') ON DUPLICATE KEY UPDATE option_value = '{mode_val}'");
 
                             $bl = json_decode('{b_str}', true);
 

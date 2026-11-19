@@ -142,12 +142,25 @@ if (!$mdefender_cache_data) {
     }
 }
 
-// Enterprise Gatekeeping: If explicitly disabled by admin, return early
-if ($mdefender_cache_data && isset($mdefender_cache_data['enabled']) && $mdefender_cache_data['enabled'] === false) {
-    return;
-}
-if ($mdefender_cache_data && isset($mdefender_cache_data['connected']) && $mdefender_cache_data['connected'] === false) {
-    return;
+// Enterprise Gatekeeping: If explicitly disabled by admin or unlicensed/trial expired, return early
+if ($mdefender_cache_data) {
+    if (isset($mdefender_cache_data['enabled']) && $mdefender_cache_data['enabled'] === false) {
+        return;
+    }
+    if (isset($mdefender_cache_data['connected']) && $mdefender_cache_data['connected'] === false) {
+        return;
+    }
+    if (isset($mdefender_cache_data['is_licensed']) && $mdefender_cache_data['is_licensed'] === false) {
+        return;
+    }
+    $cached_status = strtolower((string)($mdefender_cache_data['license_status'] ?? ''));
+    if (!empty($cached_status) && in_array($cached_status, ['trial_expired', 'expired', 'unlicensed', 'canceled', 'past_due', 'paused', 'inactive', 'revoked'], true)) {
+        return;
+    }
+    $cached_mode = strtolower((string)($mdefender_cache_data['waf_mode'] ?? ''));
+    if (!empty($cached_mode) && in_array($cached_mode, ['disabled', 'off', 'bypass'], true)) {
+        return;
+    }
 }
 
 // 1. Stage 1: Ultimate Ingress Normalizer & Multi-Input Buffer (< 0.015ms)

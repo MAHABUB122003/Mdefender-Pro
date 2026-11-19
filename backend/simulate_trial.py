@@ -83,12 +83,21 @@ def simulate(email: str, mode: str):
             {"user_id": {"$in": [uid_str, ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str]}},
             {"$set": {"is_licensed": False, "license_status": "trial_expired", "is_protected": False}}
         )
+        db.wordpress_sites.update_many(
+            {"user_id": {"$in": [uid_str, ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str]}},
+            {"$set": {"status": "unlicensed", "license_status": "trial_expired", "is_licensed": False}}
+        )
+        try:
+            from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+            push_instant_sync_to_wordpress(user_id=uid_str)
+        except Exception as e:
+            print(f"    - Instant Sync Notice: {e}")
         print(f"\n[+] SUCCESS: Simulated Day 15 (Expired) for {email}!")
         print(f"    - Trial Days Remaining: 0")
         print(f"    - Status: trial_expired")
         print(f"    - Paywall: Navigating to any dashboard page will auto-redirect to /user/pricing")
         print(f"    - APIs: Protected endpoints will return HTTP 402/403")
-        print(f"    - Websites: Protection paused across all connected sites")
+        print(f"    - Websites: Protection paused across all connected sites (WAF fail-open dormant)")
 
     elif mode_str in ("1", "day1", "reset", "fresh"):
         # Reset to Day 1: 14 days remaining
@@ -109,6 +118,15 @@ def simulate(email: str, mode: str):
             {"user_id": {"$in": [uid_str, ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str]}},
             {"$set": {"is_licensed": True, "license_status": "trial", "is_protected": True}}
         )
+        db.wordpress_sites.update_many(
+            {"user_id": {"$in": [uid_str, ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str]}},
+            {"$set": {"status": "online", "license_status": "active", "is_licensed": True}}
+        )
+        try:
+            from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+            push_instant_sync_to_wordpress(user_id=uid_str)
+        except Exception as e:
+            print(f"    - Instant Sync Notice: {e}")
         print(f"\n[+] SUCCESS: Reset to Day 1 (Fresh 14-Day Free Trial) for {email}!")
         print(f"    - Trial Days Remaining: 14 days")
         print(f"    - Header Badge: '⏳ 14d Trial Left' (Green)")
@@ -116,17 +134,32 @@ def simulate(email: str, mode: str):
 
     elif mode_str in ("paid", "pro", "active"):
         # Simulate active paid plan with 2 purchased slots
+        uid_str = str(uid)
+        user_sites = list(db.websites.find({"user_id": {"$in": [uid_str, ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str]}}))
+        licensed_ids = [str(s["_id"]) for s in user_sites[:2]]
         db.users.update_one(u_query, {
             "$set": {
                 "payment_status": "active",
                 "plan": "go",
-                "purchased_slots": 2
+                "purchased_slots": 2,
+                "licensed_website_ids": licensed_ids
             }
         })
+        for i, s in enumerate(user_sites):
+            is_lic = (i < 2)
+            db.websites.update_one(
+                {"_id": s["_id"]},
+                {"$set": {"is_licensed": is_lic, "license_status": "active" if is_lic else "unlicensed", "is_protected": is_lic}}
+            )
+        try:
+            from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+            push_instant_sync_to_wordpress(user_id=uid_str)
+        except Exception as e:
+            print(f"    - Instant Sync Notice: {e}")
         print(f"\n[+] SUCCESS: Simulated Paid Pro Subscription for {email}!")
         print(f"    - Plan: Go (2 Website Slots)")
         print(f"    - Payment Status: active")
-        print(f"    - 2-of-10 Invariant: User can assign exactly 2 websites; 8 remain paused")
+        print(f"    - 2-of-10 Invariant: User can assign exactly 2 websites; remainder paused")
 
     else:
         print(f"[-] Invalid mode '{mode}'. Choose from: 1, 10, 15, paid")

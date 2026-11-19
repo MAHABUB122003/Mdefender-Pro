@@ -449,6 +449,7 @@ class WAF_FW_ML_Api_Client {
         $data = $this->request('POST', '/api/v1/wordpress/heartbeat', $payload, $timeout);
         if (is_array($data)) {
             update_option('waf_fw_connected', 'yes');
+            $this->apply_heartbeat_license_state($data);
             return $data;
         }
         // Fallback retry without stats if backend version threw an error on stats parsing
@@ -457,6 +458,7 @@ class WAF_FW_ML_Api_Client {
             $fallback_data = $this->request('POST', '/api/v1/wordpress/heartbeat', $payload, $timeout);
             if (is_array($fallback_data)) {
                 update_option('waf_fw_connected', 'yes');
+                $this->apply_heartbeat_license_state($fallback_data);
                 return $fallback_data;
             }
         }
@@ -464,6 +466,38 @@ class WAF_FW_ML_Api_Client {
             update_option('waf_fw_connected', 'no');
         }
         return null;
+    }
+
+    /**
+     * Synchronize license and protection state directly from cloud heartbeat response.
+     */
+    private function apply_heartbeat_license_state($data) {
+        if (!is_array($data)) return;
+        $is_licensed = isset($data['is_licensed']) ? (bool)$data['is_licensed'] : true;
+        $lic_status = strtolower((string)($data['license_status'] ?? $data['status'] ?? 'active'));
+        $inactive_statuses = ['trial_expired', 'expired', 'unlicensed', 'canceled', 'past_due', 'paused', 'inactive', 'revoked'];
+
+        if (!$is_licensed || in_array($lic_status, $inactive_statuses, true)) {
+            update_option('waf_fw_is_licensed', 'no');
+            update_option('waf_fw_subscription_status', $lic_status ?: 'trial_expired');
+            update_option('waf_fw_license_status', $lic_status ?: 'trial_expired');
+            update_option('waf_fw_protection_enabled', 'no');
+            update_option('waf_fw_mode', 'disabled');
+            if (class_exists('WAF_FW_Engine')) {
+                WAF_FW_Engine::instance()->export_fast_cache();
+            }
+        } else {
+            update_option('waf_fw_is_licensed', 'yes');
+            update_option('waf_fw_subscription_status', $lic_status ?: 'active');
+            update_option('waf_fw_license_status', $lic_status ?: 'active');
+            if (get_option('waf_fw_protection_enabled', 'yes') === 'no') {
+                update_option('waf_fw_protection_enabled', 'yes');
+                update_option('waf_fw_mode', 'protect');
+                if (class_exists('WAF_FW_Engine')) {
+                    WAF_FW_Engine::instance()->export_fast_cache();
+                }
+            }
+        }
     }
 
     /**

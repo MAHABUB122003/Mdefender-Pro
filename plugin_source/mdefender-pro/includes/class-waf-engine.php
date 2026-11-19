@@ -199,7 +199,7 @@ class WAF_FW_Engine {
                 return $this->allowed_result('', '', '', 'Protection disabled');
             }
             if (function_exists('waf_fw_is_cloud_active') && !waf_fw_is_cloud_active()) {
-                return $this->allowed_result('', '', '', 'Protection dormant (Requires MDefender Pro Cloud API Key)');
+                return $this->allowed_result('', '', '', 'Protection dormant (Requires Active MDefender Pro Cloud License or Trial)');
             }
 
             $ip = $this->get_client_ip();
@@ -513,10 +513,21 @@ class WAF_FW_Engine {
             ? waf_fw_is_cloud_active() 
             : (get_option('waf_fw_connected', 'no') === 'yes' && !empty(get_option('waf_fw_api_key', get_option('waf_fw_ml_api_key', ''))));
 
-        if (!$is_cloud_active) {
+        $sub_status = strtolower((string) get_option('waf_fw_subscription_status', 'active'));
+        $lic_status = strtolower((string) get_option('waf_fw_license_status', ''));
+        $inactive_statuses = ['trial_expired', 'expired', 'unlicensed', 'canceled', 'past_due', 'paused', 'inactive', 'revoked'];
+        $is_unlicensed = (get_option('waf_fw_is_licensed', 'yes') === 'no') 
+            || in_array($sub_status, $inactive_statuses, true) 
+            || in_array($lic_status, $inactive_statuses, true)
+            || (get_option('waf_fw_protection_enabled', 'yes') === 'no');
+
+        if (!$is_cloud_active || $is_unlicensed) {
             $cache_payload = [
                 'enabled' => false,
                 'connected' => false,
+                'is_licensed' => false,
+                'license_status' => $sub_status ?: 'trial_expired',
+                'waf_mode' => 'disabled',
                 'updated_at' => time(),
                 'blacklist_ips' => (object)[],
                 'whitelist_ips' => $wl_map,

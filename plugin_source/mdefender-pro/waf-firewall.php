@@ -308,7 +308,8 @@ if (isset($_GET['mdefender_bypass']) || isset($_GET['mdefender_restore']) || iss
 /**
  * Strict SaaS Cloud-Gated License & API Key Verification
  * In enterprise SaaS architecture, if the site is not actively connected
- * with a valid MDefender Pro Cloud API key, all defense engines remain dormant.
+ * with a valid MDefender Pro Cloud API key and active subscription/trial,
+ * all defense engines remain completely dormant.
  */
 if (!function_exists('waf_fw_is_cloud_active')) {
     function waf_fw_is_cloud_active() {
@@ -317,6 +318,36 @@ if (!function_exists('waf_fw_is_cloud_active')) {
         if (!$connected || empty($api_key) || strlen($api_key) < 16) {
             return false;
         }
+
+        // Strict SaaS License Gating:
+        // If the 14-day free trial has concluded or the subscription is inactive/canceled/expired/unlicensed,
+        // all defense engines (WAF inspect, IP filter, bot blocker, login shield) MUST remain completely dormant.
+        $is_licensed = get_option('waf_fw_is_licensed', 'yes');
+        if ($is_licensed === 'no' || $is_licensed === false || $is_licensed === 0 || $is_licensed === '0') {
+            return false;
+        }
+
+        $sub_status = strtolower((string) get_option('waf_fw_subscription_status', 'active'));
+        $inactive_statuses = ['trial_expired', 'expired', 'unlicensed', 'canceled', 'past_due', 'paused', 'inactive', 'revoked'];
+        if (in_array($sub_status, $inactive_statuses, true)) {
+            return false;
+        }
+
+        $lic_status = strtolower((string) get_option('waf_fw_license_status', ''));
+        if (!empty($lic_status) && in_array($lic_status, $inactive_statuses, true)) {
+            return false;
+        }
+
+        $protection_enabled = get_option('waf_fw_protection_enabled', 'yes');
+        if ($protection_enabled === 'no' || $protection_enabled === false || $protection_enabled === 0 || $protection_enabled === '0') {
+            return false;
+        }
+
+        $waf_mode = strtolower((string) get_option('waf_fw_mode', 'protect'));
+        if (in_array($waf_mode, ['disabled', 'off', 'bypass'], true)) {
+            return false;
+        }
+
         return true;
     }
 }
@@ -593,6 +624,21 @@ add_action('upgrader_process_complete', function() { waf_fw_sync_cloud_blacklist
 function waf_fw_apply_config_payload($cfg) {
     if (!is_array($cfg) || empty($cfg)) return;
 
+    if (isset($cfg['is_licensed'])) {
+        $is_lic = (!empty($cfg['is_licensed']) && $cfg['is_licensed'] !== 'no') ? 'yes' : 'no';
+        update_option('waf_fw_is_licensed', $is_lic);
+    }
+    if (isset($cfg['subscription_status'])) {
+        update_option('waf_fw_subscription_status', sanitize_text_field($cfg['subscription_status']));
+    }
+    if (isset($cfg['license_status'])) {
+        update_option('waf_fw_license_status', sanitize_text_field($cfg['license_status']));
+    }
+    if (isset($cfg['protection_enabled'])) {
+        $prot_on = (!empty($cfg['protection_enabled']) && $cfg['protection_enabled'] !== 'no') ? 'yes' : 'no';
+        update_option('waf_fw_protection_enabled', $prot_on);
+    }
+
     if (isset($cfg['hold_press_enabled'])) {
         update_option('waf_hold_press_enabled', !empty($cfg['hold_press_enabled']) ? 'yes' : 'no');
     }
@@ -773,6 +819,10 @@ function waf_fw_apply_config_payload($cfg) {
     }
     if (isset($cfg['confidence_threshold'])) {
         update_option('waf_fw_confidence_threshold', (float) $cfg['confidence_threshold']);
+    }
+
+    if (class_exists('WAF_FW_Engine')) {
+        WAF_FW_Engine::instance()->export_fast_cache();
     }
 }
 

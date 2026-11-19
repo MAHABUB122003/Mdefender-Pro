@@ -234,6 +234,15 @@ class SubscriptionService:
                             {"user_id": {"$in": [uid_str, ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str]}},
                             {"$set": {"is_licensed": False, "license_status": "trial_expired", "is_protected": False, "updated_at": datetime.now()}}
                         )
+                        self.db.wordpress_sites.update_many(
+                            {"user_id": {"$in": [uid_str, ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str]}},
+                            {"$set": {"status": "unlicensed", "license_status": "trial_expired", "is_licensed": False}}
+                        )
+                        try:
+                            from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+                            push_instant_sync_to_wordpress(user_id=uid_str)
+                        except Exception:
+                            pass
 
                         notif_service.notify(
                             uid_str,
@@ -604,6 +613,15 @@ class SubscriptionService:
                             {"user_id": {"$in": [uid_str, ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str]}},
                             {"$set": {"is_licensed": False, "license_status": "trial_expired", "is_protected": False, "updated_at": datetime.now()}}
                         )
+                        self.db.wordpress_sites.update_many(
+                            {"user_id": {"$in": [uid_str, ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str]}},
+                            {"$set": {"status": "unlicensed", "license_status": "trial_expired", "is_licensed": False}}
+                        )
+                        try:
+                            from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+                            push_instant_sync_to_wordpress(user_id=uid_str)
+                        except Exception:
+                            pass
 
                         notif_service.notify(
                             uid_str,
