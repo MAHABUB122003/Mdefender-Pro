@@ -88,8 +88,10 @@ def simulate(email: str, mode: str):
             {"$set": {"status": "unlicensed", "license_status": "trial_expired", "is_licensed": False}}
         )
         try:
+            from src.services.license_slot_service import _invalidate_cache
+            _invalidate_cache(user_id=uid_str)
             from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-            push_instant_sync_to_wordpress(user_id=uid_str)
+            push_instant_sync_to_wordpress(user_id=uid_str, wait=True)
         except Exception as e:
             print(f"    - Instant Sync Notice: {e}")
         print(f"\n[+] SUCCESS: Simulated Day 15 (Expired) for {email}!")
@@ -123,8 +125,10 @@ def simulate(email: str, mode: str):
             {"$set": {"status": "online", "license_status": "active", "is_licensed": True}}
         )
         try:
+            from src.services.license_slot_service import _invalidate_cache
+            _invalidate_cache(user_id=uid_str)
             from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-            push_instant_sync_to_wordpress(user_id=uid_str)
+            push_instant_sync_to_wordpress(user_id=uid_str, wait=True)
         except Exception as e:
             print(f"    - Instant Sync Notice: {e}")
         print(f"\n[+] SUCCESS: Reset to Day 1 (Fresh 14-Day Free Trial) for {email}!")
@@ -152,8 +156,10 @@ def simulate(email: str, mode: str):
                 {"$set": {"is_licensed": is_lic, "license_status": "active" if is_lic else "unlicensed", "is_protected": is_lic}}
             )
         try:
+            from src.services.license_slot_service import _invalidate_cache
+            _invalidate_cache(user_id=uid_str)
             from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-            push_instant_sync_to_wordpress(user_id=uid_str)
+            push_instant_sync_to_wordpress(user_id=uid_str, wait=True)
         except Exception as e:
             print(f"    - Instant Sync Notice: {e}")
         print(f"\n[+] SUCCESS: Simulated Paid Pro Subscription for {email}!")

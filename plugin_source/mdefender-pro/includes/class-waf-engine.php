@@ -544,6 +544,9 @@ class WAF_FW_Engine {
         $cache_payload = [
             'enabled' => get_option('waf_fw_protection_enabled', 'yes') === 'yes',
             'connected' => true,
+            'is_licensed' => true,
+            'license_status' => $sub_status ?: 'active',
+            'waf_mode' => get_option('waf_fw_mode', 'protect'),
             'updated_at' => time(),
             'blacklist_ips' => $bl_map,
             'whitelist_ips' => $wl_map,

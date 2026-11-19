@@ -1,6 +1,10 @@
 {
   "enabled": true,
-  "updated_at": 1795081585,
+  "connected": true,
+  "is_licensed": true,
+  "license_status": "active",
+  "waf_mode": "protect",
+  "updated_at": 1795095770,
   "blacklist_ips": {},
   "blocked_countries": [],
   "local_server_country": "BD"

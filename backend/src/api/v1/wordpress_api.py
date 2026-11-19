@@ -1203,9 +1203,9 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
 
 
 
-def push_instant_sync_to_wordpress(user_id=None, website_id=None):
+def push_instant_sync_to_wordpress(user_id=None, website_id=None, wait=False):
 
-    """Background fire-and-forget sync notification with full payload to all connected WordPress sites."""
+    """Background fire-and-forget (or synchronous when wait=True) sync notification with full payload to all connected WordPress sites."""
 
     import threading
 
@@ -1545,10 +1545,11 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                 ref_ws = w_sites[0] if w_sites else (ws_match or {})
 
             # Strict License Slot Gate: Check whether this tenant / website is actively licensed
-            from src.services.license_slot_service import LicenseSlotService
-            slot_service = LicenseSlotService(db)
+            from src.services.license_slot_service import LicenseSlotService, _invalidate_cache
             target_wid = str(ref_ws.get("_id") or ref_ws.get("id") or website_id or "")
             target_domain = ref_ws.get("domain", "")
+            _invalidate_cache(user_id=u_str, website_id=target_wid)
+            slot_service = LicenseSlotService(db)
             is_site_licensed, lic_reason = slot_service.verify_edge_license(
                 website_id=target_wid,
                 domain=target_domain,
@@ -2150,7 +2151,10 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
 
 
-    threading.Thread(target=_do_sync, daemon=True).start()
+    if wait:
+        _do_sync()
+    else:
+        threading.Thread(target=_do_sync, daemon=True).start()
 
 
 

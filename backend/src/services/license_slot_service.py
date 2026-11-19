@@ -335,7 +335,17 @@ class LicenseSlotService:
             }}
         )
 
+        self.db.wordpress_sites.update_one(
+            {"$or": [{"website_id": wid_str}, {"website_id": ObjectId(wid_str) if ObjectId.is_valid(wid_str) else wid_str}, {"domain": website.get("domain", "")}]},
+            {"$set": {"status": "online", "license_status": "active" if state["is_paid"] else "trial", "is_licensed": True}}
+        )
+
         _invalidate_cache(user_id=uid_str, website_id=wid_str)
+        try:
+            from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+            push_instant_sync_to_wordpress(user_id=uid_str, website_id=wid_str, wait=True)
+        except Exception:
+            pass
         return True, f"License slot successfully assigned to {website.get('domain') or 'website'}."
 
     def release_slot(self, user_id, website_id: str) -> Tuple[bool, str]:
@@ -374,7 +384,17 @@ class LicenseSlotService:
             }}
         )
 
+        self.db.wordpress_sites.update_one(
+            {"$or": [{"website_id": wid_str}, {"website_id": ObjectId(wid_str) if ObjectId.is_valid(wid_str) else wid_str}, {"domain": website.get("domain", "")}]},
+            {"$set": {"status": "unlicensed", "license_status": "unlicensed", "is_licensed": False}}
+        )
+
         _invalidate_cache(user_id=uid_str, website_id=wid_str)
+        try:
+            from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+            push_instant_sync_to_wordpress(user_id=uid_str, website_id=wid_str, wait=True)
+        except Exception:
+            pass
         return True, f"License slot released from {website.get('domain') or 'website'}. Slot is now available."
 
     def verify_edge_license(self, website_id: str, domain: str = None, user_id: str = None) -> Tuple[bool, str]:
