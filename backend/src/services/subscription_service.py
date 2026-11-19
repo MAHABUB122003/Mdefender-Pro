@@ -223,6 +223,24 @@ class SubscriptionService:
         sub = self.db.subscriptions.find_one({"user_id": user_id, "status": {"$in": ["active", "trialing"]}})
         if sub:
             return sub.get("plan", "pro")
+
+        # Check explicit user plan expiration timestamp
+        if user_id:
+            try:
+                from bson import ObjectId
+                u_doc = self.db.users.find_one({"_id": ObjectId(user_id)}) if ObjectId.is_valid(str(user_id)) else self.db.users.find_one({"_id": str(user_id)})
+                if u_doc:
+                    exp = u_doc.get("plan_expires")
+                    if isinstance(exp, str):
+                        try:
+                            exp = datetime.fromisoformat(exp)
+                        except Exception:
+                            exp = None
+                    if exp and exp < now:
+                        return "free"
+            except Exception:
+                pass
+
         return self._user_plan(user)
 
     def entitlement(self, user):

@@ -94,30 +94,45 @@ class LicenseSlotService:
             plan = str(sub.get("plan") or plan).lower()
             payment_status = "active"
 
+        # Check plan expiration timestamp
+        plan_expires = user_doc.get("plan_expires")
+        if isinstance(plan_expires, str):
+            try:
+                plan_expires = datetime.fromisoformat(plan_expires)
+            except Exception:
+                plan_expires = None
+
+        has_subscription_expired = bool(plan_expires and plan_expires < now_dt and not sub)
+
         # Check if user has active paid subscription or admin entitlement
         is_paid = is_admin_user or (
-            (payment_status in ("active", "trialing") and plan != "free") or (
-                plan in ("go", "pro", "enterprise", "premium", "ultra") and payment_status != "canceled"
+            not has_subscription_expired and (
+                (payment_status in ("active", "trialing") and plan != "free") or (
+                    plan in ("go", "pro", "enterprise", "premium", "ultra") and payment_status != "canceled"
+                )
             )
         )
         is_trial_active = (not is_paid) and (t_days_rem > 0)
 
         # Purchased slots: explicitly stored or resolved from subscription / role
-        raw_slots = user_doc.get("purchased_slots")
-        if raw_slots is not None and isinstance(raw_slots, (int, float)) and int(raw_slots) > 0:
-            purchased_slots = int(raw_slots)
-        elif is_admin_user:
-            purchased_slots = 100
-        elif is_paid:
-            # Fallback based on plan tier if not explicitly quantified
-            plan_defaults = {"go": 5, "pro": 10, "enterprise": 50, "premium": 10, "ultra": 9999}
-            purchased_slots = plan_defaults.get(plan, 1)
-        elif is_trial_active:
-            # During 14-day free trial, grant full fleet access (up to 50 websites)
-            purchased_slots = 50
-        else:
-            # Trial expired and no active payment
+        if not is_paid and not is_trial_active:
+            # Completely expired (neither paid nor in trial) -> 0 active slots
             purchased_slots = 0
+        else:
+            raw_slots = user_doc.get("purchased_slots")
+            if raw_slots is not None and isinstance(raw_slots, (int, float)) and int(raw_slots) > 0:
+                purchased_slots = int(raw_slots)
+            elif is_admin_user:
+                purchased_slots = 100
+            elif is_paid:
+                # Fallback based on plan tier if not explicitly quantified
+                plan_defaults = {"go": 5, "pro": 10, "enterprise": 50, "premium": 10, "ultra": 9999}
+                purchased_slots = plan_defaults.get(plan, 1)
+            elif is_trial_active:
+                # During 14-day free trial, grant full fleet access (up to 50 websites)
+                purchased_slots = 50
+            else:
+                purchased_slots = 0
 
         return {
             "is_paid": is_paid,
