@@ -1116,6 +1116,9 @@ def _website_out(doc):
 
 
         "plan": doc.get("plan", "free"),
+        "is_licensed": bool(doc.get("is_licensed", False)),
+        "license_status": doc.get("license_status", "unlicensed"),
+        "is_protected": bool(doc.get("is_licensed", False) and doc.get("is_active", True) and doc.get("protection_enabled", True)),
 
 
 
@@ -1564,6 +1567,17 @@ async def list_websites(platform: str | None = None, user=Depends(get_current_us
 
 
     docs = list(db.websites.find(query).sort("connected_at", -1))
+    try:
+        from src.services.license_slot_service import LicenseSlotService
+        slot_svc = LicenseSlotService(db)
+        u_doc = slot_svc._get_user_doc(user_id_str)
+        if u_doc:
+            u_state = slot_svc.resolve_user_license_state(u_doc)
+            slot_svc.reconcile_allocations(u_doc, docs, u_state)
+            # Re-fetch with reconciled is_licensed status
+            docs = list(db.websites.find(query).sort("connected_at", -1))
+    except Exception:
+        pass
 
 
 

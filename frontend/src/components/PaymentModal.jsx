@@ -79,16 +79,16 @@ export default function PaymentModal({
   const count = Math.max(1, Number(siteCount) || 1);
 
   // Dynamic tiers discount
-  const tiers = activePricing?.bulk_tiers || [];
+  const tiers = (activePricing && Array.isArray(activePricing.bulk_tiers)) ? activePricing.bulk_tiers : [];
   let discountPercent = 0;
   for (let i = tiers.length - 1; i >= 0; i--) {
-    if (count >= tiers[i].min_sites) {
-      discountPercent = tiers[i].discount_percent;
+    if (tiers[i] && count >= (tiers[i].min_sites || 0)) {
+      discountPercent = Number(tiers[i].discount_percent) || 0;
       break;
     }
   }
 
-  const isYearly = billingCycle.toLowerCase() === 'yearly';
+  const isYearly = (billingCycle || '').toLowerCase() === 'yearly';
   const unitRate = isYearly ? yearlyBase : monthlyBase;
   const rawTotal = count * unitRate;
   const discountVal = (rawTotal * discountPercent) / 100;

@@ -110,22 +110,22 @@ export default function UserPricing() {
   const isYearly = billingCycle === 'yearly';
 
   // Dynamic pricing configuration synced with Super Admin
-  const monthlyRate = Number(pricingConfig.base_monthly_rate) || 4;
-  const yearlyRate = Number(pricingConfig.base_yearly_rate) || 40;
+  const monthlyRate = Number(pricingConfig?.base_monthly_rate) || 4;
+  const yearlyRate = Number(pricingConfig?.base_yearly_rate) || 40;
 
   const getDiscount = (count) => {
-    const tiers = pricingConfig.bulk_tiers || [];
+    const tiers = (pricingConfig && Array.isArray(pricingConfig.bulk_tiers)) ? pricingConfig.bulk_tiers : [];
     for (let i = tiers.length - 1; i >= 0; i--) {
-      if (count >= tiers[i].min_sites) {
+      if (tiers[i] && count >= (tiers[i].min_sites || 0)) {
         return tiers[i];
       }
     }
     return { discount_percent: 0, label: 'Standard' };
   };
 
-  const activeTier = getDiscount(sitesCount);
+  const activeTier = getDiscount(sitesCount) || { discount_percent: 0, label: 'Standard' };
   const rawBase = isYearly ? sitesCount * yearlyRate : sitesCount * monthlyRate;
-  const discountAmount = (rawBase * activeTier.discount_percent) / 100;
+  const discountAmount = (rawBase * (activeTier.discount_percent || 0)) / 100;
   const totalPrice = Math.max(0, rawBase - discountAmount);
   const effectiveMonthly = isYearly ? (totalPrice / 12).toFixed(2) : totalPrice.toFixed(2);
   const savingsAmount = isYearly ? (sitesCount * monthlyRate * 12 - totalPrice).toFixed(2) : 0;
@@ -533,7 +533,7 @@ export default function UserPricing() {
             />
             <span>{allocatedSlots} Website {allocatedSlots === 1 ? 'Slot' : 'Slots'}</span>
           </div>
-          {profile?.plan_expires && (
+          {profile?.plan_expires && !isNaN(new Date(profile.plan_expires).getTime()) && (
             <div style={{ fontSize: '11px', color: '#60716B', marginTop: '4px' }}>
               Current cycle valid through: {new Date(profile.plan_expires).toLocaleDateString()}
             </div>
@@ -1017,19 +1017,21 @@ export default function UserPricing() {
       </div>
 
       {/* Internal Payment Modal for Card/Bank Checkout */}
-      <PaymentModal
-        isOpen={paymentModalOpen}
-        onClose={() => setPaymentModalOpen(false)}
-        plan="pro"
-        billingCycle={isYearly ? 'yearly' : 'monthly'}
-        siteCount={sitesCount}
-        pricingConfig={pricingConfig}
-        onSuccess={() => {
-          setPaymentModalOpen(false);
-          showToast(`Successfully upgraded to ${sitesCount} website licenses!`, false);
-          fetchBilling();
-        }}
-      />
+      {paymentModalOpen && (
+        <PaymentModal
+          isOpen={paymentModalOpen}
+          onClose={() => setPaymentModalOpen(false)}
+          plan="pro"
+          billingCycle={isYearly ? 'yearly' : 'monthly'}
+          siteCount={sitesCount}
+          pricingConfig={pricingConfig}
+          onSuccess={() => {
+            setPaymentModalOpen(false);
+            showToast(`Successfully upgraded to ${sitesCount} website licenses!`, false);
+            fetchBilling();
+          }}
+        />
+      )}
     </div>
   );
 }

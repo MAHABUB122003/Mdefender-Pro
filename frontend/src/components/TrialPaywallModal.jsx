@@ -193,22 +193,22 @@ export default function TrialPaywallModal() {
   };
 
   // Dynamic calculations based on live database values
-  const monthlyRate = Number(dynamicPricing.base_monthly_rate) || 4.0;
-  const yearlyRate = Number(dynamicPricing.base_yearly_rate) || 40.0;
+  const monthlyRate = Number(dynamicPricing?.base_monthly_rate) || 4.0;
+  const yearlyRate = Number(dynamicPricing?.base_yearly_rate) || 40.0;
 
   const getDiscount = (count) => {
-    const tiers = dynamicPricing.bulk_tiers || [];
+    const tiers = (dynamicPricing && Array.isArray(dynamicPricing.bulk_tiers)) ? dynamicPricing.bulk_tiers : [];
     for (let i = tiers.length - 1; i >= 0; i--) {
-      if (count >= tiers[i].min_sites) {
+      if (tiers[i] && count >= (tiers[i].min_sites || 0)) {
         return tiers[i];
       }
     }
     return { discount_percent: 0, label: 'Standard' };
   };
 
-  const activeTier = getDiscount(siteCount);
+  const activeTier = getDiscount(siteCount) || { discount_percent: 0, label: 'Standard' };
   const rawBase = billingCycle === 'yearly' ? siteCount * yearlyRate : siteCount * monthlyRate;
-  const discountAmount = (rawBase * activeTier.discount_percent) / 100;
+  const discountAmount = (rawBase * (activeTier.discount_percent || 0)) / 100;
   const totalAmount = Math.max(0, rawBase - discountAmount);
   const yearlyEquivalent = billingCycle === 'yearly' ? (totalAmount / 12).toFixed(2) : totalAmount;
 

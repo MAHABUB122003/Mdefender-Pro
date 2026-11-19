@@ -85,11 +85,30 @@ export default function UserWebsites() {
 
 
 
-  // Dedicated WordPress Websites
+  // Dedicated WordPress Websites with strictly synchronized license slot states
   const wpWebsites = useMemo(() => {
     const list = data?.websites || []
-    return list.filter(w => (w.platform || '').toLowerCase() === 'wordpress' || (w.platform || '').toLowerCase().startsWith('wp'))
-  }, [data])
+    const slotMap = new Map()
+    if (slotSummary?.websites && Array.isArray(slotSummary.websites)) {
+      for (const s of slotSummary.websites) {
+        if (s.id) slotMap.set(String(s.id), s)
+        if (s.domain) slotMap.set(String(s.domain).toLowerCase(), s)
+      }
+    }
+    return list
+      .filter(w => (w.platform || '').toLowerCase() === 'wordpress' || (w.platform || '').toLowerCase().startsWith('wp'))
+      .map(w => {
+        const idKey = String(w.id || w._id || '')
+        const domainKey = String(w.domain || w.name || '').toLowerCase()
+        const slotMatch = slotMap.get(idKey) || slotMap.get(domainKey)
+        const isLic = slotMatch ? Boolean(slotMatch.is_licensed) : Boolean(w.is_licensed)
+        return {
+          ...w,
+          is_licensed: isLic,
+          license_status: slotMatch?.license_status || w.license_status || (isLic ? 'active' : 'unlicensed')
+        }
+      })
+  }, [data, slotSummary])
 
 
 
@@ -1613,21 +1632,47 @@ export default function UserWebsites() {
 
                       {/* License Slot State & Action Button */}
                       {w.is_licensed ? (
-                        <span style={{
-                          fontSize: '10px',
-                          padding: '2px 8px',
-                          borderRadius: '6px',
-                          background: '#F0FDF4',
-                          color: '#15803D',
-                          border: '1px solid #DCFCE7',
-                          fontWeight: '700',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}>
-                          <CheckCircle2 size={11} color="#15803D" />
-                          <span>Licensed (Protected)</span>
-                        </span>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{
+                            fontSize: '10px',
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            background: '#F0FDF4',
+                            color: '#15803D',
+                            border: '1px solid #DCFCE7',
+                            fontWeight: '700',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            <CheckCircle2 size={11} color="#15803D" />
+                            <span>Licensed (Protected)</span>
+                          </span>
+                          <button
+                            type="button"
+                            disabled={slotActionLoading[w.id || w._id]}
+                            onClick={() => handleReleaseSlot(w.id || w._id)}
+                            title="Release this license slot so it can be assigned to another website"
+                            style={{
+                              fontSize: '10px',
+                              fontWeight: '600',
+                              padding: '2px 7px',
+                              borderRadius: '6px',
+                              background: '#FFFFFF',
+                              color: '#6B7280',
+                              border: '1px solid #D1D5DB',
+                              cursor: slotActionLoading[w.id || w._id] ? 'wait' : 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              transition: 'all 0.15s ease'
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.color = '#B45309'; e.currentTarget.style.borderColor = '#F59E0B'; }}
+                            onMouseLeave={e => { e.currentTarget.style.color = '#6B7280'; e.currentTarget.style.borderColor = '#D1D5DB'; }}
+                          >
+                            <span>{slotActionLoading[w.id || w._id] ? 'Releasing...' : 'Release Slot'}</span>
+                          </button>
+                        </div>
                       ) : (
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{
