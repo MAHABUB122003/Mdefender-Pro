@@ -198,6 +198,37 @@ function App() {
       console.warn('Impersonation token check error:', e)
     }
 
+    // Intercept Paddle Transaction URL Parameter (_ptxn) from default payment links
+    try {
+      if (typeof window !== 'undefined' && window.location.search) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const ptxn = urlParams.get('_ptxn');
+        if (ptxn) {
+          api.getBillingConfig().then(res => {
+            const cfg = res?.data || res;
+            if (cfg?.client_token && window.Paddle) {
+              try {
+                if (cfg.environment === 'sandbox') window.Paddle.Environment.set('sandbox');
+                window.Paddle.Initialize({ token: cfg.client_token });
+                window.Paddle.Checkout.open({
+                  transactionId: ptxn,
+                  settings: {
+                    displayMode: 'overlay',
+                    theme: 'light',
+                    successUrl: `${window.location.origin}/payment/success`,
+                  },
+                });
+              } catch (initErr) {
+                console.warn('Auto Paddle Init Warning:', initErr);
+              }
+            }
+          }).catch(() => {});
+        }
+      }
+    } catch (e) {
+      console.warn('Paddle _ptxn check error:', e);
+    }
+
     const hasToken = typeof localStorage !== 'undefined' && (
       localStorage.getItem('mdefender_access') || localStorage.getItem('mdefender_refresh')
     )

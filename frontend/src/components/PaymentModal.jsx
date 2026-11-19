@@ -194,13 +194,7 @@ export default function PaymentModal({
 
       const checkoutData = res.data || res;
 
-      // 1. Enterprise Standard: Full-Screen Dedicated Hosted Checkout (Option B - WP Umbrella / Paddle Hosted)
-      if (checkoutData.checkout_url) {
-        window.location.href = checkoutData.checkout_url;
-        return;
-      }
-
-      // 2. Fallback: If hosted URL not provided, open Paddle Checkout directly
+      // 1. Open Paddle Checkout directly over this screen (Instant, smooth, zero redirection loops)
       if (checkoutData.checkout_id && window.Paddle) {
         try {
           window.Paddle.Checkout.open({
@@ -217,6 +211,12 @@ export default function PaymentModal({
         } catch (overlayErr) {
           console.warn('Overlay error, falling back to URL:', overlayErr);
         }
+      }
+
+      // 2. Fallback to checkout URL if Paddle SDK overlay is unavailable
+      if (checkoutData.checkout_url) {
+        window.location.href = checkoutData.checkout_url;
+        return;
       }
 
       if (checkoutData.price_id && window.Paddle) {
