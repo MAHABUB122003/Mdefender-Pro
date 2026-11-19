@@ -204,7 +204,7 @@ export default function UserLayout({ children, onLogout }) {
         import('../pages/UserPricing')
         import('../pages/UserBlacklist')
         import('../pages/UserSettings')
-      } catch {}
+      } catch { }
     }
 
     if (typeof window !== 'undefined') {

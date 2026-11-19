@@ -1716,6 +1716,8 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None, wait=False):
                         mahabub_doc = next((ws for ws in w_sites if "localhost/mahabub" in (ws.get("url") or ws.get("domain") or "")), ref_ws)
                         mb_harden = mahabub_doc.get("hardening") or {}
                         b_str = json.dumps(blacklist)
+                        w_str = json.dumps(whitelist)
+                        w_csv = ",".join(whitelist)
 
                         c_str = ",".join(blocked_countries)
 
@@ -1776,13 +1778,16 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None, wait=False):
                             mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_mode', '{mode_val}', 'yes') ON DUPLICATE KEY UPDATE option_value = '{mode_val}'");
 
                             $bl = json_decode('{b_str}', true);
-
                             $bl_ser = serialize($bl);
+                            $wl = json_decode('{w_str}', true);
+                            $wl_ser = serialize($wl);
 
                             $c_val = '{c_str}';
+                            $w_val = '{w_csv}';
 
                             mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_local_blacklist_cache', '" . mysqli_real_escape_string($c, $bl_ser) . "', 'yes') ON DUPLICATE KEY UPDATE option_value = '" . mysqli_real_escape_string($c, $bl_ser) . "'");
-
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_local_whitelist_cache', '" . mysqli_real_escape_string($c, $wl_ser) . "', 'yes') ON DUPLICATE KEY UPDATE option_value = '" . mysqli_real_escape_string($c, $wl_ser) . "'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_ip_whitelist', '" . mysqli_real_escape_string($c, $w_val) . "', 'yes') ON DUPLICATE KEY UPDATE option_value = '" . mysqli_real_escape_string($c, $w_val) . "'");
                             mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_blocked_countries', '" . mysqli_real_escape_string($c, $c_val) . "', 'yes') ON DUPLICATE KEY UPDATE option_value = '" . mysqli_real_escape_string($c, $c_val) . "'");
 
                             

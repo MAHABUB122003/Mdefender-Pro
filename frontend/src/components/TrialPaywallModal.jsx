@@ -147,7 +147,7 @@ export default function TrialPaywallModal() {
           setSiteCount(data.websites_count);
         }
       }
-    }).catch(() => {});
+    }).catch(() => { });
 
     return () => {
       mounted = false;
@@ -178,7 +178,7 @@ export default function TrialPaywallModal() {
   const handleSignOut = async () => {
     try {
       await api.logout();
-    } catch {}
+    } catch { }
     userStore.clear();
     if (typeof localStorage !== 'undefined') {
       const keysToRemove = [];
@@ -451,7 +451,7 @@ export default function TrialPaywallModal() {
           MAIN BODY WRAPPER (Enterprise Full Page Architecture)
           ===================================================================== */}
       <main style={{ maxWidth: '1080px', margin: '36px auto 60px auto', padding: '0 20px' }}>
-        
+
         {/* Page Top Heading */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div style={{
@@ -863,8 +863,8 @@ export default function TrialPaywallModal() {
                 {checkoutLoading
                   ? 'Connecting to Secure Gateway...'
                   : (isSoftPrompt
-                      ? `Keep My ${siteCount} ${siteCount === 1 ? 'Website' : 'Websites'} Protected ($0 Today)`
-                      : `Start My Subscription • $${totalAmount.toFixed(2)}/${billingCycle === 'yearly' ? 'yr' : 'mo'}`)}
+                    ? `Keep My ${siteCount} ${siteCount === 1 ? 'Website' : 'Websites'} Protected ($0 Today)`
+                    : `Start My Subscription • $${totalAmount.toFixed(2)}/${billingCycle === 'yearly' ? 'yr' : 'mo'}`)}
               </span>
               <ArrowRight size={16} />
             </button>
