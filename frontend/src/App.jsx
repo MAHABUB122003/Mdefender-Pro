@@ -126,10 +126,6 @@ function getPostLoginTarget(u) {
   const search = typeof window !== 'undefined' ? window.location.search || '' : '';
   if (search.includes('plan=')) return `/user/pricing${search}`;
 
-  // If user's 14-day free trial has expired and account has no active paid subscription:
-  const isTrialExpired = (Number(u.trial_days_remaining) <= 0) && !u.is_paid;
-  if (isTrialExpired) return '/user/pricing';
-
   return isUserOnboarded(u) ? '/user/dashboard' : '/onboarding';
 }
 

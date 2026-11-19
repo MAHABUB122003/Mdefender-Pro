@@ -252,7 +252,7 @@ export default function PaymentModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 9999,
+        zIndex: 10000005,
         padding: '20px',
         animation: 'modalFadeIn 0.2s ease-out',
       }}

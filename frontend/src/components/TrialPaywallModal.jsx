@@ -28,6 +28,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import userStore from '../utils/userStore';
 import api from '../api/api';
 import { getStoredPricingConfig, subscribePricing, syncPricingWithBackend } from '../utils/pricingStore';
+import PaymentModal from './PaymentModal';
 
 const brandTokens = {
   deepForest: '#0B2522',
@@ -58,6 +59,8 @@ export default function TrialPaywallModal() {
   const [dismissed, setDismissed] = useState(false);
   const [billingCycle, setBillingCycle] = useState('monthly'); // 'monthly' | 'yearly'
   const [siteCount, setSiteCount] = useState(1);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   // Zero-flicker: initialize directly from instant persistent storage
   const [dynamicPricing, setDynamicPricing] = useState(() => getStoredPricingConfig());
 
@@ -170,12 +173,23 @@ export default function TrialPaywallModal() {
     setDismissed(true);
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    try {
+      await api.logout();
+    } catch {}
+    userStore.clear();
     if (typeof localStorage !== 'undefined') {
-      localStorage.clear();
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith('mdefender_') || k.startsWith('mdef_'))) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
       sessionStorage.clear();
     }
-    navigate('/login');
+    window.location.href = '/user/login';
   };
 
   // Dynamic calculations based on live database values
@@ -198,8 +212,84 @@ export default function TrialPaywallModal() {
   const totalAmount = Math.max(0, rawBase - discountAmount);
   const yearlyEquivalent = billingCycle === 'yearly' ? (totalAmount / 12).toFixed(2) : totalAmount;
 
-  const handleStartSubscription = () => {
-    navigate(`/user/pricing?sites=${siteCount}&cycle=${billingCycle}`);
+  const handleStartSubscription = async () => {
+    setCheckoutLoading(true);
+    try {
+      // 1. Fetch live billing config and initialize Paddle SDK
+      const cfgRes = await api.getBillingConfig();
+      const cfg = cfgRes?.data || cfgRes;
+      if (window.Paddle && cfg?.client_token) {
+        try {
+          if (cfg.environment === 'sandbox') {
+            window.Paddle.Environment.set('sandbox');
+          }
+          window.Paddle.Initialize({ token: cfg.client_token });
+        } catch (initErr) {
+          console.warn('Paddle init error:', initErr);
+        }
+      }
+
+      // 2. Request Paddle Checkout session from backend
+      const res = await api.createPaddleCheckout({
+        plan: 'pro',
+        billing_cycle: billingCycle,
+        site_count: siteCount,
+      });
+
+      if (res && res.success === false && res.error) {
+        setPaymentModalOpen(true);
+        return;
+      }
+
+      const checkoutData = res?.data || res;
+
+      // 3. Open Paddle Checkout Overlay directly over this screen
+      if (checkoutData?.checkout_id && window.Paddle) {
+        try {
+          window.Paddle.Checkout.open({
+            transactionId: checkoutData.checkout_id,
+            settings: {
+              displayMode: 'overlay',
+              theme: 'light',
+              successUrl: `${window.location.origin}/payment/success?plan=pro&cycle=${billingCycle}&sites=${siteCount}${checkoutData.checkout_id ? `&txn_id=${checkoutData.checkout_id}` : ''}`,
+            },
+          });
+          return;
+        } catch (overlayErr) {
+          console.warn('Overlay error, opening payment modal:', overlayErr);
+        }
+      }
+
+      if (checkoutData?.checkout_url) {
+        window.location.href = checkoutData.checkout_url;
+        return;
+      }
+
+      if (checkoutData?.price_id && window.Paddle) {
+        window.Paddle.Checkout.open({
+          items: [{ priceId: checkoutData.price_id, quantity: siteCount }],
+          settings: {
+            displayMode: 'overlay',
+            theme: 'light',
+            successUrl: `${window.location.origin}/payment/success?plan=pro&cycle=${billingCycle}&sites=${siteCount}`,
+          },
+        });
+        return;
+      }
+
+      // Fallback: Open Payment Modal
+      setPaymentModalOpen(true);
+    } catch (err) {
+      console.warn('Checkout launch error, opening payment modal:', err);
+      setPaymentModalOpen(true);
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
+  const handlePaymentSuccess = () => {
+    setPaymentModalOpen(false);
+    window.location.href = '/user/dashboard';
   };
 
   return (
@@ -736,34 +826,38 @@ export default function TrialPaywallModal() {
             <button
               type="button"
               onClick={handleStartSubscription}
+              disabled={checkoutLoading}
               style={{
                 width: '100%',
                 padding: '14px 24px',
-                background: brandTokens.deepForest,
+                background: checkoutLoading ? '#4A5D5A' : brandTokens.deepForest,
                 color: '#FFFFFF',
                 border: 'none',
                 borderRadius: '10px',
                 fontSize: '15px',
                 fontWeight: '700',
-                cursor: 'pointer',
+                cursor: checkoutLoading ? 'wait' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
                 boxShadow: brandTokens.shadowMd,
-                transition: 'all 0.15s ease'
+                transition: 'all 0.15s ease',
+                opacity: checkoutLoading ? 0.85 : 1
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = brandTokens.deepForestHover;
+                if (!checkoutLoading) e.currentTarget.style.background = brandTokens.deepForestHover;
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = brandTokens.deepForest;
+                if (!checkoutLoading) e.currentTarget.style.background = brandTokens.deepForest;
               }}
             >
               <span>
-                {isSoftPrompt
-                  ? `Keep My ${siteCount} ${siteCount === 1 ? 'Website' : 'Websites'} Protected & Auto-Renew ($0 Today)`
-                  : `Activate ${siteCount} ${siteCount === 1 ? 'Website' : 'Websites'} Protection ($${totalAmount.toFixed(2)})`}
+                {checkoutLoading
+                  ? 'Connecting to Secure Gateway...'
+                  : (isSoftPrompt
+                      ? `Keep My ${siteCount} ${siteCount === 1 ? 'Website' : 'Websites'} Protected & Auto-Renew ($0 Today)`
+                      : `Activate ${siteCount} ${siteCount === 1 ? 'Website' : 'Websites'} Protection ($${totalAmount.toFixed(2)})`)}
               </span>
               <ArrowRight size={16} />
             </button>
@@ -1490,6 +1584,19 @@ export default function TrialPaywallModal() {
         </div>
 
       </main>
+
+      {/* Embedded Secure Payment Modal & Paddle Checkout Gateway */}
+      {paymentModalOpen && (
+        <PaymentModal
+          isOpen={paymentModalOpen}
+          onClose={() => setPaymentModalOpen(false)}
+          plan="pro"
+          billingCycle={billingCycle}
+          siteCount={siteCount}
+          pricingConfig={dynamicPricing}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
     </div>
   );
 }

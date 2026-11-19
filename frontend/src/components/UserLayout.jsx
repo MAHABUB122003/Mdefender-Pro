@@ -42,18 +42,6 @@ export default function UserLayout({ children, onLogout }) {
         navigate('/onboarding', { replace: true })
         return
       }
-
-      // If trial is expired and user has not paid, prevent manual URL access to protected dashboard pages
-      const isExpired = Number(cachedProfile.trial_days_remaining) <= 0 && !cachedProfile.is_paid
-      const isAllowedRoute = (
-        location.pathname === '/user/pricing' ||
-        location.pathname === '/user/plans' ||
-        location.pathname === '/user/support' ||
-        location.pathname.startsWith('/payment')
-      )
-      if (isExpired && !isAllowedRoute) {
-        navigate('/user/pricing', { replace: true })
-      }
     }
   }, [location.pathname, navigate])
 
