@@ -231,21 +231,23 @@ class LicenseSlotService:
             target_licensed_ids = valid_site_ids[:total_slots]
         # Case 2: Paid active subscription -> Exactly up to purchased_slots
         elif state["is_paid"]:
-            # Retain currently active valid sites
+            # Strictly preserve user's explicit slot allocations
             target_licensed_ids = [sid for sid in filtered_ids if sid in valid_site_id_set]
             if len(target_licensed_ids) > total_slots:
                 # Trim excess if total_slots decreased (e.g. downgraded or transitioned from trial)
                 target_licensed_ids = target_licensed_ids[:total_slots]
-            elif len(target_licensed_ids) < total_slots:
-                # User has available unused slots!
-                # Automatically assign available slots to any connected websites
-                # that have not been explicitly paused by the user.
-                slots_remaining = total_slots - len(target_licensed_ids)
-                available_sites = [
-                    str(w["_id"]) for w in websites
-                    if str(w["_id"]) not in target_licensed_ids and not bool(w.get("protection_paused", False))
-                ]
-                target_licensed_ids.extend(available_sites[:slots_remaining])
+            elif len(target_licensed_ids) == 0 and len(valid_site_id_set) > 0:
+                # If user hasn't explicitly configured licensed sites yet (e.g. fresh upgrade from trial)
+                has_explicit_pauses = any(bool(w.get("protection_paused")) for w in websites)
+                if not has_explicit_pauses:
+                    # Initial auto-provisioning for fresh fleet
+                    available_sites = [str(w["_id"]) for w in websites]
+                    target_licensed_ids = available_sites[:total_slots]
+                    for overflow_w in websites:
+                        ow_id = str(overflow_w["_id"])
+                        if ow_id not in target_licensed_ids:
+                            ow_query = {"_id": ObjectId(ow_id)} if ObjectId.is_valid(ow_id) else {"_id": ow_id}
+                            self.db.websites.update_one(ow_query, {"$set": {"protection_paused": True}})
         # Case 3: Trial expired and no active payment -> Zero licensed
         else:
             target_licensed_ids = []
@@ -351,7 +353,7 @@ class LicenseSlotService:
         _invalidate_cache(user_id=uid_str, website_id=wid_str)
         try:
             from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-            push_instant_sync_to_wordpress(user_id=uid_str, website_id=wid_str, wait=True)
+            push_instant_sync_to_wordpress(user_id=uid_str, website_id=wid_str, wait=False)
         except Exception:
             pass
         return True, f"License slot successfully assigned to {website.get('domain') or 'website'}."
@@ -374,11 +376,14 @@ class LicenseSlotService:
         if str(website.get("user_id")) != uid_str and str(website.get("user_id")) != str(user_doc.get("_id")):
             return False, "Unauthorized access to website."
 
-        # Atomic pull from user document
+        # Atomic pull from user document (support both string and ObjectId in array)
         user_query = {"_id": ObjectId(uid_str)} if ObjectId.is_valid(uid_str) else {"_id": uid_str}
+        pull_targets = [wid_str]
+        if ObjectId.is_valid(wid_str):
+            pull_targets.append(ObjectId(wid_str))
         self.db.users.update_one(
             user_query,
-            {"$pull": {"licensed_website_ids": wid_str}}
+            {"$pull": {"licensed_website_ids": {"$in": pull_targets}}}
         )
 
         # Update website
@@ -401,7 +406,7 @@ class LicenseSlotService:
         _invalidate_cache(user_id=uid_str, website_id=wid_str)
         try:
             from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-            push_instant_sync_to_wordpress(user_id=uid_str, website_id=wid_str, wait=True)
+            push_instant_sync_to_wordpress(user_id=uid_str, website_id=wid_str, wait=False)
         except Exception:
             pass
         return True, f"License slot released from {website.get('domain') or 'website'}. Slot is now available."
@@ -484,20 +489,12 @@ class LicenseSlotService:
 
         try:
             from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-            push_instant_sync_to_wordpress(user_id=uid_str, website_id=rel_id, wait=True)
-            push_instant_sync_to_wordpress(user_id=uid_str, website_id=asg_id, wait=True)
+            push_instant_sync_to_wordpress(user_id=uid_str, website_id=rel_id, wait=False)
+            push_instant_sync_to_wordpress(user_id=uid_str, website_id=asg_id, wait=False)
         except Exception:
             pass
 
         return True, f"Protection swapped: {rel_site.get('domain')} is now paused, and {asg_site.get('domain')} is now actively protected."
-
-        _invalidate_cache(user_id=uid_str, website_id=wid_str)
-        try:
-            from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-            push_instant_sync_to_wordpress(user_id=uid_str, website_id=wid_str, wait=True)
-        except Exception:
-            pass
-        return True, f"License slot released from {website.get('domain') or 'website'}. Slot is now available."
 
     def verify_edge_license(self, website_id: str, domain: str = None, user_id: str = None) -> Tuple[bool, str]:
         """

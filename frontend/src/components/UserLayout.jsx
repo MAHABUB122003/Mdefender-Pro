@@ -129,6 +129,22 @@ function InnerContentFallback() {
   )
 }
 
+class SilentErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  componentDidCatch(err) {
+    console.warn('Silent boundary caught error:', err)
+  }
+  render() {
+    return this.state.hasError ? null : this.props.children
+  }
+}
+
 export default function UserLayout({ children, onLogout }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
@@ -270,7 +286,9 @@ export default function UserLayout({ children, onLogout }) {
             </div>
           )}
           <UserHeader onToggleSidebar={() => setSidebarOpen(prev => !prev)} onLogout={onLogout} />
-          <TrialPaywallModal />
+          <SilentErrorBoundary>
+            <TrialPaywallModal />
+          </SilentErrorBoundary>
           <ContentErrorBoundary location={location}>
             <Suspense fallback={<InnerContentFallback />}>
               {children || <Outlet />}

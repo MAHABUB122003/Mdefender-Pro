@@ -74,7 +74,6 @@ export default function TrialPaywallModal() {
     location.pathname === '/user/support' ||
     location.pathname.startsWith('/payment')
   );
-  if (isBillingOrSupportRoute) return null;
 
   // TAMPER-PROOF SECURITY SHIELD:
   // URL testing overrides (?test_trial_days, ?test_pro) MUST ONLY be honored for:
@@ -156,10 +155,13 @@ export default function TrialPaywallModal() {
     };
   }, []);
 
-  // 1. If actively paid or admin, never show paywall
+  // 1. Allow unrestricted access to billing/pricing and support pages so expired users can complete payment
+  if (isBillingOrSupportRoute) return null;
+
+  // 2. If actively paid or admin, never show paywall
   if (isPaidActive) return null;
 
-  // 2. Days 1 to 9: Silent (modal hidden, full dashboard access)
+  // 3. Days 1 to 9: Silent (modal hidden, full dashboard access)
   if (trialDays > 4) return null;
 
   const isHardLockout = trialDays <= 0;

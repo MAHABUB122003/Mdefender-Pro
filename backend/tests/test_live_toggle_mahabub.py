@@ -1,5 +1,6 @@
 import sys
 import os
+import time
 import urllib.request
 import urllib.error
 
@@ -47,6 +48,7 @@ def run_test():
     print("\n[Step 2] Toggling protection OFF (Releasing slot / Protection Paused)...")
     ok, msg = slot_service.release_slot(u_id, w_id)
     print(f"Release slot result: ok={ok}, msg={msg}")
+    time.sleep(1.0)
     code2 = send_attack()
     print(f"Attack response code with Protection OFF: {code2}")
     assert code2 == 200, f"Expected 200 OK when Protection Paused, got {code2}"
@@ -56,6 +58,7 @@ def run_test():
     print("\n[Step 3] Toggling protection ON (Re-assigning slot / Protection Resumed)...")
     ok, msg = slot_service.assign_slot(u_id, w_id)
     print(f"Assign slot result: ok={ok}, msg={msg}")
+    time.sleep(1.0)
     code3 = send_attack()
     print(f"Attack response code with Protection ON: {code3}")
     assert code3 == 403, f"Expected 403 Forbidden after turning ON, got {code3}"
@@ -83,6 +86,7 @@ def run_test():
     ok_sw, msg_sw = slot_service.swap_slot(u_id, release_website_id=w_id, assign_website_id=dummy_id)
     print(f"Swap (Mahabub -> Store2) result: ok={ok_sw}, msg={msg_sw}")
     assert ok_sw is True, f"Swap failed: {msg_sw}"
+    time.sleep(1.0)
     code_after_swap = send_attack()
     print(f"Attack response on Mahabub after swap (should be paused): {code_after_swap}")
     assert code_after_swap == 200, f"Expected 200 after swap, got {code_after_swap}"
@@ -91,6 +95,7 @@ def run_test():
     ok_back, msg_back = slot_service.swap_slot(u_id, release_website_id=dummy_id, assign_website_id=w_id)
     print(f"Swap back (Store2 -> Mahabub) result: ok={ok_back}, msg={msg_back}")
     assert ok_back is True, f"Swap back failed: {msg_back}"
+    time.sleep(1.0)
     code_restored = send_attack()
     print(f"Attack response on Mahabub after swap back (should be blocked): {code_restored}")
     assert code_restored == 403, f"Expected 403 after restoring, got {code_restored}"

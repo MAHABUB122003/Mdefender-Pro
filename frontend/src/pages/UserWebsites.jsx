@@ -82,13 +82,14 @@ export default function UserWebsites() {
   const [feedbackMsg, setFeedbackMsg] = useState(null)
   const [slotSummary, setSlotSummary] = useState(null)
   const [slotActionLoading, setSlotActionLoading] = useState({})
+  const [optimisticState, setOptimisticState] = useState({})
   const [pauseModalSite, setPauseModalSite] = useState(null)
   const [swapModalTargetSite, setSwapModalTargetSite] = useState(null)
   const [selectedSwapReleaseId, setSelectedSwapReleaseId] = useState('')
   const [swappingSlot, setSwappingSlot] = useState(false)
   const pricingConfig = getStoredPricingConfig() || {}
 
-  // Dedicated WordPress Websites with strictly synchronized license slot states
+  // Dedicated WordPress Websites with strictly synchronized license slot states & optimistic reactivity
   const wpWebsites = useMemo(() => {
     const list = data?.websites || []
     const slotMap = new Map()
@@ -104,15 +105,28 @@ export default function UserWebsites() {
         const idKey = String(w.id || w._id || '')
         const domainKey = String(w.domain || w.name || '').toLowerCase()
         const slotMatch = slotMap.get(idKey) || slotMap.get(domainKey)
-        const isLic = slotMatch ? Boolean(slotMatch.is_licensed) : Boolean(w.is_licensed)
+        const isLic = (optimisticState[idKey] !== undefined)
+          ? Boolean(optimisticState[idKey])
+          : (slotMatch ? Boolean(slotMatch.is_licensed) : Boolean(w.is_licensed))
         return {
           ...w,
           is_licensed: isLic,
-          protection_paused: slotMatch ? Boolean(slotMatch.protection_paused) : Boolean(w.protection_paused),
-          license_status: slotMatch?.license_status || w.license_status || (isLic ? 'active' : 'unlicensed')
+          protection_paused: !isLic,
+          license_status: isLic ? 'active' : 'unlicensed'
         }
       })
-  }, [data, slotSummary])
+  }, [data, slotSummary, optimisticState])
+
+  const effectiveSlotSummary = useMemo(() => {
+    if (!slotSummary) return null
+    const baseTotal = slotSummary.total_slots || 0
+    const activeCount = wpWebsites.filter(w => w.is_licensed).length
+    return {
+      ...slotSummary,
+      used_slots: activeCount,
+      available_slots: Math.max(0, baseTotal - activeCount)
+    }
+  }, [slotSummary, wpWebsites])
 
 
 
@@ -326,47 +340,61 @@ export default function UserWebsites() {
 
   const handleAssignSlot = async (siteId) => {
     if (!siteId) return
-    setSlotActionLoading(prev => ({ ...prev, [siteId]: true }))
+    const sId = String(siteId)
+    setSlotActionLoading(prev => ({ ...prev, [sId]: true }))
+    setOptimisticState(prev => ({ ...prev, [sId]: true }))
     setFeedbackMsg(null)
     try {
-      const res = await api.assignLicenseSlot(siteId)
+      const res = await api.assignLicenseSlot(sId)
       setFeedbackMsg({
         type: 'success',
-        text: res?.data?.message || '✅ License slot assigned! Autonomous WAF & Malware Hunter active for this website.'
+        text: res?.data?.message || '✅ License slot assigned! Protection active.'
       })
       userStore.invalidate('websites')
       userStore.invalidate('dashboard')
       await Promise.all([fetchData(true), fetchSlots()])
     } catch (err) {
+      setOptimisticState(prev => {
+        const next = { ...prev }
+        delete next[sId]
+        return next
+      })
       setFeedbackMsg({
         type: 'error',
         text: err.message || 'Failed to assign license slot.'
       })
     } finally {
-      setSlotActionLoading(prev => ({ ...prev, [siteId]: false }))
+      setSlotActionLoading(prev => ({ ...prev, [sId]: false }))
     }
   }
 
   const handleReleaseSlot = async (siteId) => {
     if (!siteId) return
-    setSlotActionLoading(prev => ({ ...prev, [siteId]: true }))
+    const sId = String(siteId)
+    setSlotActionLoading(prev => ({ ...prev, [sId]: true }))
+    setOptimisticState(prev => ({ ...prev, [sId]: false }))
     setFeedbackMsg(null)
     try {
-      const res = await api.releaseLicenseSlot(siteId)
+      const res = await api.releaseLicenseSlot(sId)
       setFeedbackMsg({
         type: 'success',
-        text: res?.data?.message || 'Slot released. You can now assign it to another website in your fleet.'
+        text: res?.data?.message || 'Slot released. Protection paused.'
       })
       userStore.invalidate('websites')
       userStore.invalidate('dashboard')
       await Promise.all([fetchData(true), fetchSlots()])
     } catch (err) {
+      setOptimisticState(prev => {
+        const next = { ...prev }
+        delete next[sId]
+        return next
+      })
       setFeedbackMsg({
         type: 'error',
         text: err.message || 'Failed to release license slot.'
       })
     } finally {
-      setSlotActionLoading(prev => ({ ...prev, [siteId]: false }))
+      setSlotActionLoading(prev => ({ ...prev, [sId]: false }))
     }
   }
 
@@ -382,11 +410,13 @@ export default function UserWebsites() {
     }
 
     if (w.is_licensed) {
-      // Prompt confirmation before pausing
-      setPauseModalSite(w)
+      // Direct instant toggle to OFF (zero modal friction)
+      handleReleaseSlot(siteId)
     } else {
-      // Currently paused / unlicensed
-      if (slotSummary && slotSummary.available_slots > 0) {
+      // User wants to turn ON
+      const currentAvailable = effectiveSlotSummary?.available_slots ?? (slotSummary?.available_slots ?? 0)
+      if (currentAvailable > 0) {
+        // Slot is available, claim immediately!
         handleAssignSlot(siteId)
       } else {
         // All slots in use -> open swap modal
@@ -398,20 +428,19 @@ export default function UserWebsites() {
     }
   }
 
-  const handleConfirmPause = async () => {
-    if (!pauseModalSite) return
-    const siteId = pauseModalSite.id || pauseModalSite._id
-    setPauseModalSite(null)
-    await handleReleaseSlot(siteId)
-  }
-
   const handleSwapSlot = async () => {
     if (!swapModalTargetSite || !selectedSwapReleaseId) return
-    const targetId = swapModalTargetSite.id || swapModalTargetSite._id
+    const targetId = String(swapModalTargetSite.id || swapModalTargetSite._id)
+    const releaseId = String(selectedSwapReleaseId)
     setSwappingSlot(true)
+    setOptimisticState(prev => ({
+      ...prev,
+      [releaseId]: false,
+      [targetId]: true
+    }))
     setFeedbackMsg(null)
     try {
-      const res = await api.swapLicenseSlot(selectedSwapReleaseId, targetId)
+      const res = await api.swapLicenseSlot(releaseId, targetId)
       setFeedbackMsg({
         type: 'success',
         text: res?.data?.message || 'Protection swapped successfully!'
@@ -421,6 +450,12 @@ export default function UserWebsites() {
       userStore.invalidate('dashboard')
       await Promise.all([fetchData(true), fetchSlots()])
     } catch (err) {
+      setOptimisticState(prev => {
+        const next = { ...prev }
+        delete next[releaseId]
+        delete next[targetId]
+        return next
+      })
       setFeedbackMsg({
         type: 'error',
         text: err.message || 'Failed to swap license slot.'
@@ -1481,19 +1516,19 @@ export default function UserWebsites() {
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                      <ShieldCheck size={16} color={slotSummary.available_slots > 0 ? '#059669' : '#10201E'} />
+                      <ShieldCheck size={16} color={(effectiveSlotSummary || slotSummary).available_slots > 0 ? '#059669' : '#10201E'} />
                       <span style={{ fontSize: '12px', fontWeight: '750', color: '#10201E' }}>
-                        Fleet Protection Capacity: <strong style={{ color: '#059669' }}>{slotSummary.used_slots}</strong> of {slotSummary.total_slots} Slots Assigned
+                        Fleet Protection Capacity: <strong style={{ color: '#059669' }}>{(effectiveSlotSummary || slotSummary).used_slots}</strong> of {(effectiveSlotSummary || slotSummary).total_slots} Slots Assigned
                       </span>
                       <span style={{
                         fontSize: '11px',
                         padding: '2px 8px',
                         borderRadius: '999px',
                         fontWeight: '700',
-                        background: slotSummary.available_slots > 0 ? '#E8F3EC' : '#F1F5F3',
-                        color: slotSummary.available_slots > 0 ? '#059669' : '#64748B'
+                        background: (effectiveSlotSummary || slotSummary).available_slots > 0 ? '#E8F3EC' : '#F1F5F3',
+                        color: (effectiveSlotSummary || slotSummary).available_slots > 0 ? '#059669' : '#64748B'
                       }}>
-                        {slotSummary.available_slots > 0 ? `${slotSummary.available_slots} Available` : 'All Slots In Use'}
+                        {(effectiveSlotSummary || slotSummary).available_slots > 0 ? `${(effectiveSlotSummary || slotSummary).available_slots} Available` : 'All Slots In Use'}
                       </span>
                     </div>
 
@@ -1528,8 +1563,8 @@ export default function UserWebsites() {
                   }}>
                     <div style={{
                       height: '100%',
-                      width: `${Math.min(100, (slotSummary.used_slots / Math.max(1, slotSummary.total_slots)) * 100)}%`,
-                      background: slotSummary.available_slots > 0 ? '#10B981' : '#059669',
+                      width: `${Math.min(100, (((effectiveSlotSummary || slotSummary).used_slots) / Math.max(1, (effectiveSlotSummary || slotSummary).total_slots)) * 100)}%`,
+                      background: (effectiveSlotSummary || slotSummary).available_slots > 0 ? '#10B981' : '#059669',
                       borderRadius: '999px',
                       transition: 'width 0.3s ease'
                     }} />
@@ -1824,7 +1859,7 @@ export default function UserWebsites() {
                               <span>Protection Paused</span>
                             </span>
 
-                            {slotSummary && slotSummary.available_slots === 0 && (
+                            {((effectiveSlotSummary?.available_slots ?? slotSummary?.available_slots) === 0) && (
                               <button
                                 type="button"
                                 onClick={() => handleToggleProtection(w)}
@@ -2725,228 +2760,169 @@ export default function UserWebsites() {
 
 
 
-      {/* Pause Protection Confirmation Modal (Accidental Click Guard) */}
-      {pauseModalSite && (
-        <div
-          onClick={() => setPauseModalSite(null)}
-          style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(6px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
-            padding: '20px'
-          }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              background: '#ffffff', borderRadius: '16px', border: '1px solid #E5E7EB',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', width: '100%', maxWidth: '440px',
-              padding: '24px', textAlign: 'left', color: '#111827'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '16px' }}>
-              <div style={{
-                width: '42px', height: '42px', borderRadius: '12px', background: '#FEF3C7',
-                color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                <AlertTriangle size={22} />
-              </div>
-              <div>
-                <h3 style={{ fontSize: '16px', fontWeight: '800', margin: '0 0 4px', color: '#111827' }}>
-                  Pause Protection?
-                </h3>
-                <p style={{ fontSize: '13px', color: '#6B7280', margin: 0, wordBreak: 'break-all' }}>
-                  <strong>{pauseModalSite.domain || pauseModalSite.name}</strong>
-                </p>
-              </div>
-            </div>
-
-            <div style={{
-              background: '#FFFBEB',
-              border: '1px solid #FDE68A',
-              borderRadius: '10px',
-              padding: '12px 14px',
-              fontSize: '12.5px',
-              lineHeight: '1.5',
-              color: '#92400E',
-              marginBottom: '20px'
-            }}>
-              Toggling off protection releases this website's license slot back into your fleet pool. <strong>Real-time WAF inspection will pause</strong>, and incoming traffic will pass directly to WordPress until protection is resumed.
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => setPauseModalSite(null)}
-                style={{
-                  padding: '9px 16px',
-                  background: '#FFFFFF',
-                  color: '#374151',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  fontSize: '12.5px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={slotActionLoading[pauseModalSite.id || pauseModalSite._id]}
-                onClick={handleConfirmPause}
-                style={{
-                  padding: '9px 18px',
-                  background: '#DC2626',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '12.5px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                <span>{slotActionLoading[pauseModalSite.id || pauseModalSite._id] ? 'Pausing...' : 'Confirm Pause'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Slot Swap & Fleet Scaling Modal */}
-      {swapModalTargetSite && (
-        <div
-          onClick={() => setSwapModalTargetSite(null)}
-          style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(6px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
-            padding: '20px'
-          }}
-        >
+      {swapModalTargetSite && (() => {
+        const activeSites = wpWebsites.filter(site => site.is_licensed)
+        const isSingleActive = activeSites.length === 1
+        const activeSite = activeSites[0]
+        const usedCount = (effectiveSlotSummary || slotSummary)?.used_slots || 0
+        const totalCount = (effectiveSlotSummary || slotSummary)?.total_slots || 0
+
+        return (
           <div
-            onClick={e => e.stopPropagation()}
+            onClick={() => setSwapModalTargetSite(null)}
             style={{
-              background: '#ffffff', borderRadius: '18px', border: '1px solid #E5E7EB',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', width: '100%', maxWidth: '480px',
-              padding: '24px', textAlign: 'left', color: '#111827'
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(6px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+              padding: '20px'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{
-                  width: '38px', height: '38px', borderRadius: '10px', background: '#ECFDF5',
-                  color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                  <ShieldCheck size={20} />
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: '#ffffff', borderRadius: '18px', border: '1px solid #E5E7EB',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', width: '100%', maxWidth: '480px',
+                padding: '24px', textAlign: 'left', color: '#111827'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '38px', height: '38px', borderRadius: '10px', background: '#ECFDF5',
+                    color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    <ShieldCheck size={20} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '16px', fontWeight: '800', margin: 0, color: '#111827' }}>
+                      All License Slots in Use ({usedCount}/{totalCount})
+                    </h3>
+                    <p style={{ fontSize: '12px', color: '#6B7280', margin: '2px 0 0' }}>
+                      Swap protection or scale slots for <strong>{swapModalTargetSite.domain || swapModalTargetSite.name}</strong>:
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 style={{ fontSize: '16px', fontWeight: '800', margin: 0, color: '#111827' }}>
-                    All License Slots in Use ({slotSummary?.used_slots || 0}/{slotSummary?.total_slots || 0})
-                  </h3>
-                  <p style={{ fontSize: '12px', color: '#6B7280', margin: '2px 0 0' }}>
-                    Choose how you want to protect <strong>{swapModalTargetSite.domain || swapModalTargetSite.name}</strong>:
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setSwapModalTargetSite(null)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: '4px' }}
+                >
+                  <X size={18} />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setSwapModalTargetSite(null)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: '4px' }}
-              >
-                <X size={18} />
-              </button>
-            </div>
 
-            {/* Option 1: Swap Protection */}
-            <div style={{
-              border: '1px solid #E5E7EB',
-              borderRadius: '12px',
-              padding: '14px',
-              marginBottom: '14px',
-              background: '#FAFAFA'
-            }}>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span>Option A: Swap Protection with Active Website</span>
-              </div>
-              <p style={{ fontSize: '12px', color: '#6B7280', margin: '0 0 10px', lineHeight: '1.4' }}>
-                Select which active website to pause so that <strong>{swapModalTargetSite.domain || swapModalTargetSite.name}</strong> receives real-time WAF protection:
-              </p>
-
-              {wpWebsites.filter(site => site.is_licensed).length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '160px', overflowY: 'auto' }}>
-                  {wpWebsites.filter(site => site.is_licensed).map(activeSite => {
-                    const activeId = activeSite.id || activeSite._id
-                    const isSelected = selectedSwapReleaseId === activeId
-                    return (
-                      <label
-                        key={activeId}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '8px 12px',
-                          borderRadius: '8px',
-                          border: `1.5px solid ${isSelected ? '#059669' : '#E5E7EB'}`,
-                          background: isSelected ? '#ECFDF5' : '#FFFFFF',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          fontWeight: isSelected ? '700' : '500',
-                          color: isSelected ? '#065F46' : '#374151',
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <input
-                            type="radio"
-                            name="swapReleaseSite"
-                            value={activeId}
-                            checked={isSelected}
-                            onChange={() => setSelectedSwapReleaseId(activeId)}
-                            style={{ accentColor: '#059669', cursor: 'pointer' }}
-                          />
-                          <span>{activeSite.domain || activeSite.name}</span>
-                        </div>
-                        <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: '#DEF7EC', color: '#03543F', fontWeight: '700' }}>
-                          Active
-                        </span>
-                      </label>
-                    )
-                  })}
+              {/* Option 1: Swap Protection */}
+              <div style={{
+                border: '1px solid #E5E7EB',
+                borderRadius: '12px',
+                padding: '14px',
+                marginBottom: '14px',
+                background: '#FAFAFA'
+              }}>
+                <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>Option A: Swap Protection with Active Website</span>
                 </div>
-              ) : (
-                <div style={{ fontSize: '12px', color: '#9CA3AF' }}>No active websites available to swap.</div>
-              )}
 
-              <button
-                type="button"
-                disabled={!selectedSwapReleaseId || swappingSlot}
-                onClick={handleSwapSlot}
-                style={{
-                  width: '100%',
-                  marginTop: '12px',
-                  padding: '9px',
-                  background: (!selectedSwapReleaseId || swappingSlot) ? '#9CA3AF' : '#0B2522',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '12.5px',
-                  fontWeight: '700',
-                  cursor: (!selectedSwapReleaseId || swappingSlot) ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px'
-                }}
-              >
-                <Zap size={14} color="#34D399" />
-                <span>{swappingSlot ? 'Swapping Protection...' : 'Swap Protection Slot'}</span>
-              </button>
-            </div>
+                {isSingleActive && activeSite ? (
+                  <div style={{
+                    padding: '12px',
+                    borderRadius: '8px',
+                    background: '#ECFDF5',
+                    border: '1.5px solid #10B981',
+                    marginBottom: '12px'
+                  }}>
+                    <div style={{ fontSize: '12.5px', color: '#065F46', lineHeight: '1.5' }}>
+                      Your 1 license slot is currently protecting <strong>{activeSite.domain || activeSite.name}</strong>.
+                      <div style={{ marginTop: '4px', fontSize: '12px', color: '#047857' }}>
+                        Click below to pause protection on <strong>{activeSite.domain || activeSite.name}</strong> and immediately activate real-time WAF protection on <strong>{swapModalTargetSite.domain || swapModalTargetSite.name}</strong>.
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p style={{ fontSize: '12px', color: '#6B7280', margin: '0 0 10px', lineHeight: '1.4' }}>
+                      Select which active website to pause so that <strong>{swapModalTargetSite.domain || swapModalTargetSite.name}</strong> receives real-time WAF protection:
+                    </p>
+                    {activeSites.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '160px', overflowY: 'auto' }}>
+                        {activeSites.map(site => {
+                          const activeId = site.id || site._id
+                          const isSelected = selectedSwapReleaseId === activeId
+                          return (
+                            <label
+                              key={activeId}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '8px 12px',
+                                borderRadius: '8px',
+                                border: `1.5px solid ${isSelected ? '#059669' : '#E5E7EB'}`,
+                                background: isSelected ? '#ECFDF5' : '#FFFFFF',
+                                cursor: 'pointer',
+                                fontSize: '12px',
+                                fontWeight: isSelected ? '700' : '500',
+                                color: isSelected ? '#065F46' : '#374151',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <input
+                                  type="radio"
+                                  name="swapReleaseSite"
+                                  value={activeId}
+                                  checked={isSelected}
+                                  onChange={() => setSelectedSwapReleaseId(activeId)}
+                                  style={{ accentColor: '#059669', cursor: 'pointer' }}
+                                />
+                                <span>{site.domain || site.name}</span>
+                              </div>
+                              <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: '#DEF7EC', color: '#03543F', fontWeight: '700' }}>
+                                Active
+                              </span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '12px', color: '#9CA3AF' }}>No active websites available to swap.</div>
+                    )}
+                  </>
+                )}
+
+                <button
+                  type="button"
+                  disabled={!selectedSwapReleaseId || swappingSlot}
+                  onClick={handleSwapSlot}
+                  style={{
+                    width: '100%',
+                    marginTop: '12px',
+                    padding: '10px',
+                    background: (!selectedSwapReleaseId || swappingSlot) ? '#9CA3AF' : '#059669',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '12.5px',
+                    fontWeight: '700',
+                    cursor: (!selectedSwapReleaseId || swappingSlot) ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    transition: 'background 0.15s ease'
+                  }}
+                >
+                  <Zap size={14} color="#FFFFFF" />
+                  <span>
+                    {swappingSlot
+                      ? 'Swapping Protection...'
+                      : isSingleActive && activeSite
+                      ? `Confirm Swap to ${swapModalTargetSite.domain || swapModalTargetSite.name}`
+                      : 'Swap Protection Slot'}
+                  </span>
+                </button>
+              </div>
 
             {/* Option 2: Scale Fleet Licenses */}
             <div style={{
@@ -2990,7 +2966,8 @@ export default function UserWebsites() {
             </div>
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {/* Upgrade Limit Prompt Modal (Clean White Theme) */}
 
