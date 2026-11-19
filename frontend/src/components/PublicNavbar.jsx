@@ -20,7 +20,11 @@ import {
   Server,
   AlertOctagon,
   ShieldCheck,
+  LogOut,
+  User,
 } from 'lucide-react';
+import api from '../api/api';
+import userStore from '../utils/userStore';
 
 // Bulletproof JWT token format & expiration validator
 function isTokenValid(token) {
@@ -55,11 +59,29 @@ export default function PublicNavbar() {
   const [solutionsOpen, setSolutionsOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userName, setUserName] = useState('');
+  const [userEmail, setUserEmail] = useState('');
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const navRef = useRef(null);
   const dropdownRef = useRef(null);
   const solutionsDropdownRef = useRef(null);
+  const userMenuRef = useRef(null);
   const productsTimeoutRef = useRef(null);
   const solutionsTimeoutRef = useRef(null);
+
+  // Close user dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setUserDropdownOpen(false);
+      }
+    };
+    if (userDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [userDropdownOpen]);
 
   // Instant prefetch helper for 0ms sub-resource switching
   const prefetch = (target) => {
@@ -98,29 +120,61 @@ export default function PublicNavbar() {
     }
   }, []);
 
-  // Real-time reactive authentication state synchronization with JWT expiration check
+  // Real-time reactive authentication state synchronization with JWT & session check
   useEffect(() => {
-    const syncAuth = () => {
+    let isMounted = true;
+    const syncAuth = async () => {
       try {
         const token = localStorage.getItem('mdefender_access') || localStorage.getItem('mdefender_user_token');
         const valid = isTokenValid(token);
         if (!valid) {
           if (token && typeof localStorage !== 'undefined') {
-            localStorage.removeItem('mdefender_access');
-            localStorage.removeItem('mdefender_refresh');
-            localStorage.removeItem('mdefender_user_name');
-            localStorage.removeItem('mdefender_user_plan');
+            api.clearTokens();
           }
-          setIsLoggedIn(false);
-          setUserName('');
+          if (isMounted) {
+            setIsLoggedIn(false);
+            setUserName('');
+            setUserEmail('');
+          }
           return;
         }
+
         const name = localStorage.getItem('mdefender_user_name') || '';
-        setIsLoggedIn(true);
-        setUserName(name);
+        const email = localStorage.getItem('mdefender_user_email') || '';
+        if (isMounted) {
+          setIsLoggedIn(true);
+          setUserName(name);
+          setUserEmail(email);
+        }
+
+        // Verify active session with backend in background
+        try {
+          const cachedProfile = userStore.get('profile');
+          if (!cachedProfile) {
+            const data = await api.getMe();
+            if (data?.user) {
+              if (isMounted) {
+                setUserName(data.user.name || data.user.full_name || '');
+                setUserEmail(data.user.email || '');
+              }
+              userStore.set('profile', data.user);
+            }
+          }
+        } catch {
+          // If session expired or rejected on server, clear auth state
+          if (isMounted) {
+            api.clearTokens();
+            setIsLoggedIn(false);
+            setUserName('');
+            setUserEmail('');
+          }
+        }
       } catch {
-        setIsLoggedIn(false);
-        setUserName('');
+        if (isMounted) {
+          setIsLoggedIn(false);
+          setUserName('');
+          setUserEmail('');
+        }
       }
     };
 
@@ -130,11 +184,26 @@ export default function PublicNavbar() {
     window.addEventListener('focus', syncAuth);
 
     return () => {
+      isMounted = false;
       window.removeEventListener('storage', syncAuth);
       window.removeEventListener('mdefender_auth_state_changed', syncAuth);
       window.removeEventListener('focus', syncAuth);
     };
   }, [loc.pathname]);
+
+  const handleLogout = async () => {
+    try {
+      await api.logout();
+    } catch {
+      api.clearTokens();
+    }
+    userStore.clear();
+    setIsLoggedIn(false);
+    setUserName('');
+    setUserEmail('');
+    setUserDropdownOpen(false);
+    window.location.href = '/user/login';
+  };
 
   useEffect(() => {
     const onScroll = () => {
@@ -860,36 +929,187 @@ export default function PublicNavbar() {
           {/* Desktop Right Action CTA */}
           <div className="mdf-public-cta-desktop">
             {isLoggedIn ? (
-              <Link
-                to="/user/dashboard"
+              <div
+                ref={userMenuRef}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '8px',
-                  padding: '0 16px',
-                  height: '38px',
-                  borderRadius: '8px',
-                  background: '#0B2522',
-                  color: '#ffffff',
-                  fontSize: '13.5px',
-                  fontWeight: 600,
-                  textDecoration: 'none',
-                  boxShadow: '0 2px 6px rgba(11, 37, 34, 0.12)',
-                  transition: 'all 0.18s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#15413C';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#0B2522';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  position: 'relative',
                 }}
               >
-                <LayoutDashboard size={14} />
-                <span>Dashboard</span>
-                <ArrowRight size={13} strokeWidth={2.4} />
-              </Link>
+                <Link
+                  to="/user/dashboard"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '0 16px',
+                    height: '38px',
+                    borderRadius: '8px',
+                    background: '#0B2522',
+                    color: '#ffffff',
+                    fontSize: '13.5px',
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    boxShadow: '0 2px 6px rgba(11, 37, 34, 0.12)',
+                    transition: 'all 0.18s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#15413C';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#0B2522';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  <LayoutDashboard size={14} />
+                  <span>Dashboard</span>
+                  <ArrowRight size={13} strokeWidth={2.4} />
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={() => setUserDropdownOpen((prev) => !prev)}
+                  title={userName ? `Logged in as ${userName}` : 'Account options'}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '0 10px',
+                    height: '38px',
+                    borderRadius: '8px',
+                    background: userDropdownOpen ? 'rgba(11, 37, 34, 0.08)' : 'transparent',
+                    border: '1px solid #D9E1DC',
+                    color: '#0B2522',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.16s ease',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '22px',
+                      height: '22px',
+                      borderRadius: '50%',
+                      background: '#0B2522',
+                      color: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {(userName || userEmail || 'U').charAt(0).toUpperCase()}
+                  </div>
+                  <ChevronDown
+                    size={13}
+                    style={{
+                      transform: userDropdownOpen ? 'rotate(180deg)' : 'none',
+                      transition: 'transform 0.15s ease',
+                    }}
+                  />
+                </button>
+
+                {userDropdownOpen && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 8px)',
+                      right: 0,
+                      width: '230px',
+                      background: '#ffffff',
+                      borderRadius: '10px',
+                      border: '1px solid #E2E8F0',
+                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
+                      padding: '8px',
+                      zIndex: 9999,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px',
+                    }}
+                  >
+                    <div style={{ padding: '8px 10px', borderBottom: '1px solid #F1F5F9', marginBottom: '4px' }}>
+                      <div
+                        style={{
+                          fontSize: '13px',
+                          fontWeight: 650,
+                          color: '#0F172A',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {userName || 'Logged in user'}
+                      </div>
+                      {userEmail && (
+                        <div
+                          style={{
+                            fontSize: '11px',
+                            color: '#64748B',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {userEmail}
+                        </div>
+                      )}
+                    </div>
+
+                    <Link
+                      to="/user/dashboard"
+                      onClick={() => setUserDropdownOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        color: '#1E293B',
+                        fontSize: '12.5px',
+                        fontWeight: 500,
+                        textDecoration: 'none',
+                        transition: 'background 0.12s ease',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = '#F8FAFC')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <LayoutDashboard size={14} color="#64748B" />
+                      <span>Go to Dashboard</span>
+                    </Link>
+
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        color: '#DC2626',
+                        fontSize: '12.5px',
+                        fontWeight: 500,
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        width: '100%',
+                        transition: 'background 0.12s ease',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = '#FEF2F2')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <LogOut size={14} />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               <>
                 <Link
@@ -1143,29 +1363,112 @@ export default function PublicNavbar() {
                 }}
               >
                 {isLoggedIn ? (
-                  <Link
-                    to="/user/dashboard"
-                    onClick={() => setMobileOpen(false)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      padding: '13px',
-                      borderRadius: '10px',
-                      background: '#0B2522',
-                      textAlign: 'center',
-                      fontSize: '14px',
-                      fontWeight: 700,
-                      color: '#ffffff',
-                      textDecoration: 'none',
-                      boxShadow: '0 2px 8px rgba(11, 37, 34, 0.15)',
-                    }}
-                  >
-                    <LayoutDashboard size={16} />
-                    <span>Go to Dashboard</span>
-                    <ArrowRight size={14} />
-                  </Link>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '10px 12px',
+                        background: '#ffffff',
+                        borderRadius: '10px',
+                        border: '1px solid #D9E1DC',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '50%',
+                          background: '#0B2522',
+                          color: '#ffffff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                        }}
+                      >
+                        {(userName || userEmail || 'U').charAt(0).toUpperCase()}
+                      </div>
+                      <div style={{ overflow: 'hidden' }}>
+                        <div
+                          style={{
+                            fontSize: '13px',
+                            fontWeight: 650,
+                            color: '#0F172A',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {userName || 'User'}
+                        </div>
+                        {userEmail && (
+                          <div
+                            style={{
+                              fontSize: '11px',
+                              color: '#64748B',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            {userEmail}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <Link
+                      to="/user/dashboard"
+                      onClick={() => setMobileOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        padding: '13px',
+                        borderRadius: '10px',
+                        background: '#0B2522',
+                        textAlign: 'center',
+                        fontSize: '14px',
+                        fontWeight: 700,
+                        color: '#ffffff',
+                        textDecoration: 'none',
+                        boxShadow: '0 2px 8px rgba(11, 37, 34, 0.15)',
+                      }}
+                    >
+                      <LayoutDashboard size={16} />
+                      <span>Go to Dashboard</span>
+                      <ArrowRight size={14} />
+                    </Link>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileOpen(false);
+                        handleLogout();
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        padding: '11px',
+                        borderRadius: '10px',
+                        border: '1px solid #FCA5A5',
+                        background: '#FEF2F2',
+                        color: '#DC2626',
+                        fontSize: '13.5px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <LogOut size={15} />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
                 ) : (
                   <>
                     <Link
