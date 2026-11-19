@@ -311,6 +311,57 @@ export default function UserPricing() {
         </div>
       )}
 
+      {/* 14-Day Free Trial Expired Mandatory Payment Banner */}
+      {(searchParams.get('expired') === 'true' || (!profile?.is_admin && !profile?.is_paid && (profile?.payment_status === 'trial_expired' || Number(profile?.trial_days_remaining) <= 0) && profile?.plan === 'free')) && (
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%)',
+            border: '2px solid #FDA4AF',
+            borderRadius: '16px',
+            padding: '22px 26px',
+            marginBottom: '28px',
+            boxShadow: '0 6px 20px rgba(225, 29, 72, 0.08)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '16px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flex: 1, minWidth: '280px' }}>
+            <div
+              style={{
+                width: '46px',
+                height: '46px',
+                borderRadius: '12px',
+                background: '#F43F5E',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                boxShadow: '0 4px 12px rgba(244, 63, 94, 0.3)',
+              }}
+            >
+              <Lock size={24} strokeWidth={2.4} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '800', background: '#E11D48', color: '#ffffff', padding: '2px 8px', borderRadius: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Action Required
+                </span>
+                <h4 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#9F1239' }}>
+                  14-Day Free Trial Expired — Fleet Protection Suspended
+                </h4>
+              </div>
+              <p style={{ margin: 0, fontSize: '13.5px', color: '#881337', lineHeight: '1.5' }}>
+                Your 14-day free trial period has concluded. Protected dashboard access and edge security services are paused until a subscription is activated. Select your plan below to restore instant protection.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Payment Gateway Setup Pending Notice */}
       {onboardingNotice && (
         <div

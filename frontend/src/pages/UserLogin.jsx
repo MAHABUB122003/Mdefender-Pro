@@ -32,6 +32,11 @@ export default function UserLogin({ onLoginSuccess }) {
   const getPostLoginUrl = (user) => {
     if (planParam) return `/user/pricing?plan=${planParam}&cycle=${cycleParam}`;
     if (user?.role === 'super_admin' || user?.is_admin) return '/admin';
+
+    // Direct Zero-Trust Paywall: If trial expired and no paid plan, route directly to pricing/checkout
+    const isExpired = (Number(user?.trial_days_remaining) <= 0) && !user?.is_paid && user?.plan === 'free';
+    if (isExpired) return '/user/pricing?expired=true';
+
     if (!user?.onboarded) {
       return '/onboarding';
     }
