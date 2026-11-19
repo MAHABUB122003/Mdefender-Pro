@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import UserSidebar from './UserSidebar'
 import UserHeader from './UserHeader'
@@ -6,6 +6,106 @@ import TrialPaywallModal from './TrialPaywallModal'
 import userStore from '../utils/userStore'
 import { BackupRestoreProvider } from '../context/BackupRestoreContext'
 import { MalwareScanProvider } from '../context/MalwareScanContext'
+
+class ContentErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false, error: null }
+  }
+
+  static getDerivedStateFromError(error) {
+    const msg = String(error?.message || error || '').toLowerCase()
+    const isChunkError = (
+      msg.includes('failed to fetch dynamically imported module') ||
+      msg.includes('loading chunk') ||
+      msg.includes('chunkloaderror') ||
+      msg.includes('importing a module script failed') ||
+      msg.includes('dynamically imported module')
+    )
+    if (isChunkError && typeof window !== 'undefined') {
+      window.location.reload()
+      return { hasError: false, error: null }
+    }
+    return { hasError: true, error }
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.location?.pathname !== this.props.location?.pathname && this.state.hasError) {
+      this.setState({ hasError: false, error: null })
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      const errText = this.state.error?.message || String(this.state.error || '')
+      return (
+        <div style={{ padding: '60px 24px', textAlign: 'center', maxWidth: '520px', margin: '0 auto' }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '12px',
+            background: '#FEE2E2',
+            color: '#DC2626',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 16px',
+            fontSize: '20px'
+          }}>
+            ⚠️
+          </div>
+          <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#10201E', marginBottom: '8px' }}>
+            Section Temporarily Unavailable
+          </h3>
+          <p style={{ fontSize: '13px', color: '#64748B', lineHeight: '1.5', marginBottom: '16px' }}>
+            This view encountered an issue while loading. You can refresh this view or navigate to another page using the sidebar.
+          </p>
+          {errText && (
+            <details style={{ marginBottom: '16px', textAlign: 'left', background: '#F8FAFC', padding: '8px 12px', borderRadius: '8px', fontSize: '11.5px', color: '#64748B', border: '1px solid #E2E8F0' }}>
+              <summary style={{ cursor: 'pointer', fontWeight: '600' }}>Diagnostic Details</summary>
+              <pre style={{ marginTop: '6px', whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'monospace' }}>{errText}</pre>
+            </details>
+          )}
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              style={{
+                padding: '8px 18px',
+                borderRadius: '8px',
+                background: '#0B2522',
+                color: '#ffffff',
+                border: 'none',
+                fontWeight: '700',
+                fontSize: '13px',
+                cursor: 'pointer'
+              }}
+            >
+              Refresh View
+            </button>
+            <button
+              type="button"
+              onClick={() => this.setState({ hasError: false, error: null })}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '8px',
+                background: '#ffffff',
+                border: '1px solid #CBD8CF',
+                color: '#10201E',
+                fontWeight: '600',
+                fontSize: '13px',
+                cursor: 'pointer'
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 function InnerContentFallback() {
   return (
@@ -171,9 +271,11 @@ export default function UserLayout({ children, onLogout }) {
           )}
           <UserHeader onToggleSidebar={() => setSidebarOpen(prev => !prev)} onLogout={onLogout} />
           <TrialPaywallModal />
-          <Suspense fallback={<InnerContentFallback />}>
-            {children || <Outlet />}
-          </Suspense>
+          <ContentErrorBoundary location={location}>
+            <Suspense fallback={<InnerContentFallback />}>
+              {children || <Outlet />}
+            </Suspense>
+          </ContentErrorBoundary>
         </div>
       </MalwareScanProvider>
     </BackupRestoreProvider>

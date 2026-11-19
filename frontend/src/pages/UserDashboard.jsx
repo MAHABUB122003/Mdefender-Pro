@@ -84,23 +84,26 @@ function timeAgo(value) {
 }
 
 function postureFor(sites) {
-  if (!sites.length) {
+  const validSites = (Array.isArray(sites) ? sites : []).filter((s) => s && typeof s === 'object');
+  if (!validSites.length) {
     return { score: 0, label: 'Not configured', tone: 'idle', tasks: [] };
   }
   let points = 0;
   const tasks = [];
-  sites.forEach((site) => {
+  validSites.forEach((site) => {
     const active = String(site.status || '').toLowerCase() === 'active';
     const protecting = String(site.waf_mode || '').toLowerCase() === 'protect';
     const plugin = Boolean(site.plugin_version);
     if (active) points += 1;
     if (protecting) points += 1;
     if (plugin) points += 1;
-    if (!active) tasks.push({ id: `resume-${site.id}`, text: `Resume protection for ${site.domain}`, to: '/user/websites' });
-    if (active && !protecting) tasks.push({ id: `waf-${site.id}`, text: `Turn on WAF protection for ${site.domain}`, to: '/user/websites' });
-    if (active && !plugin) tasks.push({ id: `plugin-${site.id}`, text: `Install the plugin on ${site.domain}`, to: '/user/websites' });
+    const siteId = site.id || site._id || '';
+    const siteDomain = site.domain || site.name || 'site';
+    if (!active) tasks.push({ id: `resume-${siteId}`, text: `Resume protection for ${siteDomain}`, to: '/user/websites' });
+    if (active && !protecting) tasks.push({ id: `waf-${siteId}`, text: `Turn on WAF protection for ${siteDomain}`, to: '/user/websites' });
+    if (active && !plugin) tasks.push({ id: `plugin-${siteId}`, text: `Install the plugin on ${siteDomain}`, to: '/user/websites' });
   });
-  const score = Math.round((points / (sites.length * 3)) * 100);
+  const score = Math.round((points / (validSites.length * 3)) * 100);
   const tone = score >= 85 ? 'ok' : score >= 60 ? 'warn' : 'bad';
   const label = score >= 85 ? 'Strong' : score >= 60 ? 'Needs attention' : 'At risk';
   return { score, label, tone, tasks: tasks.slice(0, 3) };
@@ -312,14 +315,14 @@ export default function UserDashboard() {
     };
   }, [fetchData]);
 
-  const sites = data?.websites || [];
-  const activity = data?.recent_activity || [];
+  const sites = Array.isArray(data?.websites) ? data.websites.filter((s) => s && typeof s === 'object') : [];
+  const activity = Array.isArray(data?.recent_activity) ? data.recent_activity.filter((a) => a && typeof a === 'object') : [];
   const posture = postureFor(sites);
-  const selectedSite = selectedWebsite !== 'all' ? sites.find((s) => s.id === selectedWebsite) : null;
+  const selectedSite = selectedWebsite !== 'all' ? sites.find((s) => s && (s.id === selectedWebsite || s._id === selectedWebsite)) : null;
 
   const requestsToday = Number(data?.requests_today || 0);
   const blockedToday = Number(data?.blocked_today || 0);
-  const activeSites = Number(data?.active_websites ?? sites.filter((s) => s.status === 'active').length);
+  const activeSites = Number(data?.active_websites ?? sites.filter((s) => s && s.status === 'active').length);
   const blockRate = requestsToday > 0 ? (blockedToday / requestsToday) * 100 : 0;
 
   const labels = lastSevenDays();
@@ -407,7 +410,7 @@ export default function UserDashboard() {
   };
 
   const toggleUnderAttack = async () => {
-    const next = !(selectedSite ? selectedSite.under_attack_mode : sites.some((s) => s.under_attack_mode));
+    const next = !(selectedSite ? selectedSite.under_attack_mode : sites.some((s) => s && s.under_attack_mode));
     try {
       if (selectedSite) {
         await api.toggleWebsiteUnderAttack(selectedSite.id, next);

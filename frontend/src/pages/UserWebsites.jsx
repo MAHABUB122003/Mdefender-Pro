@@ -96,7 +96,7 @@ export default function UserWebsites() {
       }
     }
     return list
-      .filter(w => (w.platform || '').toLowerCase() === 'wordpress' || (w.platform || '').toLowerCase().startsWith('wp'))
+      .filter(w => w && typeof w === 'object' && ((w.platform || '').toLowerCase() === 'wordpress' || (w.platform || '').toLowerCase().startsWith('wp')))
       .map(w => {
         const idKey = String(w.id || w._id || '')
         const domainKey = String(w.domain || w.name || '').toLowerCase()

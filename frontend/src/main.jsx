@@ -6,6 +6,36 @@ import './styles/tokens.css'
 import './index.css'
 import App from './App.jsx'
 
+// Global handler for Vite chunk preload errors (e.g. deployments with changed file hashes)
+if (typeof window !== 'undefined') {
+  window.addEventListener('vite:preloadError', (event) => {
+    event.preventDefault();
+    const lastReload = sessionStorage.getItem('mdf_last_chunk_reload');
+    const now = Date.now();
+    if (!lastReload || now - Number(lastReload) > 8000) {
+      sessionStorage.setItem('mdf_last_chunk_reload', String(now));
+      window.location.reload();
+    }
+  });
+
+  window.addEventListener('error', (event) => {
+    const msg = String(event?.message || event?.error?.message || '').toLowerCase();
+    if (
+      msg.includes('failed to fetch dynamically imported module') ||
+      msg.includes('loading chunk') ||
+      msg.includes('chunkloaderror') ||
+      msg.includes('importing a module script failed')
+    ) {
+      const lastReload = sessionStorage.getItem('mdf_last_chunk_reload');
+      const now = Date.now();
+      if (!lastReload || now - Number(lastReload) > 8000) {
+        sessionStorage.setItem('mdf_last_chunk_reload', String(now));
+        window.location.reload();
+      }
+    }
+  });
+}
+
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
@@ -13,6 +43,24 @@ class ErrorBoundary extends React.Component {
   }
 
   static getDerivedStateFromError(error) {
+    const msg = String(error?.message || error || '').toLowerCase();
+    const isChunkError = (
+      msg.includes('failed to fetch dynamically imported module') ||
+      msg.includes('loading chunk') ||
+      msg.includes('chunkloaderror') ||
+      msg.includes('importing a module script failed') ||
+      msg.includes('dynamically imported module')
+    );
+
+    if (isChunkError && typeof window !== 'undefined') {
+      const lastReload = sessionStorage.getItem('mdf_last_chunk_reload');
+      const now = Date.now();
+      if (!lastReload || now - Number(lastReload) > 8000) {
+        sessionStorage.setItem('mdf_last_chunk_reload', String(now));
+        window.location.reload();
+        return { hasError: false, error: null };
+      }
+    }
     return { hasError: true, error }
   }
 
@@ -22,6 +70,7 @@ class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
+      const errText = this.state.error?.message || String(this.state.error || '');
       return (
         <div style={{
           minHeight: '100vh',
@@ -60,9 +109,15 @@ class ErrorBoundary extends React.Component {
             <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a', marginBottom: '8px' }}>
               Something went wrong
             </h2>
-            <p style={{ fontSize: '13.5px', color: '#64748b', marginBottom: '24px', lineHeight: '1.5' }}>
+            <p style={{ fontSize: '13.5px', color: '#64748b', marginBottom: '16px', lineHeight: '1.5' }}>
               The application encountered an unexpected error. Please refresh the page or clear cache to continue.
             </p>
+            {errText && (
+              <details style={{ marginBottom: '20px', textAlign: 'left', background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', fontSize: '11.5px', color: '#64748b', border: '1px solid #e2e8f0' }}>
+                <summary style={{ cursor: 'pointer', fontWeight: '600' }}>Diagnostic Details</summary>
+                <pre style={{ marginTop: '6px', whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'monospace' }}>{errText}</pre>
+              </details>
+            )}
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
               <button
                 onClick={() => {
