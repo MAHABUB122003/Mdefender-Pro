@@ -209,11 +209,14 @@ export default function UserPricing() {
       }
 
       // 2. Request backend to create transaction with custom quantity
+      const userEmail = profile?.email || userStore.get('profile')?.email || '';
       const res = await api.createPaddleCheckout({
         plan: 'pro',
         quantity: sitesCount,
         sites: sitesCount,
         billing_cycle: billingCycle,
+        customer_email: userEmail,
+        email: userEmail,
         return_url: window.location.href,
         success_url: `${window.location.origin}/payment/success?plan=pro&cycle=${billingCycle}&sites=${sitesCount}`,
       });
@@ -237,6 +240,7 @@ export default function UserPricing() {
         try {
           window.Paddle.Checkout.open({
             transactionId: checkoutData.checkout_id,
+            customer: userEmail ? { email: userEmail } : undefined,
             settings: {
               displayMode: 'overlay',
               theme: 'light',

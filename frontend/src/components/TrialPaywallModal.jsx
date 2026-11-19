@@ -230,10 +230,13 @@ export default function TrialPaywallModal() {
       }
 
       // 2. Request Paddle Checkout session from backend
+      const userEmail = profile?.email || userStore.get('profile')?.email || '';
       const res = await api.createPaddleCheckout({
         plan: 'pro',
         billing_cycle: billingCycle,
         site_count: siteCount,
+        customer_email: userEmail,
+        email: userEmail,
       });
 
       if (res && res.success === false && res.error) {
@@ -248,6 +251,7 @@ export default function TrialPaywallModal() {
         try {
           window.Paddle.Checkout.open({
             transactionId: checkoutData.checkout_id,
+            customer: userEmail ? { email: userEmail } : undefined,
             settings: {
               displayMode: 'overlay',
               theme: 'light',
