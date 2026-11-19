@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional, Dict
 from bson import ObjectId
-from fastapi import Request, HTTPException, Response
+from fastapi import Request, HTTPException, Response, Depends
 from src.auth.jwt_service import JWTService
 from src.auth.cookie_service import CookieService
 from src.auth.csrf_service import CSRFService
