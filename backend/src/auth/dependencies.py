@@ -117,6 +117,11 @@ async def get_current_user(request: Request) -> dict:
         pass
     is_onboarded = bool(user.get('onboarded') or websites_count > 0)
 
+    from src.services.license_slot_service import LicenseSlotService
+    lic_service = LicenseSlotService(db)
+    lic_state = lic_service.resolve_user_license_state(user)
+    effective_plan = lic_state.get('plan', 'free')
+
     return {
         'id': user_id_str,
         '_id': user_id_str,
@@ -128,7 +133,12 @@ async def get_current_user(request: Request) -> dict:
         'is_admin': user.get('role') == 'super_admin' or user.get('is_admin', False),
         'email_verified': user.get('email_verified', False),
         'mfa_enabled': user.get('mfa_enabled', False),
-        'plan': user.get('plan', 'free'),
+        'plan': effective_plan,
+        'effective_plan': effective_plan,
+        'is_paid': lic_state.get('is_paid', False),
+        'is_trial_active': lic_state.get('is_trial_active', False),
+        'trial_days_remaining': lic_state.get('trial_days_remaining', 0),
+        'purchased_slots': lic_state.get('purchased_slots', 0),
         'token_version': user.get('token_version', 0),
         'api_key': user.get('api_key', ''),
         'created_at': str(user.get('created_at', '')),
@@ -140,6 +150,24 @@ async def get_current_user(request: Request) -> dict:
         'referral_source': user.get('referral_source', ''),
         'onboarding_step': user.get('onboarding_step', 'workspace' if not is_onboarded else 'completed'),
     }
+
+
+async def require_active_subscription(user: dict = Depends(get_current_user)) -> dict:
+    """Zero-Trust Subscription Guard:
+    Guarantees that expired or unpaid users CANNOT execute security actions,
+    even if they tamper with browser console, localStorage, or DOM.
+    Returns HTTP 402 Payment Required.
+    """
+    if user.get("is_admin") or user.get("role") in ("admin", "super_admin"):
+        return user
+
+    if user.get("is_paid") or user.get("is_trial_active"):
+        return user
+
+    raise HTTPException(
+        status_code=402,
+        detail="Subscription required. Your 14-day free trial or fleet subscription has expired. Please upgrade or renew to continue using MDefender Pro."
+    )
 
 
 async def get_current_admin(request: Request) -> str:

@@ -60,17 +60,29 @@ export default function TrialPaywallModal() {
   // Zero-flicker: initialize directly from instant persistent storage
   const [dynamicPricing, setDynamicPricing] = useState(() => getStoredPricingConfig());
 
-  // Check URL query param for instant live testing (e.g. ?test_trial_days=4 or ?test_trial_days=0)
-  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-  const testTrialParam = urlParams ? urlParams.get('test_trial_days') : null;
-  const testProParam = urlParams ? urlParams.get('test_pro') : null;
-
   const cachedProfile = userStore.get('profile') || userStore.get('dashboard')?.user || null;
   const [profile, setProfile] = useState(() => cachedProfile);
 
+  // TAMPER-PROOF SECURITY SHIELD:
+  // URL testing overrides (?test_trial_days, ?test_pro) MUST ONLY be honored for:
+  // 1. Authenticated administrators (is_admin === true || role === 'admin' || role === 'super_admin')
+  // 2. Local Vite development mode (import.meta.env.DEV)
+  // Regular users in production cannot bypass the paywall via URL query parameters or console.
+  const isPrivilegedAdmin = Boolean(
+    import.meta.env.DEV ||
+    profile?.is_admin ||
+    profile?.role === 'admin' ||
+    profile?.role === 'super_admin'
+  );
+
+  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const testTrialParam = isPrivilegedAdmin && urlParams ? urlParams.get('test_trial_days') : null;
+  const testProParam = isPrivilegedAdmin && urlParams ? urlParams.get('test_pro') : null;
+
+  // Authoritative server resolution: NEVER trust client localStorage over authenticated server state
   const userPlan = (testProParam === 'true'
     ? 'pro'
-    : (profile?.plan || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_plan') : null) || 'free')
+    : (profile?.plan || 'free')
   ).toLowerCase();
   const isPro = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan);
 
@@ -79,7 +91,7 @@ export default function TrialPaywallModal() {
     ? Number(testTrialParam)
     : (profile?.trial_days_remaining !== undefined
       ? profile.trial_days_remaining
-      : (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_trial_days') : null));
+      : defaultTrialDays);
   const trialDays = rawTrial !== null ? Number(rawTrial) : defaultTrialDays;
 
   useEffect(() => {
