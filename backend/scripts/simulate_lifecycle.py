@@ -380,8 +380,8 @@ def real_charge_paddle(db, user, amount_in_cents=400):
             }
             db.paddle_transactions.update_one({"transaction_id": real_txn_id}, {"$set": rec}, upsert=True)
 
-            cur_exp = user_doc.get("plan_expires")
-            if cur_exp and isinstance(cur_exp, datetime) and cur_exp > now_utc:
+            cur_exp = _normalize_to_utc(user_doc.get("plan_expires"), None)
+            if cur_exp and cur_exp > now_utc:
                 new_exp = cur_exp + timedelta(days=30)
             else:
                 new_exp = now_utc + timedelta(days=30)
@@ -703,8 +703,8 @@ def simulate_cancel_renew(db, user):
 
     now_utc = datetime.now(timezone.utc)
     user_doc = db.users.find_one({"_id": user["_id"]})
-    cur_exp = user_doc.get("plan_expires")
-    if cur_exp and isinstance(cur_exp, datetime) and cur_exp > now_utc:
+    cur_exp = _normalize_to_utc(user_doc.get("plan_expires"), None)
+    if cur_exp and cur_exp > now_utc:
         period_end = cur_exp
     else:
         period_end = now_utc + timedelta(days=15)
@@ -761,8 +761,8 @@ def simulate_renew_success(db, user):
     days_add = 365 if is_yearly else 30
     sites = user_doc.get("purchased_slots") or user_doc.get("website_slots") or 5
 
-    current_expires = user_doc.get("plan_expires")
-    if current_expires and isinstance(current_expires, datetime) and current_expires > now_utc:
+    current_expires = _normalize_to_utc(user_doc.get("plan_expires"), None)
+    if current_expires and current_expires > now_utc:
         new_expires = current_expires + timedelta(days=days_add)
     else:
         new_expires = now_utc + timedelta(days=days_add)
