@@ -32,57 +32,6 @@ import {
   ExternalLink,
 } from 'lucide-react';
 
-const CAPABILITIES = [
-  {
-    title: 'Next-Gen WAF & Layer-7 DDoS Shield',
-    desc: 'Sub-millisecond (<0.12ms) line-rate inspection with AST machine learning and PoW bot challenge.',
-    icon: Shield,
-    color: '#059669',
-  },
-  {
-    title: 'IP Blacklist / Whitelist & Geo-Fencing',
-    desc: 'CIDR subnet blocking, sovereign country fences, and instant automated IP reputation bans.',
-    icon: Globe,
-    color: '#E8792F',
-  },
-  {
-    title: '5.24M+ Checksum Malware Hunter',
-    desc: 'Instant 0.01ms file integrity checks against official WP core hashes with AST code analysis.',
-    icon: Database,
-    color: '#2563EB',
-  },
-  {
-    title: 'Post-Hack Recovery & Rapid Clean',
-    desc: '1-click compromised site disinfection, secret salts rotation, and rogue admin purge.',
-    icon: RotateCcw,
-    color: '#DC2626',
-  },
-  {
-    title: 'Live Logs & Forensic Event Stream',
-    desc: 'Real-time HTTP request inspector, raw payload dumps, and multi-channel instant alerts.',
-    icon: Activity,
-    color: '#0284C7',
-  },
-  {
-    title: 'WordPress Hardening & RASP',
-    desc: 'Stealth admin gateway, native RFC-6238 2FA, uploads PHP lockdown, and security headers.',
-    icon: Lock,
-    color: '#7C3AED',
-  },
-  {
-    title: 'Multi-Site Fleet Safe Updates',
-    desc: 'Bulk 1-click plugin/theme updates with automated pre-update snapshot safety rollback.',
-    icon: Layers,
-    color: '#0F2C26',
-  },
-  {
-    title: 'Dark Web Breach Intel & Reports',
-    desc: 'Credential leak monitoring, fleet-wide 404 crawler, and white-label client PDF audit exports.',
-    icon: Sparkles,
-    color: '#D97706',
-  },
-];
-
 export default function UserPricing() {
   const { dark } = useTheme();
   const [searchParams] = useSearchParams();
@@ -232,6 +181,33 @@ export default function UserPricing() {
   const currentRateText = billingData?.current_rate
     ? `$${billingData.current_rate}/${currentBillingCycle === 'yearly' ? 'yr' : 'mo'}`
     : `$${(monthlyRate * allocatedSlots).toFixed(2)}/mo`;
+
+  const trialDaysRemaining = (() => {
+    if (profile?.trial_days_remaining !== undefined && profile?.trial_days_remaining !== null) {
+      return Math.max(0, Number(profile.trial_days_remaining));
+    }
+    const trialEndsAt = profile?.trial_ends_at || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_trial_ends_at') : null);
+    if (trialEndsAt) {
+      const endsDt = new Date(trialEndsAt);
+      if (!isNaN(endsDt.getTime())) {
+        const msRemaining = endsDt.getTime() - Date.now();
+        return Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
+      }
+    }
+    const createdAt = profile?.created_at || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_created_at') : null);
+    if (createdAt) {
+      const createdDt = new Date(createdAt);
+      if (!isNaN(createdDt.getTime())) {
+        const daysElapsed = Math.floor((Date.now() - createdDt.getTime()) / (1000 * 60 * 60 * 24));
+        return Math.max(0, 14 - daysElapsed);
+      }
+    }
+    const storedTrial = typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_trial_days') : null;
+    if (storedTrial !== null && storedTrial !== undefined && storedTrial !== '') {
+      return Math.max(0, Number(storedTrial));
+    }
+    return 14;
+  })();
 
   const handleSitesChange = (val) => {
     const num = parseInt(val, 10);
@@ -497,278 +473,218 @@ export default function UserPricing() {
         </div>
       )}
 
-      {/* Active Fleet Subscription & Billing Management Card */}
+      {/* Sleek Single-Row Active Security Workspace Bar */}
       <div
         style={{
           background: '#ffffff',
-          borderRadius: '20px',
-          padding: '28px 32px',
-          marginBottom: '28px',
+          borderRadius: '14px',
+          padding: '14px 22px',
+          marginBottom: '24px',
           border: '1px solid #D9E1DC',
-          boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)',
+          boxShadow: '0 2px 10px rgba(11, 37, 34, 0.03)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '14px',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            flexWrap: 'wrap',
-            gap: '20px',
-          }}
-        >
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
+        {/* Left Side: Inline Indicators */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <span
+            style={{
+              padding: '4px 10px',
+              borderRadius: '20px',
+              fontSize: '11.5px',
+              fontWeight: '800',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              background: '#E8EEE8',
+              color: '#0B2522',
+              border: '1px solid #D9E1DC',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <ShieldCheck size={13} strokeWidth={2.4} style={{ color: '#059669' }} />
+            <span>Active Security Workspace</span>
+          </span>
+
+          <span
+            style={{
+              padding: '4px 10px',
+              borderRadius: '20px',
+              fontSize: '11px',
+              fontWeight: '800',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              background: isPaidActive ? '#E8F3EC' : '#FFF4ED',
+              color: isPaidActive ? '#059669' : '#E8792F',
+              border: `1px solid ${isPaidActive ? '#CFE2D4' : '#FCD3B6'}`,
+            }}
+          >
+            {isPaidActive ? 'PRO FLEET' : 'FREE PLAN'}
+          </span>
+
+          <span style={{ fontSize: '13px', fontWeight: '700', color: '#10201E', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <span
+              style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                background: isPaidActive ? '#059669' : '#E8792F',
+                boxShadow: isPaidActive ? '0 0 6px rgba(5, 150, 105, 0.4)' : 'none',
+              }}
+            />
+            <span>{allocatedSlots} Website {allocatedSlots === 1 ? 'Slot' : 'Slots'}</span>
+          </span>
+
+          <span style={{ color: '#CBD5E1', fontSize: '13px' }}>•</span>
+
+          {isPaidActive ? (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: '#60716B', flexWrap: 'wrap' }}>
+              <span>Rate: <strong style={{ color: '#10201E' }}>{currentRateText}</strong></span>
+              {formattedCycleEnd && <span>· Valid: <strong style={{ color: '#10201E' }}>{formattedCycleEnd}</strong></span>}
               <span
                 style={{
-                  padding: '4px 10px',
-                  borderRadius: '20px',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
                   fontSize: '11px',
-                  fontWeight: '800',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  background: '#E8EEE8',
-                  color: '#0B2522',
-                  border: '1px solid #D9E1DC',
+                  fontWeight: '700',
+                  background: isAutoRenewOn ? '#ECFDF5' : '#FFFBEB',
+                  color: isAutoRenewOn ? '#047857' : '#B45309',
+                  border: `1px solid ${isAutoRenewOn ? '#A7F3D0' : '#FCD34D'}`,
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '6px',
+                  gap: '4px',
                 }}
               >
-                <ShieldCheck size={13} strokeWidth={2.4} style={{ color: '#059669' }} />
-                <span>Active Security Workspace</span>
-              </span>
-
-              <span
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '20px',
-                  fontSize: '11px',
-                  fontWeight: '800',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  background: isPaidActive ? '#E8F3EC' : '#FFF4ED',
-                  color: isPaidActive ? '#059669' : '#E8792F',
-                  border: `1px solid ${isPaidActive ? '#CFE2D4' : '#FCD3B6'}`,
-                }}
-              >
-                {isPaidActive ? 'PRO SUBSCRIPTION ACTIVE' : '14-DAY FREE TRIAL'}
-              </span>
-
-              {isPaidActive && (
                 <span
                   style={{
-                    padding: '4px 10px',
-                    borderRadius: '20px',
-                    fontSize: '11px',
-                    fontWeight: '800',
-                    background: isAutoRenewOn ? '#ECFDF5' : '#FFFBEB',
-                    color: isAutoRenewOn ? '#047857' : '#B45309',
-                    border: `1px solid ${isAutoRenewOn ? '#A7F3D0' : '#FCD34D'}`,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
+                    width: '5px',
+                    height: '5px',
+                    borderRadius: '50%',
+                    background: isAutoRenewOn ? '#059669' : '#D97706',
                   }}
-                >
-                  <span
-                    style={{
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '50%',
-                      background: isAutoRenewOn ? '#059669' : '#D97706',
-                      boxShadow: isAutoRenewOn ? '0 0 6px #059669' : 'none',
-                    }}
-                  />
-                  <span>{isAutoRenewOn ? 'Auto-Renew: ON' : 'Auto-Renew: OFF (Cancels at period end)'}</span>
-                </span>
-              )}
+                />
+                <span>{isAutoRenewOn ? 'Auto-Renew: ON' : 'Auto-Renew: OFF'}</span>
+              </span>
             </div>
+          ) : (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: '#60716B' }}>
+              <span>
+                Trial: <strong style={{ color: trialDaysRemaining <= 4 ? '#DC2626' : '#059669' }}>{trialDaysRemaining} Days</strong>
+              </span>
+              <span style={{ fontSize: '11.5px', color: '#87948D' }}>· Full Layer-7 AST WAF Active</span>
+            </div>
+          )}
+        </div>
 
-            <h1 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 6px', color: '#10201E', letterSpacing: '-0.03em' }}>
-              Active Fleet Subscription &amp; Billing Management
-            </h1>
-            <p style={{ margin: 0, fontSize: '14px', color: '#60716B', maxWidth: '680px', lineHeight: '1.55' }}>
-              Manage multi-site security capacity, view active billing rates, toggle automatic renewal, and download official payment receipts.
-              Scale or pause your fleet anytime with zero retroactive fees.
-            </p>
-          </div>
-
-          {/* Quick Action Controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            {isPaidActive ? (
-              <>
-                {isAutoRenewOn ? (
-                  <button
-                    type="button"
-                    onClick={() => setCancelModalOpen(true)}
-                    style={{
-                      padding: '9px 16px',
-                      borderRadius: '10px',
-                      border: '1px solid #FECACA',
-                      background: '#FEF2F2',
-                      color: '#DC2626',
-                      fontSize: '12.5px',
-                      fontWeight: '700',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = '#FEE2E2')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = '#FEF2F2')}
-                  >
-                    <RotateCcw size={13} strokeWidth={2.2} />
-                    <span>Cancel Auto-Renew</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleReactivateAutoRenew}
-                    disabled={reactivating}
-                    style={{
-                      padding: '9px 16px',
-                      borderRadius: '10px',
-                      border: 'none',
-                      background: '#059669',
-                      color: '#FFFFFF',
-                      fontSize: '12.5px',
-                      fontWeight: '700',
-                      cursor: reactivating ? 'wait' : 'pointer',
-                      boxShadow: '0 4px 12px rgba(5, 150, 105, 0.25)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                    }}
-                  >
-                    {reactivating ? (
-                      <>
-                        <RefreshCw size={13} className="animate-spin" />
-                        <span>Reactivating...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Check size={14} strokeWidth={2.4} />
-                        <span>Turn Auto-Renew Back ON</span>
-                      </>
-                    )}
-                  </button>
-                )}
-
+        {/* Right Side: Sleek Action Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {isPaidActive ? (
+            <>
+              {isAutoRenewOn ? (
                 <button
                   type="button"
-                  onClick={() => document.getElementById('fleet-calculator')?.scrollIntoView({ behavior: 'smooth' })}
+                  onClick={() => setCancelModalOpen(true)}
                   style={{
-                    padding: '9px 16px',
-                    borderRadius: '10px',
-                    border: '1px solid #D9E1DC',
-                    background: '#FFFFFF',
-                    color: '#10201E',
-                    fontSize: '12.5px',
+                    padding: '7px 13px',
+                    borderRadius: '8px',
+                    border: '1px solid #FECACA',
+                    background: '#FEF2F2',
+                    color: '#DC2626',
+                    fontSize: '12px',
                     fontWeight: '700',
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#F8FAF9')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = '#FFFFFF')}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#FEE2E2')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = '#FEF2F2')}
                 >
-                  Scale Fleet Licenses
+                  <RotateCcw size={12} strokeWidth={2.2} />
+                  <span>Cancel Auto-Renew</span>
                 </button>
-              </>
-            ) : (
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleReactivateAutoRenew}
+                  disabled={reactivating}
+                  style={{
+                    padding: '7px 13px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: '#059669',
+                    color: '#FFFFFF',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    cursor: reactivating ? 'wait' : 'pointer',
+                    boxShadow: '0 2px 8px rgba(5, 150, 105, 0.25)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                  }}
+                >
+                  {reactivating ? (
+                    <>
+                      <RefreshCw size={12} className="animate-spin" />
+                      <span>Reactivating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check size={12} strokeWidth={2.4} />
+                      <span>Turn Auto-Renew Back ON</span>
+                    </>
+                  )}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => document.getElementById('fleet-calculator')?.scrollIntoView({ behavior: 'smooth' })}
                 style={{
-                  padding: '9px 18px',
-                  borderRadius: '10px',
-                  border: 'none',
-                  background: '#0B2522',
-                  color: '#FFFFFF',
-                  fontSize: '13px',
-                  fontWeight: '800',
+                  padding: '7px 13px',
+                  borderRadius: '8px',
+                  border: '1px solid #D9E1DC',
+                  background: '#FFFFFF',
+                  color: '#10201E',
+                  fontSize: '12px',
+                  fontWeight: '700',
                   cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(11, 37, 34, 0.2)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
+                  transition: 'all 0.15s ease',
                 }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#F8FAF9')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#FFFFFF')}
               >
-                <span>Upgrade to Pro Fleet</span>
-                <ArrowRight size={15} />
+                Scale Fleet
               </button>
-            )}
-          </div>
-        </div>
-
-        {/* 4-Metric Information Grid */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: '16px',
-            marginTop: '24px',
-            paddingTop: '22px',
-            borderTop: '1px solid #E6ECE8',
-          }}
-        >
-          {/* Metric 1: Capacity */}
-          <div style={{ background: '#F8FAF9', borderRadius: '12px', padding: '16px 18px', border: '1px solid #E6ECE8' }}>
-            <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#60716B', fontWeight: '700', letterSpacing: '0.05em', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Shield size={13} style={{ color: '#059669' }} />
-              <span>Allocated Fleet Capacity</span>
-            </div>
-            <div style={{ fontSize: '20px', fontWeight: '800', color: '#10201E', marginBottom: '4px' }}>
-              {allocatedSlots} Website {allocatedSlots === 1 ? 'Slot' : 'Slots'}
-            </div>
-            <div style={{ fontSize: '12px', color: '#60716B' }}>
-              {isPaidActive ? 'Full Layer-7 AST WAF & malware hunter' : '1 site licensed in 14-day free trial'}
-            </div>
-          </div>
-
-          {/* Metric 2: Rate */}
-          <div style={{ background: '#F8FAF9', borderRadius: '12px', padding: '16px 18px', border: '1px solid #E6ECE8' }}>
-            <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#60716B', fontWeight: '700', letterSpacing: '0.05em', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <CreditCard size={13} style={{ color: '#059669' }} />
-              <span>Active Billing Rate</span>
-            </div>
-            <div style={{ fontSize: '20px', fontWeight: '800', color: '#10201E', marginBottom: '4px' }}>
-              {isPaidActive ? currentRateText : '$0.00 / Free Trial'}
-            </div>
-            <div style={{ fontSize: '12px', color: '#60716B' }}>
-              {isPaidActive ? `Billed ${currentBillingCycle} · Zero unexpected fees` : 'No credit card required during trial'}
-            </div>
-          </div>
-
-          {/* Metric 3: Expiry or Renewal */}
-          <div style={{ background: '#F8FAF9', borderRadius: '12px', padding: '16px 18px', border: '1px solid #E6ECE8' }}>
-            <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#60716B', fontWeight: '700', letterSpacing: '0.05em', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Calendar size={13} style={{ color: '#059669' }} />
-              <span>{isAutoRenewOn ? 'Next Renewal Date' : 'Protection Valid Until'}</span>
-            </div>
-            <div style={{ fontSize: '20px', fontWeight: '800', color: '#10201E', marginBottom: '4px' }}>
-              {formattedCycleEnd || (isPaidActive ? 'Active Cycle' : `${profile?.trial_days_remaining ?? 14} Days Left`)}
-            </div>
-            <div style={{ fontSize: '12px', color: isAutoRenewOn ? '#059669' : '#D97706', fontWeight: '600' }}>
-              {isPaidActive
-                ? (isAutoRenewOn ? '● Recurring rollover enabled' : '○ Will safely pause ($0 billed)')
-                : 'Full security capabilities active'}
-            </div>
-          </div>
-
-          {/* Metric 4: Zero Debt Guarantee */}
-          <div style={{ background: '#F8FAF9', borderRadius: '12px', padding: '16px 18px', border: '1px solid #E6ECE8' }}>
-            <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#60716B', fontWeight: '700', letterSpacing: '0.05em', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Sparkles size={13} style={{ color: '#059669' }} />
-              <span>Fair Billing Guarantee</span>
-            </div>
-            <div style={{ fontSize: '16px', fontWeight: '800', color: '#10201E', marginBottom: '4px', marginTop: '2px' }}>
-              Zero Inactive Fees
-            </div>
-            <div style={{ fontSize: '12px', color: '#60716B', lineHeight: '1.4' }}>
-              Pause anytime. If paused for 2 months, you pay $0. Renewal cycle restarts the day you reactivate.
-            </div>
-          </div>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => document.getElementById('fleet-calculator')?.scrollIntoView({ behavior: 'smooth' })}
+              style={{
+                padding: '7px 14px',
+                borderRadius: '8px',
+                border: 'none',
+                background: '#0B2522',
+                color: '#FFFFFF',
+                fontSize: '12px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 2px 10px rgba(11, 37, 34, 0.15)',
+              }}
+            >
+              <span>Upgrade to Pro Fleet</span>
+              <ArrowRight size={13} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -1078,70 +994,6 @@ export default function UserPricing() {
               <span>✓ Card &amp; Bank Transfer</span>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* ===================== 8 ENTERPRISE CAPABILITIES SNAPSHOT ===================== */}
-      <div style={{ marginBottom: '44px' }}>
-        <div style={{ marginBottom: '20px' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#10201E', margin: '0 0 4px', letterSpacing: '-0.02em' }}>
-            What is Included with Every Website License ({pricingConfig.currency_symbol || '$'}{monthlyRate}/mo)
-          </h3>
-          <p style={{ margin: 0, fontSize: '13px', color: '#60716B' }}>
-            Zero tiered limitations. Every single connected website receives 100% of our enterprise tools.
-          </p>
-        </div>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-            gap: '16px',
-          }}
-        >
-          {CAPABILITIES.map((cap, idx) => {
-            const IconComp = cap.icon;
-            return (
-              <div
-                key={idx}
-                style={{
-                  background: '#FFFFFF',
-                  borderRadius: '14px',
-                  border: '1px solid #D9E1DC',
-                  padding: '20px',
-                  boxShadow: '0 2px 10px rgba(11, 37, 34, 0.02)',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '14px',
-                }}
-              >
-                <div
-                  style={{
-                    width: '38px',
-                    height: '38px',
-                    borderRadius: '10px',
-                    background: '#F7F6F1',
-                    border: '1px solid #E6ECE8',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: cap.color,
-                    flexShrink: 0,
-                  }}
-                >
-                  <IconComp size={20} strokeWidth={2.4} />
-                </div>
-                <div>
-                  <h4 style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 800, color: '#10201E' }}>
-                    {cap.title}
-                  </h4>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#5B756E', lineHeight: '1.5' }}>
-                    {cap.desc}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
         </div>
       </div>
 

@@ -169,9 +169,13 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
   const trialDays = testTrialParam !== null
     ? Math.max(0, Number(testTrialParam))
     : (typeof localStorage !== 'undefined' ? (() => {
-        const storedTrial = localStorage.getItem('mdefender_trial_days');
-        if (storedTrial !== null && storedTrial !== undefined && storedTrial !== '') {
-          return Math.max(0, Number(storedTrial));
+        const trialEndsAt = localStorage.getItem('mdefender_trial_ends_at');
+        if (trialEndsAt) {
+          const endsDt = new Date(trialEndsAt);
+          if (!isNaN(endsDt.getTime())) {
+            const msRemaining = endsDt.getTime() - Date.now();
+            return Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
+          }
         }
         const createdAt = localStorage.getItem('mdefender_user_created_at');
         if (createdAt) {
@@ -181,12 +185,14 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
             return Math.max(0, 14 - daysElapsed);
           }
         }
+        const storedTrial = localStorage.getItem('mdefender_trial_days');
+        if (storedTrial !== null && storedTrial !== undefined && storedTrial !== '') {
+          return Math.max(0, Number(storedTrial));
+        }
         return 14;
       })() : 14);
 
-  const planLabel = isPro
-    ? 'Pro Plan'
-    : (trialDays > 0 ? `${trialDays}d Free Trial` : 'Free Plan');
+  const planLabel = isPro ? 'Pro Plan' : 'Free Plan';
 
   // Active domain display label (exact format matching user request)
   const activeDomainObj = selectedSiteId !== 'all'
@@ -550,7 +556,7 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
             color: trialDays <= 4 ? '#DC2626' : '#059669',
             whiteSpace: 'nowrap'
           }}>
-            <span className="header-trial-text">⏳ {trialDays > 0 ? `${trialDays}d Trial Left` : 'Trial Expired'}</span>
+            <span className="header-trial-text">⏳ {trialDays > 0 ? `${trialDays} Days` : '0 Days'}</span>
             <Link
               to="/user/pricing"
               style={{

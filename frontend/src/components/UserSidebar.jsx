@@ -827,7 +827,7 @@ export default function UserSidebar({ isOpen, onClose }) {
                       marginTop: '2px',
                       letterSpacing: '0.01em'
                     }}>
-                      {isPaid ? 'Pro' : (trialDays > 0 ? `${trialDays}d Trial` : 'Free')}
+                      {isPaid ? 'Pro Plan' : 'Free Plan'}
                     </span>
                     <span style={{
                       fontSize: '11px',
@@ -1027,7 +1027,7 @@ export default function UserSidebar({ isOpen, onClose }) {
                   marginTop: '2px',
                   letterSpacing: '0.01em'
                 }}>
-                  {isPaid ? 'Pro' : (trialDays > 0 ? `${trialDays}d Trial` : 'Free')}
+                  {isPaid ? 'Pro Plan' : 'Free Plan'}
                 </span>
               </div>
             </div>
