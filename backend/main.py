@@ -1682,8 +1682,14 @@ async def get_user_payment_history(user: dict = Depends(verify_user_token_compat
         txns = list(db.payments.find(q_user).sort("created_at", -1).limit(50))
 
     formatted = []
+    seen_txns = set()
     for t in txns:
         t_id = str(t["_id"])
+        tid = t.get("transaction_id") or t.get("invoice_id") or f"TXN-{t_id[-8:]}"
+        if tid in seen_txns:
+            continue
+        seen_txns.add(tid)
+
         raw_amt = t.get("amount")
         if raw_amt is not None:
             try:
@@ -1700,9 +1706,9 @@ async def get_user_payment_history(user: dict = Depends(verify_user_token_compat
 
         formatted.append({
             "_id": t_id,
-            "id": t.get("transaction_id") or t.get("invoice_id") or f"TXN-{t_id[-8:]}",
-            "invoice_id": t.get("transaction_id") or t.get("invoice_id") or f"TXN-{t_id[-8:]}",
-            "transaction_id": t.get("transaction_id") or t.get("invoice_id") or f"TXN-{t_id[-8:]}",
+            "id": tid,
+            "invoice_id": tid,
+            "transaction_id": tid,
             "status": t.get("status", "completed"),
             "amount": amt_str,
             "currency_code": t.get("currency_code") or "USD",

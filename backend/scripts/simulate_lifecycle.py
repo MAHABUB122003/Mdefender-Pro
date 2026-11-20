@@ -40,6 +40,20 @@ def print_status(db, user):
     uid_str = str(user["_id"])
     target_uids = [uid_str, user["_id"]]
 
+    # Auto-deduplicate any race duplicate paddle transactions
+    try:
+        user_txns = list(db.paddle_transactions.find({"user_id": {"$in": target_uids}}))
+        seen_tids = {}
+        for t in user_txns:
+            tid = t.get("transaction_id")
+            if tid:
+                if tid not in seen_tids:
+                    seen_tids[tid] = t["_id"]
+                else:
+                    db.paddle_transactions.delete_one({"_id": t["_id"]})
+    except Exception:
+        pass
+
     slot_svc = LicenseSlotService(db)
     sub_svc = SubscriptionService(db)
 

@@ -1067,9 +1067,19 @@ export default function UserPricing() {
             </thead>
             <tbody>
               {(() => {
-                const allInvoices = (paymentHistory && paymentHistory.length > 0)
+                const rawInvoices = (paymentHistory && paymentHistory.length > 0)
                   ? paymentHistory
                   : (billingData?.transactions || billingData?.payments || []);
+
+                // Deduplicate transactions by transaction ID
+                const seenTxnIds = new Set();
+                const allInvoices = rawInvoices.filter(inv => {
+                  const tid = inv.transaction_id || inv.invoice_id || inv.id;
+                  if (!tid) return true;
+                  if (seenTxnIds.has(tid)) return false;
+                  seenTxnIds.add(tid);
+                  return true;
+                });
 
                 if (allInvoices.length === 0) {
                   return (

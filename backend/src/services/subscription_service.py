@@ -48,15 +48,34 @@ class SubscriptionService:
             return user.get("plan", "free") or "free"
         return "free"
 
-    def _ensure_indexes(self):
+    def _deduplicate_paddle_transactions(self):
         try:
-            self.db.subscriptions.create_index("user_id")
-            self.db.subscriptions.create_index("paddle_subscription_id", unique=True, sparse=True)
-            self.db.entitlements.create_index("user_id", unique=True)
-            self.db.paddle_events.create_index("event_id", unique=True, sparse=True)
-            self.db.paddle_transactions.create_index("transaction_id", unique=True, sparse=True)
+            pipeline = [
+                {"$match": {"transaction_id": {"$exists": True, "$ne": None}}},
+                {"$group": {"_id": "$transaction_id", "ids": {"$push": "$_id"}, "count": {"$sum": 1}}},
+                {"$match": {"count": {"$gt": 1}}}
+            ]
+            dups = list(self.db.paddle_transactions.aggregate(pipeline))
+            for item in dups:
+                ids_to_del = item["ids"][1:]
+                self.db.paddle_transactions.delete_many({"_id": {"$in": ids_to_del}})
         except Exception:
             pass
+
+    def _ensure_indexes(self):
+        self._deduplicate_paddle_transactions()
+        index_specs = [
+            (self.db.subscriptions, "user_id", {}),
+            (self.db.subscriptions, "paddle_subscription_id", {"unique": True, "sparse": True}),
+            (self.db.entitlements, "user_id", {"unique": True}),
+            (self.db.paddle_events, "event_id", {"unique": True, "sparse": True}),
+            (self.db.paddle_transactions, "transaction_id", {"unique": True, "sparse": True}),
+        ]
+        for coll, field, kwargs in index_specs:
+            try:
+                coll.create_index(field, **kwargs)
+            except Exception:
+                pass
 
     # ---------- Paddle subscription records ----------
 
@@ -225,16 +244,28 @@ class SubscriptionService:
             "receipt_url": data.get("receipt_url") or (f"https://sandbox-receipts.paddle.com/{txn_id}" if txn_id else "#")
         }
 
-        # Idempotent upsert on transaction_id
+        # Idempotent upsert on transaction_id with anti-race deduplication
         if txn_id:
             try:
+                # Deduplicate any concurrent race entries
+                existing = list(self.db.paddle_transactions.find({"transaction_id": txn_id}))
+                if len(existing) > 1:
+                    ids_to_del = [doc["_id"] for doc in existing[1:]]
+                    self.db.paddle_transactions.delete_many({"_id": {"$in": ids_to_del}})
+
                 self.db.paddle_transactions.update_one(
                     {"transaction_id": txn_id},
                     {"$set": rec},
                     upsert=True
                 )
             except Exception:
-                pass
+                try:
+                    self.db.paddle_transactions.update_one(
+                        {"transaction_id": txn_id},
+                        {"$set": rec}
+                    )
+                except Exception:
+                    pass
         else:
             try:
                 self.db.paddle_transactions.insert_one(rec)
@@ -656,9 +687,16 @@ class SubscriptionService:
         if not transactions:
             transactions = list(self.db.payments.find(q_user).sort("created_at", -1).limit(50))
 
-        # Format transactions cleanly
+        # Format transactions cleanly with strict deduplication
         formatted_txns = []
+        seen_txns = set()
         for t in transactions:
+            tid = t.get("transaction_id") or t.get("invoice_id") or f"TXN-{str(t.get('_id', ''))[-8:]}"
+            if tid and tid in seen_txns:
+                continue
+            if tid:
+                seen_txns.add(tid)
+
             raw_amt = t.get("amount")
             # Paddle stores amounts in cents in raw details, or dollars in payments
             if raw_amt is not None:
@@ -676,8 +714,8 @@ class SubscriptionService:
 
             formatted_txns.append({
                 "_id": str(t.get("_id", "")),
-                "id": t.get("transaction_id") or t.get("invoice_id") or f"TXN-{str(t.get('_id', ''))[-8:]}",
-                "transaction_id": t.get("transaction_id") or t.get("invoice_id") or f"TXN-{str(t.get('_id', ''))[-8:]}",
+                "id": tid,
+                "transaction_id": tid,
                 "status": t.get("status", "completed"),
                 "amount": amt_str,
                 "currency_code": t.get("currency_code") or "USD",
