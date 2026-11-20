@@ -3001,14 +3001,7 @@ class UnderAttackToggle(BaseModel):
 
 
 async def toggle_under_attack_mode(website_id: str, body: UnderAttackToggle, user=Depends(get_current_user)):
-
-
-
-
-
-
-
-    website = get_owned_website(user, website_id)
+    website = get_licensed_website(user, website_id)
 
 
 

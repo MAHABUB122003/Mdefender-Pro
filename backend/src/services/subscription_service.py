@@ -26,6 +26,7 @@ class SubscriptionService:
     def __init__(self, db=None):
         self.db = db or MongoDB()
         self.plan_service = PlanService(self.db)
+        self._ensure_indexes()
 
     # ---------- helpers ----------
 
@@ -52,18 +53,52 @@ class SubscriptionService:
             self.db.subscriptions.create_index("user_id")
             self.db.subscriptions.create_index("paddle_subscription_id", unique=True, sparse=True)
             self.db.entitlements.create_index("user_id", unique=True)
+            self.db.paddle_events.create_index("event_id", unique=True, sparse=True)
+            self.db.paddle_transactions.create_index("transaction_id", unique=True, sparse=True)
         except Exception:
             pass
 
     # ---------- Paddle subscription records ----------
 
     def upsert_paddle_subscription(self, user_id, event):
-        """Create or update the paddle-managed subscription record from a webhook event."""
-        subscription_id = event.get("subscription_id") or (event.get("data") or {}).get("id")
-        status = event.get("status") or (event.get("data") or {}).get("status")
+        """Create or update the paddle-managed subscription record from a webhook event.
+        Guarantees strict synchronization across db.subscriptions, db.users, and fleet slots.
+        """
         data = event.get("data", {})
+        subscription_id = event.get("subscription_id") or data.get("id")
+        status = str(event.get("status") or data.get("status") or "").lower()
         custom = data.get("custom_data") or event.get("custom_data") or {}
         plan = custom.get("plan") or custom.get("plan_id") or "pro"
+
+        # Billing periods & renewal timestamps
+        billing_period = data.get("current_billing_period") or {}
+        starts_at_raw = billing_period.get("starts_at") or data.get("started_at")
+        ends_at_raw = billing_period.get("ends_at") or data.get("next_billed_at")
+        next_billed_raw = data.get("next_billed_at") or ends_at_raw
+
+        from src.services.license_slot_service import _normalize_to_utc
+        now_utc = datetime.now(timezone.utc)
+        period_start = _normalize_to_utc(starts_at_raw, now_utc)
+        period_end = _normalize_to_utc(ends_at_raw, now_utc + timedelta(days=30))
+        next_billed_at = _normalize_to_utc(next_billed_raw, period_end)
+
+        # Quantity / Site slots
+        items = data.get("items") or []
+        first_item = items[0] if items and isinstance(items[0], dict) else {}
+        item_qty = first_item.get("quantity")
+        sites_count = int(custom.get("sites_count") or custom.get("quantity") or item_qty or 1)
+
+        # Billing cycle
+        cycle_raw = str(custom.get("billing_cycle") or (data.get("billing_cycle") or {}).get("interval") or "month").lower()
+        is_yearly = cycle_raw in ("yearly", "annual", "annually", "year")
+        billing_cycle = "yearly" if is_yearly else "monthly"
+
+        # Scheduled change / Cancellation
+        scheduled_change = data.get("scheduled_change")
+        cancel_at_period_end = bool(
+            (scheduled_change and scheduled_change.get("action") == "cancel") or
+            status in ("canceled", "cancelled")
+        )
 
         record = {
             "user_id": str(user_id),
@@ -71,17 +106,24 @@ class SubscriptionService:
             "customer_id": event.get("customer_id") or data.get("customer_id"),
             "status": status,
             "plan": plan,
+            "purchased_slots": sites_count,
+            "billing_cycle": billing_cycle,
+            "current_period_start": period_start,
+            "current_period_end": period_end,
+            "next_billed_at": next_billed_at,
+            "cancel_at_period_end": cancel_at_period_end,
+            "auto_renew": not cancel_at_period_end,
             "source": "paddle",
-            "updated_at": datetime.now(),
+            "updated_at": now_utc,
             "event_type": event.get("event_type"),
-            "scheduled_change": data.get("scheduled_change"),
+            "scheduled_change": scheduled_change,
             "raw": {k: v for k, v in data.items() if k in (
                 "billing_cycle", "current_billing_period", "items", "started_at",
                 "next_billed_at", "paused_at", "canceled_at",
             )},
         }
         if status in ("canceled", "paused"):
-            record["ended_at"] = datetime.now()
+            record["ended_at"] = now_utc
 
         query = {}
         if subscription_id:
@@ -91,14 +133,13 @@ class SubscriptionService:
         try:
             self.db.subscriptions.update_one(query, {"$set": record}, upsert=True)
         except Exception:
-            # Duplicate key fallback: unique constraint on paddle_subscription_id
             self.db.subscriptions.update_one(
                 {"user_id": str(user_id), "paddle_subscription_id": subscription_id},
                 {"$set": record},
                 upsert=True,
             )
 
-        # Synchronize plan & status directly to the users collection for instant app-wide recognition
+        # Synchronize plan & status directly to the users collection
         try:
             user_query = {"_id": ObjectId(user_id)} if ObjectId.is_valid(str(user_id)) else {"_id": str(user_id)}
             if status in ("active", "trialing"):
@@ -108,25 +149,57 @@ class SubscriptionService:
                         "plan": plan,
                         "plan_tier": plan,
                         "payment_status": "active",
+                        "purchased_slots": sites_count,
+                        "billing_cycle": billing_cycle,
                         "paddle_subscription_id": subscription_id,
                         "paddle_customer_id": record["customer_id"],
-                        "last_payment_date": datetime.now()
+                        "last_payment_date": now_utc,
+                        "plan_expires": period_end,
+                        "cancel_at_period_end": cancel_at_period_end,
+                        "auto_renew": not cancel_at_period_end,
+                        "updated_at": now_utc
                     }}
                 )
-            elif status in ("canceled", "past_due"):
-                self.db.users.update_one(
-                    user_query,
-                    {"$set": {
-                        "payment_status": status
-                    }}
-                )
+                # Reconcile license allocations for immediate fleet protection
+                from src.services.license_slot_service import LicenseSlotService
+                LicenseSlotService(self.db).get_slots_summary(user_id)
+
+            elif status in ("canceled", "cancelled"):
+                if period_end and period_end > now_utc:
+                    # User cancelled auto-renew, but still holds active protection until prepaid period end!
+                    self.db.users.update_one(user_query, {"$set": {
+                        "auto_renew": False,
+                        "cancel_at_period_end": True,
+                        "plan_expires": period_end,
+                        "updated_at": now_utc
+                    }})
+                else:
+                    # Period has concluded -> safely pause protection
+                    self.db.users.update_one(user_query, {"$set": {
+                        "payment_status": "expired",
+                        "auto_renew": False,
+                        "cancel_at_period_end": True,
+                        "purchased_slots": 0,
+                        "licensed_website_ids": [],
+                        "updated_at": now_utc
+                    }})
+                    self.db.websites.update_many(
+                        {"user_id": {"$in": [str(user_id), ObjectId(user_id) if ObjectId.is_valid(str(user_id)) else str(user_id)]}},
+                        {"$set": {"is_licensed": False, "license_status": "expired", "protection_paused": True, "updated_at": now_utc}}
+                    )
+
+            elif status in ("past_due", "paused"):
+                self.db.users.update_one(user_query, {"$set": {
+                    "payment_status": status,
+                    "updated_at": now_utc
+                }})
         except Exception:
             pass
 
     def record_transaction(self, user_id, event):
-        """Record a completed/failed Paddle transaction (invoice-like record)."""
+        """Record a completed, failed, or refunded Paddle transaction."""
         data = event.get("data", {})
-        status = data.get("status")
+        status = str(data.get("status") or event.get("status") or "").lower()
         details = data.get("details") or {}
         totals = details.get("totals") or data.get("totals") or {}
         total_amount = totals.get("total")
@@ -134,33 +207,52 @@ class SubscriptionService:
         if isinstance(curr_code, dict):
             curr_code = "USD"
 
+        now_utc = datetime.now(timezone.utc)
+        txn_id = data.get("id") or event.get("transaction_id")
+
         rec = {
             "user_id": str(user_id),
-            "transaction_id": data.get("id"),
+            "transaction_id": txn_id,
+            "paddle_transaction_id": txn_id,
             "status": status,
             "event_type": event.get("event_type"),
             "occurred_at": event.get("occurred_at"),
             "amount": total_amount,
             "currency_code": curr_code,
             "billed_at": data.get("billed_at") or data.get("created_at"),
-            "created_at": datetime.now(),
+            "created_at": now_utc,
+            "updated_at": now_utc,
+            "receipt_url": data.get("receipt_url") or (f"https://sandbox-receipts.paddle.com/{txn_id}" if txn_id else "#")
         }
-        try:
-            self.db.paddle_transactions.insert_one(rec)
-        except Exception:
-            pass
+
+        # Idempotent upsert on transaction_id
+        if txn_id:
+            try:
+                self.db.paddle_transactions.update_one(
+                    {"transaction_id": txn_id},
+                    {"$set": rec},
+                    upsert=True
+                )
+            except Exception:
+                pass
+        else:
+            try:
+                self.db.paddle_transactions.insert_one(rec)
+            except Exception:
+                pass
 
         # Real-time automated fulfillment on completed transaction
-        if str(status).lower() in ("paid", "completed"):
+        if status in ("paid", "completed", "billed"):
             try:
-                from bson import ObjectId
-                from datetime import timedelta
                 u_id = ObjectId(user_id) if ObjectId.is_valid(str(user_id)) else str(user_id)
                 custom = data.get("custom_data") or event.get("custom_data") or {}
                 plan = custom.get("plan") or "pro"
-                cycle = custom.get("billing_cycle") or "monthly"
-                duration = 365 if cycle == "yearly" else 30
+                cycle = str(custom.get("billing_cycle") or "monthly").lower()
+                is_yearly = cycle in ("yearly", "annual", "annually")
+                duration = 365 if is_yearly else 30
                 sites = int(custom.get("sites_count") or custom.get("quantity") or 1)
+                new_expires = now_utc + timedelta(days=duration)
+
                 self.db.users.update_one(
                     {"_id": u_id},
                     {"$set": {
@@ -168,9 +260,53 @@ class SubscriptionService:
                         "plan_tier": plan,
                         "payment_status": "active",
                         "purchased_slots": sites,
-                        "last_payment_date": datetime.now(),
-                        "plan_expires": datetime.now() + timedelta(days=duration)
+                        "billing_cycle": "yearly" if is_yearly else "monthly",
+                        "auto_renew": True,
+                        "cancel_at_period_end": False,
+                        "last_payment_date": now_utc,
+                        "plan_expires": new_expires,
+                        "updated_at": now_utc
                     }}
+                )
+
+                # Reconcile license slots for immediate fleet protection
+                from src.services.license_slot_service import LicenseSlotService
+                LicenseSlotService(self.db).get_slots_summary(user_id)
+
+                # In-app confirmation notification
+                from src.services.notification_service import NotificationService
+                formatted_amt = f"${int(total_amount)/100:.2f}" if total_amount else f"${36 if sites==10 else sites*4:.2f}"
+                NotificationService(self.db).notify(
+                    str(user_id),
+                    title="Payment Confirmed",
+                    message=f"Thank you! Your payment of {formatted_amt} {curr_code} was successful. {sites} website license slot(s) are active.",
+                    category="billing"
+                )
+            except Exception:
+                pass
+
+        elif status in ("refunded", "partially_refunded"):
+            try:
+                u_id = ObjectId(user_id) if ObjectId.is_valid(str(user_id)) else str(user_id)
+                self.db.users.update_one(
+                    {"_id": u_id},
+                    {"$set": {
+                        "payment_status": "refunded",
+                        "purchased_slots": 0,
+                        "licensed_website_ids": [],
+                        "updated_at": now_utc
+                    }}
+                )
+                self.db.websites.update_many(
+                    {"user_id": {"$in": [str(user_id), u_id]}},
+                    {"$set": {"is_licensed": False, "license_status": "refunded", "protection_paused": True, "updated_at": now_utc}}
+                )
+                from src.services.notification_service import NotificationService
+                NotificationService(self.db).notify(
+                    str(user_id),
+                    title="Subscription Refund Processed",
+                    message="Your payment has been refunded. Protection slots have been safely paused.",
+                    category="billing"
                 )
             except Exception:
                 pass

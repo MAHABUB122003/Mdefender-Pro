@@ -156,7 +156,7 @@ class LicenseSlotService:
                 payment_status == "active" and plan != "free" and (not plan_expires or plan_expires > now_dt)
             )
         )
-        is_trial_active = (not is_paid) and (t_days_rem > 0)
+        is_trial_active = (not is_paid) and (t_days_rem > 0) and (payment_status not in ("expired", "trial_expired", "refunded")) and not has_subscription_expired
 
         # Purchased slots: explicitly stored or resolved from subscription / role
         if not is_paid and not is_trial_active:

@@ -203,7 +203,7 @@ async def verify_transaction(
     plan: str | None = "pro",
     cycle: str | None = "monthly",
     sites: int | None = 1,
-    user=Depends(get_current_user_optional)
+    user=Depends(get_current_user)
 ):
     """Retrieve and verify a completed Paddle transaction, returning accurate receipt info.
     Zero-Trust Security: Never grants subscriptions or slots without genuine gateway confirmation.
@@ -246,14 +246,13 @@ async def verify_transaction(
     # Verify ownership binding to prevent cross-account transaction theft/replay
     custom = txn_data.get("custom_data") or {}
     txn_user_id = str(custom.get("user_id") or "")
-    current_uid = str(user.get("id") or user.get("_id")) if user else ""
+    current_uid = str(user.get("id") or user.get("_id"))
 
-    if txn_user_id and current_uid and txn_user_id != current_uid:
+    if txn_user_id and txn_user_id != current_uid:
         raise HTTPException(status_code=403, detail="Transaction does not belong to this user account")
 
     # Authoritative server-side fulfillment for verified transaction
-    if user and current_uid:
-        SubscriptionService(db).record_transaction(current_uid, {"data": txn_data, "event_type": "transaction.completed"})
+    SubscriptionService(db).record_transaction(current_uid, {"data": txn_data, "event_type": "transaction.completed"})
 
     cycle_clean = str(custom.get("billing_cycle") or cycle or "monthly").lower()
     is_yearly = cycle_clean in ("yearly", "annual", "annually", "1 year")
@@ -456,14 +455,26 @@ async def paddle_webhook(request: Request):
         if sub:
             user_id = sub.get("user_id")
 
+    if not user_id and data.get("customer_id"):
+        user_by_cust = db.users.find_one({"paddle_customer_id": data.get("customer_id")})
+        if user_by_cust:
+            user_id = str(user_by_cust["_id"])
+
+    if not user_id:
+        cust_email = (data.get("customer") or {}).get("email") or data.get("customer_email")
+        if cust_email:
+            user_by_email = db.users.find_one({"email": str(cust_email).strip().lower()})
+            if user_by_email:
+                user_id = str(user_by_email["_id"])
+
     if not user_id:
         return {"success": False, "error": {"code": "UNKNOWN_USER",
                                             "message": "Event has no resolvable user"}}
 
     service = SubscriptionService(db)
-    if event_type.startswith("transaction.completed"):
+    if event_type.startswith("transaction."):
         service.record_transaction(user_id, event)
-    if "subscription." in event_type:
+    elif "subscription." in event_type:
         service.upsert_paddle_subscription(user_id, event)
     return success({"ok": True, "event_type": event_type})
 
