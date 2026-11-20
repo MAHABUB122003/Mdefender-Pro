@@ -137,16 +137,19 @@ export default function TrialPaywallModal() {
       }
     });
 
-    // 3. Fetch authenticated profile to resolve current user's website count
-    api.getProfile().then(res => {
+    // 3. Fetch authenticated profile & websites to resolve current user's actual connected website count
+    Promise.all([
+      api.getProfile().catch(() => null),
+      api.getUserWebsites().catch(() => null)
+    ]).then(([profileRes, sitesRes]) => {
       if (!mounted) return;
-      const data = res?.data || res;
+      const data = profileRes?.data || profileRes;
       if (data) {
         setProfile(data);
-        if (data.websites_count && data.websites_count > 0) {
-          setSiteCount(data.websites_count);
-        }
       }
+      const sitesList = Array.isArray(sitesRes?.data) ? sitesRes.data : Array.isArray(sitesRes) ? sitesRes : (data?.websites || []);
+      const count = (sitesList && sitesList.length > 0) ? sitesList.length : (data?.websites_count || 1);
+      setSiteCount(Math.max(1, count));
     }).catch(() => { });
 
     return () => {
@@ -245,6 +248,9 @@ export default function TrialPaywallModal() {
       const res = await api.createPaddleCheckout({
         plan: 'pro',
         billing_cycle: billingCycle,
+        sites_count: siteCount,
+        quantity: siteCount,
+        sites: siteCount,
         site_count: siteCount,
         customer_email: userEmail,
         email: userEmail,

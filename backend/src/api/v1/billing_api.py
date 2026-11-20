@@ -65,6 +65,7 @@ class CheckoutRequest(BaseModel):
     plan: str
     billing_cycle: str | None = "monthly"
     sites_count: int | None = None
+    site_count: int | None = None
     quantity: int | None = None
     sites: int | None = None
     customer_email: str | None = None
@@ -124,7 +125,7 @@ async def create_checkout(body: CheckoutRequest, user=Depends(get_current_user_o
         price_id = dyn_config.get("price_id_yearly") if is_yearly else dyn_config.get("price_id_monthly")
 
     # Resolve accurate requested fleet site count
-    quantity = max(1, int(body.sites_count or body.quantity or body.sites or 1))
+    quantity = max(1, int(body.sites_count or body.site_count or body.quantity or body.sites or 1))
     fleet_calc = plan_service.calculate_fleet_pricing(quantity, body.billing_cycle or "monthly")
     
     uid = str(user.get("id") or user.get("_id")) if user else ""
