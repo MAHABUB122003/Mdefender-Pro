@@ -191,13 +191,89 @@ def simulate_day15(db, user):
     simulate_trial_day(db, user, 15)
 
 
+def simulate_paid_subscription(db, user, cycle="monthly", sites=5):
+    now_utc = datetime.now(timezone.utc)
+    uid = user["_id"]
+    uid_str = str(uid)
+    target_uids = [uid_str, uid]
+
+    is_yearly = cycle in ("yearly", "annual", "annually")
+    days_add = 365 if is_yearly else 30
+    period_end = now_utc + timedelta(days=days_add)
+
+    # Upsert clean subscription doc
+    db.subscriptions.update_one(
+        {"user_id": {"$in": target_uids}},
+        {"$set": {
+            "user_id": uid_str,
+            "paddle_subscription_id": f"sub_sim_{str(uid_str)[-8:]}",
+            "status": "active",
+            "billing_cycle": "yearly" if is_yearly else "monthly",
+            "current_period_start": now_utc,
+            "current_period_end": period_end,
+            "next_billed_at": period_end,
+            "auto_renew": True,
+            "cancel_at_period_end": False,
+            "created_at": now_utc,
+            "updated_at": now_utc
+        }},
+        upsert=True
+    )
+
+    db.users.update_one({"_id": uid}, {
+        "$set": {
+            "plan": "pro",
+            "plan_tier": "pro",
+            "effective_plan": "pro",
+            "payment_status": "active",
+            "purchased_slots": sites,
+            "website_slots": sites,
+            "billing_cycle": "yearly" if is_yearly else "monthly",
+            "plan_expires": period_end,
+            "auto_renew": True,
+            "cancel_at_period_end": False,
+            "last_payment_date": now_utc,
+            "updated_at": now_utc
+        }
+    })
+
+    SubscriptionService(db).check_and_process_subscription_lifecycle()
+    LicenseSlotService(db).get_slots_summary(uid_str)
+
+    try:
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(user_id=uid_str)
+    except Exception:
+        pass
+
+    print("\n" + "=" * 65)
+    print(f"  [SUCCESS] Simulated Active Pro Subscription ({cycle.capitalize()})!")
+    print("=" * 65)
+    print(f"  * Plan:               Pro Fleet ({sites} Website Slots)")
+    print(f"  * Billing Cycle:      {cycle.capitalize()}")
+    print(f"  * Payment Status:     'active'")
+    print(f"  * Auto-Renew:         ON (recurring enabled)")
+    print(f"  * Valid Until:        {period_end.strftime('%B %d, %Y')} ({days_add} days from now)")
+    print(f"  * WordPress WAF:      100% Fully Licensed & Active")
+    print(f"  * What to verify in UI:")
+    print("    1. Refresh user dashboard (Ctrl+F5).")
+    print("    2. Banner shows: 'PRO FLEET • Rate: $4/mo • Auto-Renew: ON'.")
+    print("    3. Zero paywall interruptions.")
+    print("=" * 65 + "\n")
+
+
 def simulate_cancel_renew(db, user):
     uid_str = str(user["_id"])
     target_uids = [uid_str, user["_id"]]
 
     now_utc = datetime.now(timezone.utc)
-    # Give 20 days remaining in prepaid cycle
-    period_end = now_utc + timedelta(days=20)
+    user_doc = db.users.find_one({"_id": user["_id"]})
+    # Keep current expiration date, or set to 15 days remaining if unset
+    cur_exp = user_doc.get("plan_expires")
+    if cur_exp and isinstance(cur_exp, datetime) and cur_exp > now_utc:
+        period_end = cur_exp
+    else:
+        period_end = now_utc + timedelta(days=15)
 
     db.subscriptions.update_many(
         {"user_id": {"$in": target_uids}},
@@ -218,15 +294,20 @@ def simulate_cancel_renew(db, user):
         }
     })
 
-    print("\n[SUCCESS] Auto-Renewal has been CANCELED!")
+    SubscriptionService(db).check_and_process_subscription_lifecycle()
+
+    print("\n" + "=" * 65)
+    print("  [SUCCESS] Auto-Renewal has been CANCELED!")
+    print("=" * 65)
     print(f"  * cancel_at_period_end: True")
-    print(f"  * auto_renew: False")
-    print(f"  * Current Prepaid Period Ends: {period_end.strftime('%Y-%m-%d')} (20 days remaining)")
+    print(f"  * auto_renew:           False (Off)")
+    print(f"  * Protected Until:      {period_end.strftime('%B %d, %Y')}")
     print(f"  * What to verify in UI:")
-    print("    1. Go to '/user/pricing' or User Dashboard.")
-    print("    2. Protection remains 100% ACTIVE (no premature cut-off).")
-    print("    3. Status shows 'Auto-Renewal: Disabled (Protected until period end)'.")
-    print("    4. No automatic charge will be billed next month.\n")
+    print("    1. Refresh user dashboard or /user/pricing.")
+    print("    2. Banner shows: 'Auto-Renew: OFF' with green button 'Turn Auto-Renew Back ON'.")
+    print("    3. Protection remains 100% ACTIVE (no premature cut-off).")
+    print("    4. No automatic charge will occur when period ends.")
+    print("=" * 65 + "\n")
 
 
 def simulate_expire_paid(db, user):
@@ -240,6 +321,7 @@ def simulate_expire_paid(db, user):
         {"$set": {
             "current_period_end": ended,
             "status": "canceled",
+            "auto_renew": False,
             "updated_at": now_utc
         }}
     )
@@ -247,12 +329,16 @@ def simulate_expire_paid(db, user):
     db.users.update_one({"_id": user["_id"]}, {
         "$set": {
             "plan_expires": ended,
-            "payment_status": "active",  # Watchdog will catch and process it cleanly!
+            "payment_status": "expired",
+            "purchased_slots": 0,
+            "auto_renew": False,
+            "cancel_at_period_end": True,
             "updated_at": now_utc
         }
     })
 
     SubscriptionService(db).check_and_process_subscription_lifecycle()
+    LicenseSlotService(db).get_slots_summary(uid_str)
 
     try:
         from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
@@ -260,15 +346,19 @@ def simulate_expire_paid(db, user):
     except Exception:
         pass
 
-    print("\n[SUCCESS] Paid Subscription has EXPIRED (Simulated Day 31 or Year End)!")
+    print("\n" + "=" * 65)
+    print("  [SUCCESS] Paid Subscription has EXPIRED (Time Reached End of Period)!")
+    print("=" * 65)
     print(f"  * Subscription Period Ended: Yesterday ({ended.strftime('%Y-%m-%d')})")
-    print(f"  * User Payment Status: 'expired'")
-    print(f"  * Purchased Slots: 0")
-    print(f"  * All websites protection: PAUSED safely with zero data loss")
+    print(f"  * User Payment Status:       'expired'")
+    print(f"  * Purchased Slots:           0 (All slots paused)")
+    print(f"  * WordPress WAF Status:      PAUSED / DORMANT (Unlicensed)")
     print(f"  * What to verify in UI:")
-    print("    1. Hard Paywall lock active.")
-    print("    2. User can click 'Renew Plan' or go to '/user/pricing' to reactivate anytime.")
-    print("    3. Previous transactions remain 100% saved in history.\n")
+    print("    1. Hard Paywall lock is active.")
+    print("    2. All dashboard routes are restricted except '/user/pricing'.")
+    print("    3. User can click 'Renew / Upgrade' to reactivate.")
+    print("    4. All billing receipts and transaction history remain 100% preserved.")
+    print("=" * 65 + "\n")
 
 
 def simulate_day14(db, user):
@@ -418,6 +508,12 @@ def main():
 
     if act == "status":
         print_status(db, user)
+    elif act in ("paid-monthly", "monthly", "pro-monthly"):
+        simulate_paid_subscription(db, user, cycle="monthly", sites=5)
+        print_status(db, user)
+    elif act in ("paid-yearly", "yearly", "pro-yearly"):
+        simulate_paid_subscription(db, user, cycle="yearly", sites=5)
+        print_status(db, user)
     elif act == "cancel-renew":
         simulate_cancel_renew(db, user)
         print_status(db, user)
@@ -434,7 +530,8 @@ def main():
         print(f"[ERROR] Unknown action '{args.action}'.")
         print("Available actions:")
         print("  - Any trial day: day1, day2, ..., day7, day8, day9, day10, ..., day14, day15 (or --day <N>)")
-        print("  - Lifecycle: status, cancel-renew, expire-paid, renew-success, reset-trial")
+        print("  - Paid Lifecycle: paid-monthly, paid-yearly, cancel-renew, expire-paid, renew-success")
+        print("  - General: status, reset-trial")
         sys.exit(1)
 
 
