@@ -461,40 +461,6 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
             </div>
         </div>
 
-        <!-- Local Autonomous Engines Status (Clean KPI Tiles) -->
-        <h4 style="font-size: 11.5px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 10px;">
-            Execution Engines &amp; Buffer Status
-        </h4>
-        <div class="mdf-grid-engines">
-            <div class="mdf-engine-card">
-                <div class="mdf-engine-title">Firewall Engine</div>
-                <div class="mdf-engine-val" style="color: <?php echo $waf_active ? '#059669' : '#DC2626'; ?>;">
-                    <span style="font-size: 9px;">●</span> <?php echo $waf_active ? 'Active &amp; Filtering' : 'Paused'; ?>
-                </div>
-            </div>
-
-            <div class="mdf-engine-card">
-                <div class="mdf-engine-title">Core Integrity Guard</div>
-                <div class="mdf-engine-val" style="color: #059669;">
-                    <span style="font-size: 9px;">●</span> Protected
-                </div>
-            </div>
-
-            <div class="mdf-engine-card">
-                <div class="mdf-engine-title">Circular Log Buffer</div>
-                <div class="mdf-engine-val" style="color: #059669;">
-                    <span style="font-size: 9px;">●</span> <?php echo esc_html($current_log_count); ?> / <?php echo esc_html($max_logs); ?>
-                </div>
-            </div>
-
-            <div class="mdf-engine-card">
-                <div class="mdf-engine-title">Threat Sensor</div>
-                <div class="mdf-engine-val" style="color: #0284C7;">
-                    <span style="font-size: 9px;">●</span> Operational
-                </div>
-            </div>
-        </div>
-
         <!-- Connection Settings Form -->
         <div class="mdf-form-section">
             <h4 class="mdf-form-section-title">Cloud Agent Activation</h4>
@@ -557,17 +523,9 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
         </div>
 
         <?php if ($is_connected): ?>
-            <div id="mdf-disconnect-row" style="margin-top: 22px; padding-top: 18px; border-top: 1px dashed #E2E8F0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                <div style="font-size: 11.5px; color: #64748B;">
-                    Last fleet heartbeat: <strong id="mdf-last-sync-text"><?php echo esc_html($last_sync_display); ?></strong>
-                </div>
-                <form id="mdf-disconnect-form" method="post" action="">
-                    <?php wp_nonce_field('waf_connector_nonce_action', 'waf_connector_nonce'); ?>
-                    <input type="hidden" name="waf_connector_action" value="disconnect">
-                    <button type="submit" id="mdf-disconnect-btn" class="mdf-btn-danger">
-                        Disconnect Agent from Cloud
-                    </button>
-                </form>
+            <div style="margin-top: 20px; padding-top: 14px; border-top: 1px solid #F1F5F9; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 11.5px; color: #64748B;">
+                <span>Last fleet heartbeat: <strong id="mdf-last-sync-text"><?php echo esc_html($last_sync_display); ?></strong></span>
+                <span style="color: #059669; font-weight: 600;">✓ Endpoint Connected</span>
             </div>
         <?php endif; ?>
     </div>
@@ -660,47 +618,6 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
                 if (btnSpinner) btnSpinner.style.display = 'none';
                 if (btnText) btnText.textContent = originalText;
                 showNotification('error', 'Network error communicating with WordPress. Please try again.');
-            });
-        });
-    }
-
-    // 3. Seamless AJAX Disconnect
-    var disconnectForm = document.getElementById('mdf-disconnect-form');
-    var disconnectBtn = document.getElementById('mdf-disconnect-btn');
-    if (disconnectForm && disconnectBtn) {
-        disconnectForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            if (!confirm('Are you sure you want to disconnect this website from MDefender Pro Cloud?')) {
-                return;
-            }
-
-            disconnectBtn.disabled = true;
-            disconnectBtn.textContent = 'Disconnecting...';
-
-            var formData = new FormData(disconnectForm);
-            formData.append('action', 'waf_connector_disconnect');
-
-            fetch(ajaxurl, {
-                method: 'POST',
-                body: formData
-            })
-            .then(function(res) { return res.json(); })
-            .then(function(json) {
-                if (json && json.success) {
-                    showNotification('warning', json.data.message || 'Agent disconnected.');
-                    setTimeout(function() {
-                        window.location.reload();
-                    }, 1000);
-                } else {
-                    disconnectBtn.disabled = false;
-                    disconnectBtn.textContent = 'Disconnect Agent from Cloud';
-                    showNotification('error', (json && json.data && json.data.message) ? json.data.message : 'Disconnect failed.');
-                }
-            })
-            .catch(function() {
-                disconnectBtn.disabled = false;
-                disconnectBtn.textContent = 'Disconnect Agent from Cloud';
-                showNotification('error', 'Network error.');
             });
         });
     }
