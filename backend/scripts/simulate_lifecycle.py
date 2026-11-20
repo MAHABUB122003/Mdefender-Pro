@@ -101,70 +101,94 @@ def print_status(db, user):
     print("=" * 65 + "\n")
 
 
-def simulate_day10(db, user):
+def simulate_trial_day(db, user, day_number: int):
     now_utc = datetime.now(timezone.utc)
-    started = now_utc - timedelta(days=10)
-    ends = now_utc + timedelta(days=4)
-
-    uid = user["_id"]
-    db.users.update_one({"_id": uid}, {
-        "$set": {
-            "created_at": started,
-            "trial_started_at": started,
-            "trial_ends_at": ends,
-            "payment_status": "trialing",
-            "plan": "free"
-        }
-    })
-
-    SubscriptionService(db).check_and_process_subscription_lifecycle()
-    print("\n[SUCCESS] User has been put into Day 10 of Free Trial!")
-    print(f"  * Trial Started: 10 days ago ({started.strftime('%Y-%m-%d')})")
-    print(f"  * Days Remaining: 4 Days Left")
-    print(f"  * What to verify in UI:")
-    print("    1. Refresh user dashboard (http://localhost:5173 or VPS URL).")
-    print("    2. Observe top header badge: '⏳ 4 Days Left'.")
-    print("    3. Check Notifications bell icon: 'Free Trial Notice: 4 Days Remaining' alert received.")
-    print("    4. Full Layer-7 WAF protection remains active.\n")
-
-
-def simulate_day15(db, user):
-    now_utc = datetime.now(timezone.utc)
-    started = now_utc - timedelta(days=15)
-    ends = now_utc - timedelta(days=1)
+    day_number = max(1, int(day_number))
+    started = now_utc - timedelta(days=day_number)
+    # Total trial is 14 full days
+    ends = started + timedelta(days=14)
+    days_left = max(0, 14 - day_number)
 
     uid = user["_id"]
     uid_str = str(uid)
     target_uids = [uid_str, uid]
 
+    # Delete any conflicting paid subscription docs
+    db.subscriptions.delete_many({"user_id": {"$in": target_uids}})
+
     db.users.update_one({"_id": uid}, {
         "$set": {
             "created_at": started,
             "trial_started_at": started,
             "trial_ends_at": ends,
             "payment_status": "trialing",
-            "plan": "free"
-        }
+            "plan": "free",
+            "plan_tier": "free",
+            "effective_plan": "free",
+            "purchased_slots": 1,
+            "auto_renew": True,
+            "cancel_at_period_end": False
+        },
+        "$unset": {"plan_expires": ""}
     })
 
     SubscriptionService(db).check_and_process_subscription_lifecycle()
 
-    # Instant WordPress WAF sync push
-    try:
-        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-        push_instant_sync_to_wordpress(user_id=uid_str)
-    except Exception:
-        pass
+    print("\n" + "=" * 65)
+    print(f"  [SUCCESS] Simulated Day {day_number} of 14-Day Free Trial!")
+    print("=" * 65)
+    print(f"  * Current Day:       Day {day_number}")
+    print(f"  * Trial Started:     {started.strftime('%Y-%m-%d %H:%M:%S UTC')} ({day_number} days ago)")
+    print(f"  * Trial Ends:        {ends.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+    print(f"  * Days Remaining:    {days_left} Day(s) Left")
 
-    print("\n[SUCCESS] User has been put into Day 15 (Free Trial Expired)!")
-    print(f"  * Payment Status: 'trial_expired'")
-    print(f"  * Purchased Slots: 0")
-    print(f"  * Protection on all websites: PAUSED (Dormant)")
-    print(f"  * What to verify in UI:")
-    print("    1. Refresh user dashboard.")
-    print("    2. Non-dismissible Hard Paywall Modal pops up immediately.")
-    print("    3. All dashboard routes are blocked except '/user/pricing'.")
-    print("    4. Live WordPress site receives dormant WAF response (Unlicensed).\n")
+    if day_number >= 15:
+        # Day 15+: Trial Expired (Hard Lockout)
+        try:
+            from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+            push_instant_sync_to_wordpress(user_id=uid_str)
+        except Exception:
+            pass
+        print(f"  * State Classification: [HARD PAYWALL LOCKOUT]")
+        print(f"  * Payment Status:       'trial_expired'")
+        print(f"  * Purchased Slots:      0 website slots (Revoked)")
+        print(f"  * WordPress WAF Status: PAUSED / DORMANT (Unlicensed)")
+        print(f"  * What to verify in UI:")
+        print("    1. Refresh user dashboard (Ctrl+F5).")
+        print("    2. Non-dismissible Hard Paywall blocks all routes except '/user/pricing'.")
+        print("    3. No bypass permitted until user purchases a subscription.")
+    elif day_number >= 10:
+        # Days 10 to 14: Soft Pre-Expiration Paywall
+        print(f"  * State Classification: [SOFT PRE-EXPIRATION REMINDER]")
+        print(f"  * Header Badge:         '⏳ {days_left} Days Left' (Warning Accent)")
+        print(f"  * WordPress WAF Status: 100% FULLY ACTIVE (Layer-7 Protection Running)")
+        print(f"  * What to verify in UI:")
+        print("    1. Refresh dashboard or open in new tab.")
+        print(f"    2. Top header badge shows: '⏳ {days_left} Days Left'.")
+        print("    3. Soft Paywall modal shows Zero-Downtime Guarantee with $0 hold.")
+        print("    4. Click 'Continue to dashboard' to dismiss and use dashboard freely.")
+    else:
+        # Days 1 to 9: Silent Active Trial
+        print(f"  * State Classification: [SILENT ACTIVE TRIAL]")
+        print(f"  * Header Badge:         '⏳ {days_left} Days Left' (Active Green)")
+        print(f"  * WordPress WAF Status: 100% FULLY ACTIVE")
+        print(f"  * What to verify in UI:")
+        print("    1. Refresh user dashboard.")
+        print(f"    2. Header badge shows: '⏳ {days_left} Days'.")
+        print("    3. ZERO intrusive paywall popups. Full unrestricted dashboard access.")
+    print("=" * 65 + "\n")
+
+
+def simulate_day10(db, user):
+    simulate_trial_day(db, user, 10)
+
+
+def simulate_day14(db, user):
+    simulate_trial_day(db, user, 14)
+
+
+def simulate_day15(db, user):
+    simulate_trial_day(db, user, 15)
 
 
 def simulate_cancel_renew(db, user):
@@ -365,7 +389,8 @@ def simulate_reset_trial(db, user):
 def main():
     parser = argparse.ArgumentParser(description="MDefender Pro Subscription Lifecycle Simulator")
     parser.add_argument("--email", required=True, help="User email address")
-    parser.add_argument("--action", required=True, choices=["status", "day10", "day14", "day15", "cancel-renew", "expire-paid", "renew-success", "reset-trial"], help="Simulation action")
+    parser.add_argument("--action", required=False, default="status", help="Simulation action (e.g. status, day1, day7, day9, day10, day14, day15, cancel-renew, expire-paid, renew-success, reset-trial)")
+    parser.add_argument("--day", required=False, type=int, default=None, help="Explicit day number to simulate (e.g. --day 9)")
 
     args = parser.parse_args()
     db = MongoDB()
@@ -375,29 +400,42 @@ def main():
         print(f"[ERROR] User with email/username '{args.email}' not found in MongoDB.")
         sys.exit(1)
 
-    if args.action == "status":
+    act = (args.action or "").strip().lower()
+
+    # Handle explicit --day <N> or --action day<N>
+    import re
+    if args.day is not None:
+        simulate_trial_day(db, user, args.day)
         print_status(db, user)
-    elif args.action == "day10":
-        simulate_day10(db, user)
+        return
+
+    day_match = re.match(r"^day-?(\d+)$", act)
+    if day_match:
+        day_num = int(day_match.group(1))
+        simulate_trial_day(db, user, day_num)
         print_status(db, user)
-    elif args.action == "day14":
-        simulate_day14(db, user)
+        return
+
+    if act == "status":
         print_status(db, user)
-    elif args.action == "day15":
-        simulate_day15(db, user)
-        print_status(db, user)
-    elif args.action == "cancel-renew":
+    elif act == "cancel-renew":
         simulate_cancel_renew(db, user)
         print_status(db, user)
-    elif args.action == "expire-paid":
+    elif act == "expire-paid":
         simulate_expire_paid(db, user)
         print_status(db, user)
-    elif args.action == "renew-success":
+    elif act == "renew-success":
         simulate_renew_success(db, user)
         print_status(db, user)
-    elif args.action == "reset-trial":
+    elif act == "reset-trial":
         simulate_reset_trial(db, user)
         print_status(db, user)
+    else:
+        print(f"[ERROR] Unknown action '{args.action}'.")
+        print("Available actions:")
+        print("  - Any trial day: day1, day2, ..., day7, day8, day9, day10, ..., day14, day15 (or --day <N>)")
+        print("  - Lifecycle: status, cancel-renew, expire-paid, renew-success, reset-trial")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
