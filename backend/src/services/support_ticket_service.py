@@ -19,8 +19,8 @@ class SupportTicketService:
       - User manual purge & admin batch purge
     """
 
-    def __init__(self):
-        self.db = MongoDB()
+    def __init__(self, db=None):
+        self.db = db if db is not None else MongoDB()
         self._ensure_indexes()
 
     def _ensure_indexes(self):

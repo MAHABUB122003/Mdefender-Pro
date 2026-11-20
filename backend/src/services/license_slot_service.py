@@ -289,19 +289,21 @@ class LicenseSlotService:
             if len(target_licensed_ids) > total_slots:
                 # Trim excess if total_slots decreased (e.g. downgraded or transitioned from trial)
                 target_licensed_ids = target_licensed_ids[:total_slots]
-            elif len(target_licensed_ids) < total_slots:
-                # Auto-fill available slots with unpaused sites up to total_slots
-                for w in websites:
-                    wid = str(w["_id"])
-                    if wid not in target_licensed_ids and not bool(w.get("protection_paused")):
-                        target_licensed_ids.append(wid)
-                        if len(target_licensed_ids) >= total_slots:
-                            break
-            elif len(target_licensed_ids) == 0 and len(valid_site_id_set) > 0:
-                # If user hasn't explicitly configured licensed sites yet (e.g. fresh upgrade from trial)
+            elif user_doc.get("licensed_website_ids") is None and len(valid_site_id_set) > 0:
+                # Initial auto-provisioning for fresh fleet upgrade when never configured
                 has_explicit_pauses = any(bool(w.get("protection_paused")) for w in websites)
                 if not has_explicit_pauses:
-                    # Initial auto-provisioning for fresh fleet
+                    available_sites = [str(w["_id"]) for w in websites]
+                    target_licensed_ids = available_sites[:total_slots]
+                    for overflow_w in websites:
+                        ow_id = str(overflow_w["_id"])
+                        if ow_id not in target_licensed_ids:
+                            ow_query = {"_id": ObjectId(ow_id)} if ObjectId.is_valid(ow_id) else {"_id": ow_id}
+                            self.db.websites.update_one(ow_query, {"$set": {"protection_paused": True}})
+            elif len(target_licensed_ids) == 0 and not user_doc.get("licensed_website_ids") and len(valid_site_id_set) > 0:
+                # Fresh user without explicit licensed list: auto-provision up to total_slots
+                has_explicit_pauses = any(bool(w.get("protection_paused")) for w in websites)
+                if not has_explicit_pauses:
                     available_sites = [str(w["_id"]) for w in websites]
                     target_licensed_ids = available_sites[:total_slots]
                     for overflow_w in websites:
