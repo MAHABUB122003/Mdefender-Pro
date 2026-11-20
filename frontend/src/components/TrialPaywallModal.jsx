@@ -104,7 +104,7 @@ export default function TrialPaywallModal() {
     testProParam === 'true' ||
     profile?.is_admin ||
     profile?.role === 'super_admin' ||
-    ((hasPaidPlan || storedIsPaid || profile?.is_paid) && paymentStatus === 'active')
+    ((hasPaidPlan || storedIsPaid || profile?.is_paid) && (paymentStatus === 'active' || (storedIsPaid && !paymentStatus)))
   );
 
   const isPaidExpired = Boolean(
@@ -177,6 +177,9 @@ export default function TrialPaywallModal() {
 
   // 1. Allow unrestricted access to billing/pricing and support pages so expired users can complete payment
   if (isBillingOrSupportRoute) return null;
+
+  // Zero-flicker protection on initial login / mount: wait until authenticated profile is loaded
+  if (!profile && !testTrialParam) return null;
 
   // 2. If actively paid or admin, never show paywall
   if (isPaidActive) return null;

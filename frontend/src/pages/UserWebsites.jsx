@@ -981,77 +981,6 @@ export default function UserWebsites() {
 
     <div style={{ padding: '4px 0 40px' }}>
 
-      {/* Modern 14-Day Enterprise Trial Bar (Hidden permanently for PRO subscribers) */}
-      {!isPremium && (
-        <div style={{
-          background: 'linear-gradient(135deg, rgba(11, 37, 34, 0.04), rgba(42, 139, 104, 0.08))',
-          borderRadius: '12px',
-          border: '1px solid rgba(42, 139, 104, 0.25)',
-          padding: '14px 20px',
-          marginBottom: '24px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '12px',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '10px',
-              background: 'linear-gradient(135deg, #0B2522, #164E48)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#34D399',
-              boxShadow: '0 2px 6px rgba(11, 37, 34, 0.2)'
-            }}>
-              <i className="fas fa-shield-alt" style={{ fontSize: '16px' }}></i>
-            </div>
-            <div>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>14-Day Enterprise Trial Active</span>
-                <span style={{
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  background: '#E0F2FE',
-                  color: '#0284C7',
-                  border: '1px solid #BAE6FD',
-                  padding: '2px 8px',
-                  borderRadius: '20px'
-                }}>
-                  {displayTrialDays !== undefined ? `${displayTrialDays} Days Remaining` : 'Full Access'}
-                </span>
-              </div>
-              <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
-                All autonomous WAF rules, AI threat heuristics, and malware defenses are fully active on all your connected sites.
-              </div>
-            </div>
-          </div>
-          <a href="/user/pricing" style={{
-            padding: '8px 18px',
-            background: 'linear-gradient(135deg, #0B2522, #1A4D45)',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '12px',
-            fontWeight: '700',
-            cursor: 'pointer',
-            textDecoration: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            boxShadow: '0 2px 4px rgba(11, 37, 34, 0.15)',
-            transition: 'all 0.15s ease'
-          }}>
-            <i className="fas fa-bolt" style={{ color: '#FCD34D' }}></i> Upgrade to PRO ($4/mo)
-          </a>
-        </div>
-      )}
-
-
-
       {/* Feedback Banner */}
 
       {feedbackMsg && (
@@ -1465,8 +1394,7 @@ export default function UserWebsites() {
         }}>
 
           <div>
-
-            <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#10201E', margin: '0 0 2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#10201E', margin: '0 0 2px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
               <span>Protected WordPress Websites</span>
               <span style={{
                 fontSize: '11px',
@@ -1479,109 +1407,29 @@ export default function UserWebsites() {
               }}>
                 {wpWebsites.length}
               </span>
+
+              {/* Clean minimal slot counter for fleet users */}
+              {(effectiveSlotSummary || slotSummary) && !(effectiveSlotSummary || slotSummary).is_trial_active && (effectiveSlotSummary || slotSummary).total_slots > 0 && (
+                <span style={{
+                  fontSize: '11.5px',
+                  padding: '2px 9px',
+                  borderRadius: '999px',
+                  background: '#ECFDF5',
+                  color: '#065F46',
+                  fontWeight: '700',
+                  border: '1px solid #A7F3D0',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}>
+                  <ShieldCheck size={12} color="#059669" />
+                  <span>Slots: {(effectiveSlotSummary || slotSummary).used_slots} / {(effectiveSlotSummary || slotSummary).total_slots}</span>
+                </span>
+              )}
             </h3>
             <p style={{ margin: 0, fontSize: '12px', color: '#64748B' }}>
               Manage WordPress site API keys, edge security status, and Under Attack enforcement.
             </p>
-
-            {/* Active Fleet License Capacity & Status Bar */}
-            {slotSummary && (
-              slotSummary.is_trial_active ? (
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '10px 14px',
-                  borderRadius: '10px',
-                  marginTop: '12px',
-                  background: '#ECFDF5',
-                  border: '1px solid #A7F3D0',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: '#065F46',
-                  flexWrap: 'wrap',
-                  gap: '8px'
-                }}>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                    <ShieldCheck size={16} color="#059669" />
-                    <span>
-                      14-Day Enterprise Trial Active &bull; All connected websites automatically protected ({wpWebsites.length} Active)
-                    </span>
-                  </div>
-                  <span style={{ fontSize: '11px', color: '#047857', fontWeight: '500' }}>
-                    Full WAF + Malware Quarantine Active
-                  </span>
-                </div>
-              ) : (
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                  padding: '10px 14px',
-                  borderRadius: '10px',
-                  marginTop: '12px',
-                  background: '#FAFBF9',
-                  border: '1px solid #D9E1DC'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                      <ShieldCheck size={16} color={(effectiveSlotSummary || slotSummary).available_slots > 0 ? '#059669' : '#10201E'} />
-                      <span style={{ fontSize: '12px', fontWeight: '750', color: '#10201E' }}>
-                        Fleet Protection Capacity: <strong style={{ color: '#059669' }}>{(effectiveSlotSummary || slotSummary).used_slots}</strong> of {(effectiveSlotSummary || slotSummary).total_slots} Slots Assigned
-                      </span>
-                      <span style={{
-                        fontSize: '11px',
-                        padding: '2px 8px',
-                        borderRadius: '999px',
-                        fontWeight: '700',
-                        background: (effectiveSlotSummary || slotSummary).available_slots > 0 ? '#E8F3EC' : '#F1F5F3',
-                        color: (effectiveSlotSummary || slotSummary).available_slots > 0 ? '#059669' : '#64748B'
-                      }}>
-                        {(effectiveSlotSummary || slotSummary).available_slots > 0 ? `${(effectiveSlotSummary || slotSummary).available_slots} Available` : 'All Slots In Use'}
-                      </span>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setShowUpgradeModal(true)}
-                      style={{
-                        fontSize: '11px',
-                        fontWeight: '750',
-                        color: '#059669',
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        padding: 0,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}
-                    >
-                      <span>+ Scale Fleet Licenses (+${pricingConfig?.bulk_tiers?.[0]?.unit_price || 4}/mo)</span>
-                      <ArrowRight size={12} />
-                    </button>
-                  </div>
-
-                  {/* Visual Capacity Fill Meter */}
-                  <div style={{
-                    width: '100%',
-                    height: '6px',
-                    background: '#E2E8F0',
-                    borderRadius: '999px',
-                    overflow: 'hidden'
-                  }}>
-                    <div style={{
-                      height: '100%',
-                      width: `${Math.min(100, (((effectiveSlotSummary || slotSummary).used_slots) / Math.max(1, (effectiveSlotSummary || slotSummary).total_slots)) * 100)}%`,
-                      background: (effectiveSlotSummary || slotSummary).available_slots > 0 ? '#10B981' : '#059669',
-                      borderRadius: '999px',
-                      transition: 'width 0.3s ease'
-                    }} />
-                  </div>
-                </div>
-              )
-            )}
-
           </div>
 
 
@@ -1797,10 +1645,8 @@ export default function UserWebsites() {
                           disabled={slotSummary?.is_trial_active || slotActionLoading[w.id || w._id]}
                           onClick={() => handleToggleProtection(w)}
                           title={
-                            slotSummary?.is_trial_active
-                              ? '14-Day Free Trial: All websites are automatically protected.'
-                              : w.is_licensed
-                              ? 'Click to pause protection and release slot'
+                            w.is_licensed
+                              ? 'Active Protection: Click to pause protection and release slot'
                               : 'Click to activate protection'
                           }
                           style={{
@@ -1834,23 +1680,7 @@ export default function UserWebsites() {
                           />
                         </button>
 
-                        {w.is_licensed ? (
-                          <span style={{
-                            fontSize: '10.5px',
-                            padding: '2px 8px',
-                            borderRadius: '6px',
-                            background: '#F0FDF4',
-                            color: '#15803D',
-                            border: '1px solid #DCFCE7',
-                            fontWeight: '700',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}>
-                            <CheckCircle2 size={11} color="#15803D" />
-                            <span>{slotSummary?.is_trial_active ? 'Trial Protected' : 'Protected (ON)'}</span>
-                          </span>
-                        ) : (
+                        {w.is_licensed ? null : (
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                             <span style={{
                               fontSize: '10.5px',
