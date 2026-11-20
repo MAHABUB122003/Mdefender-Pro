@@ -20,6 +20,7 @@ from bson import ObjectId
 from src.database.mongodb_connection import MongoDB
 from src.services.plan_service import PlanService
 from src.utils.api_response import parse_object_id
+from src.services.license_slot_service import _normalize_to_utc
 
 
 class SubscriptionService:
@@ -284,7 +285,14 @@ class SubscriptionService:
                 is_yearly = cycle in ("yearly", "annual", "annually")
                 duration = 365 if is_yearly else 30
                 sites = int(custom.get("sites_count") or custom.get("quantity") or 1)
-                new_expires = now_utc + timedelta(days=duration)
+
+                # Software License Extension: If current license is still active, extend seamlessly!
+                current_user = self.db.users.find_one({"_id": u_id}) or {}
+                current_exp = _normalize_to_utc(current_user.get("plan_expires"), None)
+                if current_exp and current_exp > now_utc:
+                    new_expires = current_exp + timedelta(days=duration)
+                else:
+                    new_expires = now_utc + timedelta(days=duration)
 
                 self.db.users.update_one(
                     {"_id": u_id},
@@ -294,7 +302,7 @@ class SubscriptionService:
                         "payment_status": "active",
                         "purchased_slots": sites,
                         "billing_cycle": "yearly" if is_yearly else "monthly",
-                        "auto_renew": True,
+                        "auto_renew": False,
                         "cancel_at_period_end": False,
                         "last_payment_date": now_utc,
                         "plan_expires": new_expires,

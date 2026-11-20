@@ -341,17 +341,17 @@ export default function PaymentModal({
               </div>
             </div>
 
-            {/* Subscription Title & Big Price */}
+            {/* License Title & Big Price */}
             <div style={{ marginBottom: '26px' }}>
               <div style={{ fontSize: '13.5px', color: '#60716B', fontWeight: 600, marginBottom: '4px' }}>
-                Subscribe to MDefender Pro Fleet
+                MDefender Pro Security License
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                 <span style={{ fontSize: '38px', fontWeight: 850, color: '#10201E', letterSpacing: '-0.04em' }}>
                   {sym}{formattedPrice}
                 </span>
                 <span style={{ fontSize: '13.5px', color: '#60716B', fontWeight: 600 }}>
-                  per {isYearly ? 'year' : 'month'}
+                  {isYearly ? '/ 1-year license' : '/ 1-month license'}
                 </span>
               </div>
             </div>
@@ -556,7 +556,7 @@ export default function PaymentModal({
             }}
           >
             <Shield size={14} style={{ color: '#2A8B68', flexShrink: 0 }} />
-            <span>30-day money-back guarantee &middot; Cancel anytime with 1-click</span>
+            <span>30-day money-back guarantee &middot; Pre-paid license &middot; Zero surprise charges</span>
           </div>
         </div>
 
@@ -823,8 +823,20 @@ export default function PaymentModal({
               </div>
             </div>
 
-            <div style={{ fontSize: '11px', color: '#60716B', marginTop: '6px', lineHeight: 1.4 }}>
-              By subscribing, you authorize MDefender Pro to charge your selected payment method according to the terms until you cancel.
+            <div style={{
+              fontSize: '11.5px',
+              color: '#065F46',
+              background: '#ECFDF5',
+              border: '1px solid #A7F3D0',
+              padding: '8px 12px',
+              borderRadius: '8px',
+              marginTop: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <ShieldCheck size={16} color="#059669" style={{ flexShrink: 0 }} />
+              <span><strong>Prepaid Fixed Term:</strong> Zero automated recurring debits. Your license is valid for {isYearly ? '1 full year' : '1 full month'}. You can extend or renew your license anytime from your dashboard.</span>
             </div>
 
             <label
@@ -1058,7 +1070,7 @@ export default function PaymentModal({
             ) : (
               <>
                 <Lock size={15} strokeWidth={2.4} />
-                <span>Subscribe</span>
+                <span>Activate Security License ({sym}{formattedPrice})</span>
               </>
             )}
           </button>
