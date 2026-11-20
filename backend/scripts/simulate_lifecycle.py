@@ -247,32 +247,125 @@ def simulate_expire_paid(db, user):
     print("    3. Previous transactions remain 100% saved in history.\n")
 
 
+def simulate_day14(db, user):
+    now_utc = datetime.now(timezone.utc)
+    started = now_utc - timedelta(days=13, hours=12)
+    ends = now_utc + timedelta(hours=12)
+
+    uid = user["_id"]
+    uid_str = str(uid)
+    target_uids = [uid_str, uid]
+    db.subscriptions.delete_many({"user_id": {"$in": target_uids}})
+    db.users.update_one({"_id": uid}, {
+        "$set": {
+            "created_at": started,
+            "trial_started_at": started,
+            "trial_ends_at": ends,
+            "payment_status": "trialing",
+            "plan": "free",
+            "plan_tier": "free",
+            "effective_plan": "free"
+        },
+        "$unset": {"plan_expires": ""}
+    })
+
+    SubscriptionService(db).check_and_process_subscription_lifecycle()
+    print("\n[SUCCESS] User has been put into Day 14 (Final Trial Day - 1 Day Left)!")
+    print(f"  * Trial Started: 13.5 days ago")
+    print(f"  * Days Remaining: 1 Day Left")
+    print(f"  * What to verify in UI:")
+    print("    1. Refresh user dashboard.")
+    print("    2. Observe top header badge: '⏳ 1 Day Left'.")
+    print("    3. Soft Paywall modal shows urgent continuity alert.")
+    print("    4. Full Layer-7 WAF protection remains 100% active.\n")
+
+
+def simulate_renew_success(db, user):
+    now_utc = datetime.now(timezone.utc)
+    uid = user["_id"]
+    uid_str = str(uid)
+    target_uids = [uid_str, uid]
+
+    user_doc = db.users.find_one({"_id": uid})
+    cycle = user_doc.get("billing_cycle", "monthly")
+    is_yearly = cycle in ("yearly", "annual", "annually")
+    days_add = 365 if is_yearly else 30
+
+    current_expires = user_doc.get("plan_expires")
+    if current_expires and isinstance(current_expires, datetime) and current_expires > now_utc:
+        new_expires = current_expires + timedelta(days=days_add)
+    else:
+        new_expires = now_utc + timedelta(days=days_add)
+
+    db.users.update_one({"_id": uid}, {
+        "$set": {
+            "plan": "pro",
+            "plan_tier": "pro",
+            "payment_status": "active",
+            "plan_expires": new_expires,
+            "auto_renew": True,
+            "cancel_at_period_end": False,
+            "last_payment_date": now_utc,
+            "updated_at": now_utc
+        }
+    })
+
+    db.subscriptions.update_many({"user_id": {"$in": target_uids}}, {
+        "$set": {
+            "status": "active",
+            "current_period_end": new_expires,
+            "auto_renew": True,
+            "cancel_at_period_end": False,
+            "updated_at": now_utc
+        }
+    })
+
+    SubscriptionService(db).check_and_process_subscription_lifecycle()
+
+    print(f"\n[SUCCESS] Subscription Successfully Renewed for another {days_add} Days!")
+    print(f"  * New Expiration Date: {new_expires.strftime('%B %d, %Y')}")
+    print(f"  * Payment Status: 'active'")
+    print(f"  * Auto-Renew: True")
+    print(f"  * All protected websites remain continuously active with Zero Downtime.\n")
+
+
 def simulate_reset_trial(db, user):
     now_utc = datetime.now(timezone.utc)
-    db.users.update_one({"_id": user["_id"]}, {
+    uid = user["_id"]
+    uid_str = str(uid)
+    target_uids = [uid_str, uid]
+    # Delete active subscription records for clean trial reset
+    db.subscriptions.delete_many({"user_id": {"$in": target_uids}})
+
+    db.users.update_one({"_id": uid}, {
         "$set": {
             "created_at": now_utc,
             "trial_started_at": now_utc,
             "trial_ends_at": now_utc + timedelta(days=14),
             "payment_status": "trialing",
             "plan": "free",
+            "plan_tier": "free",
+            "effective_plan": "free",
             "purchased_slots": 1,
+            "website_slots": 1,
             "auto_renew": True,
             "cancel_at_period_end": False
         },
         "$unset": {"plan_expires": ""}
     })
 
-    LicenseSlotService(db).get_slots_summary(str(user["_id"]))
+    SubscriptionService(db).check_and_process_subscription_lifecycle()
+    LicenseSlotService(db).get_slots_summary(uid_str)
     print("\n[SUCCESS] User account reset to fresh Day-1 (14-Day Free Trial)!")
     print("  * 14 full days remaining.")
+    print("  * Plan: Starter Free Trial (1 site slot).")
     print("  * Unrestricted access restored.\n")
 
 
 def main():
     parser = argparse.ArgumentParser(description="MDefender Pro Subscription Lifecycle Simulator")
     parser.add_argument("--email", required=True, help="User email address")
-    parser.add_argument("--action", required=True, choices=["status", "day10", "day15", "cancel-renew", "expire-paid", "reset-trial"], help="Simulation action")
+    parser.add_argument("--action", required=True, choices=["status", "day10", "day14", "day15", "cancel-renew", "expire-paid", "renew-success", "reset-trial"], help="Simulation action")
 
     args = parser.parse_args()
     db = MongoDB()
@@ -287,6 +380,9 @@ def main():
     elif args.action == "day10":
         simulate_day10(db, user)
         print_status(db, user)
+    elif args.action == "day14":
+        simulate_day14(db, user)
+        print_status(db, user)
     elif args.action == "day15":
         simulate_day15(db, user)
         print_status(db, user)
@@ -295,6 +391,9 @@ def main():
         print_status(db, user)
     elif args.action == "expire-paid":
         simulate_expire_paid(db, user)
+        print_status(db, user)
+    elif args.action == "renew-success":
+        simulate_renew_success(db, user)
         print_status(db, user)
     elif args.action == "reset-trial":
         simulate_reset_trial(db, user)
