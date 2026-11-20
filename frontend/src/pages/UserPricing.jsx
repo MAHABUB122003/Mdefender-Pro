@@ -44,9 +44,30 @@ export default function UserPricing() {
   const [profile, setProfile] = useState(() => cachedUser);
   const [billingCycle, setBillingCycle] = useState(initialCycleParam);
   const [sitesCount, setSitesCount] = useState(isNaN(initialSitesParam) || initialSitesParam < 1 ? 3 : initialSitesParam);
-  const [billingData, setBillingData] = useState(null);
-  const [paymentHistory, setPaymentHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [billingData, setBillingData] = useState(() => {
+    try {
+      const cached = localStorage.getItem('mdefender_cached_billing');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [paymentHistory, setPaymentHistory] = useState(() => {
+    try {
+      const cached = localStorage.getItem('mdefender_cached_invoices');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [loading, setLoading] = useState(() => {
+    try {
+      const cached = localStorage.getItem('mdefender_cached_invoices');
+      return !(cached && JSON.parse(cached).length > 0);
+    } catch {
+      return true;
+    }
+  });
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [onboardingNotice, setOnboardingNotice] = useState(null);
@@ -121,30 +142,48 @@ export default function UserPricing() {
   const savingsAmount = isYearly ? (sitesCount * monthlyRate * 12 - totalPrice).toFixed(2) : 0;
 
   const fetchBilling = async () => {
-    setLoading(true);
+    // Only show loading if we don't already have cached transactions to display
+    if (!paymentHistory || paymentHistory.length === 0) {
+      setLoading(true);
+    }
+
+    // Stream each fetch concurrently and update UI state immediately upon arrival (0ms blocking)
+    const pProf = api.getProfile().then((res) => {
+      const d = res?.data || res;
+      if (d) {
+        setProfile(d);
+        userStore.set('profile', d);
+      }
+    }).catch(() => {});
+
+    const pHist = api.getPaymentHistory().then((res) => {
+      const hist = res?.data || res?.payments || [];
+      if (Array.isArray(hist) && hist.length > 0) {
+        setPaymentHistory(hist);
+        try {
+          localStorage.setItem('mdefender_cached_invoices', JSON.stringify(hist));
+        } catch {}
+      }
+    }).catch(() => {});
+
+    const pBill = api.getBillingSubscription().then((res) => {
+      const b = res?.data || res;
+      if (b) {
+        setBillingData(b);
+        try {
+          localStorage.setItem('mdefender_cached_billing', JSON.stringify(b));
+        } catch {}
+      }
+    }).catch(() => {});
+
+    const pConfig = syncPricingWithBackend(api).then((cfg) => {
+      if (cfg?.base_monthly_rate) {
+        setPricingConfig(cfg);
+      }
+    }).catch(() => {});
+
     try {
-      const [profRes, billRes, histRes, configRes] = await Promise.allSettled([
-        api.getProfile(),
-        api.getBillingSubscription(),
-        api.getPaymentHistory(),
-        syncPricingWithBackend(api),
-      ]);
-
-      if (configRes.status === 'fulfilled' && configRes.value?.base_monthly_rate) {
-        setPricingConfig(configRes.value);
-      }
-
-      if (profRes.status === 'fulfilled' && profRes.value?.data) {
-        setProfile(profRes.value.data);
-        userStore.set('profile', profRes.value.data);
-      }
-      if (billRes.status === 'fulfilled') {
-        setBillingData(billRes.value?.data || billRes.value);
-      }
-      if (histRes.status === 'fulfilled') {
-        const hist = histRes.value?.data || histRes.value?.payments || [];
-        setPaymentHistory(Array.isArray(hist) ? hist : []);
-      }
+      await Promise.allSettled([pProf, pHist, pBill, pConfig]);
     } catch (e) {
       console.warn('Failed to fetch billing info:', e);
     } finally {
@@ -1082,6 +1121,16 @@ export default function UserPricing() {
                 });
 
                 if (allInvoices.length === 0) {
+                  if (loading) {
+                    return (
+                      <tr>
+                        <td colSpan={6} style={{ padding: '36px 16px', textAlign: 'center', color: '#60716B' }}>
+                          <RefreshCw size={18} style={{ display: 'inline-block', marginRight: '8px', verticalAlign: 'middle', animation: 'spin 1s linear infinite' }} />
+                          <span>Loading official receipts...</span>
+                        </td>
+                      </tr>
+                    );
+                  }
                   return (
                     <tr>
                       <td colSpan={6} style={{ padding: '36px 16px', textAlign: 'center', color: '#60716B' }}>

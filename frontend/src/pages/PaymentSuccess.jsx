@@ -88,6 +88,23 @@ export default function PaymentSuccess() {
               const current = userStore.get('profile') || {};
               userStore.set('profile', { ...current, plan: 'pro', plan_tier: 'pro' });
             }
+
+            // Immediately cache invoice so Pricing & Plans loads it with zero latency
+            if (txnId) {
+              const newInvoice = {
+                id: txnId,
+                transaction_id: txnId,
+                status: 'paid',
+                amount: data.amount_paid ? data.amount_paid.replace('$', '').replace(' USD', '') : (data.total || '200.00'),
+                currency_code: 'USD',
+                created_at: new Date().toISOString(),
+                billed_at: new Date().toISOString(),
+                receipt_url: data.receipt_url || '#'
+              };
+              const prev = JSON.parse(localStorage.getItem('mdefender_cached_invoices') || '[]');
+              const merged = [newInvoice, ...prev.filter(x => (x.transaction_id || x.id) !== txnId)];
+              localStorage.setItem('mdefender_cached_invoices', JSON.stringify(merged));
+            }
           } catch {
             // Ignore storage access errors
           }

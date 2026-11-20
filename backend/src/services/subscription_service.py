@@ -70,6 +70,8 @@ class SubscriptionService:
             (self.db.entitlements, "user_id", {"unique": True}),
             (self.db.paddle_events, "event_id", {"unique": True, "sparse": True}),
             (self.db.paddle_transactions, "transaction_id", {"unique": True, "sparse": True}),
+            (self.db.paddle_transactions, "user_id", {}),
+            (self.db.paddle_transactions, "customer_email", {}),
         ]
         for coll, field, kwargs in index_specs:
             try:
