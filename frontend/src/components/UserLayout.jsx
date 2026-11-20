@@ -219,6 +219,24 @@ export default function UserLayout({ children, onLogout }) {
   const isImpersonating = typeof localStorage !== 'undefined' && localStorage.getItem('mdefender_is_impersonating') === 'true'
   const impersonatedUser = typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_impersonated_user') : ''
 
+  const profile = userStore.get('profile') || userStore.get('dashboard')?.user || null
+  const storedPlan = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || '') : ''
+  const storedPaymentStatus = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_payment_status') || '') : ''
+  const activePlan = (profile?.plan || profile?.effective_plan || storedPlan || 'free').toLowerCase()
+  const paymentStatus = (profile?.payment_status || storedPaymentStatus || '').toLowerCase()
+  const isPaidActive = Boolean(
+    profile?.is_admin ||
+    profile?.role === 'super_admin' ||
+    (profile?.is_paid && paymentStatus === 'active')
+  )
+  const isPaidExpired = Boolean(
+    !isPaidActive && !profile?.is_admin && !profile?.role?.includes('admin') && (
+      paymentStatus === 'expired' ||
+      paymentStatus === 'past_due' ||
+      (activePlan !== 'free' && activePlan !== 'starter' && (paymentStatus === 'expired' || paymentStatus === 'canceled' || paymentStatus === 'cancelled' || !profile?.is_paid))
+    )
+  )
+
   const handleExitImpersonation = () => {
     try {
       localStorage.removeItem('mdefender_is_impersonating')
@@ -286,6 +304,51 @@ export default function UserLayout({ children, onLogout }) {
             </div>
           )}
           <UserHeader onToggleSidebar={() => setSidebarOpen(prev => !prev)} onLogout={onLogout} />
+          {isPaidExpired && location.pathname !== '/user/pricing' && (
+            <div style={{
+              background: 'linear-gradient(90deg, #991B1B 0%, #7F1D1D 100%)',
+              color: '#ffffff',
+              padding: '9px 24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontSize: '12.5px',
+              fontWeight: '600',
+              position: 'sticky',
+              top: 0,
+              zIndex: 998,
+              boxShadow: '0 2px 10px rgba(153, 27, 27, 0.25)',
+              flexWrap: 'wrap',
+              gap: '10px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '15px' }}>⚠️</span>
+                <span>
+                  <strong>CRITICAL SECURITY ALERT:</strong> Your MDefender Pro subscription has expired. Fleet WAF filtering is paused across your websites.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/user/pricing')}
+                style={{
+                  background: '#ffffff',
+                  color: '#991B1B',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '5px 14px',
+                  fontWeight: '800',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <span>Reactivate Fleet Protection</span>
+                <span>→</span>
+              </button>
+            </div>
+          )}
           <SilentErrorBoundary>
             <TrialPaywallModal />
           </SilentErrorBoundary>

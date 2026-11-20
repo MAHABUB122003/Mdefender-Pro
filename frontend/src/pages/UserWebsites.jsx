@@ -414,7 +414,16 @@ export default function UserWebsites() {
       handleReleaseSlot(siteId)
     } else {
       // User wants to turn ON
+      const totalSlots = effectiveSlotSummary?.total_slots ?? (slotSummary?.total_slots ?? 0)
       const currentAvailable = effectiveSlotSummary?.available_slots ?? (slotSummary?.available_slots ?? 0)
+      if (totalSlots === 0) {
+        setFeedbackMsg({
+          type: 'error',
+          text: 'Your MDefender Pro subscription has expired. Please reactivate your fleet licenses to enable protection.'
+        })
+        setTimeout(() => navigate('/user/pricing'), 1200)
+        return
+      }
       if (currentAvailable > 0) {
         // Slot is available, claim immediately!
         handleAssignSlot(siteId)

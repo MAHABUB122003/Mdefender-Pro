@@ -207,7 +207,15 @@ export default function UserPricing() {
   }, []);
 
   const currentPlanId = (profile?.plan || billingData?.plan_id || 'free').toLowerCase();
-  const isPaidActive = (currentPlanId !== 'free' && (profile?.payment_status === 'active' || billingData?.is_paid || profile?.is_paid));
+  const paymentStatus = (profile?.payment_status || billingData?.payment_status || '').toLowerCase();
+  const isPaidActive = (currentPlanId !== 'free' && (paymentStatus === 'active' || (billingData?.is_paid && paymentStatus !== 'expired') || (profile?.is_paid && paymentStatus !== 'expired')));
+  const isPaidExpired = Boolean(
+    !isPaidActive && (
+      paymentStatus === 'expired' ||
+      paymentStatus === 'past_due' ||
+      (currentPlanId !== 'free' && (paymentStatus === 'expired' || paymentStatus === 'canceled' || paymentStatus === 'cancelled' || !profile?.is_paid))
+    )
+  );
   const allocatedSlots = profile?.website_limit || profile?.website_slots || profile?.purchased_slots || (currentPlanId === 'free' ? 1 : 10);
   const isAutoRenewOn = billingData?.auto_renew !== undefined
     ? Boolean(billingData.auto_renew && !billingData.cancel_at_period_end)
@@ -395,8 +403,59 @@ export default function UserPricing() {
         </div>
       )}
 
+      {/* Pro Paid Subscription Expired Banner */}
+      {isPaidExpired && (
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%)',
+            border: '2px solid #FDA4AF',
+            borderRadius: '16px',
+            padding: '22px 26px',
+            marginBottom: '28px',
+            boxShadow: '0 6px 20px rgba(225, 29, 72, 0.08)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '16px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flex: 1, minWidth: '280px' }}>
+            <div
+              style={{
+                width: '46px',
+                height: '46px',
+                borderRadius: '12px',
+                background: '#DC2626',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)',
+              }}
+            >
+              <AlertTriangle size={24} strokeWidth={2.4} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '800', background: '#DC2626', color: '#ffffff', padding: '2px 8px', borderRadius: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Action Required
+                </span>
+                <h4 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#991B1B' }}>
+                  MDefender Pro Subscription Expired — Fleet Protection Paused
+                </h4>
+              </div>
+              <p style={{ margin: 0, fontSize: '13.5px', color: '#7F1D1D', lineHeight: '1.5' }}>
+                Your prepaid subscription has concluded. Autonomous edge WAF filtering across your client fleet is currently paused with zero data loss. Select your desired website licenses below and click 'Activate &amp; Pay' to immediately resume Layer-7 protection.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 14-Day Free Trial Expired Mandatory Payment Banner */}
-      {(searchParams.get('expired') === 'true' || (!profile?.is_admin && !profile?.is_paid && (profile?.payment_status === 'trial_expired' || Number(profile?.trial_days_remaining) <= 0) && profile?.plan === 'free')) && (
+      {!isPaidExpired && (searchParams.get('expired') === 'true' || (!profile?.is_admin && !profile?.is_paid && (profile?.payment_status === 'trial_expired' || Number(profile?.trial_days_remaining) <= 0) && profile?.plan === 'free')) && (
         <div
           style={{
             background: 'linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%)',
@@ -569,12 +628,12 @@ export default function UserPricing() {
               fontWeight: '800',
               textTransform: 'uppercase',
               letterSpacing: '0.06em',
-              background: isPaidActive ? '#E8F3EC' : '#FFF4ED',
-              color: isPaidActive ? '#059669' : '#E8792F',
-              border: `1px solid ${isPaidActive ? '#CFE2D4' : '#FCD3B6'}`,
+              background: isPaidActive ? '#E8F3EC' : isPaidExpired ? '#FEE2E2' : '#FFF4ED',
+              color: isPaidActive ? '#059669' : isPaidExpired ? '#DC2626' : '#E8792F',
+              border: `1px solid ${isPaidActive ? '#CFE2D4' : isPaidExpired ? '#FECACA' : '#FCD3B6'}`,
             }}
           >
-            {isPaidActive ? 'PRO FLEET' : 'FREE PLAN'}
+            {isPaidActive ? 'PRO FLEET' : isPaidExpired ? 'PRO EXPIRED' : 'FREE PLAN'}
           </span>
 
           <span style={{ fontSize: '13px', fontWeight: '700', color: '#10201E', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
@@ -583,8 +642,8 @@ export default function UserPricing() {
                 width: '7px',
                 height: '7px',
                 borderRadius: '50%',
-                background: isPaidActive ? '#059669' : '#E8792F',
-                boxShadow: isPaidActive ? '0 0 6px rgba(5, 150, 105, 0.4)' : 'none',
+                background: isPaidActive ? '#059669' : isPaidExpired ? '#DC2626' : '#E8792F',
+                boxShadow: isPaidActive ? '0 0 6px rgba(5, 150, 105, 0.4)' : isPaidExpired ? '0 0 6px rgba(220, 38, 38, 0.4)' : 'none',
               }}
             />
             <span>{allocatedSlots} Website {allocatedSlots === 1 ? 'Slot' : 'Slots'}</span>
@@ -619,6 +678,24 @@ export default function UserPricing() {
                   }}
                 />
                 <span>{isAutoRenewOn ? 'Auto-Renew: ON' : 'Auto-Renew: OFF'}</span>
+              </span>
+            </div>
+          ) : isPaidExpired ? (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: '#DC2626', flexWrap: 'wrap' }}>
+              <span>Status: <strong style={{ color: '#991B1B' }}>FLEET PROTECTION PAUSED (EXPIRED)</strong></span>
+              {formattedCycleEnd && <span>· Ended: <strong style={{ color: '#991B1B' }}>{formattedCycleEnd}</strong></span>}
+              <span
+                style={{
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  background: '#FEE2E2',
+                  color: '#991B1B',
+                  border: '1px solid #FECACA',
+                }}
+              >
+                Action Required: Reactivate Below
               </span>
             </div>
           ) : (

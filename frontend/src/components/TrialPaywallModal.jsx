@@ -102,12 +102,17 @@ export default function TrialPaywallModal() {
   // Authoritative server resolution: NEVER trust client localStorage over authenticated server state
   const isPaidActive = Boolean(
     testProParam === 'true' ||
-    profile?.is_paid ||
-    storedIsPaid ||
     profile?.is_admin ||
     profile?.role === 'super_admin' ||
-    (hasPaidPlan && paymentStatus !== 'expired' && paymentStatus !== 'trial_expired') ||
-    paymentStatus === 'active'
+    ((hasPaidPlan || storedIsPaid || profile?.is_paid) && paymentStatus === 'active')
+  );
+
+  const isPaidExpired = Boolean(
+    !isPaidActive && !profile?.is_admin && !profile?.role?.includes('admin') && (
+      paymentStatus === 'expired' ||
+      paymentStatus === 'past_due' ||
+      (hasPaidPlan && (paymentStatus === 'expired' || paymentStatus === 'canceled' || paymentStatus === 'cancelled' || !profile?.is_paid))
+    )
   );
 
   const defaultTrialDays = Number(dynamicPricing?.trial_days) || 14;
@@ -122,10 +127,12 @@ export default function TrialPaywallModal() {
     // If URL testing param is present, allow testing soft modal repeatedly without getting blocked by dismissed flag
     if (testTrialParam !== null) {
       sessionStorage.removeItem('mdf_soft_trial_dismissed');
+      sessionStorage.removeItem('mdf_expired_read_only_dismissed');
       setDismissed(false);
       return;
     }
-    const isDismissedThisSession = sessionStorage.getItem('mdf_soft_trial_dismissed') === 'true';
+    const isDismissedThisSession = sessionStorage.getItem('mdf_soft_trial_dismissed') === 'true' ||
+      sessionStorage.getItem('mdf_expired_read_only_dismissed') === 'true';
     if (isDismissedThisSession) {
       setDismissed(true);
     }
@@ -171,20 +178,29 @@ export default function TrialPaywallModal() {
   // 1. Allow unrestricted access to billing/pricing and support pages so expired users can complete payment
   if (isBillingOrSupportRoute) return null;
 
-  // 2. If actively paid or admin or has active paid plan, never show paywall
-  if (isPaidActive || hasPaidPlan) return null;
+  // 2. If actively paid or admin, never show paywall
+  if (isPaidActive) return null;
 
-  // 3. Days 1 to 9: Silent (modal hidden, full dashboard access)
-  if (trialDays > 4) return null;
+  // 3. Paid Pro Expired: Show Reactivation Experience
+  // Can be dismissed to view fleet in read-only mode (with persistent sticky alert bar)
+  if (isPaidExpired && dismissed) return null;
 
-  const isHardLockout = trialDays <= 0;
-  const isSoftPrompt = trialDays > 0 && trialDays <= 4;
+  // 4. Days 1 to 9 of Free Trial: Silent (modal hidden, full dashboard access)
+  if (!isPaidExpired && trialDays > 4) return null;
+
+  const isHardLockout = !isPaidExpired && trialDays <= 0;
+  const isSoftPrompt = !isPaidExpired && trialDays > 0 && trialDays <= 4;
 
   // If soft prompt was dismissed for this browser session, don't show it again
   if (isSoftPrompt && dismissed) return null;
 
   const handleDismissSoft = () => {
     sessionStorage.setItem('mdf_soft_trial_dismissed', 'true');
+    setDismissed(true);
+  };
+
+  const handleDismissExpiredReadOnly = () => {
+    sessionStorage.setItem('mdf_expired_read_only_dismissed', 'true');
     setDismissed(true);
   };
 
@@ -392,13 +408,18 @@ export default function TrialPaywallModal() {
               gap: '6px',
               padding: '4px 12px',
               borderRadius: '20px',
-              background: isHardLockout ? '#FEF2F2' : brandTokens.emeraldLight,
-              color: isHardLockout ? '#DC2626' : brandTokens.emeraldPrimary,
-              border: `1px solid ${isHardLockout ? '#FECACA' : brandTokens.emeraldBorder}`,
+              background: (isHardLockout || isPaidExpired) ? '#FEF2F2' : brandTokens.emeraldLight,
+              color: (isHardLockout || isPaidExpired) ? '#DC2626' : brandTokens.emeraldPrimary,
+              border: `1px solid ${(isHardLockout || isPaidExpired) ? '#FECACA' : brandTokens.emeraldBorder}`,
               fontSize: '11.5px',
               fontWeight: '700'
             }}>
-              {isHardLockout ? (
+              {isPaidExpired ? (
+                <>
+                  <Lock size={12} strokeWidth={2.5} />
+                  <span>Pro Subscription Expired</span>
+                </>
+              ) : isHardLockout ? (
                 <>
                   <Lock size={12} strokeWidth={2.5} />
                   <span>14-Day Trial Concluded</span>
@@ -415,8 +436,31 @@ export default function TrialPaywallModal() {
               Logged in as <strong style={{ color: brandTokens.textHeading }}>{profile?.email || 'Operator'}</strong>
             </div>
 
-            {/* If soft prompt, allow continuing to dashboard; if hard lockout, allow sign out */}
-            {isSoftPrompt ? (
+            {/* If paid expired, allow viewing fleet in read-only mode; if soft prompt, allow continuing; if hard trial lockout, allow sign out */}
+            {isPaidExpired ? (
+              <button
+                type="button"
+                onClick={handleDismissExpiredReadOnly}
+                style={{
+                  background: brandTokens.cardBg,
+                  border: `1px solid ${brandTokens.cardBorder}`,
+                  borderRadius: '7px',
+                  padding: '7px 14px',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  color: brandTokens.textBody,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: brandTokens.shadowSm,
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <span>View Fleet (Read-Only Mode)</span>
+                <ArrowRight size={13} />
+              </button>
+            ) : isSoftPrompt ? (
               <button
                 type="button"
                 onClick={handleDismissSoft}
@@ -487,16 +531,21 @@ export default function TrialPaywallModal() {
             gap: '6px',
             padding: '5px 14px',
             borderRadius: '999px',
-            background: isHardLockout ? '#FEF2F2' : brandTokens.emeraldLight,
-            border: `1px solid ${isHardLockout ? '#FECACA' : brandTokens.emeraldBorder}`,
-            color: isHardLockout ? '#DC2626' : brandTokens.emeraldPrimary,
+            background: (isHardLockout || isPaidExpired) ? '#FEF2F2' : brandTokens.emeraldLight,
+            border: `1px solid ${(isHardLockout || isPaidExpired) ? '#FECACA' : brandTokens.emeraldBorder}`,
+            color: (isHardLockout || isPaidExpired) ? '#DC2626' : brandTokens.emeraldPrimary,
             fontSize: '11.5px',
             fontWeight: '800',
             letterSpacing: '0.04em',
             textTransform: 'uppercase',
             marginBottom: '14px'
           }}>
-            {isHardLockout ? (
+            {isPaidExpired ? (
+              <>
+                <Lock size={12} strokeWidth={2.4} />
+                <span>Fleet Protection Paused (Expired)</span>
+              </>
+            ) : isHardLockout ? (
               <>
                 <Lock size={12} strokeWidth={2.4} />
                 <span>Edge Protection Paused</span>
@@ -516,7 +565,11 @@ export default function TrialPaywallModal() {
             color: brandTokens.textHeading,
             margin: '0 0 10px 0'
           }}>
-            {isHardLockout ? 'Your 14-Day Free Trial Has Concluded' : 'Keep Your Fleet Protected with Enterprise SecOps'}
+            {isPaidExpired
+              ? 'Your MDefender Pro Fleet Protection Is Paused'
+              : isHardLockout
+              ? 'Your 14-Day Free Trial Has Concluded'
+              : 'Keep Your Fleet Protected with Enterprise SecOps'}
           </h1>
           <p style={{
             fontSize: '15px',
@@ -525,7 +578,9 @@ export default function TrialPaywallModal() {
             margin: '0 auto',
             lineHeight: '1.6'
           }}>
-            {isHardLockout
+            {isPaidExpired
+              ? `Your prepaid subscription period has ended. Autonomous Layer-7 edge WAF filtering across your ${siteCount} connected websites is currently paused. All your website configurations, rules, and past logs remain 100% saved with zero data loss. Reactivate your subscription below to immediately resume continuous protection.`
+              : isHardLockout
               ? 'Select your subscription to instantly resume sub-millisecond edge WAF filtering, automated 5.24M+ malware hunting, and fleet telemetry. All your policies and sites remain perfectly saved.'
               : 'Add your payment method today to guarantee zero downtime when your trial completes. You will not be billed today ($0 hold) — your subscription begins automatically only after Day 14.'}
           </p>
@@ -889,7 +944,9 @@ export default function TrialPaywallModal() {
               <span>
                 {checkoutLoading
                   ? 'Connecting to Secure Gateway...'
-                  : (isSoftPrompt
+                  : (isPaidExpired
+                    ? `Reactivate Protection for My ${siteCount} ${siteCount === 1 ? 'Website' : 'Websites'} • $${totalAmount.toFixed(2)}/${billingCycle === 'yearly' ? 'yr' : 'mo'}`
+                    : isSoftPrompt
                     ? `Keep My ${siteCount} ${siteCount === 1 ? 'Website' : 'Websites'} Protected ($0 Today)`
                     : `Start My Subscription • $${totalAmount.toFixed(2)}/${billingCycle === 'yearly' ? 'yr' : 'mo'}`)}
               </span>
@@ -919,6 +976,34 @@ export default function TrialPaywallModal() {
               <span>•</span>
               <span>Cancel Anytime with 1-Click</span>
             </div>
+
+            {/* Paid Expired Read-Only Option */}
+            {isPaidExpired && (
+              <div style={{ textAlign: 'center', marginTop: '16px' }}>
+                <button
+                  type="button"
+                  onClick={handleDismissExpiredReadOnly}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: brandTokens.textMuted,
+                    fontSize: '12.5px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    padding: '6px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = brandTokens.textHeading;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = brandTokens.textMuted;
+                  }}
+                >
+                  Continue in Read-Only Mode &bull; View my {siteCount} connected websites (Fleet Protection Paused)
+                </button>
+              </div>
+            )}
 
             {/* Soft Prompt Remind Me Later Option */}
             {isSoftPrompt && (
