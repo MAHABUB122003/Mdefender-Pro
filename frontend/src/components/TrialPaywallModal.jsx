@@ -190,11 +190,16 @@ export default function TrialPaywallModal() {
   // Can be dismissed to view fleet in read-only mode (with persistent sticky alert bar)
   if (isPaidExpired && dismissed) return null;
 
-  // 4. Days 1 to 9 of Free Trial: Silent (modal hidden, full dashboard access)
-  if (!isPaidExpired && trialDays > 4) return null;
+  // 4. Free Trial Notice Window: Dynamic 25% window (minimum 3 days, maximum 10 days)
+  // E.g., for 14-day trial: ceil(14 * 0.25) = 4 days remaining (Days 1 to 10 are completely silent)
+  // For 30-day trial: ceil(30 * 0.25) = 8 days remaining (Days 1 to 22 are completely silent)
+  // For 60-day trial: min(10, 15) = 10 days remaining (Days 1 to 50 are completely silent)
+  const reminderWindow = Math.min(10, Math.max(3, Math.ceil(defaultTrialDays * 0.25)));
+
+  if (!isPaidExpired && trialDays > reminderWindow) return null;
 
   const isHardLockout = !isPaidExpired && trialDays <= 0;
-  const isSoftPrompt = !isPaidExpired && trialDays > 0 && trialDays <= 4;
+  const isSoftPrompt = !isPaidExpired && trialDays > 0 && trialDays <= reminderWindow;
 
   // If soft prompt was dismissed for this browser session, don't show it again
   if (isSoftPrompt && dismissed) return null;
@@ -573,8 +578,8 @@ export default function TrialPaywallModal() {
             {isPaidExpired
               ? 'Your MDefender Pro Fleet Protection Is Paused'
               : isHardLockout
-              ? 'Your 14-Day Free Trial Has Concluded'
-              : 'Keep Your Fleet Protected with Enterprise SecOps'}
+                ? 'Your 14-Day Free Trial Has Concluded'
+                : 'Keep Your Fleet Protected with Enterprise SecOps'}
           </h1>
           <p style={{
             fontSize: '15px',
@@ -586,8 +591,8 @@ export default function TrialPaywallModal() {
             {isPaidExpired
               ? `Your prepaid subscription period has ended. Autonomous Layer-7 edge WAF filtering across your ${siteCount} connected websites is currently paused. All your website configurations, rules, and past logs remain 100% saved with zero data loss. Reactivate your subscription below to immediately resume continuous protection.`
               : isHardLockout
-              ? 'Select your subscription to instantly resume sub-millisecond edge WAF filtering, automated 5.24M+ malware hunting, and fleet telemetry. All your policies and sites remain perfectly saved.'
-              : 'Add your payment method today to guarantee zero downtime when your trial completes. You will not be billed today ($0 hold) — your subscription begins automatically only after Day 14.'}
+                ? 'Select your subscription to instantly resume sub-millisecond edge WAF filtering, automated 5.24M+ malware hunting, and fleet telemetry. All your policies and sites remain perfectly saved.'
+                : 'Add your payment method today to guarantee zero downtime when your trial completes. You will not be billed today ($0 hold) — your subscription begins automatically only after Day 14.'}
           </p>
         </div>
 
@@ -952,8 +957,8 @@ export default function TrialPaywallModal() {
                   : (isPaidExpired
                     ? `Reactivate Protection for My ${siteCount} ${siteCount === 1 ? 'Website' : 'Websites'} • $${totalAmount.toFixed(2)}/${billingCycle === 'yearly' ? 'yr' : 'mo'}`
                     : isSoftPrompt
-                    ? `Keep My ${siteCount} ${siteCount === 1 ? 'Website' : 'Websites'} Protected ($0 Today)`
-                    : `Start My Subscription • $${totalAmount.toFixed(2)}/${billingCycle === 'yearly' ? 'yr' : 'mo'}`)}
+                      ? `Keep My ${siteCount} ${siteCount === 1 ? 'Website' : 'Websites'} Protected ($0 Today)`
+                      : `Start My Subscription • $${totalAmount.toFixed(2)}/${billingCycle === 'yearly' ? 'yr' : 'mo'}`)}
               </span>
               <ArrowRight size={16} />
             </button>

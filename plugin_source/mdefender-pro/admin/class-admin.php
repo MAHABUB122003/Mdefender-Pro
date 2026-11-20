@@ -338,7 +338,7 @@ class WAF_FW_Admin {
         $allowed_statuses = ['pro', 'active', 'trial_active', 'trial_expired', 'canceled', 'past_due', 'unlicensed', 'expired', 'paused'];
         $raw_status = strtolower(sanitize_text_field($body['subscription_status'] ?? 'trial_active'));
         $sub_status = in_array($raw_status, $allowed_statuses, true) ? $raw_status : 'trial_active';
-        $trial_days = max(0, min(14, intval($body['trial_days_remaining'] ?? 0)));
+        $trial_days = max(0, min(365, intval($body['trial_days_remaining'] ?? 0)));
         $is_licensed = isset($body['is_licensed']) 
             ? (!empty($body['is_licensed']) ? 'yes' : 'no') 
             : (!in_array($sub_status, ['trial_expired', 'canceled', 'past_due', 'unlicensed', 'expired', 'paused'], true) ? 'yes' : 'no');

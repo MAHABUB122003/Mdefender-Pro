@@ -378,8 +378,12 @@ class SubscriptionService:
         """Automated background watchdog for subscription lifecycles, Day-10 reminders, and trial expiration."""
         from src.services.license_slot_service import LicenseSlotService
         from src.services.notification_service import NotificationService
+        from src.services.plan_service import PlanService
         slot_service = LicenseSlotService(self.db)
         notif_service = NotificationService(self.db)
+        dyn_pricing = PlanService(self.db).get_dynamic_pricing_config() or {}
+        total_trial = int(dyn_pricing.get("trial_days") or 14)
+        reminder_window = min(10, max(3, int(math.ceil(total_trial * 0.25))))
 
         users = list(self.db.users.find(
             {"role": {"$ne": "super_admin"}}
@@ -475,15 +479,15 @@ class SubscriptionService:
                         if sent:
                             results["renewals_reminded"] += 1
 
-                # 3. Day-10 Free Trial Payment Reminder (4 days remaining)
-                if state.get("is_trial_active") and state.get("trial_days_remaining") <= 4 and state.get("trial_days_remaining") > 0:
+                # 3. Dynamic Free Trial Payment Reminder
+                if state.get("is_trial_active") and state.get("trial_days_remaining") <= reminder_window and state.get("trial_days_remaining") > 0:
                     days_left = state["trial_days_remaining"]
                     sent = notif_service.notify(
                         uid_str,
                         title=f"Free Trial Notice: {days_left} Days Remaining",
-                        message=f"Your 14-day MDefender fleet free trial has {days_left} day(s) remaining. Add your payment method to ensure continuous zero-downtime edge protection.",
+                        message=f"Your {total_trial}-day MDefender fleet free trial has {days_left} day(s) remaining. Add your payment method to ensure continuous zero-downtime edge protection.",
                         category="trial_reminder",
-                        dedupe_key=f"day10_{uid_str}",
+                        dedupe_key=f"trial_remind_{uid_str}",
                         cooldown_seconds=86400
                     )
                     if sent:
@@ -889,8 +893,12 @@ class SubscriptionService:
         """Automated background watchdog for subscription lifecycles, Day-10 reminders, and trial expiration."""
         from src.services.license_slot_service import LicenseSlotService
         from src.services.notification_service import NotificationService
+        from src.services.plan_service import PlanService
         slot_service = LicenseSlotService(self.db)
         notif_service = NotificationService(self.db)
+        dyn_pricing = PlanService(self.db).get_dynamic_pricing_config() or {}
+        total_trial = int(dyn_pricing.get("trial_days") or 14)
+        reminder_window = min(10, max(3, int(math.ceil(total_trial * 0.25))))
 
         users = list(self.db.users.find(
             {"role": {"$ne": "super_admin"}}
@@ -986,15 +994,15 @@ class SubscriptionService:
                         if sent:
                             results["renewals_reminded"] += 1
 
-                # 3. Day-10 Free Trial Payment Reminder (4 days remaining)
-                if state.get("is_trial_active") and state.get("trial_days_remaining") <= 4 and state.get("trial_days_remaining") > 0:
+                # 3. Dynamic Free Trial Payment Reminder
+                if state.get("is_trial_active") and state.get("trial_days_remaining") <= reminder_window and state.get("trial_days_remaining") > 0:
                     days_left = state["trial_days_remaining"]
                     sent = notif_service.notify(
                         uid_str,
                         title=f"Free Trial Notice: {days_left} Days Remaining",
-                        message=f"Your 14-day MDefender fleet free trial has {days_left} day(s) remaining. Add your payment method to ensure continuous zero-downtime edge protection.",
+                        message=f"Your {total_trial}-day MDefender fleet free trial has {days_left} day(s) remaining. Add your payment method to ensure continuous zero-downtime edge protection.",
                         category="trial_reminder",
-                        dedupe_key=f"day10_{uid_str}",
+                        dedupe_key=f"trial_remind_{uid_str}",
                         cooldown_seconds=86400
                     )
                     if sent:

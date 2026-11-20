@@ -63,21 +63,6 @@ export default function AdminPricing() {
   const [saving, setSaving] = useState(false)
   const [toastMessage, setToastMessage] = useState(null)
 
-  // Real Paddle Gateway Configuration State
-  const [paddleGateway, setPaddleGateway] = useState({
-    environment: 'sandbox',
-    client_token: '',
-    api_key: '',
-    webhook_secret: '',
-    price_id_monthly: '',
-    price_id_yearly: '',
-    configured: false
-  })
-  const [savingGateway, setSavingGateway] = useState(false)
-  const [testingConnection, setTestingConnection] = useState(false)
-  const [connectionResult, setConnectionResult] = useState(null)
-  const [showSandboxHelp, setShowSandboxHelp] = useState(false)
-
   // Interactive Simulator State
   const [simSites, setSimSites] = useState(5)
   const [simYearly, setSimYearly] = useState(false)
@@ -90,26 +75,12 @@ export default function AdminPricing() {
   const fetchPricing = async () => {
     setLoading(true)
     try {
-      const [dynRes, gwRes] = await Promise.allSettled([
-        api.adminGetDynamicPricingConfig(),
-        api.adminGetPaddleGateway()
-      ])
-
-      if (dynRes.status === 'fulfilled' && (dynRes.value?.data || dynRes.value)) {
-        const configData = dynRes.value.data || dynRes.value
+      const dynRes = await api.adminGetDynamicPricingConfig()
+      if (dynRes?.data || dynRes) {
+        const configData = dynRes.data || dynRes
         const saved = savePricingConfig(configData)
         setDynamicConfig(saved)
         adminStore.set('dynamic_pricing_config', saved)
-      }
-
-      if (gwRes.status === 'fulfilled' && (gwRes.value?.data || gwRes.value)) {
-        const gwData = gwRes.value.data || gwRes.value
-        setPaddleGateway(prev => ({
-          ...prev,
-          ...gwData,
-          price_id_monthly: gwData.price_id_monthly || dynamicConfig.price_id_monthly || '',
-          price_id_yearly: gwData.price_id_yearly || dynamicConfig.price_id_yearly || ''
-        }))
       }
     } catch (err) {
       console.error(err)
@@ -122,60 +93,6 @@ export default function AdminPricing() {
   useEffect(() => {
     fetchPricing()
   }, [])
-
-  const handleGatewayChange = (field, value) => {
-    setPaddleGateway(prev => ({
-      ...prev,
-      [field]: value
-    }))
-    if (field === 'price_id_monthly' || field === 'price_id_yearly') {
-      setDynamicConfig(prev => ({
-        ...prev,
-        [field]: value
-      }))
-    }
-  }
-
-  const handleSaveGateway = async () => {
-    setSavingGateway(true)
-    setConnectionResult(null)
-    try {
-      const res = await api.adminUpdatePaddleGateway(paddleGateway)
-      const data = res?.data || res
-      setPaddleGateway(prev => ({ ...prev, ...data, configured: true }))
-      showToast(`Paddle ${paddleGateway.environment.toUpperCase()} gateway activated & synced across system!`)
-    } catch (err) {
-      showToast(err.message || 'Failed to save Paddle gateway configuration', true)
-    } finally {
-      setSavingGateway(false)
-    }
-  }
-
-  const handleTestConnection = async () => {
-    setTestingConnection(true)
-    setConnectionResult(null)
-    try {
-      const res = await api.adminTestPaddleConnection()
-      if (res?.success) {
-        setConnectionResult({
-          success: true,
-          message: res.data?.message || res.message || 'Connected to Paddle successfully!'
-        })
-      } else {
-        setConnectionResult({
-          success: false,
-          message: res?.message || 'Connection test failed. Please verify API key.'
-        })
-      }
-    } catch (err) {
-      setConnectionResult({
-        success: false,
-        message: err.message || 'Failed to communicate with Paddle servers.'
-      })
-    } finally {
-      setTestingConnection(false)
-    }
-  }
 
   const handleConfigChange = (field, value) => {
     setDynamicConfig(prev => ({
@@ -479,14 +396,20 @@ export default function AdminPricing() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
-                Trial Period (Days)
+                Trial Period (Duration)
               </label>
-              <input
-                type="number"
-                min="0"
-                max="60"
-                value={dynamicConfig.trial_days}
-                onChange={(e) => handleConfigChange('trial_days', parseInt(e.target.value, 10) || 0)}
+              <select
+                value={[14, 30, 60, 90].includes(Number(dynamicConfig.trial_days)) ? Number(dynamicConfig.trial_days) : 'custom'}
+                onChange={(e) => {
+                  const val = e.target.value
+                  if (val === 'custom') {
+                    if ([14, 30, 60, 90].includes(Number(dynamicConfig.trial_days))) {
+                      handleConfigChange('trial_days', 21)
+                    }
+                  } else {
+                    handleConfigChange('trial_days', parseInt(val, 10))
+                  }
+                }}
                 style={{
                   width: '100%',
                   padding: '9px 12px',
@@ -495,11 +418,42 @@ export default function AdminPricing() {
                   fontSize: '14px',
                   fontWeight: '600',
                   color: '#0F172A',
+                  background: '#FFFFFF',
                   boxSizing: 'border-box'
                 }}
-              />
+              >
+                <option value={14}>14 Days (Standard Trial)</option>
+                <option value={30}>30 Days (1 Month)</option>
+                <option value={60}>60 Days (2 Months)</option>
+                <option value={90}>90 Days (3 Months)</option>
+                <option value="custom">Custom Duration...</option>
+              </select>
+
+              {![14, 30, 60, 90].includes(Number(dynamicConfig.trial_days)) && (
+                <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={dynamicConfig.trial_days}
+                    onChange={(e) => handleConfigChange('trial_days', Math.max(1, Math.min(365, parseInt(e.target.value, 10) || 1)))}
+                    placeholder="e.g. 21"
+                    style={{
+                      width: '100px',
+                      padding: '7px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #94A3B8',
+                      fontSize: '13px',
+                      fontWeight: '700',
+                      color: '#0F172A',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  <span style={{ fontSize: '12px', fontWeight: '600', color: '#475569' }}>days free trial</span>
+                </div>
+              )}
               <span style={{ fontSize: '11px', color: '#64748B', marginTop: '4px', display: 'block' }}>
-                Free enterprise trial on 1st website
+                Full enterprise protection active on 1st website during trial
               </span>
             </div>
 
@@ -533,334 +487,6 @@ export default function AdminPricing() {
               <span style={{ fontSize: '11px', color: '#64748B', marginTop: '4px', display: 'block' }}>
                 Multi-currency international billing
               </span>
-            </div>
-          </div>
-
-          {/* ===================== REAL PADDLE GATEWAY STUDIO ===================== */}
-          <div style={{
-            borderTop: '2px solid #E2E8F0',
-            marginTop: '20px',
-            paddingTop: '20px'
-          }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '10px',
-              marginBottom: '14px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: '6px',
-                  background: paddleGateway.environment === 'sandbox' ? '#FEF3C7' : '#ECFDF5',
-                  color: paddleGateway.environment === 'sandbox' ? '#D97706' : '#059669',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <CreditCard size={16} />
-                </div>
-                <div>
-                  <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#0F172A' }}>
-                    Paddle Real Billing Gateway Engine
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#64748B' }}>
-                    100% Real Merchant of Record (No fake mock data). Direct integration with Paddle.
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{
-                  padding: '3px 10px',
-                  borderRadius: '999px',
-                  fontSize: '11px',
-                  fontWeight: '800',
-                  letterSpacing: '0.4px',
-                  background: paddleGateway.environment === 'sandbox' ? '#FEF3C7' : '#DCFCE7',
-                  color: paddleGateway.environment === 'sandbox' ? '#B45309' : '#15803D',
-                  border: `1px solid ${paddleGateway.environment === 'sandbox' ? '#FDE68A' : '#BBF7D0'}`
-                }}>
-                  {paddleGateway.environment === 'sandbox' ? '● SANDBOX TEST MODE' : '● PRODUCTION LIVE MODE'}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setShowSandboxHelp(prev => !prev)}
-                  style={{
-                    padding: '4px 9px',
-                    borderRadius: '6px',
-                    background: '#F1F5F9',
-                    border: '1px solid #CBD5E1',
-                    fontSize: '11px',
-                    fontWeight: '700',
-                    color: '#475569',
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  <Info size={12} />
-                  <span>{showSandboxHelp ? 'Hide Setup Guide' : 'Sandbox Setup Guide'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Sandbox Setup Guide Accordion */}
-            {showSandboxHelp && (
-              <div style={{
-                background: '#F8FAFC',
-                border: '1px solid #E2E8F0',
-                borderRadius: '8px',
-                padding: '14px 16px',
-                marginBottom: '16px',
-                fontSize: '12px',
-                color: '#334155',
-                lineHeight: '1.6'
-              }}>
-                <div style={{ fontWeight: '800', color: '#0F172A', marginBottom: '6px' }}>
-                  📋 Paddle Sandbox Quick Setup Checklist (from sandbox-vendors.paddle.com):
-                </div>
-                <ol style={{ margin: '0 0 10px', paddingLeft: '18px' }}>
-                  <li><strong>API Keys &amp; Client Token:</strong> Developer Tools &rarr; Authentication &rarr; Generate API Key (<code style={{ background: '#E2E8F0', padding: '1px 4px', borderRadius: '4px' }}>pdl_sand_apikey_...</code>) and copy Client-side Token (<code style={{ background: '#E2E8F0', padding: '1px 4px', borderRadius: '4px' }}>test_...</code>).</li>
-                  <li><strong>Website Approval:</strong> Checkout &rarr; Website Approval &rarr; Add <code style={{ background: '#E2E8F0', padding: '1px 4px', borderRadius: '4px' }}>http://localhost:5173</code> (Auto-approved instantly in Sandbox).</li>
-                  <li><strong>Catalog Price IDs:</strong> Catalog &rarr; Products &rarr; Create Monthly &amp; Yearly prices &rarr; Copy Price IDs (<code style={{ background: '#E2E8F0', padding: '1px 4px', borderRadius: '4px' }}>pri_...</code>).</li>
-                  <li><strong>Webhook Secret:</strong> Developer Tools &rarr; Notifications &rarr; Add Destination URL &rarr; Copy notification secret (<code style={{ background: '#E2E8F0', padding: '1px 4px', borderRadius: '4px' }}>pdl_ntfset_...</code>).</li>
-                </ol>
-                <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', padding: '6px 10px', borderRadius: '6px', fontSize: '11.5px', color: '#1E40AF' }}>
-                  <strong>💳 Test Card:</strong> <code style={{ fontWeight: '700' }}>4242 4242 4242 4242</code> &middot; Exp: Any future date (e.g. 12/28) &middot; CVC: 123 &middot; Zip: 12345
-                </div>
-              </div>
-            )}
-
-            {/* Environment Toggle Pill */}
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#475569', marginBottom: '6px' }}>
-                Gateway Environment
-              </label>
-              <div style={{ display: 'inline-flex', background: '#F1F5F9', padding: '3px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                <button
-                  type="button"
-                  onClick={() => handleGatewayChange('environment', 'sandbox')}
-                  style={{
-                    padding: '6px 16px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    fontSize: '12px',
-                    fontWeight: '700',
-                    cursor: 'pointer',
-                    background: paddleGateway.environment === 'sandbox' ? '#FEF3C7' : 'transparent',
-                    color: paddleGateway.environment === 'sandbox' ? '#92400E' : '#64748B',
-                    boxShadow: paddleGateway.environment === 'sandbox' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  🧪 Sandbox (Test Mode)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleGatewayChange('environment', 'production')}
-                  style={{
-                    padding: '6px 16px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    fontSize: '12px',
-                    fontWeight: '700',
-                    cursor: 'pointer',
-                    background: paddleGateway.environment === 'production' ? '#10B981' : 'transparent',
-                    color: paddleGateway.environment === 'production' ? '#FFFFFF' : '#64748B',
-                    boxShadow: paddleGateway.environment === 'production' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  🚀 Production (Live Mode)
-                </button>
-              </div>
-            </div>
-
-            {/* Credentials Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#475569', marginBottom: '4px', fontFamily: 'monospace' }}>
-                  Paddle Client-side Token ({paddleGateway.environment === 'sandbox' ? 'starts with test_' : 'starts with live_'})
-                </label>
-                <input
-                  type="text"
-                  placeholder={paddleGateway.environment === 'sandbox' ? 'test_94bd0c...' : 'live_94bd0c...'}
-                  value={paddleGateway.client_token || ''}
-                  onChange={(e) => handleGatewayChange('client_token', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 10px',
-                    borderRadius: '6px',
-                    border: '1px solid #CBD5E1',
-                    fontSize: '12px',
-                    fontFamily: 'monospace',
-                    color: '#0F172A',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#475569', marginBottom: '4px', fontFamily: 'monospace' }}>
-                  Paddle API Secret Key ({paddleGateway.environment === 'sandbox' ? 'starts with pdl_sand_apikey_' : 'starts with pdl_live_apikey_'})
-                </label>
-                <input
-                  type="password"
-                  placeholder="pdl_sand_apikey_..."
-                  value={paddleGateway.api_key || ''}
-                  onChange={(e) => handleGatewayChange('api_key', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 10px',
-                    borderRadius: '6px',
-                    border: '1px solid #CBD5E1',
-                    fontSize: '12px',
-                    fontFamily: 'monospace',
-                    color: '#0F172A',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#475569', marginBottom: '4px', fontFamily: 'monospace' }}>
-                  Webhook Notification Secret (starts with pdl_ntfset_)
-                </label>
-                <input
-                  type="password"
-                  placeholder="pdl_ntfset_..."
-                  value={paddleGateway.webhook_secret || ''}
-                  onChange={(e) => handleGatewayChange('webhook_secret', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 10px',
-                    borderRadius: '6px',
-                    border: '1px solid #CBD5E1',
-                    fontSize: '12px',
-                    fontFamily: 'monospace',
-                    color: '#0F172A',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#475569', marginBottom: '4px', fontFamily: 'monospace' }}>
-                    Monthly Price ID
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="pri_01h..."
-                    value={paddleGateway.price_id_monthly || dynamicConfig.price_id_monthly || ''}
-                    onChange={(e) => handleGatewayChange('price_id_monthly', e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '8px 10px',
-                      borderRadius: '6px',
-                      border: '1px solid #CBD5E1',
-                      fontSize: '12px',
-                      fontFamily: 'monospace',
-                      color: '#0F172A',
-                      boxSizing: 'border-box'
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#475569', marginBottom: '4px', fontFamily: 'monospace' }}>
-                    Yearly Price ID
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="pri_01h..."
-                    value={paddleGateway.price_id_yearly || dynamicConfig.price_id_yearly || ''}
-                    onChange={(e) => handleGatewayChange('price_id_yearly', e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '8px 10px',
-                      borderRadius: '6px',
-                      border: '1px solid #CBD5E1',
-                      fontSize: '12px',
-                      fontFamily: 'monospace',
-                      color: '#0F172A',
-                      boxSizing: 'border-box'
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Connection Test Result Box */}
-            {connectionResult && (
-              <div style={{
-                padding: '10px 14px',
-                borderRadius: '8px',
-                marginBottom: '12px',
-                fontSize: '12px',
-                fontWeight: '600',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                background: connectionResult.success ? '#ECFDF5' : '#FEF2F2',
-                color: connectionResult.success ? '#065F46' : '#991B1B',
-                border: `1px solid ${connectionResult.success ? '#A7F3D0' : '#FECACA'}`
-              }}>
-                {connectionResult.success ? <CheckCircle2 size={15} style={{ color: '#059669', flexShrink: 0 }} /> : <AlertCircle size={15} style={{ color: '#DC2626', flexShrink: 0 }} />}
-                <span>{connectionResult.message}</span>
-              </div>
-            )}
-
-            {/* Gateway Buttons */}
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={handleSaveGateway}
-                disabled={savingGateway}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '7px',
-                  background: '#0B2522',
-                  color: '#FFFFFF',
-                  fontSize: '12.5px',
-                  fontWeight: '700',
-                  border: 'none',
-                  cursor: savingGateway ? 'wait' : 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  boxShadow: '0 2px 5px rgba(11, 37, 34, 0.16)'
-                }}
-              >
-                <Save size={13} />
-                <span>{savingGateway ? 'Saving Credentials...' : 'Save Gateway Configuration'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleTestConnection}
-                disabled={testingConnection}
-                style={{
-                  padding: '8px 14px',
-                  borderRadius: '7px',
-                  background: '#F8FAFC',
-                  color: '#334155',
-                  fontSize: '12.5px',
-                  fontWeight: '700',
-                  border: '1px solid #CBD5E1',
-                  cursor: testingConnection ? 'wait' : 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                <RefreshCw size={13} className={testingConnection ? 'spin' : ''} />
-                <span>{testingConnection ? 'Testing Connection...' : '🧪 Test Live Paddle Connection'}</span>
-              </button>
             </div>
           </div>
         </div>
