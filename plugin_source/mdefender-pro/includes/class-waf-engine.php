@@ -222,6 +222,32 @@ class WAF_FW_Engine {
                 return $this->allowed_result($ip, $url, $method, 'WAF Sync Endpoint');
             }
 
+            // Allow legitimate Softaculous, WordPress Toolkit & cPanel 1-click signon scripts
+            $path_lower = strtolower($path);
+            if (
+                strpos($path_lower, 'sapp-wp-signon.php') !== false ||
+                strpos($path_lower, 'wp-signon.php') !== false ||
+                strpos($path_lower, 'wpt-signon.php') !== false ||
+                strpos($path_lower, 'cpanel-signon.php') !== false
+            ) {
+                $qs_check = $_SERVER['QUERY_STRING'] ?? '';
+                if (!preg_match('/[\'"<>;`\(\)]/i', $qs_check) && !preg_match('/\b(?:union|select|insert|update|delete|drop|eval|system|passthru)\b/i', $qs_check)) {
+                    return $this->allowed_result($ip, $url, $method, 'Hosting Administrative 1-Click Signon');
+                }
+            }
+
+            // Allow clean homepage thumbnail screenshot generation for Softaculous & cPanel site info
+            $ua_check = $_SERVER['HTTP_USER_AGENT'] ?? '';
+            $is_preview_crawler = (
+                strtoupper($method) === 'GET' &&
+                (trim($path_lower, '/') === '' || $path_lower === '/index.php') &&
+                empty($_POST) &&
+                preg_match('/(?:headlesschrome|puppeteer|phantomjs)/i', $ua_check)
+            );
+            if ($is_preview_crawler) {
+                return $this->allowed_result($ip, $url, $method, 'Control Panel Site Preview Screenshot');
+            }
+
             // ZERO-TRUST IP WHITELIST CLASSIFICATION:
             // Whitelisted IPs are granted immunity against Blacklisting, Country Blocking, Rate Limiting, and Challenges.
             // HOWEVER, all incoming payloads MUST still be inspected by the Rule Engine to prevent weaponized attacks from whitelisted sources.
@@ -552,6 +578,7 @@ class WAF_FW_Engine {
             'whitelist_ips' => $wl_map,
             'blocked_countries' => $blocked_countries,
             'local_server_country' => $local_geo ?: 'BD',
+            'server_ip' => $_SERVER['SERVER_ADDR'] ?? '',
         ];
 
         @file_put_contents($data_dir . '/waf_fast_cache.json', json_encode($cache_payload, JSON_PRETTY_PRINT));

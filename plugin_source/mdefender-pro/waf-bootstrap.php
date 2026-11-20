@@ -226,9 +226,14 @@ $inspect_hdr_keys = [
 foreach ($inspect_hdr_keys as $h_key) {
     if (!empty($_SERVER[$h_key])) {
         $h_val = (string) $_SERVER[$h_key];
-        if ($h_key === 'HTTP_REFERER' && !empty($mdefender_cur_host)) {
-            // Strip own site host from referer so legitimate local/site navigation doesn't trip SSRF false positives
-            $h_val = preg_replace('#^https?://' . preg_quote($mdefender_cur_host, '#') . '#i', '', $h_val);
+        if ($h_key === 'HTTP_REFERER') {
+            if (!empty($mdefender_cur_host)) {
+                // Strip own site host from referer so legitimate local/site navigation doesn't trip SSRF false positives
+                $h_val = preg_replace('#^https?://' . preg_quote($mdefender_cur_host, '#') . '#i', '', $h_val);
+            }
+            // Strip hosting administration ports (:2082-:2096) and cPanel query tokens from referer
+            $h_val = preg_replace('/:(?:2082|2083|2086|2087|2095|2096)\b/i', '', $h_val);
+            $h_val = preg_replace('/(?:\/|\?|&)(?:cpanel|whm|webmail)=\d*/i', '', $h_val);
         }
         $mdefender_headers_flat .= ' ' . $h_val;
     }
@@ -307,6 +312,33 @@ if (preg_match_all('#\b(?:ey[A-Za-z0-9_-]{10,}|Tzo[0-9]+|PD9w|e1t|Y2F0|c3lz|ZXhl
 $deobfuscated_stripped = preg_replace('/\/\*.*?\*\//s', '', $deobfuscated); // Strip SQL inline comments completely (UN/**/ION -> UNION)
 $deobfuscated_spaced = preg_replace('/\/\*.*?\*\//s', ' ', $deobfuscated); // Strip SQL inline comments with space
 $eval_uri = $_SERVER['REQUEST_URI'] ?? '';
+$eval_uri_path = strtolower(parse_url($eval_uri, PHP_URL_PATH) ?? $eval_uri);
+
+// Pre-Flight Allowlist: Softaculous, WordPress Toolkit & cPanel 1-click administrative signon scripts
+if (
+    strpos($eval_uri_path, 'sapp-wp-signon.php') !== false ||
+    strpos($eval_uri_path, 'wp-signon.php') !== false ||
+    strpos($eval_uri_path, 'wpt-signon.php') !== false ||
+    strpos($eval_uri_path, 'cpanel-signon.php') !== false
+) {
+    $qs_raw = $_SERVER['QUERY_STRING'] ?? '';
+    if (!preg_match('/[\'"<>;`\(\)]/i', $qs_raw) && !preg_match('/\b(?:union|select|insert|update|delete|drop|eval|system|passthru)\b/i', $qs_raw)) {
+        return; // Allow legitimate hosting 1-click administrative login to execute cleanly
+    }
+}
+
+// Allow clean homepage thumbnail screenshot generation for Softaculous & cPanel site info
+$is_safe_preview_request = (
+    ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET' &&
+    empty($_POST) &&
+    (
+        trim($eval_uri_path, '/') === '' ||
+        $eval_uri_path === '/index.php' ||
+        $mdefender_ip === '127.0.0.1' ||
+        $mdefender_ip === '::1' ||
+        (!empty($_SERVER['SERVER_ADDR']) && $mdefender_ip === $_SERVER['SERVER_ADDR'])
+    )
+);
 
 // Rate Limit & Under-Attack Interstitial Screen Testing Hooks
 if (!empty($_GET['waf_test_challenge']) || !empty($_GET['test_under_attack'])) {
@@ -347,8 +379,7 @@ $has_attack_marker = (
     stripos($deobfuscated, '$ne') !== false ||
     stripos($deobfuscated, '<!entity') !== false ||
     stripos($deobfuscated, '<!doctype') !== false ||
-    stripos($deobfuscated, 'cpanel') !== false ||
-    stripos($deobfuscated, ':2083') !== false ||
+    preg_match('/(?:^|[?&])(?:cpanel|whm|webmail)=\d+/i', $raw_combined) ||
     stripos($deobfuscated, '${jndi') !== false ||
     stripos($deobfuscated, '169.254.') !== false ||
     stripos($deobfuscated, 'metadata.google') !== false ||
@@ -418,7 +449,8 @@ $has_attack_marker = (
     !empty($_POST['mdef_honeypot']) ||
     !empty($_POST['waf_hp']) ||
     !empty($_GET['anomaly_test']) ||
-    preg_match('@(sqlmap|nikto|acunetix|dirbuster|gobuster|wpscan|hydra|masscan|zgrab|nmaplowercheck|nuclei|ffuf|feroxbuster|headlesschrome|phantomjs|puppeteer|scrapy|selenium)@i', ($_SERVER['HTTP_USER_AGENT'] ?? ''))
+    preg_match('@(sqlmap|nikto|acunetix|dirbuster|gobuster|wpscan|hydra|masscan|zgrab|nmaplowercheck|nuclei|ffuf|feroxbuster)@i', ($_SERVER['HTTP_USER_AGENT'] ?? '')) ||
+    (!$is_safe_preview_request && preg_match('@(headlesschrome|phantomjs|puppeteer|scrapy|selenium)@i', ($_SERVER['HTTP_USER_AGENT'] ?? '')))
 );
 
 // 3. Pre-Flight Allowlist (IP Whitelist) Check (< 0.001ms Fast Path)
@@ -590,7 +622,9 @@ if (!$is_whitelisted_ip && $is_country_block_enabled && !$is_blocked && !empty($
 if (!$is_blocked) {
     $ua = strtolower($_SERVER['HTTP_USER_AGENT'] ?? '');
     if (!empty($ua)) {
-        if (preg_match('/(sqlmap|nikto|acunetix|dirbuster|gobuster|wpscan|hydra|masscan|zgrab|nmaplowercheck|nuclei|ffuf|feroxbuster|headlesschrome|phantomjs|puppeteer|scrapy|selenium)/i', $ua)) {
+        $is_scanner_tool = (bool) preg_match('/(sqlmap|nikto|acunetix|dirbuster|gobuster|wpscan|hydra|masscan|zgrab|nmaplowercheck|nuclei|ffuf|feroxbuster)/i', $ua);
+        $is_headless_env = (bool) preg_match('/(headlesschrome|phantomjs|puppeteer|scrapy|selenium)/i', $ua);
+        if ($is_scanner_tool || ($is_headless_env && !$is_safe_preview_request)) {
             $is_blocked = true;
             $attack_name = 'Automated Vulnerability Scanner';
             $rule_name = 'Pre-Flight WAAP: Scanner Signature Block';
@@ -748,10 +782,8 @@ $host_hdr = $_SERVER['HTTP_HOST'] ?? '';
 $uri_check = $_SERVER['REQUEST_URI'] ?? '';
 $query_check = $_SERVER['QUERY_STRING'] ?? '';
 $is_admin_service_probe = (
-    in_array($server_port, [2082, 2083, 2086, 2087, 2095, 2096], true) ||
-    preg_match('/:(?:2082|2083|2086|2087|2095|2096)(?:$|\/)/', $host_hdr) ||
-    preg_match('#/(?:cpanel|whm|webmail|cpsrvd|kpanel|2082|2083|2086|2087|2095|2096)(?:/|\?|$)#i', $uri_check) ||
-    preg_match('#(?:^|&)(?:cpanel|whm|webmail|2082|2083)=?#i', $query_check) ||
+    (preg_match('#/(?:cpanel|whm|webmail|cpsrvd|kpanel)(?:/|\?|$)#i', $uri_check) && strpos($uri_check, 'signon') === false) ||
+    preg_match('#(?:^|&)(?:cpanel|whm|webmail)=\d+#i', $query_check) ||
     preg_match('#/(?:phpmyadmin|adminer(?:\.php)?|pma|myadmin|\.aws/credentials)(?:/|\?|$)#i', $uri_check)
 );
 if (!$is_blocked && $is_admin_service_probe) {

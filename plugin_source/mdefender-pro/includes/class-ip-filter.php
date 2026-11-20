@@ -14,6 +14,28 @@ class WAF_FW_IP_Filter {
 
     private $runtime_blacklist_cache = [];
 
+    private function __construct() {
+        if (!get_option('waf_cpanel_fp_purged_v2')) {
+            $this->remove_cpanel_false_positives();
+            update_option('waf_cpanel_fp_purged_v2', 1);
+        }
+    }
+
+    public function remove_cpanel_false_positives() {
+        global $wpdb;
+        if (!$wpdb || !isset($wpdb->prefix)) return;
+        $table = class_exists('WAF_FW_DB') ? WAF_FW_DB::instance()->get_blacklist_table() : ($wpdb->prefix . (defined('WAF_FW_TABLE_BLACKLIST') ? WAF_FW_TABLE_BLACKLIST : 'waf_blacklist'));
+        if (!$wpdb->get_var("SHOW TABLES LIKE '$table'")) return;
+        $rows = $wpdb->get_results("SELECT ip FROM $table WHERE reason LIKE '%Hosting control panel probe%'");
+        if (!empty($rows)) {
+            foreach ($rows as $row) {
+                if (!empty($row->ip)) {
+                    $this->remove_from_blacklist($row->ip, true);
+                }
+            }
+        }
+    }
+
     public function is_blacklisted($ip = null) {
         if (empty($ip)) {
             $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';

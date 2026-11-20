@@ -5078,6 +5078,9 @@ function waf_fw_analyze_request() {
                 $atype = $result['attack_type'] ?? '';
                 $rule_m = $result['rule_matched'] ?? '';
                 $msg = $result['message'] ?? '';
+                $attack_type = $atype ?: 'Blacklisted IP';
+                $rule_name = !empty($rule_m) ? $rule_m : $attack_type;
+                $reference_id = $result['reference_id'] ?? ('MDEF-' . strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 8)));
 
                 $is_ip_bl = ($atype === 'Blacklisted IP' || stripos($atype, 'Blacklist') !== false || stripos($rule_m, 'Blacklist') !== false || stripos($msg, 'blacklist') !== false);
                 $is_country_bl = ($atype === 'Country Blocked' || stripos($atype, 'Country') !== false || stripos($atype, 'Geograph') !== false || stripos($atype, 'GeoIP') !== false || stripos($rule_m, 'Country') !== false || stripos($rule_m, 'GeoIP') !== false || stripos($msg, 'country') !== false);
@@ -5172,25 +5175,47 @@ function waf_fw_analyze_request() {
         }
     }
 
-    // Intercept hosting administration & cPanel redirect probes immediately (Port 2082/2083 & /cpanel)
-    $server_port = (int)($_SERVER['SERVER_PORT'] ?? 80);
+    // Whitelist Softaculous, cPanel WordPress Manager, and WP Toolkit 1-click administrative signon
+    $req_path_check = strtolower(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '');
+    $is_legit_signon = (
+        strpos($req_path_check, 'sapp-wp-signon.php') !== false ||
+        strpos($req_path_check, 'wp-signon.php') !== false ||
+        strpos($req_path_check, 'wpt-signon.php') !== false ||
+        strpos($req_path_check, 'cpanel-signon.php') !== false
+    );
+    if ($is_legit_signon) {
+        $qs_check = $_SERVER['QUERY_STRING'] ?? '';
+        if (!preg_match('/[\'"<>;`\(\)]/i', $qs_check) && !preg_match('/\b(?:union|select|insert|update|delete|drop|eval|system|passthru)\b/i', $qs_check)) {
+            return; // Allow legitimate 1-click administrative signon into WordPress
+        }
+    }
+
+    // Allow clean homepage thumbnail screenshot generation for Softaculous & cPanel site info
+    $ua_hdr = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    $method_hdr = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+    $is_clean_preview = (
+        strtoupper($method_hdr) === 'GET' &&
+        (trim($req_path_check, '/') === '' || $req_path_check === '/index.php') &&
+        empty($_POST) &&
+        preg_match('/(?:headlesschrome|puppeteer|phantomjs)/i', $ua_hdr)
+    );
+    if ($is_clean_preview) {
+        return;
+    }
+
+    // Intercept hosting administration probes (/cpanel, /whm, /webmail URL paths or probe query params)
     $host_hdr = $_SERVER['HTTP_HOST'] ?? '';
     $req_uri = $_SERVER['REQUEST_URI'] ?? '';
     $query_str = $_SERVER['QUERY_STRING'] ?? '';
     $is_cpanel_probe = (
-        in_array($server_port, [2082, 2083, 2086, 2087, 2095, 2096], true) ||
-        preg_match('/:(?:2082|2083|2086|2087|2095|2096)(?:$|\/)/', $host_hdr) ||
-        preg_match('#/(?:cpanel|whm|webmail|cpsrvd|kpanel|2082|2083|2086|2087|2095|2096)(?:/|\?|$)#i', $req_uri) ||
-        preg_match('#(?:^|&)(?:cpanel|whm|webmail|2082|2083)=?#i', $query_str)
+        (preg_match('#/(?:cpanel|whm|webmail|cpsrvd|kpanel)(?:/|\?|$)#i', $req_uri) && !$is_legit_signon) ||
+        preg_match('#(?:^|&)(?:cpanel|whm|webmail)=\d+#i', $query_str)
     );
     if ($is_cpanel_probe) {
         $GLOBALS['waf_fw_analyzed'] = true;
-        if ($engine) {
-            $client_ip = $engine->get_client_ip();
-            if (class_exists('WAF_FW_IP_Filter') && !in_array($client_ip, ['127.0.0.1', '::1', 'localhost', '0.0.0.0'], true)) {
-                WAF_FW_IP_Filter::instance()->add_to_blacklist($client_ip, 'Hosting control panel probe (/cpanel or port 2083 redirect)');
-            }
-        }
+        $attack_type = 'Hosting Control Panel Probe';
+        $rule_name = 'Hosting Control Panel & Service Guard';
+        $reference_id = 'MDEF-' . strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 8));
         status_header(403);
         header('HTTP/1.1 403 Forbidden', true, 403);
         header('X-Protected-By: MDefender-Pro-WAAP');

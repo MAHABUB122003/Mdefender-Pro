@@ -189,6 +189,14 @@ class WAF_FW_Rule_Engine {
                     }
                     continue;
                 }
+                if ($lower_k === 'referer' || $lower_k === 'origin') {
+                    // Sanitize legitimate hosting control panel ports (cPanel 2082/2083, WHM 2086/2087, Webmail 2095/2096)
+                    // and cPanel query tokens from Referer/Origin headers so navigations from hosting panels do not trigger false positives
+                    $clean_ref = preg_replace('/:(?:2082|2083|2086|2087|2095|2096)\b/i', '', (string)$v);
+                    $clean_ref = preg_replace('/(?:\/|\?|&)(?:cpanel|whm|webmail)=\d*/i', '', $clean_ref);
+                    $inspect_headers[] = (string)$k . ": " . $clean_ref;
+                    continue;
+                }
                 if (in_array($lower_k, $safe_header_keys, true)) {
                     continue;
                 }
@@ -246,6 +254,13 @@ class WAF_FW_Rule_Engine {
             if (!$rule['enabled']) continue;
 
             // False-positive prevention for legitimate WordPress operations
+            if ($rule['name'] === 'Hosting Control Panel Probe') {
+                $req_url = $data['url'] ?? '';
+                // Whitelist Softaculous, cPanel WordPress Manager, and WP Toolkit 1-click signon flows
+                if (preg_match('#/(?:sapp-wp-signon|wp-signon|wpt-signon|cpanel-signon)\.php#i', $req_url)) {
+                    continue;
+                }
+            }
             if ($rule['name'] === 'User Enumeration Probe') {
                 if (strpos($combined, '/wp-json/wp/v2/users/me') !== false ||
                     (function_exists('is_user_logged_in') && is_user_logged_in()) ||
