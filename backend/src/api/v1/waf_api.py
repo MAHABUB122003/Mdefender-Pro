@@ -247,9 +247,13 @@ def verify_api_key(db, api_key, domain=None, site_url=None):
         if not website and domain:
             try:
                 import uuid
+                from src.services.license_slot_service import LicenseSlotService
                 site_id = f"site_{uuid.uuid4().hex[:12]}"
                 now = datetime.now()
                 site_api_key = provision_isolated_site_key(db, user_id_str, site_id)
+                u_license = LicenseSlotService(db).resolve_user_license_state(user)
+                is_u_paid = bool(u_license.get("is_paid"))
+                sub_status = "pro" if is_u_paid else "trial_active"
                 website = {
                     "_id": site_id,
                     "id": site_id,
@@ -260,12 +264,15 @@ def verify_api_key(db, api_key, domain=None, site_url=None):
                     "api_key": site_api_key,
                     "platform": "wordpress",
                     "status": "active",
+                    "is_licensed": is_u_paid,
+                    "license_status": sub_status,
+                    "is_protected": True,
                     "protection_enabled": True,
                     "waf_mode": "protect",
                     "malware_scanner": True,
                     "threat_level": "LOW",
                     "verified": True,
-                    "subscription_status": "trial_active",
+                    "subscription_status": sub_status,
                     "trial_starts_at": now,
                     "trial_ends_at": now + timedelta(days=14),
                     "connected_at": now,

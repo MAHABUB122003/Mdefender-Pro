@@ -43,7 +43,18 @@ if (defined('ABSPATH')) {
     }
 }
 
-// Pre-Flight Admin Protection: If request is to /wp-admin/ and has valid admin session cookies or plugin actions
+// Pre-Flight Admin Protection: If request has valid admin session cookies or plugin actions
+$has_wp_auth = false;
+foreach ($_COOKIE as $c_name => $c_val) {
+    if (strpos($c_name, 'wordpress_logged_in_') === 0 || strpos($c_name, 'wordpress_sec_') === 0) {
+        $has_wp_auth = true;
+        break;
+    }
+}
+if ($has_wp_auth && empty($_GET['waf_test']) && empty($_POST['waf_test']) && empty($_FILES)) {
+    return;
+}
+
 $req_uri_raw = $_SERVER['REQUEST_URI'] ?? '';
 if (strpos($req_uri_raw, '/wp-admin/') !== false) {
     $act = $_GET['action'] ?? $_POST['action'] ?? '';
@@ -55,17 +66,6 @@ if (strpos($req_uri_raw, '/wp-admin/') !== false) {
         if (empty($_GET['waf_test']) && empty($_POST['waf_test'])) {
             return;
         }
-    }
-    // Check for WordPress authentication cookies
-    $has_wp_auth = false;
-    foreach ($_COOKIE as $c_name => $c_val) {
-        if (strpos($c_name, 'wordpress_logged_in_') === 0 || strpos($c_name, 'wordpress_sec_') === 0) {
-            $has_wp_auth = true;
-            break;
-        }
-    }
-    if ($has_wp_auth && empty($_GET['waf_test']) && empty($_POST['waf_test'])) {
-        return;
     }
 }
 

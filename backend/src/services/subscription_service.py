@@ -299,6 +299,7 @@ class SubscriptionService:
                     {"$set": {
                         "plan": plan,
                         "plan_tier": plan,
+                        "is_paid": True,
                         "payment_status": "active",
                         "purchased_slots": sites,
                         "billing_cycle": "yearly" if is_yearly else "monthly",

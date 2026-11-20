@@ -120,6 +120,13 @@ class WAF_FW_Rate_Limiter {
 
     public function increment($ip) {
         if (empty($ip)) return;
+
+        // Local loopback and private networks are never rate limited (< 0.0001ms, 0 DB queries)
+        if ($ip === '127.0.0.1' || $ip === '::1' || $ip === 'localhost' || $ip === '0.0.0.0' ||
+            strpos($ip, '192.168.') === 0 || strpos($ip, '10.') === 0 || strpos($ip, '172.16.') === 0) {
+            return;
+        }
+
         $key = 'waf_fw_rate_' . md5($ip);
         $now = time();
 

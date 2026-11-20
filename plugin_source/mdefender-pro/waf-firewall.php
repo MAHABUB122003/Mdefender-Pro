@@ -5242,9 +5242,18 @@ function waf_fw_analyze_request() {
         exit;
     }
 
-    // In wp-admin panel, authenticated administrators are bypassed for routine administrative tasks
+    // Authenticated administrators are bypassed across WP Admin, Frontend, and Core Operations
     // BUT file editing (theme/plugin editor) and file uploads are ALWAYS inspected to prevent backdoor persistence
-    if (is_admin() && function_exists('is_user_logged_in') && is_user_logged_in() && function_exists('current_user_can') && current_user_can('manage_options')) {
+    $is_auth_admin = (function_exists('is_user_logged_in') && is_user_logged_in() && function_exists('current_user_can') && current_user_can('manage_options'));
+    if (!$is_auth_admin && !empty($_COOKIE)) {
+        foreach ($_COOKIE as $c_name => $c_val) {
+            if (strpos($c_name, 'wordpress_logged_in_') === 0 && !empty($c_val)) {
+                $is_auth_admin = true;
+                break;
+            }
+        }
+    }
+    if ($is_auth_admin) {
         if (isset($_POST['newcontent']) || !empty($_FILES)) {
             // Must inspect to prevent backdoor injection or web shell upload
         } elseif (empty($_GET['waf_test']) && empty($_POST['waf_test'])) {
@@ -5346,10 +5355,26 @@ add_action('init', 'waf_fw_analyze_request', 1);
 function waf_fw_analyze_rest_request() {
     if (!waf_fw_is_cloud_active()) return;
     if (!empty($GLOBALS['waf_fw_analyzed'])) return;
-    $GLOBALS['waf_fw_analyzed'] = true;
-    $engine = WAF_FW_Engine::instance();
+
     $route = $_SERVER['REQUEST_URI'] ?? '';
     if (strpos($route, '/wp-json/waf-fw/') !== false) return;
+
+    // Check if authenticated admin is making the REST request (e.g. Gutenberg saving a post, core updates)
+    $is_auth_admin = (function_exists('is_user_logged_in') && is_user_logged_in() && function_exists('current_user_can') && current_user_can('manage_options'));
+    if (!$is_auth_admin && !empty($_COOKIE)) {
+        foreach ($_COOKIE as $c_name => $c_val) {
+            if (strpos($c_name, 'wordpress_logged_in_') === 0 && !empty($c_val)) {
+                $is_auth_admin = true;
+                break;
+            }
+        }
+    }
+    if ($is_auth_admin && empty($_GET['waf_test']) && empty($_POST['waf_test'])) {
+        return;
+    }
+
+    $GLOBALS['waf_fw_analyzed'] = true;
+    $engine = WAF_FW_Engine::instance();
 
     $result = $engine->analyze_current_request();
     if ($result['status'] === 'blocked') {

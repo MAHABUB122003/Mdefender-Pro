@@ -595,8 +595,10 @@ class LicenseSlotService:
         if dom_clean:
             reg_domain = str(website.get("domain") or "").strip().lower()
             if reg_domain and reg_domain != dom_clean:
-                _LICENSE_CACHE[cache_key] = (False, now + CACHE_TTL_SECONDS)
-                return False, "Domain cryptographic mismatch."
+                from src.api.v1.waf_api import _domain_matches_site
+                if not _domain_matches_site(website, dom_clean):
+                    _LICENSE_CACHE[cache_key] = (False, now + CACHE_TTL_SECONDS)
+                    return False, "Domain cryptographic mismatch."
 
         owner_id = str(website.get("user_id"))
         user_doc = self._get_user_doc(owner_id)

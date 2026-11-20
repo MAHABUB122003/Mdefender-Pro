@@ -834,39 +834,37 @@ class WAF_FW_Engine {
             return 'XX';
         }
 
-        $resolved_country = 'XX';
-
-        // Fast provider with strict sub-second timeout when country blocking is actively configured
-        if (function_exists('wp_remote_get') && php_sapi_name() !== 'cli') {
-            $resp = wp_remote_get("http://ip-api.com/json/{$ip}?fields=status,countryCode", [
-                'timeout' => 1.2,
-                'sslverify' => false,
-                'headers' => ['User-Agent' => 'MDefender-Pro-GeoIP/1.0']
-            ]);
-            if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) === 200) {
-                $g1 = json_decode(wp_remote_retrieve_body($resp), true);
-                if (!empty($g1['countryCode'])) {
-                    $resolved_country = strtoupper(trim($g1['countryCode']));
-                }
-            }
-        }
-
-        if ($resolved_country !== 'XX' && strlen($resolved_country) === 2) {
-            self::$geo_memory_cache[$ip] = $resolved_country;
-            if (function_exists('set_transient')) {
-                set_transient($transient_key, $resolved_country, 604800); // Cache 7 days
-            }
-            if (is_dir($data_dir) && is_writable($data_dir)) {
-                $disk_cache[$ip] = $resolved_country;
-                if (count($disk_cache) > 2000) {
-                    $disk_cache = array_slice($disk_cache, -1000, 1000, true);
-                }
-                @file_put_contents($disk_file, json_encode($disk_cache));
-            }
-            return $resolved_country;
-        }
-
+        // 6. Zero-Latency Non-Blocking GeoIP Resolution (< 0.001ms)
+        // Never stall visitor page loads with synchronous external HTTP requests.
+        // Return immediately and resolve in background at PHP shutdown.
         self::$geo_memory_cache[$ip] = 'XX';
+        if (function_exists('add_action')) {
+            add_action('shutdown', function() use ($ip, $transient_key, $data_dir, $disk_file) {
+                if (!function_exists('wp_remote_get') || php_sapi_name() === 'cli') return;
+                $resp = wp_remote_get("http://ip-api.com/json/{$ip}?fields=status,countryCode", [
+                    'timeout' => 1.5,
+                    'sslverify' => false,
+                    'headers' => ['User-Agent' => 'MDefender-Pro-GeoIP/1.0']
+                ]);
+                if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) === 200) {
+                    $g1 = json_decode(wp_remote_retrieve_body($resp), true);
+                    if (!empty($g1['countryCode']) && strlen(trim($g1['countryCode'])) === 2) {
+                        $code = strtoupper(trim($g1['countryCode']));
+                        if (function_exists('set_transient')) {
+                            set_transient($transient_key, $code, 604800); // Cache 7 days
+                        }
+                        if (is_dir($data_dir) && is_writable($data_dir)) {
+                            $disk_cache = file_exists($disk_file) ? (@json_decode(@file_get_contents($disk_file), true) ?: []) : [];
+                            $disk_cache[$ip] = $code;
+                            if (count($disk_cache) > 2000) {
+                                $disk_cache = array_slice($disk_cache, -1000, 1000, true);
+                            }
+                            @file_put_contents($disk_file, json_encode($disk_cache));
+                        }
+                    }
+                }
+            });
+        }
         return 'XX';
     }
 

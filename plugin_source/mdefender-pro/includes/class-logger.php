@@ -519,10 +519,15 @@ class WAF_FW_Logger {
      * Prevents the client's WordPress MySQL database from ever bloating or running out of disk space.
      */
     public function auto_recycle_if_needed($force = false) {
+        static $checked_this_process = false;
+        if (!$force && $checked_this_process) {
+            return;
+        }
+        $checked_this_process = true;
         if (!$force && get_transient('waf_fw_auto_recycle_lock')) {
             return;
         }
-        set_transient('waf_fw_auto_recycle_lock', 1, 600); // Check at most once every 10 minutes
+        set_transient('waf_fw_auto_recycle_lock', 1, 3600); // Check at most once every hour
 
         $enabled = get_option('waf_fw_auto_recycle_logs', 'yes');
         if ($enabled !== 'yes' && $enabled !== '1' && $enabled !== true) {

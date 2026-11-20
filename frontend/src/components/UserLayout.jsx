@@ -221,19 +221,22 @@ export default function UserLayout({ children, onLogout }) {
 
   const profile = userStore.get('profile') || userStore.get('dashboard')?.user || null
   const storedPlan = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || '') : ''
+  const storedIsPaid = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_is_paid') === 'true') : false
   const storedPaymentStatus = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_payment_status') || '') : ''
   const activePlan = (profile?.plan || profile?.effective_plan || storedPlan || 'free').toLowerCase()
   const paymentStatus = (profile?.payment_status || storedPaymentStatus || '').toLowerCase()
   const isPaidActive = Boolean(
     profile?.is_admin ||
     profile?.role === 'super_admin' ||
-    (profile?.is_paid && paymentStatus === 'active')
+    profile?.is_paid ||
+    storedIsPaid ||
+    (activePlan !== 'free' && activePlan !== 'starter' && paymentStatus !== 'expired' && paymentStatus !== 'past_due' && paymentStatus !== 'canceled' && paymentStatus !== 'cancelled')
   )
   const isPaidExpired = Boolean(
     !isPaidActive && !profile?.is_admin && !profile?.role?.includes('admin') && (
       paymentStatus === 'expired' ||
       paymentStatus === 'past_due' ||
-      (activePlan !== 'free' && activePlan !== 'starter' && (paymentStatus === 'expired' || paymentStatus === 'canceled' || paymentStatus === 'cancelled' || !profile?.is_paid))
+      (activePlan !== 'free' && activePlan !== 'starter' && (paymentStatus === 'expired' || paymentStatus === 'canceled' || paymentStatus === 'cancelled' || profile?.is_paid === false))
     )
   )
 

@@ -104,14 +104,16 @@ export default function TrialPaywallModal() {
     testProParam === 'true' ||
     profile?.is_admin ||
     profile?.role === 'super_admin' ||
-    ((hasPaidPlan || storedIsPaid || profile?.is_paid) && (paymentStatus === 'active' || (storedIsPaid && !paymentStatus)))
+    profile?.is_paid ||
+    storedIsPaid ||
+    (hasPaidPlan && paymentStatus !== 'expired' && paymentStatus !== 'past_due' && paymentStatus !== 'canceled' && paymentStatus !== 'cancelled')
   );
 
   const isPaidExpired = Boolean(
     !isPaidActive && !profile?.is_admin && !profile?.role?.includes('admin') && (
       paymentStatus === 'expired' ||
       paymentStatus === 'past_due' ||
-      (hasPaidPlan && (paymentStatus === 'expired' || paymentStatus === 'canceled' || paymentStatus === 'cancelled' || !profile?.is_paid))
+      (hasPaidPlan && (paymentStatus === 'expired' || paymentStatus === 'canceled' || paymentStatus === 'cancelled' || profile?.is_paid === false))
     )
   );
 
