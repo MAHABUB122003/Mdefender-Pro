@@ -2557,7 +2557,7 @@ async def user_whois_lookup(ip: str, user: dict = Depends(verify_user_token_comp
 
     # Local user attack history and policy checks use synchronous database services.
     def load_local_threat_context():
-        user_id = str(user['_id'])
+        user_id = str(user.get('_id') or user.get('id') or '')
         user_cond = {'$or': [{'user_id': user_id}, {'added_by_user_id': user_id}]}
         attack_query = {'$and': [{'ip': ip}, user_cond]}
         attack_count = db.attacks.count_documents(attack_query)

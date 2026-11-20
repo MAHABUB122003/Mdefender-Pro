@@ -10198,7 +10198,7 @@ async def get_website_posthack_status(website_id: str, user=Depends(get_current_
         return success({
             "website_id": website_id,
             "domain": website.get("domain", ""),
-            "status": res["data"]
+            "status": res.get("data") or res
         })
     return success({
         "website_id": website_id,

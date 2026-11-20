@@ -3,14 +3,21 @@ from datetime import datetime, timedelta
 import time
 
 class IPFilter:
-    def __init__(self):
-        self.db = MongoDB()
+    def __init__(self, db=None):
+        self.db = db if db is not None else MongoDB()
         self._whitelist = set()
 
     _global_whitelist_set = None
     _global_whitelist_time = 0.0
     _global_blacklist_set = None
     _global_blacklist_time = 0.0
+
+    @classmethod
+    def invalidate_cache(cls):
+        cls._global_whitelist_time = 0.0
+        cls._global_blacklist_time = 0.0
+        cls._global_whitelist_set = None
+        cls._global_blacklist_set = None
 
     @classmethod
     def _refresh_ip_sets(cls, db):
@@ -53,6 +60,23 @@ class IPFilter:
         IPFilter._refresh_ip_sets(self.db)
         if IPFilter._global_blacklist_set and ip in IPFilter._global_blacklist_set:
             return True
+        return False
+
+    def is_blacklisted_headers(self, headers: dict, user_id=None) -> bool:
+        """Extract and evaluate candidate client IPs from forward headers (Anti-Spoofing)."""
+        if not headers or not isinstance(headers, dict):
+            return False
+        candidates = []
+        for hdr in ['X-Forwarded-For', 'CF-Connecting-IP', 'True-Client-IP', 'X-Real-IP']:
+            val = headers.get(hdr) or headers.get(hdr.lower())
+            if val:
+                for part in str(val).split(','):
+                    p = part.strip()
+                    if p:
+                        candidates.append(p)
+        for cand in candidates:
+            if self.is_blacklisted(cand, user_id=user_id):
+                return True
         return False
 
     @staticmethod
