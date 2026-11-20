@@ -395,6 +395,19 @@ async def logout_all(request: Request, response: Response, user: Optional[dict] 
 async def get_me(user: dict = Depends(get_current_user)):
     user_full_name = user.get('full_name') or user.get('name', '')
     user_uname = user.get('username') or (user.get('email', '').split('@')[0] if user.get('email') else '')
+
+    from src.database.mongodb_connection import MongoDB
+    from src.services.license_slot_service import LicenseSlotService
+    db = MongoDB()
+    license_state = LicenseSlotService(db).resolve_user_license_state(user)
+
+    resolved_plan = license_state.get('plan') or user.get('plan', 'free')
+    is_paid = bool(license_state.get('is_paid', False))
+    payment_status = license_state.get('payment_status') or user.get('payment_status', 'none')
+    purchased_slots = license_state.get('purchased_slots') or user.get('purchased_slots', 0)
+    trial_days = license_state.get('trial_days_remaining', 0)
+    is_trial_active = bool(license_state.get('is_trial_active', False))
+
     return {
         'status': 'success',
         'user': {
@@ -408,7 +421,13 @@ async def get_me(user: dict = Depends(get_current_user)):
             'is_admin': user.get('is_admin', user.get('role') == 'super_admin'),
             'email_verified': user.get('email_verified', False),
             'mfa_enabled': user.get('mfa_enabled', False),
-            'plan': user.get('plan', 'free'),
+            'plan': resolved_plan,
+            'effective_plan': resolved_plan,
+            'is_paid': is_paid,
+            'payment_status': payment_status,
+            'purchased_slots': purchased_slots,
+            'trial_days_remaining': trial_days,
+            'is_trial_active': is_trial_active,
             'api_key': user.get('api_key', ''),
             'created_at': user.get('created_at'),
             'onboarded': user.get('onboarded', False),

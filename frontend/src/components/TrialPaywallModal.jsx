@@ -91,13 +91,23 @@ export default function TrialPaywallModal() {
   const testTrialParam = isPrivilegedAdmin && urlParams ? urlParams.get('test_trial_days') : null;
   const testProParam = isPrivilegedAdmin && urlParams ? urlParams.get('test_pro') : null;
 
+  const storedPlan = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || '') : '';
+  const storedIsPaid = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_is_paid') === 'true') : false;
+  const storedPaymentStatus = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_payment_status') || '') : '';
+
+  const activePlan = (profile?.plan || profile?.effective_plan || storedPlan || 'free').toLowerCase();
+  const paymentStatus = (profile?.payment_status || storedPaymentStatus || '').toLowerCase();
+  const hasPaidPlan = activePlan !== 'free' && activePlan !== 'starter';
+
   // Authoritative server resolution: NEVER trust client localStorage over authenticated server state
   const isPaidActive = Boolean(
     testProParam === 'true' ||
     profile?.is_paid ||
+    storedIsPaid ||
     profile?.is_admin ||
     profile?.role === 'super_admin' ||
-    (profile?.payment_status === 'active' && profile?.plan && profile?.plan !== 'free')
+    (hasPaidPlan && paymentStatus !== 'expired' && paymentStatus !== 'trial_expired') ||
+    paymentStatus === 'active'
   );
 
   const defaultTrialDays = Number(dynamicPricing?.trial_days) || 14;
@@ -161,8 +171,8 @@ export default function TrialPaywallModal() {
   // 1. Allow unrestricted access to billing/pricing and support pages so expired users can complete payment
   if (isBillingOrSupportRoute) return null;
 
-  // 2. If actively paid or admin, never show paywall
-  if (isPaidActive) return null;
+  // 2. If actively paid or admin or has active paid plan, never show paywall
+  if (isPaidActive || hasPaidPlan) return null;
 
   // 3. Days 1 to 9: Silent (modal hidden, full dashboard access)
   if (trialDays > 4) return null;

@@ -255,6 +255,10 @@ class LoginService:
         import math
         trial_days_remaining = max(0, int(math.ceil((trial_ends - now_dt).total_seconds() / 86400)))
 
+        # Resolve authoritative license & billing state
+        from src.services.license_slot_service import LicenseSlotService
+        license_state = LicenseSlotService(self.db).resolve_user_license_state(user)
+
         # Resolve website count and onboarding flag (limit to 100 to prevent slow full-table scans)
         websites_count = 0
         try:
@@ -265,6 +269,13 @@ class LoginService:
             pass
         # Once onboarded, user permanently remains onboarded
         is_onboarded = bool(user.get('onboarded', False))
+
+        resolved_plan = license_state.get('plan') or user.get('plan', 'free')
+        is_paid = bool(license_state.get('is_paid', False))
+        payment_status = license_state.get('payment_status') or user.get('payment_status', 'none')
+        purchased_slots = license_state.get('purchased_slots') or user.get('purchased_slots', 0)
+        trial_days = license_state.get('trial_days_remaining', trial_days_remaining)
+        is_trial_active = bool(license_state.get('is_trial_active', False))
 
         return {
             'success': True,
@@ -278,10 +289,15 @@ class LoginService:
                 'username': user_uname,
                 'role': user.get('role', 'user'),
                 'is_admin': user.get('role') == 'super_admin' or user.get('is_admin', False),
-                'plan': user.get('plan', 'free'),
+                'plan': resolved_plan,
+                'effective_plan': resolved_plan,
+                'is_paid': is_paid,
+                'payment_status': payment_status,
+                'purchased_slots': purchased_slots,
+                'is_trial_active': is_trial_active,
                 'email_verified': user.get('email_verified', False),
                 'api_key': api_key,
-                'trial_days_remaining': trial_days_remaining,
+                'trial_days_remaining': trial_days,
                 'trial_ends_at': trial_ends.isoformat() if hasattr(trial_ends, 'isoformat') else str(trial_ends),
                 'created_at': user_created.isoformat() if hasattr(user_created, 'isoformat') else str(user_created),
                 'onboarded': is_onboarded,

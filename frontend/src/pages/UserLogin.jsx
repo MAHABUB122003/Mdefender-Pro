@@ -68,6 +68,8 @@ export default function UserLogin({ onLoginSuccess }) {
       }
       if (user.email) localStorage.setItem('mdefender_user_email', user.email);
       if (user.plan) localStorage.setItem('mdefender_user_plan', user.plan);
+      if (user.is_paid !== undefined) localStorage.setItem('mdefender_is_paid', String(user.is_paid));
+      if (user.payment_status) localStorage.setItem('mdefender_payment_status', user.payment_status);
       if (user.name) localStorage.setItem('mdefender_user_name', user.name);
       if (user.trial_days_remaining !== undefined) localStorage.setItem('mdefender_trial_days', user.trial_days_remaining);
       if (user.created_at) localStorage.setItem('mdefender_user_created_at', user.created_at);

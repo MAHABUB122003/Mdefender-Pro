@@ -272,6 +272,8 @@ function App() {
       setUserState(user)
       userStore.set('profile', user)
       if (user.plan) localStorage.setItem('mdefender_user_plan', user.plan)
+      if (user.is_paid !== undefined) localStorage.setItem('mdefender_is_paid', String(user.is_paid))
+      if (user.payment_status) localStorage.setItem('mdefender_payment_status', user.payment_status)
       if (user.name) localStorage.setItem('mdefender_user_name', user.name)
       userStore.prefetchUserData(api)
     }).catch(() => {
