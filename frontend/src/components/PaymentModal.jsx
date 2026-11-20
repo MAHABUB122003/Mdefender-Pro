@@ -120,6 +120,13 @@ export default function PaymentModal({
               }
               window.Paddle.Initialize({
                 token: cfg.client_token,
+                checkout: {
+                  settings: {
+                    locale: 'en',
+                    displayMode: 'overlay',
+                    theme: 'light'
+                  }
+                }
               });
             } catch (e) {
               console.warn('Paddle Init Warning:', e);
@@ -161,7 +168,16 @@ export default function PaymentModal({
           if (cfg.environment === 'sandbox') {
             window.Paddle.Environment.set('sandbox');
           }
-          window.Paddle.Initialize({ token: cfg.client_token });
+          window.Paddle.Initialize({
+            token: cfg.client_token,
+            checkout: {
+              settings: {
+                locale: 'en',
+                displayMode: 'overlay',
+                theme: 'light'
+              }
+            }
+          });
         } catch (initErr) {
           console.warn('Paddle init error:', initErr);
         }
@@ -203,6 +219,7 @@ export default function PaymentModal({
             settings: {
               displayMode: 'overlay',
               theme: 'light',
+              locale: 'en',
               successUrl: `${window.location.origin}/payment/success?plan=${plan}&cycle=${billingCycle}&sites=${count}${checkoutData.checkout_id ? `&txn_id=${checkoutData.checkout_id}` : ''}`,
             },
           });
@@ -226,6 +243,7 @@ export default function PaymentModal({
           settings: {
             displayMode: 'overlay',
             theme: 'light',
+            locale: 'en',
             successUrl: `${window.location.origin}/payment/success?plan=${plan}&cycle=${billingCycle}&sites=${count}`,
           },
         });

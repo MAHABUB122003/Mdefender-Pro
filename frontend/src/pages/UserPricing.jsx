@@ -230,7 +230,16 @@ export default function UserPricing() {
           if (cfg.environment === 'sandbox') {
             window.Paddle.Environment.set('sandbox');
           }
-          window.Paddle.Initialize({ token: cfg.client_token });
+          window.Paddle.Initialize({
+            token: cfg.client_token,
+            checkout: {
+              settings: {
+                locale: 'en',
+                displayMode: 'overlay',
+                theme: 'light'
+              }
+            }
+          });
         } catch (initErr) {
           console.warn('Init error:', initErr);
         }
@@ -273,6 +282,7 @@ export default function UserPricing() {
             settings: {
               displayMode: 'overlay',
               theme: 'light',
+              locale: 'en',
               successUrl: `${window.location.origin}/payment/success?plan=pro&cycle=${billingCycle}&sites=${sitesCount}${checkoutData.checkout_id ? `&txn_id=${checkoutData.checkout_id}` : ''}`,
             },
           });
@@ -294,6 +304,7 @@ export default function UserPricing() {
           settings: {
             displayMode: 'overlay',
             theme: 'light',
+            locale: 'en',
             successUrl: `${window.location.origin}/payment/success?plan=pro&cycle=${billingCycle}&sites=${sitesCount}`,
           },
         });

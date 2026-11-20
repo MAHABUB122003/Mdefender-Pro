@@ -79,8 +79,22 @@ class LicenseSlotService:
             pass
         return self.db.users.find_one({"_id": str(user_id)})
 
-    def resolve_user_license_state(self, user_doc: Dict[str, Any]) -> Dict[str, Any]:
+    def resolve_user_license_state(self, user_doc: Any) -> Dict[str, Any]:
         """Resolve a user's total purchased slots, trial days, and subscription state."""
+        if isinstance(user_doc, (str, ObjectId)):
+            resolved = self._get_user_doc(user_doc)
+            if not resolved:
+                return {
+                    "is_paid": False,
+                    "is_trial_active": False,
+                    "trial_days_remaining": 0,
+                    "plan": "free",
+                    "payment_status": "unlicensed",
+                    "purchased_slots": 0,
+                    "slots_allowed": 0
+                }
+            user_doc = resolved
+
         now_dt = datetime.now(timezone.utc)
         u_created = _normalize_to_utc(user_doc.get("created_at"), now_dt)
         trial_ends = _normalize_to_utc(user_doc.get("trial_ends_at"), u_created + timedelta(days=14))
@@ -94,13 +108,37 @@ class LicenseSlotService:
 
         # Check active subscription in db.subscriptions (Paddle webhook source of truth)
         uid_str = str(user_doc["_id"])
-        sub = self.db.subscriptions.find_one({"user_id": uid_str, "status": {"$in": ["active", "trialing"]}})
+        target_uids = [uid_str]
+        if ObjectId.is_valid(uid_str):
+            target_uids.append(ObjectId(uid_str))
+
+        sub = self.db.subscriptions.find_one(
+            {"user_id": {"$in": target_uids}},
+            sort=[("created_at", -1)]
+        )
+        sub_active = False
         if sub:
-            plan = str(sub.get("plan") or plan).lower()
-            payment_status = "active"
+            sub_status = str(sub.get("status") or "").lower()
+            sub_end = _normalize_to_utc(sub.get("current_period_end"), None)
+            if sub_status in ("active", "trialing"):
+                sub_active = True
+                plan = str(sub.get("plan_id") or sub.get("plan") or plan).lower()
+                payment_status = "active"
+            elif sub_status in ("canceled", "cancelled"):
+                # If canceled but still within prepaid billing period -> active until period end
+                if sub_end and sub_end > now_dt:
+                    sub_active = True
+                    plan = str(sub.get("plan_id") or sub.get("plan") or plan).lower()
+                    payment_status = "active"
+                else:
+                    sub_active = False
+                    payment_status = "expired"
+            elif sub_status in ("expired", "past_due"):
+                sub_active = False
+                payment_status = "expired"
 
         # Check active admin-granted entitlement in db.entitlements
-        ent = self.db.entitlements.find_one({"user_id": uid_str, "status": "active"})
+        ent = self.db.entitlements.find_one({"user_id": {"$in": target_uids}, "status": "active"})
         ent_active = False
         if ent:
             ent_exp = _normalize_to_utc(ent.get("expires_at"), None)
@@ -110,13 +148,12 @@ class LicenseSlotService:
 
         # Check plan expiration timestamp
         plan_expires = _normalize_to_utc(user_doc.get("plan_expires"), None)
-        has_subscription_expired = bool(plan_expires and plan_expires < now_dt and not sub and not ent_active)
+        has_subscription_expired = bool(plan_expires and plan_expires < now_dt and not sub_active and not ent_active)
 
         # Check if user has active paid subscription or admin entitlement
-        is_paid = is_admin_user or ent_active or (
+        is_paid = is_admin_user or ent_active or sub_active or (
             not has_subscription_expired and (
-                (sub is not None and sub.get("status") in ("active", "trialing")) or
-                (payment_status == "active" and plan != "free" and (not plan_expires or plan_expires > now_dt))
+                payment_status == "active" and plan != "free" and (not plan_expires or plan_expires > now_dt)
             )
         )
         is_trial_active = (not is_paid) and (t_days_rem > 0)
@@ -147,7 +184,8 @@ class LicenseSlotService:
             "trial_days_remaining": t_days_rem,
             "plan": plan,
             "payment_status": payment_status,
-            "purchased_slots": purchased_slots
+            "purchased_slots": purchased_slots,
+            "slots_allowed": purchased_slots
         }
 
     def get_slots_summary(self, user_id) -> Dict[str, Any]:
@@ -214,6 +252,21 @@ class LicenseSlotService:
             "websites": site_items
         }
 
+    def get_fleet_slot_allocation(self, user_id) -> Dict[str, Any]:
+        """Return fleet slot allocation breakdown: allowed, used, available, and overflow."""
+        summary = self.get_slots_summary(user_id)
+        websites = summary.get("websites", [])
+        active_licensed = [w for w in websites if w.get("is_licensed")]
+        overflow_unlicensed = [w for w in websites if not w.get("is_licensed")]
+        return {
+            "slots_allowed": summary.get("total_slots", 0),
+            "slots_used": summary.get("used_slots", 0),
+            "slots_available": summary.get("available_slots", 0),
+            "active_licensed_websites": active_licensed,
+            "unlicensed_overflow_websites": overflow_unlicensed,
+            "summary": summary
+        }
+
     def reconcile_allocations(self, user_doc: Dict[str, Any], websites: List[Dict[str, Any]], state: Dict[str, Any]) -> Dict[str, Any]:
         """Synchronize user.licensed_website_ids with db.websites to maintain strict integrity."""
         uid_str = str(user_doc["_id"])
@@ -236,6 +289,14 @@ class LicenseSlotService:
             if len(target_licensed_ids) > total_slots:
                 # Trim excess if total_slots decreased (e.g. downgraded or transitioned from trial)
                 target_licensed_ids = target_licensed_ids[:total_slots]
+            elif len(target_licensed_ids) < total_slots:
+                # Auto-fill available slots with unpaused sites up to total_slots
+                for w in websites:
+                    wid = str(w["_id"])
+                    if wid not in target_licensed_ids and not bool(w.get("protection_paused")):
+                        target_licensed_ids.append(wid)
+                        if len(target_licensed_ids) >= total_slots:
+                            break
             elif len(target_licensed_ids) == 0 and len(valid_site_id_set) > 0:
                 # If user hasn't explicitly configured licensed sites yet (e.g. fresh upgrade from trial)
                 has_explicit_pauses = any(bool(w.get("protection_paused")) for w in websites)
@@ -563,3 +624,15 @@ class LicenseSlotService:
             return False, "This website is not covered by an active license slot. Assign a slot from your MDefender Dashboard."
 
         return True, "active"
+
+    def verify_website_license(self, website_id: str) -> bool:
+        """Convenience method to check if website license is valid and active."""
+        is_ok, _ = self.verify_edge_license(website_id=website_id)
+        return is_ok
+
+    def toggle_website_slot(self, user_id, website_id: str, activate: bool) -> Tuple[bool, str]:
+        """Toggle website slot allocation on or off."""
+        if activate:
+            return self.assign_slot(user_id, website_id)
+        else:
+            return self.release_slot(user_id, website_id)

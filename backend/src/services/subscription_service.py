@@ -212,16 +212,41 @@ class SubscriptionService:
         for user_doc in users:
             try:
                 uid_str = str(user_doc["_id"])
+                target_uids = [uid_str]
+                if ObjectId.is_valid(uid_str):
+                    target_uids.append(ObjectId(uid_str))
+
                 state = slot_service.resolve_user_license_state(user_doc)
                 current_plan = str(user_doc.get("plan") or "free").lower()
                 current_payment_status = str(user_doc.get("payment_status") or "").lower()
 
                 from src.services.license_slot_service import _normalize_to_utc
-                exp_dt = _normalize_to_utc(user_doc.get("plan_expires"), None)
                 now_utc = datetime.now(timezone.utc)
+                exp_dt = _normalize_to_utc(user_doc.get("plan_expires"), None)
+
+                # Check active or canceled subscription in db.subscriptions
+                latest_sub = self.db.subscriptions.find_one(
+                    {"user_id": {"$in": target_uids}},
+                    sort=[("created_at", -1)]
+                )
+                sub_end = _normalize_to_utc(latest_sub.get("current_period_end"), None) if latest_sub else None
+                sub_status = str(latest_sub.get("status") or "").lower() if latest_sub else ""
+
+                effective_exp_dt = exp_dt or sub_end
+
+                is_sub_expired = False
+                if latest_sub:
+                    if sub_status in ("canceled", "cancelled", "expired", "past_due") and (not sub_end or sub_end <= now_utc):
+                        is_sub_expired = True
+                    elif effective_exp_dt and effective_exp_dt <= now_utc and sub_status not in ("active", "trialing"):
+                        is_sub_expired = True
+                    elif effective_exp_dt and effective_exp_dt <= now_utc and bool(latest_sub.get("cancel_at_period_end")):
+                        is_sub_expired = True
+                elif exp_dt and exp_dt <= now_utc:
+                    is_sub_expired = True
 
                 # 1. Paid Subscription Expiration Check (Safe pause on expiry, zero debt)
-                if exp_dt and exp_dt <= now_utc and current_plan != "free":
+                if is_sub_expired and (current_plan != "free" or current_payment_status == "active"):
                     if current_payment_status != "expired":
                         u_query = {"_id": ObjectId(uid_str)} if ObjectId.is_valid(uid_str) else {"_id": uid_str}
                         self.db.users.update_one(u_query, {"$set": {
@@ -233,11 +258,11 @@ class SubscriptionService:
 
                         # Pause protection on user websites safely (no deletion)
                         self.db.websites.update_many(
-                            {"user_id": {"$in": [uid_str, ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str]}},
+                            {"user_id": {"$in": target_uids}},
                             {"$set": {"is_licensed": False, "license_status": "expired", "protection_paused": True, "updated_at": datetime.now()}}
                         )
                         self.db.wordpress_sites.update_many(
-                            {"user_id": {"$in": [uid_str, ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str]}},
+                            {"user_id": {"$in": target_uids}},
                             {"$set": {"status": "unlicensed", "license_status": "expired", "is_licensed": False}}
                         )
                         try:
@@ -258,15 +283,15 @@ class SubscriptionService:
                         continue
 
                 # 2. Upcoming Renewal Reminder (within 3 days of expiration)
-                if exp_dt and exp_dt > now_utc and current_plan != "free":
-                    days_to_exp = int(math.ceil((exp_dt - now_utc).total_seconds() / 86400))
+                if effective_exp_dt and effective_exp_dt > now_utc and current_plan != "free":
+                    days_to_exp = int(math.ceil((effective_exp_dt - now_utc).total_seconds() / 86400))
                     if 0 < days_to_exp <= 3:
                         sent = notif_service.notify(
                             uid_str,
                             title=f"Upcoming Renewal Notice: {days_to_exp} Days",
                             message=f"Your MDefender subscription will renew in {days_to_exp} day(s). Verify your payment details remain active.",
                             category="subscription_renewal",
-                            dedupe_key=f"renewal_{uid_str}_{exp_dt.strftime('%Y%m')}",
+                            dedupe_key=f"renewal_{uid_str}_{effective_exp_dt.strftime('%Y%m')}",
                             cooldown_seconds=86400
                         )
                         if sent:
@@ -293,11 +318,11 @@ class SubscriptionService:
                         self.db.users.update_one(u_query, {"$set": {"payment_status": "trial_expired", "purchased_slots": 0, "licensed_website_ids": []}})
 
                         self.db.websites.update_many(
-                            {"user_id": {"$in": [uid_str, ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str]}},
+                            {"user_id": {"$in": target_uids}},
                             {"$set": {"is_licensed": False, "license_status": "trial_expired", "is_protected": False, "updated_at": datetime.now()}}
                         )
                         self.db.wordpress_sites.update_many(
-                            {"user_id": {"$in": [uid_str, ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str]}},
+                            {"user_id": {"$in": target_uids}},
                             {"$set": {"status": "unlicensed", "license_status": "trial_expired", "is_licensed": False}}
                         )
                         try:
@@ -319,6 +344,8 @@ class SubscriptionService:
                 pass
 
         return results
+
+
 
     def revoke_entitlement(self, user_id):
         result = self.db.entitlements.update_one(
@@ -689,16 +716,41 @@ class SubscriptionService:
         for user_doc in users:
             try:
                 uid_str = str(user_doc["_id"])
+                target_uids = [uid_str]
+                if ObjectId.is_valid(uid_str):
+                    target_uids.append(ObjectId(uid_str))
+
                 state = slot_service.resolve_user_license_state(user_doc)
                 current_plan = str(user_doc.get("plan") or "free").lower()
                 current_payment_status = str(user_doc.get("payment_status") or "").lower()
 
                 from src.services.license_slot_service import _normalize_to_utc
-                exp_dt = _normalize_to_utc(user_doc.get("plan_expires"), None)
                 now_utc = datetime.now(timezone.utc)
+                exp_dt = _normalize_to_utc(user_doc.get("plan_expires"), None)
+
+                # Check active or canceled subscription in db.subscriptions
+                latest_sub = self.db.subscriptions.find_one(
+                    {"user_id": {"$in": target_uids}},
+                    sort=[("created_at", -1)]
+                )
+                sub_end = _normalize_to_utc(latest_sub.get("current_period_end"), None) if latest_sub else None
+                sub_status = str(latest_sub.get("status") or "").lower() if latest_sub else ""
+
+                effective_exp_dt = exp_dt or sub_end
+
+                is_sub_expired = False
+                if latest_sub:
+                    if sub_status in ("canceled", "cancelled", "expired", "past_due") and (not sub_end or sub_end <= now_utc):
+                        is_sub_expired = True
+                    elif effective_exp_dt and effective_exp_dt <= now_utc and sub_status not in ("active", "trialing"):
+                        is_sub_expired = True
+                    elif effective_exp_dt and effective_exp_dt <= now_utc and bool(latest_sub.get("cancel_at_period_end")):
+                        is_sub_expired = True
+                elif exp_dt and exp_dt <= now_utc:
+                    is_sub_expired = True
 
                 # 1. Paid Subscription Expiration Check (Safe pause on expiry, zero debt)
-                if exp_dt and exp_dt <= now_utc and current_plan != "free":
+                if is_sub_expired and (current_plan != "free" or current_payment_status == "active"):
                     if current_payment_status != "expired":
                         u_query = {"_id": ObjectId(uid_str)} if ObjectId.is_valid(uid_str) else {"_id": uid_str}
                         self.db.users.update_one(u_query, {"$set": {
@@ -710,11 +762,11 @@ class SubscriptionService:
 
                         # Pause protection on user websites safely (no deletion)
                         self.db.websites.update_many(
-                            {"user_id": {"$in": [uid_str, ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str]}},
+                            {"user_id": {"$in": target_uids}},
                             {"$set": {"is_licensed": False, "license_status": "expired", "protection_paused": True, "updated_at": datetime.now()}}
                         )
                         self.db.wordpress_sites.update_many(
-                            {"user_id": {"$in": [uid_str, ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str]}},
+                            {"user_id": {"$in": target_uids}},
                             {"$set": {"status": "unlicensed", "license_status": "expired", "is_licensed": False}}
                         )
                         try:
@@ -735,15 +787,15 @@ class SubscriptionService:
                         continue
 
                 # 2. Upcoming Renewal Reminder (within 3 days of expiration)
-                if exp_dt and exp_dt > now_utc and current_plan != "free":
-                    days_to_exp = int(math.ceil((exp_dt - now_utc).total_seconds() / 86400))
+                if effective_exp_dt and effective_exp_dt > now_utc and current_plan != "free":
+                    days_to_exp = int(math.ceil((effective_exp_dt - now_utc).total_seconds() / 86400))
                     if 0 < days_to_exp <= 3:
                         sent = notif_service.notify(
                             uid_str,
                             title=f"Upcoming Renewal Notice: {days_to_exp} Days",
                             message=f"Your MDefender subscription will renew in {days_to_exp} day(s). Verify your payment details remain active.",
                             category="subscription_renewal",
-                            dedupe_key=f"renewal_{uid_str}_{exp_dt.strftime('%Y%m')}",
+                            dedupe_key=f"renewal_{uid_str}_{effective_exp_dt.strftime('%Y%m')}",
                             cooldown_seconds=86400
                         )
                         if sent:
@@ -770,11 +822,11 @@ class SubscriptionService:
                         self.db.users.update_one(u_query, {"$set": {"payment_status": "trial_expired", "purchased_slots": 0, "licensed_website_ids": []}})
 
                         self.db.websites.update_many(
-                            {"user_id": {"$in": [uid_str, ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str]}},
+                            {"user_id": {"$in": target_uids}},
                             {"$set": {"is_licensed": False, "license_status": "trial_expired", "is_protected": False, "updated_at": datetime.now()}}
                         )
                         self.db.wordpress_sites.update_many(
-                            {"user_id": {"$in": [uid_str, ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str]}},
+                            {"user_id": {"$in": target_uids}},
                             {"$set": {"status": "unlicensed", "license_status": "trial_expired", "is_licensed": False}}
                         )
                         try:
@@ -796,3 +848,5 @@ class SubscriptionService:
                 pass
 
         return results
+
+

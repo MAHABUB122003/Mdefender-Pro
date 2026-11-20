@@ -225,7 +225,16 @@ export default function TrialPaywallModal() {
           if (cfg.environment === 'sandbox') {
             window.Paddle.Environment.set('sandbox');
           }
-          window.Paddle.Initialize({ token: cfg.client_token });
+          window.Paddle.Initialize({
+            token: cfg.client_token,
+            checkout: {
+              settings: {
+                locale: 'en',
+                displayMode: 'overlay',
+                theme: 'light'
+              }
+            }
+          });
         } catch (initErr) {
           console.warn('Paddle init error:', initErr);
         }
@@ -257,6 +266,7 @@ export default function TrialPaywallModal() {
             settings: {
               displayMode: 'overlay',
               theme: 'light',
+              locale: 'en',
               successUrl: `${window.location.origin}/payment/success?plan=pro&cycle=${billingCycle}&sites=${siteCount}${checkoutData.checkout_id ? `&txn_id=${checkoutData.checkout_id}` : ''}`,
             },
           });
@@ -278,6 +288,7 @@ export default function TrialPaywallModal() {
           settings: {
             displayMode: 'overlay',
             theme: 'light',
+            locale: 'en',
             successUrl: `${window.location.origin}/payment/success?plan=pro&cycle=${billingCycle}&sites=${siteCount}`,
           },
         });
