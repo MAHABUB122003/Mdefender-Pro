@@ -276,7 +276,7 @@ class SubscriptionService:
                 pass
 
         # Real-time automated fulfillment on completed transaction
-        if status in ("paid", "completed", "billed"):
+        if status in ("paid", "completed", "billed") or str(event.get("event_type", "")).endswith(".completed"):
             try:
                 u_id = ObjectId(user_id) if ObjectId.is_valid(str(user_id)) else str(user_id)
                 custom = data.get("custom_data") or event.get("custom_data") or {}
@@ -284,7 +284,7 @@ class SubscriptionService:
                 cycle = str(custom.get("billing_cycle") or "monthly").lower()
                 is_yearly = cycle in ("yearly", "annual", "annually")
                 duration = 365 if is_yearly else 30
-                sites = int(custom.get("sites_count") or custom.get("quantity") or 1)
+                sites = int(custom.get("sites_count") or custom.get("website_limit") or custom.get("quantity") or 1)
 
                 # Software License Extension: If current license is still active, extend seamlessly!
                 current_user = self.db.users.find_one({"_id": u_id}) or {}
@@ -302,6 +302,7 @@ class SubscriptionService:
                         "is_paid": True,
                         "payment_status": "active",
                         "purchased_slots": sites,
+                        "website_limit": sites,
                         "billing_cycle": "yearly" if is_yearly else "monthly",
                         "auto_renew": False,
                         "cancel_at_period_end": False,
@@ -311,9 +312,9 @@ class SubscriptionService:
                     }}
                 )
 
-                # Reconcile license slots for immediate fleet protection
-                from src.services.license_slot_service import LicenseSlotService
-                LicenseSlotService(self.db).get_slots_summary(user_id)
+                # Invalidate in-memory license cache for immediate edge effect
+                from src.services.license_slot_service import _invalidate_cache
+                _invalidate_cache(user_id=str(user_id))
 
                 # In-app confirmation notification
                 from src.services.notification_service import NotificationService

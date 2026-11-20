@@ -96,7 +96,7 @@ class IPFilter:
         except Exception:
             if "*" in pattern:
                 import re
-                p_regex = "^" + pattern.replace(".", "\.").replace("*", "\d+") + "$"
+                p_regex = "^" + pattern.replace(".", "\\.").replace("*", "\\d+") + "$"
                 return bool(re.match(p_regex, client_ip))
             return False
 

@@ -162,8 +162,9 @@ class LicenseSlotService:
         if not is_paid and not is_trial_active:
             # Completely expired (neither paid nor in trial) -> 0 active slots
             purchased_slots = 0
+            t_days_rem = 0
         else:
-            raw_slots = user_doc.get("purchased_slots")
+            raw_slots = user_doc.get("purchased_slots") if user_doc.get("purchased_slots") is not None else user_doc.get("website_limit")
             if raw_slots is not None and isinstance(raw_slots, (int, float)) and int(raw_slots) > 0:
                 purchased_slots = int(raw_slots)
             elif is_admin_user:
@@ -173,19 +174,32 @@ class LicenseSlotService:
                 plan_defaults = {"go": 5, "pro": 10, "enterprise": 50, "premium": 10, "ultra": 9999}
                 purchased_slots = plan_defaults.get(plan, 1)
             elif is_trial_active:
-                # During 14-day free trial, grant full fleet access (up to 50 websites)
-                purchased_slots = 50
+                # During free enterprise trial, 1 primary website slot is granted by default
+                purchased_slots = int(user_doc.get("purchased_slots") or user_doc.get("website_limit") or 1)
             else:
                 purchased_slots = 0
+
+        if is_paid or is_trial_active:
+            reason = "active"
+        elif has_subscription_expired:
+            reason = "subscription_expired"
+        elif t_days_rem <= 0:
+            reason = "trial_expired"
+        else:
+            reason = "unlicensed"
 
         return {
             "is_paid": is_paid,
             "is_trial_active": is_trial_active,
-            "trial_days_remaining": t_days_rem,
+            "is_licensed": is_paid or is_trial_active,
+            "is_trial": is_trial_active,
+            "trial_days_remaining": t_days_rem if is_trial_active else 0,
             "plan": plan,
             "payment_status": payment_status,
             "purchased_slots": purchased_slots,
-            "slots_allowed": purchased_slots
+            "slots_allowed": purchased_slots,
+            "max_slots": purchased_slots,
+            "reason": reason
         }
 
     def get_slots_summary(self, user_id) -> Dict[str, Any]:
@@ -270,7 +284,9 @@ class LicenseSlotService:
     def reconcile_allocations(self, user_doc: Dict[str, Any], websites: List[Dict[str, Any]], state: Dict[str, Any]) -> Dict[str, Any]:
         """Synchronize user.licensed_website_ids with db.websites to maintain strict integrity."""
         uid_str = str(user_doc["_id"])
-        total_slots = state["purchased_slots"]
+        total_slots = int(state.get("purchased_slots") or state.get("max_slots") or state.get("slots_allowed", 0))
+        is_trial_active = bool(state.get("is_trial_active") or state.get("is_trial", False))
+        is_paid = bool(state.get("is_paid", True if state.get("is_licensed") and not is_trial_active else False))
 
         current_stored_ids = [str(x) for x in user_doc.get("licensed_website_ids", []) if x]
         valid_site_ids = [str(w["_id"]) for w in websites]
@@ -280,10 +296,10 @@ class LicenseSlotService:
         filtered_ids = [sid for sid in current_stored_ids if sid in valid_site_id_set]
 
         # Case 1: Active 14-day trial -> All connected sites up to trial quota are licensed
-        if state["is_trial_active"]:
+        if is_trial_active:
             target_licensed_ids = valid_site_ids[:total_slots]
         # Case 2: Paid active subscription -> Exactly up to purchased_slots
-        elif state["is_paid"]:
+        elif is_paid:
             # Strictly preserve user's explicit slot allocations
             target_licensed_ids = [sid for sid in filtered_ids if sid in valid_site_id_set]
             if len(target_licensed_ids) > total_slots:
@@ -387,7 +403,7 @@ class LicenseSlotService:
             return True, "Website already holds an active license slot."
 
         if len(current_licensed) >= state["purchased_slots"]:
-            return False, f"All {state['purchased_slots']} license slot(s) are currently in use. Release a slot from another site or upgrade your fleet plan."
+            return False, f"Slot limit reached: All {state['purchased_slots']} license slot(s) are currently in use. Release a slot from another site or upgrade your fleet plan."
 
         # Atomic update on user document
         user_query = {"_id": ObjectId(uid_str)} if ObjectId.is_valid(uid_str) else {"_id": uid_str}
@@ -507,7 +523,9 @@ class LicenseSlotService:
         new_licensed = [asg_id if x == rel_id else x for x in current_licensed]
         if asg_id not in new_licensed:
             new_licensed.append(asg_id)
-        new_licensed = list(dict.fromkeys(new_licensed))
+        new_licensed = [x for x in list(dict.fromkeys(new_licensed)) if x != rel_id]
+        if isinstance(user_doc, dict):
+            user_doc["licensed_website_ids"] = new_licensed
 
         user_query = {"_id": ObjectId(uid_str)} if ObjectId.is_valid(uid_str) else {"_id": uid_str}
         self.db.users.update_one(
@@ -640,3 +658,27 @@ class LicenseSlotService:
             return self.assign_slot(user_id, website_id)
         else:
             return self.release_slot(user_id, website_id)
+
+
+def push_instant_sync_to_wordpress(site_or_user_id=None, is_licensed=True, mode="protect", website_id=None, wait=False):
+    """Bridge function to push instantaneous sync to WordPress site.
+    Supports both dict (site object) and (user_id, website_id) signatures.
+    """
+    if isinstance(site_or_user_id, dict):
+        site = site_or_user_id
+        import requests
+        url = site.get("url") or site.get("domain") or "http://localhost/mahabub"
+        if not str(url).startswith("http"):
+            url = f"http://{url}"
+        target = f"{str(url).rstrip('/')}/wp-admin/admin-ajax.php?action=mdf_cloud_sync&waf_cloud_sync=1&cloud_action=sync_license_state"
+        headers = {
+            "X-MDefender-API-Key": site.get("api_key", ""),
+            "X-MDefender-Site-Token": site.get("site_token", "")
+        }
+        try:
+            resp = requests.get(target, headers=headers, timeout=5)
+            return resp.status_code == 200
+        except Exception:
+            return False
+    from src.api.v1.wordpress_api import push_instant_sync_to_wordpress as _wp_sync
+    return _wp_sync(user_id=site_or_user_id, website_id=website_id, wait=wait)

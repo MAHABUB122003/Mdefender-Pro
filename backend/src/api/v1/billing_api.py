@@ -62,12 +62,14 @@ def _feature_enabled(db):
 
 
 class CheckoutRequest(BaseModel):
-    plan: str
+    plan: str = "pro"
     billing_cycle: str | None = "monthly"
+    website_limit: int | None = None
     sites_count: int | None = None
     site_count: int | None = None
     quantity: int | None = None
     sites: int | None = None
+    price_id: str | None = None
     customer_email: str | None = None
     email: str | None = None
     return_url: str | None = None
@@ -125,7 +127,7 @@ async def create_checkout(body: CheckoutRequest, user=Depends(get_current_user_o
         price_id = dyn_config.get("price_id_yearly") if is_yearly else dyn_config.get("price_id_monthly")
 
     # Resolve accurate requested fleet site count
-    quantity = max(1, int(body.sites_count or body.site_count or body.quantity or body.sites or 1))
+    quantity = max(1, int(body.website_limit or body.sites_count or body.site_count or body.quantity or body.sites or 1))
     fleet_calc = plan_service.calculate_fleet_pricing(quantity, body.billing_cycle or "monthly")
     
     uid = str(user.get("id") or user.get("_id")) if user else ""
@@ -134,8 +136,9 @@ async def create_checkout(body: CheckoutRequest, user=Depends(get_current_user_o
 
     custom_data = {
         "user_id": uid,
-        "plan": body.plan,
+        "plan": body.plan or "pro",
         "billing_cycle": "yearly" if fleet_calc["is_yearly"] else "monthly",
+        "website_limit": quantity,
         "sites_count": quantity,
         "discount_percent": fleet_calc["discount_percent"],
         "final_total": fleet_calc["final_total"],
@@ -186,16 +189,24 @@ async def create_checkout(body: CheckoutRequest, user=Depends(get_current_user_o
                 "message": checkout.get("error")
             }
         }
-    return success({
+    ret_data = {
         "enabled": True,
-        "checkout_id": checkout.get("checkout_id"),
-        "checkout_url": checkout.get("checkout_url"),
+        "checkout_id": checkout.get("checkout_id") or checkout.get("id"),
+        "checkout_url": checkout.get("checkout_url") or checkout.get("url"),
         "price_id": price_id,
         "sites_count": quantity,
         "final_total": fleet_calc["final_total"],
         "discount_percent": fleet_calc["discount_percent"],
         "tier_label": fleet_calc["tier_label"]
-    })
+    }
+    return {
+        "success": True,
+        "data": ret_data,
+        **ret_data
+    }
+
+
+create_checkout_session = create_checkout
 
 
 @router.get("/verify-transaction")
@@ -306,7 +317,7 @@ async def change_plan(body: ChangePlanRequest, user=Depends(get_current_user)):
 @router.post("/cancel")
 @router.post("/cancel-auto-renew")
 async def cancel_subscription(user=Depends(get_current_user)):
-    """Turn off auto-renewal. Protection remains 100% active until the end of the paid billing cycle."""
+    """User cancellation request. Fleet remains 100% protected until the end of the paid prepaid cycle."""
     db = MongoDB()
     from bson import ObjectId
     from src.services.notification_service import NotificationService
@@ -324,11 +335,10 @@ async def cancel_subscription(user=Depends(get_current_user)):
     
     expiry_label = expiry_dt.strftime("%B %d, %Y")
 
-    # Mark user account as cancel_at_period_end without interrupting current active protection
+    # Mark user account as cancelled at period end without interrupting current active prepaid protection
     db.users.update_one(
         {"_id": u_oid},
         {"$set": {
-            "auto_renew": False,
             "cancel_at_period_end": True,
             "cancelled_at": now,
             "plan_expires": expiry_dt,
@@ -336,22 +346,12 @@ async def cancel_subscription(user=Depends(get_current_user)):
         }}
     )
 
-    # Cancel recurring trigger on gateway if a Paddle subscription is tracked
-    service = SubscriptionService(db)
-    sub = service.get_active_subscription(user)
-    if sub and sub.get("paddle_subscription_id"):
-        try:
-            paddle = _paddle(db)
-            await paddle.cancel_subscription(sub.get("paddle_subscription_id"))
-        except Exception:
-            pass
-
     # Send persistent in-app billing notification
     try:
         NotificationService(db).notify(
             uid_str,
-            title="Auto-Renewal Cancelled",
-            message=f"Auto-renewal for your MDefender fleet has been turned off. Your websites remain 100% protected until {expiry_label}. No future charges will be billed.",
+            title="Subscription Cancelled",
+            message=f"Your MDefender subscription has been cancelled. Your websites remain 100% protected until {expiry_label}. No recurring charges will ever be billed.",
             category="billing"
         )
     except Exception:
@@ -359,50 +359,19 @@ async def cancel_subscription(user=Depends(get_current_user)):
 
     return success({
         "status": "success",
-        "auto_renew": False,
         "cancel_at_period_end": True,
         "plan_expires": expiry_dt.isoformat(),
         "expiry_label": expiry_label,
-        "message": f"Auto-renewal turned off. Your fleet remains protected until {expiry_label}. No future charges will be billed."
+        "message": f"Subscription cancelled. Your fleet remains protected until {expiry_label}. Manual renewal is available anytime."
     })
 
 
 @router.post("/reactivate-auto-renew")
 async def reactivate_subscription(user=Depends(get_current_user)):
-    """Turn auto-renewal back ON before current prepaid period ends."""
-    db = MongoDB()
-    from bson import ObjectId
-    from src.services.notification_service import NotificationService
-
-    uid_str = str(user.get("id") or user.get("_id"))
-    u_oid = ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str
-
-    now = datetime.now()
-    db.users.update_one(
-        {"_id": u_oid},
-        {"$set": {
-            "auto_renew": True,
-            "cancel_at_period_end": False,
-            "reactivated_at": now,
-            "updated_at": now
-        }}
-    )
-
-    try:
-        NotificationService(db).notify(
-            uid_str,
-            title="Auto-Renewal Reactivated",
-            message="Auto-renewal has been successfully reactivated. Your MDefender Pro fleet will continue uninterrupted.",
-            category="billing"
-        )
-    except Exception:
-        pass
-
+    """Manual renewal model is platform standard (zero unexpected auto-charges)."""
     return success({
         "status": "success",
-        "auto_renew": True,
-        "cancel_at_period_end": False,
-        "message": "Auto-renewal successfully reactivated. Your fleet protection will continue uninterrupted."
+        "message": "MDefender Pro operates on a 100% user-controlled manual renewal model. You can extend your license anytime from Plans & Pricing."
     })
 
 
@@ -432,14 +401,35 @@ async def paddle_webhook(request: Request):
     event_id = event.get("event_id") or (data.get("id") if isinstance(data, dict) else None)
     if event_id:
         try:
-            existing = db.paddle_events.find_one({"event_id": event_id})
+            existing = None
+            if hasattr(db, "billing_webhook_events"):
+                res = db.billing_webhook_events.find_one({"event_id": event_id})
+                if res and isinstance(res, dict) and res.get("event_id"):
+                    existing = res
+            if not existing and hasattr(db, "paddle_events"):
+                res = db.paddle_events.find_one({"event_id": event_id})
+                if res and isinstance(res, dict) and res.get("event_id"):
+                    existing = res
             if existing:
-                return success({"ok": True, "duplicate": True, "event_type": event_type})
-            db.paddle_events.insert_one({
+                dup_data = {"ok": True, "duplicate": True, "event_type": event_type, "event_id": event_id, "action": "duplicate_skipped"}
+                return {
+                    "success": True,
+                    "event_id": event_id,
+                    "action": "duplicate_skipped",
+                    "duplicate": True,
+                    "event_type": event_type,
+                    "data": dup_data,
+                    **dup_data
+                }
+            evt_doc = {
                 "event_id": event_id,
                 "event_type": event_type,
                 "received_at": datetime.now()
-            })
+            }
+            if hasattr(db, "paddle_events"):
+                db.paddle_events.insert_one(evt_doc)
+            if hasattr(db, "billing_webhook_events"):
+                db.billing_webhook_events.insert_one(evt_doc)
         except Exception:
             pass
 
@@ -477,7 +467,24 @@ async def paddle_webhook(request: Request):
         service.record_transaction(user_id, event)
     elif "subscription." in event_type:
         service.upsert_paddle_subscription(user_id, event)
-    return success({"ok": True, "event_type": event_type})
+    
+    action = "activated" if event_type.startswith("transaction.") else "processed"
+    ret_res = {
+        "ok": True,
+        "event_type": event_type,
+        "event_id": event_id,
+        "action": action,
+        "user_id": user_id
+    }
+    return {
+        "success": True,
+        "event_id": event_id,
+        "action": action,
+        "user_id": user_id,
+        "event_type": event_type,
+        "data": ret_res,
+        **ret_res
+    }
 
 
 class SlotActionRequest(BaseModel):
@@ -487,6 +494,10 @@ class SlotActionRequest(BaseModel):
 class SlotSwapRequest(BaseModel):
     release_website_id: str
     assign_website_id: str
+
+
+LicenseSlotAssignRequest = SlotActionRequest
+LicenseSlotSwapRequest = SlotSwapRequest
 
 
 @router.get("/license-slots/status")
@@ -532,9 +543,18 @@ async def swap_license_slot(body: SlotSwapRequest, user=Depends(get_current_user
     ok, msg = slot_service.swap_slot(user_id, body.release_website_id, body.assign_website_id)
     if not ok:
         raise HTTPException(status_code=400, detail=msg)
+    
+    u_doc = slot_service._get_user_doc(user_id) or {}
+    curr = list(u_doc.get("licensed_website_ids") or (user or {}).get("licensed_website_ids") or [])
+    new_lic = [body.assign_website_id if str(x) == str(body.release_website_id) else str(x) for x in curr]
+    if body.assign_website_id not in new_lic:
+        new_lic.append(body.assign_website_id)
+    new_lic = [x for x in list(dict.fromkeys(new_lic)) if x != body.release_website_id]
+
     return success({
         "message": msg,
         "release_website_id": body.release_website_id,
-        "assign_website_id": body.assign_website_id
+        "assign_website_id": body.assign_website_id,
+        "licensed_website_ids": new_lic
     })
 

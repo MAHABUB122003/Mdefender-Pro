@@ -130,8 +130,8 @@ DEFAULT_DYNAMIC_PRICING = {
     "bulk_tiers": [
         {"min_sites": 1, "max_sites": 9, "discount_percent": 0, "label": "Starter Fleet"},
         {"min_sites": 10, "max_sites": 24, "discount_percent": 10, "label": "Growth Agency"},
-        {"min_sites": 25, "max_sites": 49, "discount_percent": 15, "label": "Scale Partner"},
-        {"min_sites": 50, "max_sites": 500, "discount_percent": 25, "label": "Enterprise MSP"}
+        {"min_sites": 25, "max_sites": 49, "discount_percent": 20, "label": "Scale Partner"},
+        {"min_sites": 50, "max_sites": 500, "discount_percent": 30, "label": "Enterprise MSP"}
     ],
     "features_included": [
         "Sub-millisecond (<0.12ms) Edge WAF Inspection",
@@ -326,6 +326,10 @@ class PlanService:
             "product_id": product_id,
             "price_id": config.get("price_id_yearly" if is_yearly else "price_id_monthly", "")
         }
+
+    def calculate_dynamic_price(self, website_count: int = 1, billing_cycle: str = "monthly") -> dict:
+        """Alias for calculate_fleet_pricing with website_count parameter."""
+        return self.calculate_fleet_pricing(sites_count=website_count, billing_cycle=billing_cycle)
 
     def save_dynamic_pricing_config(self, new_config: dict):
         """Admin override of dynamic per-site pricing and tiers."""
