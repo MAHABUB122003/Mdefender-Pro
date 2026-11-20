@@ -1,11 +1,16 @@
 """
-MDefender Pro - Subscription & Billing Lifecycle Simulation Tool
+MDefender Pro - Subscription & Billing Lifecycle & Paddle Gateway Tool
 Allows instant testing of Day 10, Day 15 (Hard Paywall), Day 30 (Monthly Expiration),
-Auto-Renewal Cancellation, and WordPress Live WAF protection without waiting real-world days.
+Auto-Renewal Cancellation, Real Paddle API Synchronization, and Real Paddle Charges.
 
 Usage:
     # --- Check Status ---
     python backend/scripts/simulate_lifecycle.py --email <user_email> --action status
+
+    # --- 100% REAL Paddle Sandbox Integration (No Mock Data) ---
+    python backend/scripts/simulate_lifecycle.py --email <user_email> --action sync-paddle
+    python backend/scripts/simulate_lifecycle.py --email <user_email> --action real-renew
+    python backend/scripts/simulate_lifecycle.py --email <user_email> --action real-charge
 
     # --- Free Trial Lifecycle (Days 1 to 15) ---
     python backend/scripts/simulate_lifecycle.py --email <user_email> --action day1
@@ -15,7 +20,7 @@ Usage:
     python backend/scripts/simulate_lifecycle.py --email <user_email> --action day15
     python backend/scripts/simulate_lifecycle.py --email <user_email> --action reset-trial
 
-    # --- Paid Pro Subscription Day-by-Day Lifecycle (Days 1 to 31+) ---
+    # --- Pro Subscription Day-by-Day Lifecycle (Days 1 to 31+) ---
     python backend/scripts/simulate_lifecycle.py --email <user_email> --action pro-day1
     python backend/scripts/simulate_lifecycle.py --email <user_email> --action pro-day10
     python backend/scripts/simulate_lifecycle.py --email <user_email> --action pro-day20 --auto-renew off
@@ -24,7 +29,7 @@ Usage:
     python backend/scripts/simulate_lifecycle.py --email <user_email> --action pro-day31 --auto-renew on
     python backend/scripts/simulate_lifecycle.py --email <user_email> --action pro-day31 --auto-renew off
 
-    # --- Explicit Actions ---
+    # --- Quick Actions ---
     python backend/scripts/simulate_lifecycle.py --email <user_email> --action cancel-renew
     python backend/scripts/simulate_lifecycle.py --email <user_email> --action renew-success
     python backend/scripts/simulate_lifecycle.py --email <user_email> --action expire-paid
@@ -46,6 +51,7 @@ from src.database.mongodb_connection import MongoDB
 from src.services.license_slot_service import LicenseSlotService, _normalize_to_utc
 from src.services.subscription_service import SubscriptionService
 from src.services.plan_service import PlanService
+from src.services.paddle_service import PaddleService
 
 
 def get_user(db, email):
@@ -126,11 +132,304 @@ def print_status(db, user):
     print("=" * 68 + "\n")
 
 
+def sync_paddle_account(db, user):
+    """
+    Syncs 100% authentic live data from Paddle Sandbox/Production API.
+    - Purges any simulated/mock test receipts (txn_sim_*)
+    - Pulls real Customer ID (ctm_*)
+    - Pulls real Subscription (sub_*) with real billing periods
+    - Pulls real Transactions (txn_*) with official Paddle receipts
+    - Synchronizes Fleet Slots and live WordPress WAF
+    """
+    now_utc = datetime.now(timezone.utc)
+    uid_str = str(user["_id"])
+    target_uids = [uid_str, user["_id"]]
+
+    # 1. Purge all mock/simulated transactions from DB
+    purged = db.paddle_transactions.delete_many({
+        "user_id": {"$in": target_uids},
+        "transaction_id": {"$regex": "^txn_sim_"}
+    })
+    if purged.deleted_count > 0:
+        print(f"[*] Cleaned up {purged.deleted_count} mock/simulated test receipt(s).")
+
+    paddle = PaddleService(db=db)
+    if not paddle.configured:
+        print("[ERROR] Paddle API Key or Webhook Secret is not configured.")
+        return
+
+    import httpx
+    headers = paddle._headers()
+    email = user.get("email", "").strip().lower()
+
+    print(f"\n[*] Querying Real Paddle API ({paddle.environment}) for customer: {email}...")
+
+    # 2. Find real customer in Paddle
+    try:
+        r_cust = httpx.get(f"{paddle.base_url}/customers?email={email}", headers=headers, timeout=15)
+        cust_data = r_cust.json().get("data", [])
+    except Exception as e:
+        print(f"[ERROR] Failed to connect to Paddle API: {e}")
+        return
+
+    if not cust_data:
+        print(f"[WARNING] No customer found in Paddle Sandbox with email '{email}'.")
+        return
+
+    customer = cust_data[0]
+    customer_id = customer["id"]
+    print(f"[+] Real Paddle Customer ID: {customer_id}")
+
+    # 3. Pull real subscriptions
+    r_subs = httpx.get(f"{paddle.base_url}/subscriptions?customer_id={customer_id}", headers=headers, timeout=15)
+    subs = r_subs.json().get("data", [])
+    active_sub = None
+    for s in subs:
+        if s.get("status") in ("active", "trialing", "past_due"):
+            active_sub = s
+            break
+    if not active_sub and subs:
+        active_sub = subs[0]
+
+    # 4. Pull real transactions
+    r_txns = httpx.get(f"{paddle.base_url}/transactions?customer_id={customer_id}", headers=headers, timeout=15)
+    all_txns = r_txns.json().get("data", [])
+    completed_txns = [t for t in all_txns if t.get("status") in ("completed", "paid", "billed")]
+
+    print(f"[+] Found {len(completed_txns)} Real Completed Transactions in Paddle:")
+    for t in completed_txns:
+        tid = t["id"]
+        total = t.get("details", {}).get("totals", {}).get("total")
+        curr = t.get("currency_code", "USD")
+        rec = {
+            "user_id": uid_str,
+            "customer_email": email,
+            "transaction_id": tid,
+            "paddle_transaction_id": tid,
+            "status": "paid",
+            "amount": total,
+            "currency_code": curr,
+            "billed_at": t.get("billed_at") or t.get("created_at"),
+            "created_at": _normalize_to_utc(t.get("created_at"), now_utc),
+            "updated_at": now_utc,
+            "receipt_url": f"https://sandbox-receipts.paddle.com/{tid}" if paddle.environment == "sandbox" else f"https://receipts.paddle.com/{tid}"
+        }
+        db.paddle_transactions.update_one({"transaction_id": tid}, {"$set": rec}, upsert=True)
+        amt_str = f"${int(total)/100:.2f}" if total else "$0.00"
+        print(f"    * {tid} | Amount: {amt_str} {curr} | Date: {t.get('created_at')}")
+
+    # 5. Update user and subscription record with real Paddle data
+    if active_sub:
+        sub_id = active_sub["id"]
+        sub_status = active_sub.get("status", "active")
+        billing_period = active_sub.get("current_billing_period") or {}
+        p_start = _normalize_to_utc(billing_period.get("starts_at"), now_utc)
+        p_end = _normalize_to_utc(billing_period.get("ends_at"), now_utc + timedelta(days=30))
+
+        scheduled_change = active_sub.get("scheduled_change")
+        is_cancelled = bool(scheduled_change and scheduled_change.get("action") == "cancel")
+        auto_renew = not is_cancelled
+
+        items = active_sub.get("items") or []
+        first_item = items[0] if items and isinstance(items[0], dict) else {}
+        slots_count = int(first_item.get("quantity") or 5)
+
+        cycle_raw = (active_sub.get("billing_cycle") or {}).get("interval") or "month"
+        cycle = "yearly" if cycle_raw == "year" else "monthly"
+
+        db.subscriptions.update_one(
+            {"user_id": {"$in": target_uids}},
+            {"$set": {
+                "user_id": uid_str,
+                "paddle_subscription_id": sub_id,
+                "customer_id": customer_id,
+                "status": sub_status,
+                "billing_cycle": cycle,
+                "purchased_slots": slots_count,
+                "current_period_start": p_start,
+                "current_period_end": p_end,
+                "next_billed_at": active_sub.get("next_billed_at") or p_end,
+                "auto_renew": auto_renew,
+                "cancel_at_period_end": is_cancelled,
+                "scheduled_change": scheduled_change,
+                "updated_at": now_utc
+            }},
+            upsert=True
+        )
+
+        db.users.update_one({"_id": user["_id"]}, {
+            "$set": {
+                "plan": "pro",
+                "plan_tier": "pro",
+                "effective_plan": "pro",
+                "payment_status": "active" if sub_status == "active" else sub_status,
+                "paddle_subscription_id": sub_id,
+                "paddle_customer_id": customer_id,
+                "purchased_slots": slots_count,
+                "website_slots": slots_count,
+                "billing_cycle": cycle,
+                "plan_expires": p_end,
+                "auto_renew": auto_renew,
+                "cancel_at_period_end": is_cancelled,
+                "last_payment_date": p_start,
+                "updated_at": now_utc
+            }
+        })
+        print(f"\n[+] Real Active Subscription Synced: {sub_id}")
+        print(f"    * Period End:   {p_end.strftime('%Y-%m-%d %H:%M UTC')}")
+        print(f"    * Auto-Renew:   {'ON' if auto_renew else 'OFF (Scheduled to conclude at period end)'}")
+        print(f"    * Fleet Slots:  {slots_count} Website Slots")
+
+    LicenseSlotService(db).get_slots_summary(uid_str)
+    SubscriptionService(db).check_and_process_subscription_lifecycle()
+
+    try:
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(user_id=uid_str)
+    except Exception:
+        pass
+
+    print("\n[SUCCESS] Local database is now 100% synchronized with Real Paddle Sandbox!")
+
+
+def real_charge_paddle(db, user, amount_in_cents=400):
+    """
+    Executes a 100% REAL charge on the user's active Paddle subscription in Paddle Sandbox/Production!
+    - Calls POST https://sandbox-api.paddle.com/subscriptions/{sub_id}/charge
+    - Paddle charges the saved card in Paddle's vault
+    - Returns official completed Paddle Transaction ID (txn_*)
+    - Creates authentic receipt in MongoDB and extends subscription
+    """
+    paddle = PaddleService(db=db)
+    if not paddle.configured:
+        print("[ERROR] Paddle API is not configured.")
+        return
+
+    import httpx
+    headers = paddle._headers()
+
+    user_doc = db.users.find_one({"_id": user["_id"]}) or user
+    sub_id = user_doc.get("paddle_subscription_id")
+    if not sub_id:
+        sub = db.subscriptions.find_one({"user_id": {"$in": [str(user["_id"]), user["_id"]]}})
+        if sub:
+            sub_id = sub.get("paddle_subscription_id")
+
+    if not sub_id:
+        # Fallback query from Paddle customer
+        email = user_doc.get("email", "").strip().lower()
+        r_cust = httpx.get(f"{paddle.base_url}/customers?email={email}", headers=headers, timeout=15)
+        custs = r_cust.json().get("data", [])
+        if custs:
+            cid = custs[0]["id"]
+            r_subs = httpx.get(f"{paddle.base_url}/subscriptions?customer_id={cid}", headers=headers, timeout=15)
+            subs = r_subs.json().get("data", [])
+            if subs:
+                sub_id = subs[0]["id"]
+
+    if not sub_id:
+        print("[ERROR] No real Paddle Subscription ID found for this user.")
+        print("  Please complete a checkout via Paddle first to establish a subscription.")
+        return
+
+    print(f"\n[*] Requesting REAL Charge from Paddle API for Subscription: {sub_id}...")
+
+    payload = {
+        "items": [
+            {
+                "price": {
+                    "description": "MDefender Pro - Monthly Auto-Renewal",
+                    "product_id": "pro_01m7r3fnmwga2hzeyat6m1p90s",
+                    "unit_price": {"amount": str(amount_in_cents), "currency_code": "USD"}
+                },
+                "quantity": 1
+            }
+        ],
+        "effective_from": "immediately"
+    }
+
+    try:
+        r = httpx.post(f"{paddle.base_url}/subscriptions/{sub_id}/charge", headers=headers, json=payload, timeout=20)
+        if r.status_code not in (200, 201):
+            print(f"[ERROR] Paddle charge failed (HTTP {r.status_code}): {r.text}")
+            return
+
+        # Fetch the newly generated transaction
+        r_txns = httpx.get(f"{paddle.base_url}/transactions?subscription_id={sub_id}", headers=headers, timeout=15)
+        txns = r_txns.json().get("data", [])
+        latest_txn = txns[0] if txns else None
+
+        if latest_txn:
+            real_txn_id = latest_txn["id"]
+            tot = latest_txn.get("details", {}).get("totals", {}).get("total") or amount_in_cents
+            now_utc = datetime.now(timezone.utc)
+            uid_str = str(user["_id"])
+
+            rec = {
+                "user_id": uid_str,
+                "customer_email": user.get("email"),
+                "transaction_id": real_txn_id,
+                "paddle_transaction_id": real_txn_id,
+                "status": "paid",
+                "amount": tot,
+                "currency_code": "USD",
+                "billed_at": latest_txn.get("billed_at") or now_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "created_at": now_utc,
+                "updated_at": now_utc,
+                "receipt_url": f"https://sandbox-receipts.paddle.com/{real_txn_id}" if paddle.environment == "sandbox" else f"https://receipts.paddle.com/{real_txn_id}"
+            }
+            db.paddle_transactions.update_one({"transaction_id": real_txn_id}, {"$set": rec}, upsert=True)
+
+            cur_exp = user_doc.get("plan_expires")
+            if cur_exp and isinstance(cur_exp, datetime) and cur_exp > now_utc:
+                new_exp = cur_exp + timedelta(days=30)
+            else:
+                new_exp = now_utc + timedelta(days=30)
+
+            db.users.update_one({"_id": user["_id"]}, {
+                "$set": {
+                    "plan": "pro",
+                    "payment_status": "active",
+                    "plan_expires": new_exp,
+                    "last_payment_date": now_utc,
+                    "auto_renew": True,
+                    "cancel_at_period_end": False,
+                    "updated_at": now_utc
+                }
+            })
+
+            db.subscriptions.update_one({"user_id": {"$in": [uid_str, user["_id"]]}}, {
+                "$set": {
+                    "current_period_end": new_exp,
+                    "status": "active",
+                    "auto_renew": True,
+                    "cancel_at_period_end": False,
+                    "updated_at": now_utc
+                }
+            })
+
+            print("\n" + "=" * 68)
+            print("  [SUCCESS] 100% REAL PADDLE REVENUE CHARGE EXECUTED!")
+            print("=" * 68)
+            print(f"  * Real Paddle Txn ID: {real_txn_id}")
+            print(f"  * Status:              {latest_txn.get('status')}")
+            print(f"  * Amount Charged:      ${int(tot)/100:.2f} USD")
+            print(f"  * Official Receipt:    https://sandbox-receipts.paddle.com/{real_txn_id}")
+            print(f"  * New Expiration Date: {new_exp.strftime('%B %d, %Y')}")
+            print(f"  * What to verify in Paddle Dashboard:")
+            print(f"    1. Log into https://sandbox-vendors.paddle.com")
+            print(f"    2. Go to Transactions Menu -> Search for '{real_txn_id}'.")
+            print(f"    3. Observe the live completed payment record directly inside Paddle!")
+            print("=" * 68 + "\n")
+
+    except Exception as e:
+        print(f"[ERROR] Exception during Paddle charge: {e}")
+
+
 def simulate_trial_day(db, user, day_number: int):
     now_utc = datetime.now(timezone.utc)
     day_number = max(1, int(day_number))
     started = now_utc - timedelta(days=day_number)
-    # Total trial is 14 full days
     ends = started + timedelta(days=14)
     days_left = max(0, 14 - day_number)
 
@@ -138,7 +437,6 @@ def simulate_trial_day(db, user, day_number: int):
     uid_str = str(uid)
     target_uids = [uid_str, uid]
 
-    # Delete any conflicting paid subscription docs
     db.subscriptions.delete_many({"user_id": {"$in": target_uids}})
 
     db.users.update_one({"_id": uid}, {
@@ -170,7 +468,6 @@ def simulate_trial_day(db, user, day_number: int):
     print(f"  * Days Remaining:    {days_left} Day(s) Left")
 
     if day_number >= 15:
-        # Day 15+: Trial Expired (Hard Lockout)
         try:
             from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
             push_instant_sync_to_wordpress(user_id=uid_str)
@@ -180,37 +477,18 @@ def simulate_trial_day(db, user, day_number: int):
         print(f"  * Payment Status:       'trial_expired'")
         print(f"  * Purchased Slots:      0 website slots (Revoked)")
         print(f"  * WordPress WAF Status: PAUSED / DORMANT (Unlicensed)")
-        print(f"  * What to verify in UI:")
-        print("    1. Refresh user dashboard (Ctrl+F5).")
-        print("    2. Non-dismissible Hard Paywall blocks all routes except '/user/pricing'.")
-        print("    3. No bypass permitted until user purchases a subscription.")
     elif day_number >= 10:
-        # Days 10 to 14: Soft Pre-Expiration Paywall
         print(f"  * State Classification: [SOFT PRE-EXPIRATION REMINDER]")
         print(f"  * Header Badge:         '⏳ {days_left} Days Left' (Warning Accent)")
         print(f"  * WordPress WAF Status: 100% FULLY ACTIVE (Layer-7 Protection Running)")
-        print(f"  * What to verify in UI:")
-        print("    1. Refresh dashboard or open in new tab.")
-        print(f"    2. Top header badge shows: '⏳ {days_left} Days Left'.")
-        print("    3. Soft Paywall modal shows Zero-Downtime Guarantee with $0 hold.")
-        print("    4. Click 'Continue to dashboard' to dismiss and use dashboard freely.")
     else:
-        # Days 1 to 9: Silent Active Trial
         print(f"  * State Classification: [SILENT ACTIVE TRIAL]")
         print(f"  * Header Badge:         '⏳ {days_left} Days Left' (Active Green)")
         print(f"  * WordPress WAF Status: 100% FULLY ACTIVE")
-        print(f"  * What to verify in UI:")
-        print("    1. Refresh user dashboard.")
-        print(f"    2. Header badge shows: '⏳ {days_left} Days'.")
-        print("    3. ZERO intrusive paywall popups. Full unrestricted dashboard access.")
     print("=" * 68 + "\n")
 
 
 def simulate_pro_day(db, user, day_number: int, auto_renew: bool = None, cycle: str = "monthly", sites: int = None):
-    """
-    Simulates any arbitrary Day of a paid Pro Subscription (e.g. Day 1, Day 10, Day 27, Day 30, Day 31+).
-    Demonstrates active fleet protection, renewal reminders, auto-renewal billing, or non-renewal expiration.
-    """
     now_utc = datetime.now(timezone.utc)
     uid = user["_id"]
     uid_str = str(uid)
@@ -221,7 +499,6 @@ def simulate_pro_day(db, user, day_number: int, auto_renew: bool = None, cycle: 
     if sites is None or sites <= 0:
         sites = existing_slots if existing_slots > 0 else 5
 
-    # Determine auto-renew
     if auto_renew is None:
         cur_ar = user_doc.get("auto_renew")
         auto_renew = True if cur_ar is None else bool(cur_ar)
@@ -231,7 +508,6 @@ def simulate_pro_day(db, user, day_number: int, auto_renew: bool = None, cycle: 
     billing_cycle = "yearly" if is_yearly else "monthly"
 
     day_num = max(1, int(day_number))
-    # Day 1 means 0 days have elapsed (started today)
     days_passed = day_num - 1
     started = now_utc - timedelta(days=days_passed)
     period_end = started + timedelta(days=period_days)
@@ -241,7 +517,6 @@ def simulate_pro_day(db, user, day_number: int, auto_renew: bool = None, cycle: 
     if day_num <= period_days:
         cancel_at_period_end = not auto_renew
 
-        # Upsert subscription
         sub_doc = {
             "user_id": uid_str,
             "paddle_subscription_id": user_doc.get("paddle_subscription_id") or f"sub_sim_{str(uid_str)[-8:]}",
@@ -318,33 +593,18 @@ def simulate_pro_day(db, user, day_number: int, auto_renew: bool = None, cycle: 
     # CASE B: PERIOD EXCEEDED (Day 31+)
     else:
         if auto_renew:
-            # CASE B1: Auto-Renew was ON -> AUTOMATIC RECURRING RENEWAL SUCCEEDS!
+            # Check if user has a real Paddle subscription; if so, execute a REAL charge on Paddle!
+            real_sub_id = user_doc.get("paddle_subscription_id")
+            if real_sub_id and str(real_sub_id).startswith("sub_01"):
+                print("[*] Active real Paddle Subscription detected. Triggering REAL charge on Paddle API...")
+                real_charge_paddle(db, user, amount_in_cents=400)
+                return
+
+            # Otherwise, extend cycle locally
             new_period_start = period_end
             new_period_end = period_end + timedelta(days=period_days)
             new_days_left = max(0, int(math.ceil((new_period_end - now_utc).total_seconds() / 86400)))
 
-            # Create an official renewal transaction receipt in db.paddle_transactions
-            renewal_txn_id = f"txn_sim_renew_d{day_num}_{str(uid_str)[-6:]}"
-            rate_each = 4000 if is_yearly else 400
-            total_amt = sites * rate_each
-            db.paddle_transactions.update_one(
-                {"transaction_id": renewal_txn_id},
-                {"$set": {
-                    "user_id": uid_str,
-                    "customer_email": user_doc.get("email"),
-                    "transaction_id": renewal_txn_id,
-                    "paddle_transaction_id": renewal_txn_id,
-                    "status": "paid",
-                    "amount": total_amt,
-                    "currency_code": "USD",
-                    "billed_at": period_end.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                    "created_at": now_utc,
-                    "receipt_url": f"https://sandbox-receipts.paddle.com/{renewal_txn_id}"
-                }},
-                upsert=True
-            )
-
-            # Update subscription and user to new renewed period
             db.subscriptions.update_one(
                 {"user_id": {"$in": target_uids}},
                 {"$set": {
@@ -381,31 +641,19 @@ def simulate_pro_day(db, user, day_number: int, auto_renew: bool = None, cycle: 
             LicenseSlotService(db).get_slots_summary(uid_str)
             SubscriptionService(db).check_and_process_subscription_lifecycle()
 
-            try:
-                from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-                push_instant_sync_to_wordpress(user_id=uid_str)
-            except Exception:
-                pass
-
             print("\n" + "=" * 68)
             print(f"  [SUCCESS] Day {day_num}: AUTO-RENEWAL EXECUTED WITH ZERO DOWNTIME!")
             print("=" * 68)
             print(f"  * Scenario:             Auto-Renew was ON on Day 30")
             print(f"  * Previous Period Concluded: {period_end.strftime('%Y-%m-%d %H:%M UTC')}")
-            print(f"  * Automated Charge:     ${total_amt/100:.2f} USD (Receipt: {renewal_txn_id})")
             print(f"  * New Period Valid:     {new_period_start.strftime('%Y-%m-%d')} to {new_period_end.strftime('%Y-%m-%d %H:%M UTC')}")
             print(f"  * Days Remaining:       {new_days_left} Day(s) in NEW Billing Cycle")
             print(f"  * Payment Status:       'active'")
             print(f"  * WordPress WAF Status: 100% UNINTERRUPTED PROTECTION (Zero Downtime)")
-            print(f"  * What to verify in UI:")
-            print("    1. Refresh /user/pricing or Dashboard.")
-            print("    2. Check 'Billing Receipts & Transactions': A new renewal invoice appears!")
-            print("    3. Top active workspace bar shows updated expiration date.")
-            print("    4. Websites remain 100% protected without interruption.")
             print("=" * 68 + "\n")
 
         else:
-            # CASE B2: Auto-Renew was OFF -> SUBSCRIPTION EXPIRED (HARD PAYWALL LOCKOUT)!
+            # Auto-Renew was OFF -> EXPIRED
             db.subscriptions.update_many(
                 {"user_id": {"$in": target_uids}},
                 {"$set": {
@@ -446,29 +694,7 @@ def simulate_pro_day(db, user, day_number: int, auto_renew: bool = None, cycle: 
             print(f"  * State Classification: [HARD PAYWALL LOCKOUT - PRO EXPIRED]")
             print(f"  * Fleet Slots:          0 Website Slots (Protection Paused)")
             print(f"  * WordPress WAF Status: PAUSED / DORMANT (Unlicensed)")
-            print(f"  * Transaction History:  100% PRESERVED (All past invoices intact)")
-            print(f"  * What to verify in UI:")
-            print("    1. Refresh user dashboard (Ctrl+F5).")
-            print("    2. Hard Paywall lock is active: all routes blocked except '/user/pricing'.")
-            print("    3. User can click 'Renew / Upgrade' on '/user/pricing' to reactivate fleet.")
-            print("    4. Zero data loss: All site configurations and logs remain intact.")
             print("=" * 68 + "\n")
-
-
-def simulate_day10(db, user):
-    simulate_trial_day(db, user, 10)
-
-
-def simulate_day14(db, user):
-    simulate_trial_day(db, user, 14)
-
-
-def simulate_day15(db, user):
-    simulate_trial_day(db, user, 15)
-
-
-def simulate_paid_subscription(db, user, cycle="monthly", sites=5):
-    simulate_pro_day(db, user, day_number=1, auto_renew=True, cycle=cycle, sites=sites)
 
 
 def simulate_cancel_renew(db, user):
@@ -510,11 +736,6 @@ def simulate_cancel_renew(db, user):
     print(f"  * cancel_at_period_end: True")
     print(f"  * auto_renew:           False (Off)")
     print(f"  * Protected Until:      {period_end.strftime('%B %d, %Y')}")
-    print(f"  * What to verify in UI:")
-    print("    1. Refresh user dashboard or /user/pricing.")
-    print("    2. Banner shows: 'Auto-Renew: OFF' with green button 'Turn Auto-Renew Back ON'.")
-    print("    3. Protection remains 100% ACTIVE (no premature cut-off).")
-    print("    4. No automatic charge will occur when period ends.")
     print("=" * 68 + "\n")
 
 
@@ -523,12 +744,18 @@ def simulate_expire_paid(db, user):
 
 
 def simulate_renew_success(db, user):
+    # Check if user has real Paddle sub; if so, trigger real charge!
+    user_doc = db.users.find_one({"_id": user["_id"]}) or user
+    sub_id = user_doc.get("paddle_subscription_id")
+    if sub_id and str(sub_id).startswith("sub_01"):
+        real_charge_paddle(db, user)
+        return
+
     now_utc = datetime.now(timezone.utc)
     uid = user["_id"]
     uid_str = str(uid)
     target_uids = [uid_str, uid]
 
-    user_doc = db.users.find_one({"_id": uid})
     cycle = user_doc.get("billing_cycle", "monthly")
     is_yearly = cycle in ("yearly", "annual", "annually")
     days_add = 365 if is_yearly else 30
@@ -539,27 +766,6 @@ def simulate_renew_success(db, user):
         new_expires = current_expires + timedelta(days=days_add)
     else:
         new_expires = now_utc + timedelta(days=days_add)
-
-    # Generate renewal transaction
-    renewal_txn_id = f"txn_sim_renew_{str(uid_str)[-6:]}_{int(now_utc.timestamp())}"
-    rate_each = 4000 if is_yearly else 400
-    total_amt = sites * rate_each
-    db.paddle_transactions.update_one(
-        {"transaction_id": renewal_txn_id},
-        {"$set": {
-            "user_id": uid_str,
-            "customer_email": user_doc.get("email"),
-            "transaction_id": renewal_txn_id,
-            "paddle_transaction_id": renewal_txn_id,
-            "status": "paid",
-            "amount": total_amt,
-            "currency_code": "USD",
-            "billed_at": now_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "created_at": now_utc,
-            "receipt_url": f"https://sandbox-receipts.paddle.com/{renewal_txn_id}"
-        }},
-        upsert=True
-    )
 
     db.users.update_one({"_id": uid}, {
         "$set": {
@@ -598,8 +804,7 @@ def simulate_renew_success(db, user):
     print(f"\n[SUCCESS] Subscription Successfully Renewed for another {days_add} Days!")
     print(f"  * New Expiration Date: {new_expires.strftime('%B %d, %Y')}")
     print(f"  * Payment Status: 'active'")
-    print(f"  * Auto-Renew: True")
-    print(f"  * All protected websites remain continuously active with Zero Downtime.\n")
+    print(f"  * Auto-Renew: True\n")
 
 
 def simulate_reset_trial(db, user):
@@ -607,7 +812,6 @@ def simulate_reset_trial(db, user):
     uid = user["_id"]
     uid_str = str(uid)
     target_uids = [uid_str, uid]
-    # Delete active subscription records for clean trial reset
     db.subscriptions.delete_many({"user_id": {"$in": target_uids}})
 
     db.users.update_one({"_id": uid}, {
@@ -629,21 +833,18 @@ def simulate_reset_trial(db, user):
 
     SubscriptionService(db).check_and_process_subscription_lifecycle()
     LicenseSlotService(db).get_slots_summary(uid_str)
-    print("\n[SUCCESS] User account reset to fresh Day-1 (14-Day Free Trial)!")
-    print("  * 14 full days remaining.")
-    print("  * Plan: Starter Free Trial (1 site slot).")
-    print("  * Unrestricted access restored.\n")
+    print("\n[SUCCESS] User account reset to fresh Day-1 (14-Day Free Trial)!\n")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="MDefender Pro Subscription Lifecycle Simulator")
+    parser = argparse.ArgumentParser(description="MDefender Pro Subscription Lifecycle & Paddle Gateway Simulator")
     parser.add_argument("--email", required=True, help="User email address or username")
-    parser.add_argument("--action", required=False, default="status", help="Simulation action (e.g. status, day1..day15, pro-day1..pro-day31, cancel-renew, expire-paid, renew-success, reset-trial)")
+    parser.add_argument("--action", required=False, default="status", help="Simulation action")
     parser.add_argument("--day", required=False, type=int, default=None, help="Explicit day number to simulate (e.g. --day 10)")
-    parser.add_argument("--plan", required=False, default=None, choices=["trial", "pro", "free"], help="Target plan context (trial or pro)")
+    parser.add_argument("--plan", required=False, default=None, choices=["trial", "pro", "free"], help="Target plan context")
     parser.add_argument("--auto-renew", required=False, default=None, choices=["on", "off", "true", "false", "cancel"], help="Toggle auto-renewal state (on/off)")
-    parser.add_argument("--cycle", required=False, default="monthly", choices=["monthly", "yearly"], help="Billing cycle (monthly or yearly)")
-    parser.add_argument("--sites", required=False, type=int, default=None, help="Number of website slots (e.g. 3, 5, 10)")
+    parser.add_argument("--cycle", required=False, default="monthly", choices=["monthly", "yearly"], help="Billing cycle")
+    parser.add_argument("--sites", required=False, type=int, default=None, help="Number of website slots")
 
     args = parser.parse_args()
     db = MongoDB()
@@ -664,18 +865,23 @@ def main():
         elif ar_str in ("off", "false", "0", "no", "cancel"):
             auto_renew_override = False
 
-    # Pro Day pattern matching: pro-day<N>, proday<N>, paid-day<N>, pro-<N>
+    # 1. REAL PADDLE ACTIONS
+    if act in ("sync-paddle", "sync_paddle", "sync"):
+        sync_paddle_account(db, user)
+        print_status(db, user)
+        return
+
+    if act in ("real-renew", "real-charge", "paddle-charge", "paddle-renew"):
+        real_charge_paddle(db, user, amount_in_cents=400)
+        print_status(db, user)
+        return
+
+    # 2. PRO DAY MATCHING
     pro_day_match = (
         re.match(r"^pro-?day-?(\d+)$", act) or
         re.match(r"^paid-?day-?(\d+)$", act) or
         re.match(r"^pro-(\d+)$", act)
     )
-    # Trial Day pattern matching: day<N>, trial-day<N>, day-<N>
-    trial_day_match = (
-        re.match(r"^day-?(\d+)$", act) or
-        re.match(r"^trial-?day-?(\d+)$", act)
-    )
-
     if pro_day_match:
         day_num = int(pro_day_match.group(1))
         simulate_pro_day(db, user, day_number=day_num, auto_renew=auto_renew_override, cycle=args.cycle, sites=args.sites)
@@ -688,6 +894,11 @@ def main():
         print_status(db, user)
         return
 
+    # 3. TRIAL DAY MATCHING
+    trial_day_match = (
+        re.match(r"^day-?(\d+)$", act) or
+        re.match(r"^trial-?day-?(\d+)$", act)
+    )
     if trial_day_match:
         day_num = int(trial_day_match.group(1))
         if args.plan == "pro":
@@ -703,7 +914,6 @@ def main():
         elif args.plan in ("trial", "free"):
             simulate_trial_day(db, user, args.day)
         else:
-            # Auto-detect from user's current plan in DB
             cur_plan = str(user.get("plan") or "free").lower()
             if cur_plan == "pro" and user.get("payment_status") in ("active", "expired"):
                 simulate_pro_day(db, user, day_number=args.day, auto_renew=auto_renew_override, cycle=args.cycle, sites=args.sites)
@@ -734,11 +944,12 @@ def main():
         print_status(db, user)
     else:
         print(f"[ERROR] Unknown action '{args.action}'.")
-        print("\nAvailable Lifecycle Simulation Actions:")
-        print("  1. Free Trial Lifecycle:       day1, day7, day9, day10, day14, day15, reset-trial")
-        print("  2. Pro Subscription Lifecycle: pro-day1, pro-day10, pro-day20, pro-day27, pro-day30, pro-day31")
-        print("  3. Auto-Renew Flags:           --auto-renew on / --auto-renew off")
-        print("  4. Quick Actions:              cancel-renew, expire-paid, renew-success, status")
+        print("\nAvailable Lifecycle & Paddle Actions:")
+        print("  1. REAL Paddle Sandbox:        sync-paddle, real-renew, real-charge")
+        print("  2. Free Trial Lifecycle:       day1, day7, day9, day10, day14, day15, reset-trial")
+        print("  3. Pro Subscription Lifecycle: pro-day1, pro-day10, pro-day20, pro-day27, pro-day30, pro-day31")
+        print("  4. Auto-Renew Flags:           --auto-renew on / --auto-renew off")
+        print("  5. Quick Actions:              cancel-renew, expire-paid, renew-success, status")
         sys.exit(1)
 
 
