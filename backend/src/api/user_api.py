@@ -3,7 +3,7 @@ from src.engine.rule_engine import RuleEngine
 from src.services.password_service import PasswordService
 from src.services.email_service import EmailService
 from src.utils.api_key import generate_api_key, mask_api_key
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from bson import ObjectId
 import re
 import uuid
@@ -1546,11 +1546,13 @@ class UserAPI:
         from src.services.subscription_service import SubscriptionService
         effective_plan = SubscriptionService(self.db).effective_plan(user_doc)
 
-        now_dt = datetime.now()
+        now_dt = datetime.now(timezone.utc)
         u_created = user_doc.get('created_at') or now_dt
         if isinstance(u_created, str):
             try: u_created = datetime.fromisoformat(u_created)
             except Exception: u_created = now_dt
+        if hasattr(u_created, 'tzinfo') and u_created.tzinfo is None:
+            u_created = u_created.replace(tzinfo=timezone.utc)
         try:
             from src.services.plan_service import PlanService
             dyn_trial = int(PlanService(self.db).get_dynamic_pricing_config().get("trial_days") or 14)
