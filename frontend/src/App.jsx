@@ -97,6 +97,7 @@ const UserOnboarding = lazyRetry(() => import('./pages/auth/UserOnboarding'))
 import api from './api/api'
 import userStore from './utils/userStore'
 import adminStore from './utils/adminStore'
+import { syncPricingWithBackend } from './utils/pricingStore'
 
 function LegacyToolsRedirect() {
   const [searchParams] = useSearchParams()
@@ -257,6 +258,8 @@ function App() {
       console.warn('Paddle _ptxn check error:', e);
     }
 
+    syncPricingWithBackend(api).catch(() => {});
+
     const hasToken = typeof localStorage !== 'undefined' && (
       localStorage.getItem('mdefender_access') || localStorage.getItem('mdefender_refresh')
     )
@@ -275,6 +278,9 @@ function App() {
       if (user.is_paid !== undefined) localStorage.setItem('mdefender_is_paid', String(user.is_paid))
       if (user.payment_status) localStorage.setItem('mdefender_payment_status', user.payment_status)
       if (user.name) localStorage.setItem('mdefender_user_name', user.name)
+      if (user.trial_days_remaining !== undefined) localStorage.setItem('mdefender_trial_days', String(user.trial_days_remaining))
+      if (user.trial_ends_at) localStorage.setItem('mdefender_trial_ends_at', String(user.trial_ends_at))
+      if (user.created_at) localStorage.setItem('mdefender_user_created_at', String(user.created_at))
       userStore.prefetchUserData(api)
     }).catch(() => {
       setAdminUser(null)

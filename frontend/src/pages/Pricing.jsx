@@ -815,7 +815,7 @@ export default function Pricing() {
                       e.currentTarget.style.transform = 'translateY(0)';
                     }}
                   >
-                    <span>Start 14-Day Free Trial</span>
+                    <span>Start {pricingConfig?.trial_days || 14}-Day Free Trial</span>
                     <ArrowRight size={15} strokeWidth={2.4} />
                   </button>
 
@@ -864,7 +864,7 @@ export default function Pricing() {
                     marginTop: '12px',
                   }}
                 >
-                  <span>✓ 14 Days Full Access</span>
+                  <span>✓ {pricingConfig?.trial_days || 14} Days Full Access</span>
                   <span>✓ No Credit Card Required</span>
                   <span>✓ Scale Up/Down Anytime</span>
                 </div>
@@ -1280,7 +1280,7 @@ export default function Pricing() {
                     marginBottom: '6px',
                   }}
                 >
-                  14-Day Free Trial • Instant Deployment
+                  {pricingConfig?.trial_days || 14}-Day Free Trial • Instant Deployment
                 </div>
                 <h3
                   style={{
@@ -1329,7 +1329,7 @@ export default function Pricing() {
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
-                  <span>Start 14-Day Free Trial</span>
+                  <span>Start {pricingConfig?.trial_days || 14}-Day Free Trial</span>
                   <ArrowRight size={15} strokeWidth={2.4} />
                 </button>
 

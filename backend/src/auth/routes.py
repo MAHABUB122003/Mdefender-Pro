@@ -428,6 +428,7 @@ async def get_me(user: dict = Depends(get_current_user)):
             'purchased_slots': purchased_slots,
             'trial_days_remaining': trial_days,
             'is_trial_active': is_trial_active,
+            'trial_ends_at': user.get('trial_ends_at').isoformat() if hasattr(user.get('trial_ends_at'), 'isoformat') else str(user.get('trial_ends_at') or ''),
             'api_key': user.get('api_key', ''),
             'created_at': user.get('created_at'),
             'onboarded': user.get('onboarded', False),

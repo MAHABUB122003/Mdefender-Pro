@@ -296,7 +296,7 @@ export default function Landing() {
                       e.currentTarget.style.transform = 'translateY(0)';
                     }}
                   >
-                    <span>Start 14-Day Free Trial</span>
+                    <span>Start {pricingConfig?.trial_days || 14}-Day Free Trial</span>
                     <ArrowRight size={14} strokeWidth={2.4} />
                   </Link>
 
@@ -344,7 +344,7 @@ export default function Landing() {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <Check size={14} strokeWidth={2.6} style={{ color: '#28745D' }} />
-                    <span>14-day full free trial</span>
+                    <span>{pricingConfig?.trial_days || 14}-day full free trial</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <Check size={14} strokeWidth={2.6} style={{ color: '#28745D' }} />
@@ -1451,7 +1451,7 @@ export default function Landing() {
                       Pricing &amp; Feature Access
                     </td>
                     <td style={{ padding: '14px 20px', fontWeight: 800, color: '#E8792F', fontSize: '14px' }}>
-                      $4 / site / month (14-Day Free Trial)
+                      {currencySymbol}{monthlyRate} / site / month ({pricingConfig?.trial_days || 14}-Day Free Trial)
                     </td>
                     <td style={{ padding: '14px 20px', color: '#A34F22', fontSize: '12.5px', fontWeight: 600 }}>
                       $200 &ndash; $3,000 / month (Enterprise lock)
@@ -1532,7 +1532,7 @@ export default function Landing() {
                 },
                 {
                   cap: 'Pricing & Feature Access',
-                  mdef: '$4 / site / month (14-Day Free Trial)',
+                  mdef: `${currencySymbol}${monthlyRate} / site / month (${pricingConfig?.trial_days || 14}-Day Free Trial)`,
                   mdefColor: '#E8792F',
                   legacy: '$200 – $3,000 / month (Enterprise lock)',
                   wp: '$149 – $499 / year per site'
@@ -2159,7 +2159,7 @@ export default function Landing() {
                     marginBottom: '6px',
                   }}
                 >
-                  Zero Risk &bull; 14-Day Full Enterprise Access
+                  Zero Risk &bull; {pricingConfig?.trial_days || 14}-Day Full Enterprise Access
                 </div>
                 <h3
                   style={{

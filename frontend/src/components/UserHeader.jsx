@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLocation, Link } from 'react-router-dom';
+import userStore from '../utils/userStore';
+import { getStoredPricingConfig, subscribePricing } from '../utils/pricingStore';
 import {
   LayoutDashboard,
   FileText,
@@ -157,40 +159,74 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
   const PageIcon = currentConfig.icon;
   const pageName = currentConfig.name;
 
+  const [pricingConfig, setPricingConfig] = useState(getStoredPricingConfig);
+  useEffect(() => {
+    return subscribePricing((cfg) => {
+      if (cfg) setPricingConfig(cfg);
+    });
+  }, []);
+
   const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const testTrialParam = urlParams ? urlParams.get('test_trial_days') : null;
   const testProParam = urlParams ? urlParams.get('test_pro') : null;
 
-  const userPlan = (testProParam === 'true'
-    ? 'pro'
-    : (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || 'free') : 'free')
-  ).toLowerCase();
-  const isPro = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan);
-  const trialDays = testTrialParam !== null
-    ? Math.max(0, Number(testTrialParam))
-    : (typeof localStorage !== 'undefined' ? (() => {
-        const trialEndsAt = localStorage.getItem('mdefender_trial_ends_at');
-        if (trialEndsAt) {
-          const endsDt = new Date(trialEndsAt);
-          if (!isNaN(endsDt.getTime())) {
-            const msRemaining = endsDt.getTime() - Date.now();
-            return Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
-          }
-        }
-        const createdAt = localStorage.getItem('mdefender_user_created_at');
-        if (createdAt) {
-          const createdDt = new Date(createdAt);
-          if (!isNaN(createdDt.getTime())) {
-            const daysElapsed = Math.floor((Date.now() - createdDt.getTime()) / (1000 * 60 * 60 * 24));
-            return Math.max(0, 14 - daysElapsed);
-          }
-        }
-        const storedTrial = localStorage.getItem('mdefender_trial_days');
-        if (storedTrial !== null && storedTrial !== undefined && storedTrial !== '') {
-          return Math.max(0, Number(storedTrial));
-        }
-        return 14;
-      })() : 14);
+  const cachedProfile = typeof window !== 'undefined' ? (userStore.get('profile') || {}) : {};
+  const storedPlan = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || '') : '';
+  const storedIsPaid = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_is_paid') === 'true') : false;
+  const activePlan = (testProParam === 'true' ? 'pro' : (cachedProfile?.plan || cachedProfile?.effective_plan || storedPlan || 'free')).toLowerCase();
+  const isPro = Boolean(
+    testProParam === 'true' ||
+    cachedProfile?.is_admin ||
+    cachedProfile?.role === 'super_admin' ||
+    cachedProfile?.is_paid ||
+    storedIsPaid ||
+    ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(activePlan)
+  );
+
+  const configuredTrialDays = Number(pricingConfig?.trial_days) || 14;
+
+  const trialDays = useMemo(() => {
+    if (testTrialParam !== null) return Math.max(0, Number(testTrialParam));
+    if (typeof localStorage === 'undefined') return configuredTrialDays;
+
+    if (cachedProfile?.trial_days_remaining !== undefined && cachedProfile?.trial_days_remaining !== null) {
+      return Math.max(0, Number(cachedProfile.trial_days_remaining));
+    }
+
+    const createdAt = cachedProfile?.created_at || localStorage.getItem('mdefender_user_created_at');
+    let elapsedDays = null;
+    if (createdAt) {
+      const createdDt = new Date(createdAt);
+      if (!isNaN(createdDt.getTime())) {
+        elapsedDays = Math.floor((Date.now() - createdDt.getTime()) / (1000 * 60 * 60 * 24));
+      }
+    }
+
+    const trialEndsAt = cachedProfile?.trial_ends_at || localStorage.getItem('mdefender_trial_ends_at');
+    let endsRemaining = null;
+    if (trialEndsAt) {
+      const endsDt = new Date(trialEndsAt);
+      if (!isNaN(endsDt.getTime())) {
+        endsRemaining = Math.max(0, Math.ceil((endsDt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+      }
+    }
+
+    if (elapsedDays !== null) {
+      const calculated = Math.max(0, configuredTrialDays - elapsedDays);
+      return endsRemaining !== null ? Math.max(calculated, endsRemaining) : calculated;
+    }
+
+    if (endsRemaining !== null) {
+      return endsRemaining;
+    }
+
+    const storedTrial = localStorage.getItem('mdefender_trial_days');
+    if (storedTrial !== null && storedTrial !== undefined && storedTrial !== '') {
+      return Math.max(0, Number(storedTrial));
+    }
+
+    return configuredTrialDays;
+  }, [testTrialParam, pricingConfig?.trial_days, cachedProfile]);
 
   const planLabel = isPro ? 'Pro Plan' : 'Free Plan';
 

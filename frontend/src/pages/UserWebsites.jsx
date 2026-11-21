@@ -404,7 +404,7 @@ export default function UserWebsites() {
     if (slotSummary?.is_trial_active) {
       setFeedbackMsg({
         type: 'success',
-        text: '🛡️ 14-Day Free Trial Active: All connected websites are automatically protected.'
+        text: `🛡️ ${pricingConfig?.trial_days || 14}-Day Free Trial Active: All connected websites are automatically protected.`
       })
       return
     }

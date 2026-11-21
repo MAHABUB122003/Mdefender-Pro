@@ -96,8 +96,18 @@ class LicenseSlotService:
             user_doc = resolved
 
         now_dt = datetime.now(timezone.utc)
-        u_created = _normalize_to_utc(user_doc.get("created_at"), now_dt)
-        trial_ends = _normalize_to_utc(user_doc.get("trial_ends_at"), u_created + timedelta(days=14))
+        u_created = _normalize_to_utc(
+            user_doc.get("created_at") or user_doc.get("trial_starts_at") or user_doc.get("trial_started_at"),
+            now_dt
+        )
+        dyn_trial_days = 14
+        try:
+            from src.services.plan_service import PlanService
+            dyn_trial_days = int(PlanService(self.db).get_dynamic_pricing_config().get("trial_days") or 14)
+        except Exception:
+            pass
+
+        trial_ends = _normalize_to_utc(user_doc.get("trial_ends_at"), u_created + timedelta(days=dyn_trial_days))
 
         t_days_rem = max(0, int(math.ceil((trial_ends - now_dt).total_seconds() / 86400)))
 

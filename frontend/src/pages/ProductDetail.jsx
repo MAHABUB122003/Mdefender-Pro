@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import PublicNavbar from '../components/PublicNavbar';
 import WordPressProductSuite from '../components/WordPressProductSuite';
 import PaymentModal from '../components/PaymentModal';
+import { getStoredPricingConfig, subscribePricing } from '../utils/pricingStore';
 import {
   Shield,
   ShieldCheck,
@@ -759,6 +760,13 @@ http {
 export default function ProductDetail() {
   const { slug } = useParams();
   const navigate = useNavigate();
+
+  const [pricingConfig, setPricingConfig] = useState(getStoredPricingConfig);
+  useEffect(() => {
+    return subscribePricing((cfg) => {
+      if (cfg) setPricingConfig(cfg);
+    });
+  }, []);
 
   // Payment Checkout Modal State
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
@@ -2575,7 +2583,7 @@ export default function ProductDetail() {
                 boxShadow: '0 8px 25px rgba(232, 121, 47, 0.45)'
               }}
             >
-              <span>Start Free 14-Day Enterprise Trial</span>
+              <span>Start Free {pricingConfig?.trial_days || 14}-Day Enterprise Trial</span>
               <ArrowRight size={16} />
             </Link>
 

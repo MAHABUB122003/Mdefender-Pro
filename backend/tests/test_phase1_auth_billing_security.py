@@ -277,12 +277,14 @@ class TestPhase1Security(unittest.TestCase):
         self.assertEqual(user_in_db.get("payment_status"), "trialing")
         self.assertIsNotNone(user_in_db.get("trial_ends_at"))
 
-        # 6. Login now succeeds and returns 14 trial days remaining
+        # 6. Login now succeeds and returns dynamic trial days remaining matching admin config
         login_res = login_service.login(test_email, test_pw, ip_address="127.0.0.1")
         self.assertTrue(login_res["success"], f"Login failed: {login_res}")
         self.assertIsNotNone(login_res.get("access_token"))
         self.assertIsNotNone(login_res.get("refresh_token"))
-        self.assertEqual(login_res["user"]["trial_days_remaining"], 14)
+        from src.services.plan_service import PlanService
+        expected_trial_days = int(PlanService(self.db).get_dynamic_pricing_config().get("trial_days") or 14)
+        self.assertEqual(login_res["user"]["trial_days_remaining"], expected_trial_days)
 
         # Cleanup
         self.db.users.delete_one({"email": test_email})

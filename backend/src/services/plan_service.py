@@ -367,7 +367,41 @@ class PlanService:
                         {"$set": {
                             "plans.pro.monthly_price": clean["base_monthly_rate"],
                             "plans.pro.yearly_price": clean["base_yearly_rate"],
+                            "plans.free.badge": f"{clean.get('trial_days', 14)}-Day Free Trial",
                             "updated_at": __import__("datetime").datetime.now()
+                        }}
+                    )
+
+                # Dynamically synchronize all non-admin, non-paid trial users with new trial duration
+                new_trial_days = int(clean.get("trial_days") or 14)
+                from datetime import datetime, timezone, timedelta
+                import math
+                now_utc = datetime.now(timezone.utc)
+                trial_users = list(self.db.users.find({
+                    "role": {"$nin": ["admin", "super_admin"]},
+                    "is_paid": {"$ne": True},
+                    "plan": {"$in": ["free", "starter", "trial", None]},
+                }))
+                for u in trial_users:
+                    u_created = u.get("created_at") or now_utc
+                    if isinstance(u_created, str):
+                        try:
+                            u_created = datetime.fromisoformat(u_created)
+                        except Exception:
+                            u_created = now_utc
+                    if hasattr(u_created, "tzinfo") and u_created.tzinfo is None:
+                        u_created = u_created.replace(tzinfo=timezone.utc)
+
+                    new_ends = u_created + timedelta(days=new_trial_days)
+                    rem_days = max(0, int(math.ceil((new_ends - now_utc).total_seconds() / 86400)))
+                    new_status = "trialing" if rem_days > 0 else "trial_expired"
+
+                    self.db.users.update_one(
+                        {"_id": u["_id"]},
+                        {"$set": {
+                            "trial_ends_at": new_ends,
+                            "trial_days_remaining": rem_days,
+                            "payment_status": new_status if u.get("payment_status") in ("trialing", "trial_expired", "unlicensed", None) else u.get("payment_status")
                         }}
                     )
             except Exception:

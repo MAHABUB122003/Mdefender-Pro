@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import PublicNavbar from '../../components/PublicNavbar';
+import { getStoredPricingConfig, subscribePricing } from '../../utils/pricingStore';
 import {
   Layers,
   Shield,
@@ -28,6 +29,12 @@ import {
 } from 'lucide-react';
 
 export default function AgencySolution() {
+  const [pricingConfig, setPricingConfig] = useState(getStoredPricingConfig);
+  useEffect(() => {
+    return subscribePricing((cfg) => {
+      if (cfg) setPricingConfig(cfg);
+    });
+  }, []);
   // Interactive Fleet ROI Calculator State
   const [siteCount, setSiteCount] = useState(35);
   const [retainerFee, setRetainerFee] = useState(250);
@@ -744,7 +751,7 @@ export default function AgencySolution() {
             Ready to scale your agency without maintenance nightmares?
           </h2>
           <p style={{ fontSize: '16px', color: '#9EBAAF', lineHeight: 1.6, marginBottom: '36px' }}>
-            Connect your first 5 client sites in under 3 minutes. Test 1-click updates, safe rollbacks, and remote malware scanning risk-free with our 14-day agency trial.
+            Connect your first 5 client sites in under 3 minutes. Test 1-click updates, safe rollbacks, and remote malware scanning risk-free with our {pricingConfig?.trial_days || 14}-day agency trial.
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '14px' }}>
             <Link
@@ -764,7 +771,7 @@ export default function AgencySolution() {
                 boxShadow: '0 4px 20px rgba(74, 222, 128, 0.3)'
               }}
             >
-              <span>Start Agency 14-Day Free Trial</span>
+              <span>Start Agency {pricingConfig?.trial_days || 14}-Day Free Trial</span>
               <ArrowRight size={15} />
             </Link>
             <Link

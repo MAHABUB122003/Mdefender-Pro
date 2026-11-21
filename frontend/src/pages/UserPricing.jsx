@@ -188,16 +188,18 @@ export default function UserPricing() {
     ? `$${billingData.current_rate}/${currentBillingCycle === 'yearly' ? 'yr' : 'mo'}`
     : `$${(monthlyRate * allocatedSlots).toFixed(2)}/mo`;
 
+  const configuredTrialDays = Number(pricingConfig?.trial_days) || 14;
+
   const trialDaysRemaining = (() => {
     if (profile?.trial_days_remaining !== undefined && profile?.trial_days_remaining !== null) {
       return Math.max(0, Number(profile.trial_days_remaining));
     }
     const trialEndsAt = profile?.trial_ends_at || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_trial_ends_at') : null);
+    let endsRemaining = null;
     if (trialEndsAt) {
       const endsDt = new Date(trialEndsAt);
       if (!isNaN(endsDt.getTime())) {
-        const msRemaining = endsDt.getTime() - Date.now();
-        return Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
+        endsRemaining = Math.max(0, Math.ceil((endsDt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
       }
     }
     const createdAt = profile?.created_at || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_created_at') : null);
@@ -205,14 +207,18 @@ export default function UserPricing() {
       const createdDt = new Date(createdAt);
       if (!isNaN(createdDt.getTime())) {
         const daysElapsed = Math.floor((Date.now() - createdDt.getTime()) / (1000 * 60 * 60 * 24));
-        return Math.max(0, 14 - daysElapsed);
+        const calculated = Math.max(0, configuredTrialDays - daysElapsed);
+        return endsRemaining !== null ? Math.max(calculated, endsRemaining) : calculated;
       }
+    }
+    if (endsRemaining !== null) {
+      return endsRemaining;
     }
     const storedTrial = typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_trial_days') : null;
     if (storedTrial !== null && storedTrial !== undefined && storedTrial !== '') {
       return Math.max(0, Number(storedTrial));
     }
-    return 14;
+    return configuredTrialDays;
   })();
 
   const handleSitesChange = (val) => {
@@ -453,11 +459,11 @@ export default function UserPricing() {
                   Action Required
                 </span>
                 <h4 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#9F1239' }}>
-                  14-Day Free Trial Expired — Fleet Protection Suspended
+                  {configuredTrialDays}-Day Free Trial Expired — Fleet Protection Suspended
                 </h4>
               </div>
               <p style={{ margin: 0, fontSize: '13.5px', color: '#881337', lineHeight: '1.5' }}>
-                Your 14-day free trial period has concluded. Protected dashboard access and edge security services are paused until a subscription is activated. Select your plan below to restore instant protection.
+                Your {configuredTrialDays}-day free trial period has concluded. Protected dashboard access and edge security services are paused until a subscription is activated. Select your plan below to restore instant protection.
               </p>
             </div>
           </div>

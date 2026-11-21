@@ -432,7 +432,7 @@ export default function TrialPaywallModal() {
               ) : isHardLockout ? (
                 <>
                   <Lock size={12} strokeWidth={2.5} />
-                  <span>14-Day Trial Concluded</span>
+                  <span>{pricingConfig?.trial_days || 14}-Day Trial Concluded</span>
                 </>
               ) : (
                 <>
@@ -578,7 +578,7 @@ export default function TrialPaywallModal() {
             {isPaidExpired
               ? 'Your MDefender Pro Fleet Protection Is Paused'
               : isHardLockout
-                ? 'Your 14-Day Free Trial Has Concluded'
+                ? `Your ${pricingConfig?.trial_days || 14}-Day Free Trial Has Concluded`
                 : 'Keep Your Fleet Protected with Enterprise SecOps'}
           </h1>
           <p style={{

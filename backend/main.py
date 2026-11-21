@@ -3274,10 +3274,25 @@ async def wordpress_connect(request: Request):
         try: user_created = datetime.fromisoformat(user_created)
         except Exception: user_created = now_dt
 
-    trial_ends = user.get("trial_ends_at") or (user_created + timedelta(days=14))
+    dyn_trial = 14
+    try:
+        from src.services.plan_service import PlanService
+        dyn_trial = int(PlanService(db).get_dynamic_pricing_config().get("trial_days") or 14)
+    except Exception:
+        dyn_trial = 14
+    dynamic_trial_ends = user_created + timedelta(days=dyn_trial)
+    trial_ends = user.get("trial_ends_at") or dynamic_trial_ends
     if isinstance(trial_ends, str):
         try: trial_ends = datetime.fromisoformat(trial_ends)
-        except Exception: trial_ends = user_created + timedelta(days=14)
+        except Exception: trial_ends = dynamic_trial_ends
+    if hasattr(trial_ends, "tzinfo") and hasattr(dynamic_trial_ends, "tzinfo"):
+        if trial_ends.tzinfo is None and dynamic_trial_ends.tzinfo is not None:
+            trial_ends = trial_ends.replace(tzinfo=dynamic_trial_ends.tzinfo)
+        elif trial_ends.tzinfo is not None and dynamic_trial_ends.tzinfo is None:
+            dynamic_trial_ends = dynamic_trial_ends.replace(tzinfo=trial_ends.tzinfo)
+    if not user.get("is_paid") and user.get("plan") in ("free", "starter", None):
+        try: trial_ends = max(trial_ends, dynamic_trial_ends)
+        except Exception: pass
 
     trial_days_remaining = max(0, int(math.ceil((trial_ends - now_dt).total_seconds() / 86400)))
 
@@ -3383,10 +3398,25 @@ async def wordpress_sync(request: Request):
         try: user_created = datetime.fromisoformat(user_created)
         except Exception: user_created = now_dt
 
-    trial_ends = user.get("trial_ends_at") or (user_created + timedelta(days=14))
+    dyn_trial = 14
+    try:
+        from src.services.plan_service import PlanService
+        dyn_trial = int(PlanService(db).get_dynamic_pricing_config().get("trial_days") or 14)
+    except Exception:
+        dyn_trial = 14
+    dynamic_trial_ends = user_created + timedelta(days=dyn_trial)
+    trial_ends = user.get("trial_ends_at") or dynamic_trial_ends
     if isinstance(trial_ends, str):
         try: trial_ends = datetime.fromisoformat(trial_ends)
-        except Exception: trial_ends = user_created + timedelta(days=14)
+        except Exception: trial_ends = dynamic_trial_ends
+    if hasattr(trial_ends, "tzinfo") and hasattr(dynamic_trial_ends, "tzinfo"):
+        if trial_ends.tzinfo is None and dynamic_trial_ends.tzinfo is not None:
+            trial_ends = trial_ends.replace(tzinfo=dynamic_trial_ends.tzinfo)
+        elif trial_ends.tzinfo is not None and dynamic_trial_ends.tzinfo is None:
+            dynamic_trial_ends = dynamic_trial_ends.replace(tzinfo=trial_ends.tzinfo)
+    if not user.get("is_paid") and user.get("plan") in ("free", "starter", None):
+        try: trial_ends = max(trial_ends, dynamic_trial_ends)
+        except Exception: pass
 
     trial_days_remaining = max(0, int(math.ceil((trial_ends - now_dt).total_seconds() / 86400)))
 

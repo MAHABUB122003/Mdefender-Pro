@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
+import { getStoredPricingConfig, subscribePricing } from '../utils/pricingStore';
 import {
   Shield,
   ChevronDown,
@@ -47,6 +48,12 @@ function isTokenValid(token) {
 }
 
 export default function PublicNavbar() {
+  const [pricingConfig, setPricingConfig] = useState(getStoredPricingConfig);
+  useEffect(() => {
+    return subscribePricing((cfg) => {
+      if (cfg) setPricingConfig(cfg);
+    });
+  }, []);
   const loc = useLocation();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -1187,7 +1194,7 @@ export default function PublicNavbar() {
                         boxShadow: '0 3px 10px rgba(232, 121, 47, 0.28)',
                       }}
                     >
-                      Start 14-Day Free Trial
+                      Start {pricingConfig?.trial_days || 14}-Day Free Trial
                     </Link>
                   </>
                 )}

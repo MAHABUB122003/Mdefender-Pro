@@ -367,7 +367,11 @@ class RegistrationService:
             # Valid OTP! Now, and ONLY now, create the user in db.users
             api_key = generate_api_key()
             now_utc = datetime.now(timezone.utc)
-            trial_duration_days = 14
+            try:
+                from src.services.plan_service import PlanService
+                trial_duration_days = int(PlanService(self.db).get_dynamic_pricing_config().get("trial_days") or 14)
+            except Exception:
+                trial_duration_days = 14
             trial_ends_utc = now_utc + timedelta(days=trial_duration_days)
 
             user_doc = {

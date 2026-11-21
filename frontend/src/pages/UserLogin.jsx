@@ -72,6 +72,7 @@ export default function UserLogin({ onLoginSuccess }) {
       if (user.payment_status) localStorage.setItem('mdefender_payment_status', user.payment_status);
       if (user.name) localStorage.setItem('mdefender_user_name', user.name);
       if (user.trial_days_remaining !== undefined) localStorage.setItem('mdefender_trial_days', user.trial_days_remaining);
+      if (user.trial_ends_at) localStorage.setItem('mdefender_trial_ends_at', user.trial_ends_at);
       if (user.created_at) localStorage.setItem('mdefender_user_created_at', user.created_at);
       userStore.invalidate('dashboard');
     }
