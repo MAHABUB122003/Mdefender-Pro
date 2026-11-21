@@ -73,7 +73,7 @@ export default function AgencySolution() {
         borderBottom: '1px solid #D9E1DC'
       }}>
         <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '0 clamp(16px, 3.2vw, 36px)' }}>
-          
+
           {/* Breadcrumb */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#4A5D5A', marginBottom: '22px' }}>
             <Link to="/solutions" style={{ color: '#4A5D5A', textDecoration: 'none' }}>Solutions</Link>
@@ -82,7 +82,7 @@ export default function AgencySolution() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '48px', alignItems: 'center' }}>
-            
+
             {/* Left Column: Hero Text */}
             <div>
               <div style={{

@@ -75,6 +75,8 @@ export default function TrialPaywallModal() {
     location.pathname.startsWith('/payment')
   );
 
+  const userObj = profile?.user || profile || {};
+
   // TAMPER-PROOF SECURITY SHIELD:
   // URL testing overrides (?test_trial_days, ?test_pro) MUST ONLY be honored for:
   // 1. Authenticated administrators (is_admin === true || role === 'admin' || role === 'super_admin')
@@ -82,9 +84,9 @@ export default function TrialPaywallModal() {
   // Regular users in production cannot bypass the paywall via URL query parameters or console.
   const isPrivilegedAdmin = Boolean(
     import.meta.env.DEV ||
-    profile?.is_admin ||
-    profile?.role === 'admin' ||
-    profile?.role === 'super_admin'
+    userObj?.is_admin ||
+    userObj?.role === 'admin' ||
+    userObj?.role === 'super_admin'
   );
 
   const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
@@ -95,35 +97,65 @@ export default function TrialPaywallModal() {
   const storedIsPaid = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_is_paid') === 'true') : false;
   const storedPaymentStatus = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_payment_status') || '') : '';
 
-  const activePlan = (profile?.plan || profile?.effective_plan || storedPlan || 'free').toLowerCase();
-  const paymentStatus = (profile?.payment_status || storedPaymentStatus || '').toLowerCase();
+  const activePlan = (userObj?.plan || userObj?.effective_plan || storedPlan || 'free').toLowerCase();
+  const paymentStatus = (userObj?.payment_status || storedPaymentStatus || '').toLowerCase();
   const hasPaidPlan = activePlan !== 'free' && activePlan !== 'starter';
 
   // Authoritative server resolution: NEVER trust client localStorage over authenticated server state
   const isPaidActive = Boolean(
     testProParam === 'true' ||
-    profile?.is_admin ||
-    profile?.role === 'super_admin' ||
-    profile?.is_paid ||
+    userObj?.is_admin ||
+    userObj?.role === 'super_admin' ||
+    userObj?.is_paid ||
     storedIsPaid ||
     (hasPaidPlan && paymentStatus !== 'expired' && paymentStatus !== 'past_due' && paymentStatus !== 'canceled' && paymentStatus !== 'cancelled')
   );
 
   const isPaidExpired = Boolean(
-    !isPaidActive && !profile?.is_admin && !profile?.role?.includes('admin') && (
+    !isPaidActive && !userObj?.is_admin && !userObj?.role?.includes('admin') && (
       paymentStatus === 'expired' ||
       paymentStatus === 'past_due' ||
-      (hasPaidPlan && (paymentStatus === 'expired' || paymentStatus === 'canceled' || paymentStatus === 'cancelled' || profile?.is_paid === false))
+      (hasPaidPlan && (paymentStatus === 'expired' || paymentStatus === 'canceled' || paymentStatus === 'cancelled' || userObj?.is_paid === false))
     )
   );
 
   const defaultTrialDays = Number(dynamicPricing?.trial_days) || 14;
-  const rawTrial = testTrialParam !== null
-    ? Number(testTrialParam)
-    : (profile?.trial_days_remaining !== undefined
-      ? profile.trial_days_remaining
-      : defaultTrialDays);
-  const trialDays = rawTrial !== null ? Number(rawTrial) : defaultTrialDays;
+
+  const trialDays = (() => {
+    if (testTrialParam !== null) return Math.max(0, Number(testTrialParam));
+
+    if (userObj?.trial_days_remaining !== undefined && userObj?.trial_days_remaining !== null) {
+      return Math.max(0, Number(userObj.trial_days_remaining));
+    }
+
+    const trialEndsAt = userObj?.trial_ends_at || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_trial_ends_at') : null);
+    let endsRemaining = null;
+    if (trialEndsAt) {
+      const endsDt = new Date(trialEndsAt);
+      if (!isNaN(endsDt.getTime())) {
+        endsRemaining = Math.max(0, Math.ceil((endsDt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+      }
+    }
+
+    const createdAt = userObj?.created_at || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_created_at') : null);
+    if (createdAt) {
+      const createdDt = new Date(createdAt);
+      if (!isNaN(createdDt.getTime())) {
+        const daysElapsed = Math.floor((Date.now() - createdDt.getTime()) / (1000 * 60 * 60 * 24));
+        const calculated = Math.max(0, defaultTrialDays - daysElapsed);
+        return endsRemaining !== null ? Math.max(calculated, endsRemaining) : calculated;
+      }
+    }
+
+    if (endsRemaining !== null) return endsRemaining;
+
+    const storedTrial = typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_trial_days') : null;
+    if (storedTrial !== null && storedTrial !== undefined && storedTrial !== '') {
+      return Math.max(0, Number(storedTrial));
+    }
+
+    return defaultTrialDays;
+  })();
 
   useEffect(() => {
     // If URL testing param is present, allow testing soft modal repeatedly without getting blocked by dismissed flag
@@ -162,7 +194,7 @@ export default function TrialPaywallModal() {
       api.getUserWebsites().catch(() => null)
     ]).then(([profileRes, sitesRes]) => {
       if (!mounted) return;
-      const data = profileRes?.data || profileRes;
+      const data = profileRes?.data?.user || profileRes?.user || profileRes?.data || profileRes;
       if (data) {
         setProfile(data);
       }
@@ -190,16 +222,25 @@ export default function TrialPaywallModal() {
   // Can be dismissed to view fleet in read-only mode (with persistent sticky alert bar)
   if (isPaidExpired && dismissed) return null;
 
-  // 4. Free Trial Notice Window: Dynamic 25% window (minimum 3 days, maximum 10 days)
-  // E.g., for 14-day trial: ceil(14 * 0.25) = 4 days remaining (Days 1 to 10 are completely silent)
-  // For 30-day trial: ceil(30 * 0.25) = 8 days remaining (Days 1 to 22 are completely silent)
-  // For 60-day trial: min(10, 15) = 10 days remaining (Days 1 to 50 are completely silent)
-  const reminderWindow = Math.min(10, Math.max(3, Math.ceil(defaultTrialDays * 0.25)));
+    // 4. Free Trial Notice Window: Adaptive reminder based on total trial length
+    // - 7-day trial: reminder in last 2 days (Days 6–7)
+    // - 14-day trial: reminder in last 4 days (Days 11–14, 4 days before day 14 ends)
+    // - 30-day trial: reminder in last 7 days (Days 24–30)
+    // - 60-day trial: reminder in last 10 days (Days 51–60)
+    // - 90-day trial: reminder in last 14 days (Days 77–90)
+    const getReminderWindow = (totalDays) => {
+      if (totalDays <= 7) return Math.min(2, Math.max(1, Math.floor(totalDays * 0.3)));
+      if (totalDays <= 14) return 4;
+      if (totalDays <= 30) return 7;
+      if (totalDays <= 60) return 10;
+      return 14;
+    };
+    const reminderWindow = getReminderWindow(defaultTrialDays);
 
-  if (!isPaidExpired && trialDays > reminderWindow) return null;
+    if (!isPaidExpired && trialDays > reminderWindow) return null;
 
-  const isHardLockout = !isPaidExpired && trialDays <= 0;
-  const isSoftPrompt = !isPaidExpired && trialDays > 0 && trialDays <= reminderWindow;
+    const isHardLockout = !isPaidExpired && trialDays <= 0;
+    const isSoftPrompt = !isPaidExpired && trialDays > 0 && trialDays <= reminderWindow;
 
   // If soft prompt was dismissed for this browser session, don't show it again
   if (isSoftPrompt && dismissed) return null;

@@ -1553,7 +1553,7 @@ export default function Landing() {
                   <div style={{ fontSize: '13px', fontWeight: '850', color: '#10201E' }}>
                     {bench.cap}
                   </div>
-                  
+
                   {/* MDefender Pro Value */}
                   <div style={{
                     background: '#FAFBF9',

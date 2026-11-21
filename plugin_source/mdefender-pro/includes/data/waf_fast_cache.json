@@ -1,12 +1,11 @@
 {
-  "enabled": false,
-  "connected": false,
-  "is_licensed": false,
-  "license_status": "unlicensed",
-  "waf_mode": "disabled",
-  "updated_at": 1795240978,
+  "enabled": true,
+  "connected": true,
+  "is_licensed": true,
+  "license_status": "active",
+  "waf_mode": "protect",
+  "updated_at": 1795242891,
   "blacklist_ips": {},
-  "whitelist_ips": {},
   "blocked_countries": [],
   "local_server_country": "BD"
 }

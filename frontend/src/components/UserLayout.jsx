@@ -152,7 +152,8 @@ export default function UserLayout({ children, onLogout }) {
 
   // Strict Onboarding & Expired Trial Route Guard:
   useEffect(() => {
-    const cachedProfile = userStore.get('profile')
+    const rawProfile = userStore.get('profile')
+    const cachedProfile = rawProfile?.user || rawProfile
     if (cachedProfile && cachedProfile.role !== 'super_admin' && !cachedProfile.is_admin) {
       if (!cachedProfile.onboarded) {
         navigate('/onboarding', { replace: true })
@@ -219,7 +220,8 @@ export default function UserLayout({ children, onLogout }) {
   const isImpersonating = typeof localStorage !== 'undefined' && localStorage.getItem('mdefender_is_impersonating') === 'true'
   const impersonatedUser = typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_impersonated_user') : ''
 
-  const profile = userStore.get('profile') || userStore.get('dashboard')?.user || null
+  const rawProfile = userStore.get('profile') || userStore.get('dashboard')?.user || null
+  const profile = rawProfile?.user || rawProfile || null
   const storedPlan = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || '') : ''
   const storedIsPaid = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_is_paid') === 'true') : false
   const storedPaymentStatus = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_payment_status') || '') : ''

@@ -229,15 +229,9 @@ class PlanService:
             return False
 
     def get_dynamic_pricing_config(self):
-        """Resolve dynamic per-site pricing configuration. DB override wins; falls back to defaults.
-        Cached in-memory to prevent MongoDB contention across high user volumes.
+        """Resolve dynamic per-site pricing configuration directly from database.
+        Always reads authoritative database state to eliminate cross-worker Gunicorn desync.
         """
-        global _PRICING_CACHE, _PRICING_CACHE_TIME
-        import time
-        now = time.time()
-        if _PRICING_CACHE is not None and (now - _PRICING_CACHE_TIME) < _PRICING_CACHE_TTL:
-            return dict(_PRICING_CACHE)
-
         stored = {}
         try:
             doc = self.db.settings.find_one({"_type": "dynamic_pricing"})
@@ -271,8 +265,6 @@ class PlanService:
         if env_y and not config.get("price_id_yearly"):
             config["price_id_yearly"] = env_y
 
-        _PRICING_CACHE = dict(config)
-        _PRICING_CACHE_TIME = now
         return config
 
     def calculate_fleet_pricing(self, sites_count: int, billing_cycle: str = "monthly") -> dict:
@@ -379,8 +371,7 @@ class PlanService:
                 now_utc = datetime.now(timezone.utc)
                 trial_users = list(self.db.users.find({
                     "role": {"$nin": ["admin", "super_admin"]},
-                    "is_paid": {"$ne": True},
-                    "plan": {"$in": ["free", "starter", "trial", None]},
+                    "is_paid": {"$ne": True}
                 }))
                 for u in trial_users:
                     u_created = u.get("created_at") or now_utc

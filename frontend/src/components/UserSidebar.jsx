@@ -92,7 +92,8 @@ function DropdownItem({
 export default function UserSidebar({ isOpen, onClose }) {
   const location = useLocation()
 
-  const cachedProfile = typeof window !== 'undefined' ? (userStore.get('profile') || {}) : {}
+  const rawProfile = typeof window !== 'undefined' ? (userStore.get('profile') || {}) : {}
+  const cachedProfile = rawProfile?.user || rawProfile || {}
   const rawName = cachedProfile.name || cachedProfile.full_name || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_name') : null)
   const userName = rawName || 'SecOps Lead Operator'
   const userEmail = cachedProfile.email || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_email') : '') || 'operator@mdefender.io'
@@ -137,10 +138,6 @@ export default function UserSidebar({ isOpen, onClose }) {
     if (testTrialParam !== null) return Math.max(0, Number(testTrialParam))
     if (typeof localStorage === 'undefined') return configuredTrialDays
 
-    if (cachedProfile?.trial_days_remaining !== undefined && cachedProfile?.trial_days_remaining !== null) {
-      return Math.max(0, Number(cachedProfile.trial_days_remaining))
-    }
-
     const createdAt = cachedProfile?.created_at || localStorage.getItem('mdefender_user_created_at')
     let elapsedDays = null
     if (createdAt) {
@@ -150,22 +147,20 @@ export default function UserSidebar({ isOpen, onClose }) {
       }
     }
 
+    if (elapsedDays !== null) {
+      return Math.max(0, configuredTrialDays - elapsedDays)
+    }
+
+    if (cachedProfile?.trial_days_remaining !== undefined && cachedProfile?.trial_days_remaining !== null) {
+      return Math.max(0, Number(cachedProfile.trial_days_remaining))
+    }
+
     const trialEndsAt = cachedProfile?.trial_ends_at || localStorage.getItem('mdefender_trial_ends_at')
-    let endsRemaining = null
     if (trialEndsAt) {
       const endsDt = new Date(trialEndsAt)
       if (!isNaN(endsDt.getTime())) {
-        endsRemaining = Math.max(0, Math.ceil((endsDt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+        return Math.max(0, Math.ceil((endsDt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
       }
-    }
-
-    if (elapsedDays !== null) {
-      const calculated = Math.max(0, configuredTrialDays - elapsedDays)
-      return endsRemaining !== null ? Math.max(calculated, endsRemaining) : calculated
-    }
-
-    if (endsRemaining !== null) {
-      return endsRemaining
     }
 
     const storedTrial = localStorage.getItem('mdefender_trial_days')
@@ -174,7 +169,7 @@ export default function UserSidebar({ isOpen, onClose }) {
     }
 
     return configuredTrialDays
-  }, [testTrialParam, pricingConfig?.trial_days, cachedProfile])
+  }, [testTrialParam, configuredTrialDays, cachedProfile])
 
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [copiedApiKey, setCopiedApiKey] = useState(false)

@@ -111,12 +111,12 @@ export default function UserPricing() {
 
     // Stream each fetch concurrently and update UI state immediately upon arrival (0ms blocking)
     const pProf = api.getProfile().then((res) => {
-      const d = res?.data || res;
+      const d = res?.data?.user || res?.user || res?.data || res;
       if (d) {
         setProfile(d);
         userStore.set('profile', d);
       }
-    }).catch(() => {});
+    }).catch(() => { });
 
     const pHist = api.getPaymentHistory().then((res) => {
       const hist = res?.data || res?.payments || [];
@@ -124,9 +124,9 @@ export default function UserPricing() {
         setPaymentHistory(hist);
         try {
           localStorage.setItem('mdefender_cached_invoices', JSON.stringify(hist));
-        } catch {}
+        } catch { }
       }
-    }).catch(() => {});
+    }).catch(() => { });
 
     const pBill = api.getBillingSubscription().then((res) => {
       const b = res?.data || res;
@@ -134,15 +134,15 @@ export default function UserPricing() {
         setBillingData(b);
         try {
           localStorage.setItem('mdefender_cached_billing', JSON.stringify(b));
-        } catch {}
+        } catch { }
       }
-    }).catch(() => {});
+    }).catch(() => { });
 
     const pConfig = syncPricingWithBackend(api).then((cfg) => {
       if (cfg?.base_monthly_rate) {
         setPricingConfig(cfg);
       }
-    }).catch(() => {});
+    }).catch(() => { });
 
     try {
       await Promise.allSettled([pProf, pHist, pBill, pConfig]);
@@ -189,12 +189,13 @@ export default function UserPricing() {
     : `$${(monthlyRate * allocatedSlots).toFixed(2)}/mo`;
 
   const configuredTrialDays = Number(pricingConfig?.trial_days) || 14;
+  const userObj = profile?.user || profile || {};
 
   const trialDaysRemaining = (() => {
-    if (profile?.trial_days_remaining !== undefined && profile?.trial_days_remaining !== null) {
-      return Math.max(0, Number(profile.trial_days_remaining));
+    if (userObj?.trial_days_remaining !== undefined && userObj?.trial_days_remaining !== null) {
+      return Math.max(0, Number(userObj.trial_days_remaining));
     }
-    const trialEndsAt = profile?.trial_ends_at || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_trial_ends_at') : null);
+    const trialEndsAt = userObj?.trial_ends_at || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_trial_ends_at') : null);
     let endsRemaining = null;
     if (trialEndsAt) {
       const endsDt = new Date(trialEndsAt);
@@ -202,7 +203,7 @@ export default function UserPricing() {
         endsRemaining = Math.max(0, Math.ceil((endsDt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
       }
     }
-    const createdAt = profile?.created_at || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_created_at') : null);
+    const createdAt = userObj?.created_at || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_created_at') : null);
     if (createdAt) {
       const createdDt = new Date(createdAt);
       if (!isNaN(createdDt.getTime())) {

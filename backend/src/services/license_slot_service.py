@@ -107,7 +107,10 @@ class LicenseSlotService:
         except Exception:
             pass
 
-        trial_ends = _normalize_to_utc(user_doc.get("trial_ends_at"), u_created + timedelta(days=dyn_trial_days))
+        trial_ends = _normalize_to_utc(
+            user_doc.get("custom_trial_ends_at") or user_doc.get("trial_ends_at"),
+            u_created + timedelta(days=dyn_trial_days)
+        )
 
         t_days_rem = max(0, int(math.ceil((trial_ends - now_dt).total_seconds() / 86400)))
 
@@ -166,7 +169,10 @@ class LicenseSlotService:
                 payment_status == "active" and plan != "free" and (not plan_expires or plan_expires > now_dt)
             )
         )
-        is_trial_active = (not is_paid) and (t_days_rem > 0) and (payment_status not in ("expired", "trial_expired", "refunded")) and not has_subscription_expired
+        is_trial_eligible_status = payment_status not in ("expired", "refunded")
+        is_trial_active = (not is_paid) and (t_days_rem > 0) and is_trial_eligible_status and not has_subscription_expired
+        if is_trial_active and payment_status in ("trial_expired", "unlicensed", "none", "", None):
+            payment_status = "trialing"
 
         # Purchased slots: explicitly stored or resolved from subscription / role
         if not is_paid and not is_trial_active:

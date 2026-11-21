@@ -244,20 +244,14 @@ class LoginService:
             dyn_trial = 14
 
         dynamic_trial_ends = user_created + timedelta(days=dyn_trial)
-        trial_ends = user.get('trial_ends_at')
-        if not trial_ends:
-            trial_ends = dynamic_trial_ends
-        elif isinstance(trial_ends, str):
+        trial_ends = user.get("custom_trial_ends_at") or user.get("trial_ends_at") or dynamic_trial_ends
+        if isinstance(trial_ends, str):
             try:
                 trial_ends = datetime.fromisoformat(trial_ends)
             except Exception:
                 trial_ends = dynamic_trial_ends
         if hasattr(trial_ends, 'tzinfo') and trial_ends.tzinfo is None:
             trial_ends = trial_ends.replace(tzinfo=timezone.utc)
-
-        # Enforce dynamic trial duration for non-paid trial users
-        if not user.get('is_paid') and user.get('plan') in ('free', 'starter', None):
-            trial_ends = max(trial_ends, dynamic_trial_ends)
 
         import math
         trial_days_remaining = max(0, int(math.ceil((trial_ends - now_dt).total_seconds() / 86400)))

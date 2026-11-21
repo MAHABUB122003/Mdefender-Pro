@@ -113,9 +113,11 @@ export default function AdminPricing() {
     if (e) e.preventDefault()
     setSaving(true)
     try {
-      await api.adminUpdateDynamicPricingConfig(dynamicConfig)
-      savePricingConfig(dynamicConfig)
-      adminStore.set('dynamic_pricing_config', dynamicConfig)
+      const res = await api.adminUpdateDynamicPricingConfig(dynamicConfig)
+      const authoritative = res?.data || res || dynamicConfig
+      setDynamicConfig(authoritative)
+      savePricingConfig(authoritative)
+      adminStore.set('dynamic_pricing_config', authoritative)
       showToast('Pricing engine updated! Changes are live across landing page, user dashboard, and checkout gateways.')
     } catch (err) {
       console.error(err)

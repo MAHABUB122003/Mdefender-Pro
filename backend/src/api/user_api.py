@@ -1557,14 +1557,12 @@ class UserAPI:
         except Exception:
             dyn_trial = 14
         dynamic_trial_ends = u_created + timedelta(days=dyn_trial)
-        trial_ends = user_doc.get('trial_ends_at') or dynamic_trial_ends
+        trial_ends = user_doc.get("custom_trial_ends_at") or user_doc.get("trial_ends_at") or dynamic_trial_ends
         if isinstance(trial_ends, str):
             try: trial_ends = datetime.fromisoformat(trial_ends)
             except Exception: trial_ends = dynamic_trial_ends
         if hasattr(trial_ends, 'tzinfo') and trial_ends.tzinfo is None:
             trial_ends = trial_ends.replace(tzinfo=timezone.utc)
-        if not user_doc.get("is_paid") and user_doc.get("plan") in ("free", "starter", None):
-            trial_ends = max(trial_ends, dynamic_trial_ends)
         import math
         t_days_rem = max(0, int(math.ceil((trial_ends - now_dt).total_seconds() / 86400)))
 
