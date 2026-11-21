@@ -196,8 +196,8 @@ export default function UserSidebar({ isOpen, onClose }) {
             setSidebarApiKey(key)
             if (typeof localStorage !== 'undefined') localStorage.setItem('mdefender_api_key', key)
           }
-        }).catch(() => {})
-      }).catch(() => {})
+        }).catch(() => { })
+      }).catch(() => { })
     }
 
     return () => window.removeEventListener('mdefender_api_key_updated', handleKeyUpdate)
@@ -474,7 +474,7 @@ export default function UserSidebar({ isOpen, onClose }) {
         {/* NAVIGATION LIST (PRECISE 15-SECTION ARCHITECTURE)                         */}
         {/* ========================================================================= */}
         <nav className="sidebar-nav">
-          
+
           {/* 1. Dashboard */}
           <Link
             to="/user/dashboard"
@@ -785,7 +785,7 @@ export default function UserSidebar({ isOpen, onClose }) {
         {/* TECH-GIANT ENTERPRISE FOOTER (PROFILE TRIGGER & ELEVATED POPOVER)        */}
         {/* ========================================================================= */}
         <div className="sidebar-footer" ref={profileMenuRef} style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: '10px', position: 'relative', overflow: 'visible', zIndex: 100 }}>
-          
+
           {/* Elevated Floating Popover Menu */}
           {showProfileMenu && (
             <div
