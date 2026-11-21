@@ -384,6 +384,22 @@ class PlanService:
                         u_created = u_created.replace(tzinfo=timezone.utc)
 
                     new_ends = u_created + timedelta(days=new_trial_days)
+
+                    # Grandfathering & Entitlement Protection Rule (International SaaS Standard):
+                    # Never shorten, truncate, or downgrade a previously granted promotional trial!
+                    current_ends = u.get("custom_trial_ends_at") or u.get("trial_ends_at")
+                    if current_ends:
+                        if isinstance(current_ends, str):
+                            try:
+                                current_ends = datetime.fromisoformat(current_ends)
+                            except Exception:
+                                current_ends = None
+                        if current_ends and hasattr(current_ends, "tzinfo") and current_ends.tzinfo is None:
+                            current_ends = current_ends.replace(tzinfo=timezone.utc)
+                        if current_ends and current_ends > new_ends:
+                            # Keep their previously granted longer promotional trial duration
+                            new_ends = current_ends
+
                     rem_days = max(0, int(math.ceil((new_ends - now_utc).total_seconds() / 86400)))
                     new_status = "trialing" if rem_days > 0 else "trial_expired"
 

@@ -190,6 +190,18 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
     if (testTrialParam !== null) return Math.max(0, Number(testTrialParam));
     if (typeof localStorage === 'undefined') return configuredTrialDays;
 
+    const trialEndsAt = cachedProfile?.trial_ends_at || localStorage.getItem('mdefender_trial_ends_at');
+    if (trialEndsAt) {
+      const endsDt = new Date(trialEndsAt);
+      if (!isNaN(endsDt.getTime())) {
+        return Math.max(0, Math.ceil((endsDt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+      }
+    }
+
+    if (cachedProfile?.trial_days_remaining !== undefined && cachedProfile?.trial_days_remaining !== null) {
+      return Math.max(0, Number(cachedProfile.trial_days_remaining));
+    }
+
     const createdAt = cachedProfile?.created_at || localStorage.getItem('mdefender_user_created_at');
     let elapsedDays = null;
     if (createdAt) {
@@ -201,18 +213,6 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
 
     if (elapsedDays !== null) {
       return Math.max(0, configuredTrialDays - elapsedDays);
-    }
-
-    if (cachedProfile?.trial_days_remaining !== undefined && cachedProfile?.trial_days_remaining !== null) {
-      return Math.max(0, Number(cachedProfile.trial_days_remaining));
-    }
-
-    const trialEndsAt = cachedProfile?.trial_ends_at || localStorage.getItem('mdefender_trial_ends_at');
-    if (trialEndsAt) {
-      const endsDt = new Date(trialEndsAt);
-      if (!isNaN(endsDt.getTime())) {
-        return Math.max(0, Math.ceil((endsDt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
-      }
     }
 
     const storedTrial = localStorage.getItem('mdefender_trial_days');
