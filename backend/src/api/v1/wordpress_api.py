@@ -300,6 +300,7 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
     import math
     from src.services.subscription_service import SubscriptionService
     from src.services.license_slot_service import LicenseSlotService
+    from src.services.plan_service import PlanService
     user_eff_plan = SubscriptionService(db).effective_plan(auth_data["user_id"])
     is_user_pro = user_eff_plan in ("pro", "enterprise", "premium", "ultra", "go")
 
@@ -318,7 +319,11 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
 
     user_doc = slot_service._get_user_doc(auth_data["user_id"]) or {}
     user_lic = slot_service.resolve_user_license_state(user_doc)
-    dyn_trial = int(PlanService(db).get_dynamic_pricing_config().get("trial_days") or 14)
+    dyn_trial = 14
+    try:
+        dyn_trial = int(PlanService(db).get_dynamic_pricing_config().get("trial_days") or 14)
+    except Exception:
+        pass
     user_trial_ends = user_doc.get("trial_ends_at") or (now + timedelta(days=dyn_trial))
 
     trial_starts_at = website.get("trial_starts_at") or user_doc.get("created_at") or now

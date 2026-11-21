@@ -199,6 +199,7 @@ class LicenseSlotService:
             if plan in ("free", "starter", "trial"):
                 plan = "pro"
         elif has_any_batches:
+            # User previously purchased paid batches, but all are now expired -> 0 slots, paywall lockout
             purchased_slots = 0
             is_paid = False
             is_trial_active = False

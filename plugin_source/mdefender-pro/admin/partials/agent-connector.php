@@ -85,7 +85,31 @@ if (isset($_POST['waf_connector_action']) && check_admin_referer('waf_connector_
                     $notice_msg = __('Successfully paired with MDefender Pro Cloud Fleet! Enterprise protection active.', 'mdefender-pro');
                     $notice_type = 'success';
                 } else {
-                    $notice_msg = esc_html($decoded['detail'] ?? $decoded['message'] ?? 'Authentication failed. Please verify your API Key.');
+                    $raw_err = null;
+                    if (isset($decoded['detail'])) {
+                        if (is_array($decoded['detail'])) {
+                            $parts = [];
+                            foreach ($decoded['detail'] as $item) {
+                                $parts[] = is_array($item) ? ($item['msg'] ?? json_encode($item)) : strval($item);
+                            }
+                            $raw_err = implode('; ', $parts);
+                        } else {
+                            $raw_err = strval($decoded['detail']);
+                        }
+                    } elseif (!empty($decoded['message'])) {
+                        $raw_err = strval($decoded['message']);
+                    } elseif (!empty($decoded['error'])) {
+                        $raw_err = strval($decoded['error']);
+                    }
+
+                    if (empty($raw_err)) {
+                        if ($code === 401 || $code === 403) {
+                            $raw_err = 'Authentication failed. Please verify your API Key.';
+                        } else {
+                            $raw_err = "Cloud Server error (HTTP {$code}). Please check your connection or contact support.";
+                        }
+                    }
+                    $notice_msg = esc_html($raw_err);
                     $notice_type = 'error';
                 }
             } else {

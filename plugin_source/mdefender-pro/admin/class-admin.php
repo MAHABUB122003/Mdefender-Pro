@@ -223,7 +223,30 @@ class WAF_FW_Admin {
         $decoded = json_decode($body, true);
 
         if ($code !== 200 || empty($decoded['data'])) {
-            $err = $decoded['detail'] ?? $decoded['message'] ?? 'Authentication failed. Please verify your API Key.';
+            $err = null;
+            if (isset($decoded['detail'])) {
+                if (is_array($decoded['detail'])) {
+                    $parts = [];
+                    foreach ($decoded['detail'] as $item) {
+                        $parts[] = is_array($item) ? ($item['msg'] ?? json_encode($item)) : strval($item);
+                    }
+                    $err = implode('; ', $parts);
+                } else {
+                    $err = strval($decoded['detail']);
+                }
+            } elseif (!empty($decoded['message'])) {
+                $err = strval($decoded['message']);
+            } elseif (!empty($decoded['error'])) {
+                $err = strval($decoded['error']);
+            }
+
+            if (empty($err)) {
+                if ($code === 401 || $code === 403) {
+                    $err = 'Authentication failed. Please verify your API Key.';
+                } else {
+                    $err = "Cloud Server error (HTTP {$code}). Please check your connection or contact support.";
+                }
+            }
             wp_send_json_error(['message' => $err]);
         }
 
