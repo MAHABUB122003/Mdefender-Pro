@@ -73,7 +73,7 @@ if (isset($_POST['waf_connector_action']) && check_admin_referer('waf_connector_
                     update_option('waf_fw_ml_api_key', $api_key);
                     if (!empty($res_data['site_token'])) update_option('waf_fw_site_token', $res_data['site_token']);
                     if (!empty($res_data['website_id'])) update_option('waf_fw_website_id', $res_data['website_id']);
-                    update_option('waf_fw_trial_days_remaining', intval($res_data['trial_days_remaining'] ?? 14));
+                    update_option('waf_fw_trial_days_remaining', intval($res_data['trial_days_remaining'] ?? $res_data['trial_days'] ?? 0));
                     update_option('waf_fw_subscription_status', $res_data['subscription_status'] ?? 'trial_active');
                     update_option('waf_fw_cloud_api_url', $cloud_url);
                     update_option('waf_fw_ml_api_url', $cloud_url);
@@ -599,7 +599,7 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
                     if (statusContainer) {
                         statusContainer.innerHTML = '<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end;">' +
                             '<span class="mdf-status-pill connected"><span class="mdf-status-dot"></span> CONNECTED &amp; GUARDED</span>' +
-                            '<span style="font-size: 11px; font-weight: 700; color: #0284C7; background: #E0F2FE; border: 1px solid #BAE6FD; padding: 4px 10px; border-radius: 999px;">⚡ Trial: ' + (json.data.trial_days || 14) + ' Days Left</span>' +
+                            '<span style="font-size: 11px; font-weight: 700; color: #0284C7; background: #E0F2FE; border: 1px solid #BAE6FD; padding: 4px 10px; border-radius: 999px;">⚡ Trial: ' + (json.data.trial_days_remaining !== undefined ? json.data.trial_days_remaining : (json.data.trial_days || 0)) + ' Days Left</span>' +
                             '</div>';
                     }
 

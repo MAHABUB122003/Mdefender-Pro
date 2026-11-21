@@ -174,8 +174,38 @@ class LicenseSlotService:
         if is_trial_active and payment_status in ("trial_expired", "unlicensed", "none", "", None):
             payment_status = "trialing"
 
-        # Purchased slots: explicitly stored or resolved from subscription / role
-        if not is_paid and not is_trial_active:
+        # Multi-Batch Additive Fleet Slot Resolution (Granular Per-Batch Expiration)
+        try:
+            raw_active = self.db.slot_batches.find({
+                "user_id": {"$in": target_uids},
+                "status": "active",
+                "expires_at": {"$gt": now_dt}
+            })
+            active_batches = [b for b in raw_active if isinstance(b, dict)] if raw_active is not None else []
+        except Exception:
+            active_batches = []
+
+        try:
+            count_res = self.db.slot_batches.count_documents({"user_id": {"$in": target_uids}})
+            has_any_batches = bool(count_res > 0) if isinstance(count_res, (int, float)) else False
+        except Exception:
+            has_any_batches = False
+
+        if active_batches:
+            purchased_slots = sum(int(b.get("slots", 0)) for b in active_batches)
+            is_paid = True
+            is_trial_active = False
+            payment_status = "active"
+            if plan in ("free", "starter", "trial"):
+                plan = "pro"
+        elif has_any_batches:
+            purchased_slots = 0
+            is_paid = False
+            is_trial_active = False
+            payment_status = "expired"
+            has_subscription_expired = True
+            t_days_rem = 0
+        elif not is_paid and not is_trial_active:
             # Completely expired (neither paid nor in trial) -> 0 active slots
             purchased_slots = 0
             t_days_rem = 0

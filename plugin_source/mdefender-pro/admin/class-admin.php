@@ -230,7 +230,7 @@ class WAF_FW_Admin {
         $res_data = $decoded['data'];
         $site_token = $res_data['site_token'] ?? '';
         $website_id = $res_data['website_id'] ?? '';
-        $trial_days = intval($res_data['trial_days_remaining'] ?? 14);
+        $trial_days = intval($res_data['trial_days_remaining'] ?? $res_data['trial_days'] ?? 0);
         $sub_status = $res_data['subscription_status'] ?? 'trial_active';
 
         update_option('waf_fw_api_key', $api_key);

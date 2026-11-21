@@ -286,13 +286,48 @@ class SubscriptionService:
                 duration = 365 if is_yearly else 30
                 sites = int(custom.get("sites_count") or custom.get("website_limit") or custom.get("quantity") or 1)
 
-                # Software License Extension: If current license is still active, extend seamlessly!
+                # Software License Extension & Additive Multi-Batch Fleet Slot Engine:
                 current_user = self.db.users.find_one({"_id": u_id}) or {}
                 current_exp = _normalize_to_utc(current_user.get("plan_expires"), None)
-                if current_exp and current_exp > now_utc:
-                    new_expires = current_exp + timedelta(days=duration)
-                else:
-                    new_expires = now_utc + timedelta(days=duration)
+                batch_expires = now_utc + timedelta(days=duration)
+
+                # Migration/Backfill: If user held active slots prior to multi-batch ledger, preserve them as Batch 1
+                target_uids = [str(user_id)]
+                if ObjectId.is_valid(str(user_id)):
+                    target_uids.append(ObjectId(str(user_id)))
+
+                existing_batches_count = self.db.slot_batches.count_documents({"user_id": {"$in": target_uids}})
+                old_slots = int(current_user.get("purchased_slots") or 0)
+                if existing_batches_count == 0 and old_slots > 0 and current_exp and current_exp > now_utc:
+                    self.db.slot_batches.insert_one({
+                        "user_id": str(user_id),
+                        "slots": old_slots,
+                        "billing_cycle": current_user.get("billing_cycle", "monthly"),
+                        "created_at": current_user.get("last_payment_date") or (current_exp - timedelta(days=30)),
+                        "expires_at": current_exp,
+                        "status": "active",
+                        "is_legacy": True
+                    })
+
+                # Record newly purchased slot batch in the immutable ledger
+                self.db.slot_batches.insert_one({
+                    "user_id": str(user_id),
+                    "slots": sites,
+                    "billing_cycle": "yearly" if is_yearly else "monthly",
+                    "created_at": now_utc,
+                    "expires_at": batch_expires,
+                    "status": "active",
+                    "transaction_id": str(rec.get("_id") or event.get("id") or "")
+                })
+
+                # Calculate cumulative active fleet slots across all unexpired batches
+                active_batches = list(self.db.slot_batches.find({
+                    "user_id": {"$in": target_uids},
+                    "status": "active",
+                    "expires_at": {"$gt": now_utc}
+                }))
+                total_additive_slots = sum(int(b.get("slots", 0)) for b in active_batches) if active_batches else sites
+                max_exp = max((_normalize_to_utc(b.get("expires_at"), batch_expires) for b in active_batches), default=batch_expires)
 
                 self.db.users.update_one(
                     {"_id": u_id},
@@ -301,16 +336,25 @@ class SubscriptionService:
                         "plan_tier": plan,
                         "is_paid": True,
                         "payment_status": "active",
-                        "purchased_slots": sites,
-                        "website_limit": sites,
+                        "purchased_slots": total_additive_slots,
+                        "website_limit": total_additive_slots,
                         "billing_cycle": "yearly" if is_yearly else "monthly",
                         "auto_renew": False,
                         "cancel_at_period_end": False,
                         "last_payment_date": now_utc,
-                        "plan_expires": new_expires,
+                        "plan_expires": max_exp,
                         "updated_at": now_utc
                     }}
                 )
+
+                # Instantly reconcile user's website slots with new cumulative capacity
+                try:
+                    from src.services.license_slot_service import LicenseSlotService
+                    reconcile_state = LicenseSlotService(self.db).resolve_user_license_state(u_id)
+                    all_user_sites = list(self.db.websites.find({"user_id": {"$in": target_uids}}))
+                    LicenseSlotService(self.db).reconcile_allocations(current_user, all_user_sites, reconcile_state)
+                except Exception:
+                    pass
 
                 # Invalidate in-memory license cache for immediate edge effect
                 from src.services.license_slot_service import _invalidate_cache
@@ -514,10 +558,11 @@ class SubscriptionService:
                         except Exception:
                             pass
 
+                        user_trial_days = int(user_doc.get("granted_trial_days") or total_trial)
                         notif_service.notify(
                             uid_str,
-                            title="14-Day Free Trial Concluded: Edge Protection Paused",
-                            message="Your 14-day free trial has concluded. Upgrade to an active fleet subscription to reactivate autonomous edge WAF filtering and malware protection.",
+                            title=f"{user_trial_days}-Day Free Trial Concluded: Edge Protection Paused",
+                            message=f"Your {user_trial_days}-day free trial has concluded. Upgrade to an active fleet subscription to reactivate autonomous edge WAF filtering and malware protection.",
                             category="trial_expired",
                             dedupe_key=f"expired_{uid_str}",
                             cooldown_seconds=86400
@@ -1029,10 +1074,11 @@ class SubscriptionService:
                         except Exception:
                             pass
 
+                        user_trial_days = int(user_doc.get("granted_trial_days") or total_trial)
                         notif_service.notify(
                             uid_str,
-                            title="14-Day Free Trial Concluded: Edge Protection Paused",
-                            message="Your 14-day free trial has concluded. Upgrade to an active fleet subscription to reactivate autonomous edge WAF filtering and malware protection.",
+                            title=f"{user_trial_days}-Day Free Trial Concluded: Edge Protection Paused",
+                            message=f"Your {user_trial_days}-day free trial has concluded. Upgrade to an active fleet subscription to reactivate autonomous edge WAF filtering and malware protection.",
                             category="trial_expired",
                             dedupe_key=f"expired_{uid_str}",
                             cooldown_seconds=86400

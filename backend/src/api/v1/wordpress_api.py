@@ -316,11 +316,15 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
         if auto_ok:
             is_site_licensed = True
 
-    trial_starts_at = website.get("trial_starts_at") or now
-    trial_ends_at = website.get("trial_ends_at") or (now + timedelta(days=14))
+    user_doc = slot_service._get_user_doc(auth_data["user_id"]) or {}
+    user_lic = slot_service.resolve_user_license_state(user_doc)
+    dyn_trial = int(PlanService(db).get_dynamic_pricing_config().get("trial_days") or 14)
+    user_trial_ends = user_doc.get("trial_ends_at") or (now + timedelta(days=dyn_trial))
 
-    seconds_remaining = (trial_ends_at - now).total_seconds() if trial_ends_at else 14 * 86400
-    days_remaining = max(0, math.ceil(seconds_remaining / 86400))
+    trial_starts_at = website.get("trial_starts_at") or user_doc.get("created_at") or now
+    trial_ends_at = website.get("trial_ends_at") or user_trial_ends
+
+    days_remaining = int(user_lic.get("trial_days_remaining", 0)) if not is_user_pro else 0
 
     if is_site_licensed:
         current_sub_status = "pro" if is_user_pro else "trial_active"
@@ -543,6 +547,8 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
         "mode": website.get("waf_mode", "protect"),
         "subscription_status": current_sub_status,
         "trial_days_remaining": trial_days_remaining_val,
+        "trial_days": trial_days_remaining_val,
+        "total_trial_days": dyn_trial,
         "message": "WordPress site connected",
     })
 

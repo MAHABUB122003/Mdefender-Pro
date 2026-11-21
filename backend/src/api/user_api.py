@@ -958,11 +958,9 @@ class UserAPI:
             }
             resp = None
             try:
-                resp = _req.get(sync_url, headers=headers, timeout=2.0, verify=False)
+                resp = _req.get(sync_url, headers=headers, timeout=0.8, verify=False)
             except Exception:
-                if site_url.startswith('https://'):
-                    clean_h = site_url.replace('https://', '').replace('http://', '')
-                    resp = _req.get(f"http://{clean_h}/?waf_cloud_sync=1&action=get_stats", headers=headers, timeout=2.0, verify=False)
+                pass
 
             if resp and resp.status_code == 200:
                 data = resp.json()
