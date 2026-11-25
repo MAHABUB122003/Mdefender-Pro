@@ -125,60 +125,28 @@ class IntelligenceService:
         c = conn.cursor()
 
         try:
-            # 1. Check known malicious signatures by SHA-256
             sha_map = {item["sha256"].lower(): item["path"] for item in file_items if item.get("sha256")}
             md5_map = {item["md5"].lower(): item["path"] for item in file_items if item.get("md5")}
 
-            detected_malicious = set()
-            if sha_map:
-                sha_list = list(sha_map.keys())
-                # Chunk into groups of 500 for SQLite IN parameter limit
-                for i in range(0, len(sha_list), 500):
-                    chunk = sha_list[i:i+500]
-                    placeholders = ",".join("?" * len(chunk))
-                    c.execute(f"""
-                        SELECT pattern_or_hash, category, severity, description
-                        FROM malicious_signatures 
-                        WHERE pattern_or_hash IN ({placeholders})
-                    """, chunk)
-                    for sh, cat, sev, desc in c.fetchall():
-                        m_path = sha_map.get(sh)
-                        if m_path and m_path not in detected_malicious:
-                            detected_malicious.add(m_path)
-                            malicious_findings.append({
-                                "file_path": m_path,
-                                "sha256": sh,
-                                "verdict": "malicious",
-                                "risk_score": 100,
-                                "confidence": 1.0,
-                                "threat_family": cat,
-                                "severity": sev,
-                                "description": desc,
-                                "detection_source": "known_malware_hash_intelligence"
-                            })
-
-            # 2. Check Official Core Checksums (by MD5)
+            # 1. Check Official Core Checksums (by MD5) FIRST to prevent false positives on pristine WP core files
             detected_clean = set()
-            remaining_for_clean = [item for item in file_items if item.get("path") not in detected_malicious]
+            md5_candidates = list(md5_map.keys())
+            for i in range(0, len(md5_candidates), 500):
+                chunk = md5_candidates[i:i+500]
+                placeholders = ",".join("?" * len(chunk))
+                c.execute(f"""
+                    SELECT DISTINCT md5 
+                    FROM core_checksums 
+                    WHERE md5 IN ({placeholders})
+                """, chunk)
+                for (md,) in c.fetchall():
+                    orig_path = md5_map.get(md)
+                    if orig_path and orig_path not in detected_clean:
+                        detected_clean.add(orig_path)
+                        clean_paths.append(orig_path)
 
-            if remaining_for_clean:
-                md5_candidates = list({item["md5"].lower() for item in remaining_for_clean if item.get("md5")})
-                for i in range(0, len(md5_candidates), 500):
-                    chunk = md5_candidates[i:i+500]
-                    placeholders = ",".join("?" * len(chunk))
-                    c.execute(f"""
-                        SELECT DISTINCT md5 
-                        FROM core_checksums 
-                        WHERE md5 IN ({placeholders})
-                    """, chunk)
-                    for (md,) in c.fetchall():
-                        orig_path = md5_map.get(md)
-                        if orig_path and orig_path not in detected_clean:
-                            detected_clean.add(orig_path)
-                            clean_paths.append(orig_path)
-
-            # 3. Check Official Plugin & Theme Checksums (by SHA-256 or MD5)
-            remaining_for_plugins = [item for item in remaining_for_clean if item.get("path") not in detected_clean]
+            # 2. Check Official Plugin & Theme Checksums (by SHA-256)
+            remaining_for_plugins = [item for item in file_items if item.get("path") not in detected_clean]
             if remaining_for_plugins:
                 plugin_sha = list({item["sha256"].lower() for item in remaining_for_plugins if item.get("sha256")})
                 for i in range(0, len(plugin_sha), 500):
@@ -194,6 +162,35 @@ class IntelligenceService:
                         if orig_path and orig_path not in detected_clean:
                             detected_clean.add(orig_path)
                             clean_paths.append(orig_path)
+
+            # 3. Check known malicious signatures by SHA-256 ONLY on files not verified clean
+            detected_malicious = set()
+            remaining_for_malicious = [item for item in file_items if item.get("path") not in detected_clean]
+            if remaining_for_malicious:
+                sha_list = list({item["sha256"].lower() for item in remaining_for_malicious if item.get("sha256")})
+                for i in range(0, len(sha_list), 500):
+                    chunk = sha_list[i:i+500]
+                    placeholders = ",".join("?" * len(chunk))
+                    c.execute(f"""
+                        SELECT pattern_or_hash, category, severity, description
+                        FROM malicious_signatures 
+                        WHERE pattern_or_hash IN ({placeholders})
+                    """, chunk)
+                    for sh, cat, sev, desc in c.fetchall():
+                        m_path = sha_map.get(sh)
+                        if m_path and m_path not in detected_malicious and m_path not in detected_clean:
+                            detected_malicious.add(m_path)
+                            malicious_findings.append({
+                                "file_path": m_path,
+                                "sha256": sh,
+                                "verdict": "malicious",
+                                "risk_score": 100,
+                                "confidence": 1.0,
+                                "threat_family": cat,
+                                "severity": sev,
+                                "description": desc,
+                                "detection_source": "known_malware_hash_intelligence"
+                            })
 
             # 4. Any item not malicious and not clean is unknown (needs inspection)
             for item in file_items:

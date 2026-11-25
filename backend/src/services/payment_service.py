@@ -33,7 +33,7 @@ DEFAULT_PLAN_PRICING = {
 
 class PaymentService:
     def __init__(self, db=None):
-        self.db = db or MongoDB()
+        self.db = db if db is not None else MongoDB()
         self.stripe_secret_key = os.getenv("STRIPE_SECRET_KEY", "").strip()
         self.stripe_publishable_key = os.getenv("STRIPE_PUBLISHABLE_KEY", "").strip()
         self.stripe_webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET", "").strip()

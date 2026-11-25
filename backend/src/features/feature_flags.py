@@ -33,7 +33,7 @@ DEFAULT_FLAG_NAMES = [
 
 class FeatureFlagService:
     def __init__(self, db=None):
-        self.db = db or MongoDB()
+        self.db = db if db is not None else MongoDB()
 
     def _flags(self):
         try:

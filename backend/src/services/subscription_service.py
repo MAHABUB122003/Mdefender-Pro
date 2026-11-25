@@ -25,7 +25,7 @@ from src.services.license_slot_service import _normalize_to_utc
 
 class SubscriptionService:
     def __init__(self, db=None):
-        self.db = db or MongoDB()
+        self.db = db if db is not None else MongoDB()
         self.plan_service = PlanService(self.db)
         self._ensure_indexes()
 
@@ -247,7 +247,8 @@ class SubscriptionService:
             "receipt_url": data.get("receipt_url") or (f"https://sandbox-receipts.paddle.com/{txn_id}" if txn_id else "#")
         }
 
-        # Idempotent upsert on transaction_id with anti-race deduplication
+        # Idempotent upsert on transaction_id with anti-race deduplication & anti-replay shield
+        is_already_fulfilled = False
         if txn_id:
             try:
                 # Deduplicate any concurrent race entries
@@ -255,6 +256,8 @@ class SubscriptionService:
                 if len(existing) > 1:
                     ids_to_del = [doc["_id"] for doc in existing[1:]]
                     self.db.paddle_transactions.delete_many({"_id": {"$in": ids_to_del}})
+                if existing and existing[0].get("fulfilled") is True:
+                    is_already_fulfilled = True
 
                 self.db.paddle_transactions.update_one(
                     {"transaction_id": txn_id},
@@ -277,8 +280,14 @@ class SubscriptionService:
 
         # Real-time automated fulfillment on completed transaction
         if status in ("paid", "completed", "billed") or str(event.get("event_type", "")).endswith(".completed"):
+            if is_already_fulfilled:
+                # Anti-replay protection: Prevents duplicate extensions / slot duplication on page refresh or replay
+                return
             try:
-                u_id = ObjectId(user_id) if ObjectId.is_valid(str(user_id)) else str(user_id)
+                target_uids = [str(user_id)]
+                if ObjectId.is_valid(str(user_id)):
+                    target_uids.append(ObjectId(str(user_id)))
+
                 custom = data.get("custom_data") or event.get("custom_data") or {}
                 plan = custom.get("plan") or "pro"
                 cycle = str(custom.get("billing_cycle") or "monthly").lower()
@@ -286,73 +295,144 @@ class SubscriptionService:
                 duration = 365 if is_yearly else 30
                 sites = int(custom.get("sites_count") or custom.get("website_limit") or custom.get("quantity") or 1)
 
-                # Software License Extension & Additive Multi-Batch Fleet Slot Engine:
-                current_user = self.db.users.find_one({"_id": u_id}) or {}
+                # Software License Extension, Renewal & Additive Fleet Slot Engine:
+                current_user = self.db.users.find_one({"_id": {"$in": target_uids}}) or {}
                 current_exp = _normalize_to_utc(current_user.get("plan_expires"), None)
-                batch_expires = now_utc + timedelta(days=duration)
-
-                # Migration/Backfill: If user held active slots prior to multi-batch ledger, preserve them as Batch 1
-                target_uids = [str(user_id)]
-                if ObjectId.is_valid(str(user_id)):
-                    target_uids.append(ObjectId(str(user_id)))
-
-                existing_batches_count = self.db.slot_batches.count_documents({"user_id": {"$in": target_uids}})
                 old_slots = int(current_user.get("purchased_slots") or 0)
-                if existing_batches_count == 0 and old_slots > 0 and current_exp and current_exp > now_utc:
+
+                action = str(custom.get("action") or custom.get("intent") or "").lower()
+                additional_slots = int(custom.get("additional_slots") or 0)
+                is_renewal_flag = bool(custom.get("is_renewal") is True or action in ("renew", "renewal", "extend"))
+
+                # Smart Action Classification (Automatic Fallback):
+                if not is_renewal_flag and action not in ("add_slots", "add", "scale", "expand"):
+                    # Only auto-classify as renewal if user pays for their existing fleet size (sites == old_slots)
+                    # and plan is either expired or near expiry (<= 14 days)
+                    if old_slots > 0 and sites == old_slots and (not current_exp or current_exp <= now_utc or (current_exp - now_utc).days <= 14):
+                        is_renewal_flag = True
+
+                if is_renewal_flag:
+                    # 1. RENEWAL ACTION:
+                    # Preserve current fleet capacity (DO NOT double or sum slots into duplicate capacity!)
+                    final_slots = old_slots if old_slots > 0 else sites
+
+                    # Extend validity forward
+                    if current_exp and current_exp > now_utc:
+                        final_expires = current_exp + timedelta(days=duration)
+                    else:
+                        final_expires = now_utc + timedelta(days=duration)
+
+                    # Update all existing active batches to the extended expiration date
+                    self.db.slot_batches.update_many(
+                        {"user_id": {"$in": target_uids}, "status": "active"},
+                        {"$set": {
+                            "expires_at": final_expires,
+                            "last_renewed_at": now_utc,
+                            "updated_at": now_utc,
+                            "slots": final_slots
+                        }}
+                    )
+
+                    # If no active batch existed (e.g. user was fully expired):
+                    if self.db.slot_batches.count_documents({"user_id": {"$in": target_uids}, "status": "active"}) == 0:
+                        self.db.slot_batches.insert_one({
+                            "user_id": str(user_id),
+                            "slots": final_slots,
+                            "billing_cycle": "yearly" if is_yearly else "monthly",
+                            "created_at": now_utc,
+                            "expires_at": final_expires,
+                            "status": "active",
+                            "batch_type": "renewal",
+                            "transaction_id": str(rec.get("_id") or event.get("id") or "")
+                        })
+
+                elif action in ("add_slots", "add", "additional") or additional_slots > 0:
+                    # 2. EXPLICIT ADD SLOTS:
+                    delta = additional_slots if additional_slots > 0 else sites
+                    final_slots = old_slots + delta
+                    if current_exp and current_exp > now_utc:
+                        final_expires = current_exp
+                    else:
+                        final_expires = now_utc + timedelta(days=duration)
+
                     self.db.slot_batches.insert_one({
                         "user_id": str(user_id),
-                        "slots": old_slots,
-                        "billing_cycle": current_user.get("billing_cycle", "monthly"),
-                        "created_at": current_user.get("last_payment_date") or (current_exp - timedelta(days=30)),
-                        "expires_at": current_exp,
+                        "slots": delta,
+                        "billing_cycle": "yearly" if is_yearly else "monthly",
+                        "created_at": now_utc,
+                        "expires_at": final_expires,
                         "status": "active",
-                        "is_legacy": True
+                        "batch_type": "add_slots",
+                        "transaction_id": str(rec.get("_id") or event.get("id") or "")
                     })
 
-                # Record newly purchased slot batch in the immutable ledger
-                self.db.slot_batches.insert_one({
-                    "user_id": str(user_id),
-                    "slots": sites,
-                    "billing_cycle": "yearly" if is_yearly else "monthly",
-                    "created_at": now_utc,
-                    "expires_at": batch_expires,
-                    "status": "active",
-                    "transaction_id": str(rec.get("_id") or event.get("id") or "")
-                })
+                elif action in ("expand", "scale", "set_fleet"):
+                    # 3. SET FLEET / EXPAND TOTAL:
+                    final_slots = max(sites, old_slots)
+                    delta = final_slots - old_slots
+                    if current_exp and current_exp > now_utc:
+                        final_expires = current_exp
+                    else:
+                        final_expires = now_utc + timedelta(days=duration)
 
-                # Calculate cumulative active fleet slots across all unexpired batches
-                active_batches = list(self.db.slot_batches.find({
-                    "user_id": {"$in": target_uids},
-                    "status": "active",
-                    "expires_at": {"$gt": now_utc}
-                }))
-                total_additive_slots = sum(int(b.get("slots", 0)) for b in active_batches) if active_batches else sites
-                max_exp = max((_normalize_to_utc(b.get("expires_at"), batch_expires) for b in active_batches), default=batch_expires)
+                    if delta > 0:
+                        self.db.slot_batches.insert_one({
+                            "user_id": str(user_id),
+                            "slots": delta,
+                            "billing_cycle": "yearly" if is_yearly else "monthly",
+                            "created_at": now_utc,
+                            "expires_at": final_expires,
+                            "status": "active",
+                            "batch_type": "expansion",
+                            "transaction_id": str(rec.get("_id") or event.get("id") or "")
+                        })
 
+                else:
+                    # 4. STANDARD NEW OR ADDITIVE FLEET BATCH:
+                    batch_expires = now_utc + timedelta(days=duration)
+                    self.db.slot_batches.insert_one({
+                        "user_id": str(user_id),
+                        "slots": sites,
+                        "billing_cycle": "yearly" if is_yearly else "monthly",
+                        "created_at": now_utc,
+                        "expires_at": batch_expires,
+                        "status": "active",
+                        "transaction_id": str(rec.get("_id") or event.get("id") or "")
+                    })
+                    active_batches = list(self.db.slot_batches.find({
+                        "user_id": {"$in": target_uids},
+                        "status": "active",
+                        "expires_at": {"$gt": now_utc}
+                    }))
+                    final_slots = sum(int(b.get("slots", 0)) for b in active_batches) if active_batches else sites
+                    final_expires = max((_normalize_to_utc(b.get("expires_at"), batch_expires) for b in active_batches), default=batch_expires)
+
+                target_user_id = current_user.get("_id") if current_user else (ObjectId(user_id) if ObjectId.is_valid(str(user_id)) else str(user_id))
                 self.db.users.update_one(
-                    {"_id": u_id},
+                    {"_id": target_user_id},
                     {"$set": {
                         "plan": plan,
                         "plan_tier": plan,
                         "is_paid": True,
                         "payment_status": "active",
-                        "purchased_slots": total_additive_slots,
-                        "website_limit": total_additive_slots,
+                        "purchased_slots": final_slots,
+                        "website_limit": final_slots,
                         "billing_cycle": "yearly" if is_yearly else "monthly",
                         "auto_renew": False,
                         "cancel_at_period_end": False,
                         "last_payment_date": now_utc,
-                        "plan_expires": max_exp,
+                        "plan_expires": final_expires,
                         "updated_at": now_utc
                     }}
                 )
 
                 # Instantly reconcile user's website slots with new cumulative capacity
+                refreshed_user = self.db.users.find_one({"_id": target_user_id}) or current_user
                 try:
                     from src.services.license_slot_service import LicenseSlotService
-                    reconcile_state = LicenseSlotService(self.db).resolve_user_license_state(u_id)
+                    reconcile_state = LicenseSlotService(self.db).resolve_user_license_state(user_id)
                     all_user_sites = list(self.db.websites.find({"user_id": {"$in": target_uids}}))
-                    LicenseSlotService(self.db).reconcile_allocations(current_user, all_user_sites, reconcile_state)
+                    LicenseSlotService(self.db).reconcile_allocations(refreshed_user, all_user_sites, reconcile_state)
                 except Exception:
                     pass
 
@@ -360,15 +440,30 @@ class SubscriptionService:
                 from src.services.license_slot_service import _invalidate_cache
                 _invalidate_cache(user_id=str(user_id))
 
+                # Push instant sync to connected WordPress sites
+                try:
+                    from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+                    push_instant_sync_to_wordpress(user_id=str(user_id))
+                except Exception:
+                    pass
+
                 # In-app confirmation notification
                 from src.services.notification_service import NotificationService
-                formatted_amt = f"${int(total_amount)/100:.2f}" if total_amount else f"${36 if sites==10 else sites*4:.2f}"
+                formatted_amt = f"${int(total_amount)/100:.2f}" if total_amount else f"${sites*4:.2f}"
+                msg_title = "Subscription Renewed" if is_renewal_flag else "Payment Confirmed"
+                msg_body = f"Thank you! Your subscription renewal of {formatted_amt} {curr_code} was successful. {final_slots} website license slot(s) are active." if is_renewal_flag else f"Thank you! Your payment of {formatted_amt} {curr_code} was successful. {final_slots} website license slot(s) are active."
                 NotificationService(self.db).notify(
                     str(user_id),
-                    title="Payment Confirmed",
-                    message=f"Thank you! Your payment of {formatted_amt} {curr_code} was successful. {sites} website license slot(s) are active.",
+                    title=msg_title,
+                    message=msg_body,
                     category="billing"
                 )
+
+                if txn_id:
+                    self.db.paddle_transactions.update_one(
+                        {"transaction_id": txn_id},
+                        {"$set": {"fulfilled": True, "fulfilled_at": now_utc}}
+                    )
             except Exception:
                 pass
 

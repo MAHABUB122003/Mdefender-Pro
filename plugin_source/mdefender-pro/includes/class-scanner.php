@@ -797,6 +797,25 @@ class WAF_FW_Scanner {
                         ];
                     }
 
+                    // High-speed Hash Intelligence Sweep: check all pending batch files at once against 5.32M records
+                    $batch_paths = [];
+                    foreach ($ml_batch as $f_row) {
+                        $full_p = ABSPATH . $f_row->file_path;
+                        if (file_exists($full_p) && is_file($full_p)) {
+                            $batch_paths[$f_row->file_path] = $full_p;
+                        }
+                    }
+
+                    $bulk_intel = !empty($batch_paths) ? $this->check_files_cloud_intelligence(array_values($batch_paths)) : null;
+                    $clean_paths_map = !empty($bulk_intel['clean']) ? array_flip($bulk_intel['clean']) : [];
+                    $malicious_findings_map = [];
+                    if (!empty($bulk_intel['malicious'])) {
+                        foreach ($bulk_intel['malicious'] as $mal) {
+                            $m_rel = ltrim(str_replace('\\', '/', $mal['file_path'] ?? ''), '/');
+                            $malicious_findings_map[$m_rel] = $mal;
+                        }
+                    }
+
                     $consecutive_errors = 0;
                     foreach ($ml_batch as $f_row) {
                         if ((microtime(true) - $start_time) > 8) {
@@ -809,6 +828,35 @@ class WAF_FW_Scanner {
                             continue;
                         }
 
+                        // Fast Path 1: Checksum Matched Official Clean File (Zero Network Bandwidth)
+                        if (isset($clean_paths_map[$full_path])) {
+                            $results['ml_malware_scan']['total_scanned']++;
+                            $results['ml_malware_scan']['clean_files'][] = $f_row->file_path;
+                            $results['ml_malware_scan']['clean_count']++;
+                            $wpdb->update($files_table, ['status' => 'completed_ml'], ['id' => $f_row->id]);
+                            continue;
+                        }
+
+                        // Fast Path 2: Threat Intelligence Matched Known Malware (Instant Detection)
+                        $norm_rel = ltrim(str_replace('\\', '/', $f_row->file_path), '/');
+                        if (isset($malicious_findings_map[$norm_rel])) {
+                            $mal_data = $malicious_findings_map[$norm_rel];
+                            $finding = [
+                                'file' => $f_row->file_path,
+                                'score' => intval($mal_data['risk_score'] ?? 100),
+                                'severity' => 'critical',
+                                'findings' => ['Known Threat Intelligence Match: ' . ($mal_data['description'] ?? 'Malware Hash Match') . ' [' . ($mal_data['threat_family'] ?? 'Malware') . ']'],
+                                'size' => filesize($full_path)
+                            ];
+                            $results['ml_malware_scan']['total_scanned']++;
+                            $results['ml_malware_scan']['malicious_files'][] = $finding;
+                            $results['ml_malware_scan']['malicious_count']++;
+                            $results['ml_malware_scan']['total_issues']++;
+                            $wpdb->update($files_table, ['status' => 'completed_ml'], ['id' => $f_row->id]);
+                            continue;
+                        }
+
+                        // Path 3: Unverified/Modified script -> Deep Stream Scan
                         $content = @file_get_contents($full_path);
                         if ($content === false || $content === '') {
                             $results['ml_malware_scan']['error_count']++;
@@ -817,7 +865,10 @@ class WAF_FW_Scanner {
                         }
 
                         $ml_client->refresh_config();
-                        $prediction = $ml_client->scan_file(basename($f_row->file_path), $content);
+                        // Use stream_scan_file for stateless in-memory deep inspection (0 MongoDB writes)
+                        $prediction = method_exists($ml_client, 'stream_scan_file') 
+                            ? $ml_client->stream_scan_file(basename($f_row->file_path), $content)
+                            : $ml_client->scan_file(basename($f_row->file_path), $content);
                         unset($content);
                         $results['ml_malware_scan']['total_scanned']++;
 
@@ -2671,6 +2722,71 @@ class WAF_FW_Scanner {
             if ($p > 0) $entropy -= $p * log($p, 2);
         }
         return $entropy;
+    }
+
+    /**
+     * High-speed Cloud Intelligence Batch Check against 5.32M official checksums and 14M threat records.
+     * Returns: ['clean' => [...], 'malicious' => [...], 'unknown' => [...]]
+     */
+    public function check_files_cloud_intelligence($file_paths = []) {
+        if (empty($file_paths) || !class_exists('WAF_FW_ML_Api_Client')) {
+            return ['clean' => [], 'malicious' => [], 'unknown' => $file_paths];
+        }
+        $client = WAF_FW_ML_Api_Client::instance();
+        if (!$client->is_available()) {
+            return ['clean' => [], 'malicious' => [], 'unknown' => $file_paths];
+        }
+
+        $hash_items = [];
+        $path_map = [];
+        foreach ($file_paths as $fp) {
+            if (!file_exists($fp) || !is_file($fp)) continue;
+            $size = @filesize($fp);
+            if ($size === false || $size > 15000000 || $size === 0) continue;
+
+            $rel_path = str_replace(wp_normalize_path(ABSPATH), '', wp_normalize_path($fp));
+            $rel_path = ltrim(str_replace('\\', '/', $rel_path), '/');
+
+            $sha256 = hash_file('sha256', $fp);
+            $md5 = hash_file('md5', $fp);
+            if ($sha256) {
+                $hash_items[] = [
+                    'path'   => $rel_path,
+                    'sha256' => $sha256,
+                    'md5'    => $md5 ?: ''
+                ];
+                $path_map[$rel_path] = $fp;
+            }
+        }
+
+        if (empty($hash_items)) {
+            return ['clean' => [], 'malicious' => [], 'unknown' => $file_paths];
+        }
+
+        $bulk_res = $client->check_bulk_hashes($hash_items);
+        if (!is_array($bulk_res) || empty($bulk_res)) {
+            return ['clean' => [], 'malicious' => [], 'unknown' => $file_paths];
+        }
+
+        $clean_files = [];
+        foreach (($bulk_res['clean'] ?? []) as $cp) {
+            if (isset($path_map[$cp])) {
+                $clean_files[] = $path_map[$cp];
+            }
+        }
+
+        $unknown_files = [];
+        foreach (($bulk_res['unknown'] ?? []) as $up) {
+            if (isset($path_map[$up])) {
+                $unknown_files[] = $path_map[$up];
+            }
+        }
+
+        return [
+            'clean'     => $clean_files,
+            'malicious' => $bulk_res['malicious'] ?? [],
+            'unknown'   => $unknown_files
+        ];
     }
 
     private function scan_for_wordpress_checksums() {

@@ -473,7 +473,10 @@ class UserAPI:
         orphan_site = None
         if not existing_site:
             orphan_site = self.db.websites.find_one({
-                '$or': [{'domain': domain}, {'url': domain}, {'name': domain}]
+                '$and': [
+                    {'$or': [{'domain': domain}, {'url': domain}, {'name': domain}]},
+                    {'$or': [{'user_id': None}, {'user_id': ''}, {'user_id': {'$exists': False}}]}
+                ]
             })
 
         # Generate unique dedicated scoped API Key for this website
@@ -1842,11 +1845,19 @@ class UserAPI:
                             tot = _parse_remote_count(r_data.get('total'))
                             if tot is None:
                                 tot = len(norm_logs)
+                            ret_tot = _parse_remote_count(r_data.get('retained_total'))
+                            life_tot = _parse_remote_count(r_data.get('lifetime_total'))
+                            life_blk = _parse_remote_count(r_data.get('lifetime_blocked'))
+                            life_all = _parse_remote_count(r_data.get('lifetime_allowed'))
                             tot_blk = _parse_remote_count(r_data.get('total_blocked'))
                             tot_all = _parse_remote_count(r_data.get('total_allowed'))
                             u_ips = _parse_remote_count(r_data.get('unique_ips'))
                             return _return_cached({
                                 'total': tot,
+                                'retained_total': ret_tot if ret_tot is not None else tot,
+                                'lifetime_total': life_tot,
+                                'lifetime_blocked': life_blk,
+                                'lifetime_allowed': life_all,
                                 'total_blocked': tot_blk,
                                 'total_allowed': tot_all,
                                 'unique_ips': u_ips,
@@ -1895,6 +1906,9 @@ class UserAPI:
                 total_remote_count = 0
                 remote_blocked_counts = []
                 remote_allowed_counts = []
+                remote_lifetime_totals = []
+                remote_lifetime_blocked = []
+                remote_lifetime_allowed = []
                 total_remote_ips = 0
 
                 def fetch_single_site_logs(site):
@@ -1943,19 +1957,25 @@ class UserAPI:
                                 _parse_remote_count(data.get('total_blocked')),
                                 _parse_remote_count(data.get('total_allowed')),
                                 _parse_remote_count(data.get('unique_ips')),
+                                _parse_remote_count(data.get('lifetime_total')),
+                                _parse_remote_count(data.get('lifetime_blocked')),
+                                _parse_remote_count(data.get('lifetime_allowed')),
                             )
                     except Exception:
                         pass
-                    return [], 0, domain_name, str(site.get('_id', site.get('id', ''))), None, None, None
+                    return [], 0, domain_name, str(site.get('_id', site.get('id', ''))), None, None, None, None, None, None
 
                 with ThreadPoolExecutor(max_workers=min(10, len(connected_wp_sites))) as executor:
                     futures = [executor.submit(fetch_single_site_logs, s) for s in connected_wp_sites]
                     for fut in as_completed(futures):
                         try:
-                            s_logs, s_tot, s_dom, s_id, s_blk, s_all, s_ips = fut.result()
+                            s_logs, s_tot, s_dom, s_id, s_blk, s_all, s_ips, s_ltot, s_lblk, s_lall = fut.result()
                             total_remote_count += s_tot
                             remote_blocked_counts.append(s_blk)
                             remote_allowed_counts.append(s_all)
+                            remote_lifetime_totals.append(s_ltot)
+                            remote_lifetime_blocked.append(s_lblk)
+                            remote_lifetime_allowed.append(s_lall)
                             if s_ips is not None:
                                 total_remote_ips += s_ips
                             for idx, rl in enumerate(s_logs):
@@ -1965,6 +1985,9 @@ class UserAPI:
                         except Exception:
                             remote_blocked_counts.append(None)
                             remote_allowed_counts.append(None)
+                            remote_lifetime_totals.append(None)
+                            remote_lifetime_blocked.append(None)
+                            remote_lifetime_allowed.append(None)
 
                 if all_remote_logs:
                     # Sort in memory by timestamp descending
@@ -1975,6 +1998,10 @@ class UserAPI:
                     calc_u_ips = max(total_remote_ips, len(set(l.get('ip') for l in all_remote_logs if l.get('ip'))))
                     return _return_cached({
                         'total': tot,
+                        'retained_total': tot,
+                        'lifetime_total': _sum_complete_remote_counts(remote_lifetime_totals),
+                        'lifetime_blocked': _sum_complete_remote_counts(remote_lifetime_blocked),
+                        'lifetime_allowed': _sum_complete_remote_counts(remote_lifetime_allowed),
                         'total_blocked': _sum_complete_remote_counts(remote_blocked_counts),
                         'total_allowed': _sum_complete_remote_counts(remote_allowed_counts),
                         'unique_ips': calc_u_ips,
@@ -2389,8 +2416,9 @@ class UserAPI:
                         self.db.live_site_events.delete_many({'website_id': {'$in': user_site_ids}})
                         self.db.waf_events.delete_many({'website_id': {'$in': user_site_ids}})
                 else:
-                    self.db.live_site_events.delete_many({'website_id': website_id})
-                    self.db.waf_events.delete_many({'website_id': website_id})
+                    if website_id in user_site_ids or website_id in user_domains:
+                        self.db.live_site_events.delete_many({'website_id': website_id, '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}, {'website_id': {'$in': user_site_ids}}]})
+                        self.db.waf_events.delete_many({'website_id': website_id, '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}, {'website_id': {'$in': user_site_ids}}]})
             except Exception:
                 pass
             total_deleted = r1.deleted_count + r2.deleted_count + r3.deleted_count

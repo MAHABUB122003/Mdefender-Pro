@@ -5,10 +5,12 @@ from src.database.mongodb_connection import MongoDB
 
 logger = logging.getLogger(__name__)
 
+_GLOBAL_SETTINGS_CACHE = {}
+
 
 class AttackBlocker:
     def __init__(self, db=None):
-        self.db = db or MongoDB()
+        self.db = db if db is not None else MongoDB()
 
     def record_attack(self, ip, attack_type, url='', user_id=None, website_id=None):
         u_str = str(user_id) if user_id else ""
@@ -173,9 +175,7 @@ class AttackBlocker:
         u_str = str(user_id) if user_id else ""
         import time
         now_ts = time.time()
-        if not hasattr(self, '_settings_cache'):
-            self._settings_cache = {}
-        cached, exp = self._settings_cache.get(u_str, (None, 0))
+        cached, exp = _GLOBAL_SETTINGS_CACHE.get(u_str, (None, 0))
         if now_ts < exp and cached is not None:
             return cached
 
@@ -215,7 +215,7 @@ class AttackBlocker:
             'two_factor_remember_days': int(doc.get('two_factor_remember_days', 0)),
             'two_factor_domain_overrides': doc.get('two_factor_domain_overrides', {}),
         }
-        self._settings_cache[u_str] = (res, now_ts + 60.0)
+        _GLOBAL_SETTINGS_CACHE[u_str] = (res, now_ts + 60.0)
         return res
 
     def update_user_settings(self, user_id, data):
@@ -282,6 +282,7 @@ class AttackBlocker:
             )
         except Exception:
             pass
+        _GLOBAL_SETTINGS_CACHE.pop(u_str, None)
         if hasattr(self, '_settings_cache'):
             self._settings_cache.clear()
 

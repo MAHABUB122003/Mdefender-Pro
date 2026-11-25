@@ -132,7 +132,7 @@ def _check_and_set_cooldown(key: tuple, cooldown_seconds: int) -> bool:
 
 class NotificationService:
     def __init__(self, db=None):
-        self.db = db or MongoDB()
+        self.db = db if db is not None else MongoDB()
 
     def _ensure_indexes(self):
         try:

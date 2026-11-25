@@ -230,9 +230,8 @@ export default function UserLayout({ children, onLogout }) {
   const isPaidActive = Boolean(
     profile?.is_admin ||
     profile?.role === 'super_admin' ||
-    profile?.is_paid ||
-    storedIsPaid ||
-    (activePlan !== 'free' && activePlan !== 'starter' && paymentStatus !== 'expired' && paymentStatus !== 'past_due' && paymentStatus !== 'canceled' && paymentStatus !== 'cancelled')
+    (profile?.is_paid && paymentStatus === 'active') ||
+    (activePlan !== 'free' && activePlan !== 'starter' && paymentStatus === 'active')
   )
   const isPaidExpired = Boolean(
     !isPaidActive && !profile?.is_admin && !profile?.role?.includes('admin') && (

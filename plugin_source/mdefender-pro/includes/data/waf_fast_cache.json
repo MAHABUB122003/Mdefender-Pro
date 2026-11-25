@@ -4,7 +4,7 @@
   "is_licensed": true,
   "license_status": "active",
   "waf_mode": "protect",
-  "updated_at": 1795251297,
+  "updated_at": 1795375954,
   "blacklist_ips": {},
   "blocked_countries": [],
   "local_server_country": "BD"

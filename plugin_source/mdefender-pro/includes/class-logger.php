@@ -87,6 +87,14 @@ class WAF_FW_Logger {
         global $wpdb;
         $ip = $data['ip'] ?? '';
         $country_code = $this->fast_get_country_code($ip);
+        $atk_type_str = strtolower((string)($data['attack_type'] ?? ''));
+        $default_code = 403;
+        if (strpos($atk_type_str, 'rate limit') !== false || strpos($atk_type_str, 'ddos') !== false || strpos($atk_type_str, 'flood') !== false) {
+            $default_code = 429;
+        } elseif (strpos($atk_type_str, 'login') !== false || strpos($atk_type_str, 'brute') !== false) {
+            $default_code = 401;
+        }
+        $status_code = !empty($data['status_code']) ? (int)$data['status_code'] : $default_code;
 
         $wpdb->insert(
             $this->db->get_attacks_table(),
@@ -98,6 +106,7 @@ class WAF_FW_Logger {
                 'attack_type' => $data['attack_type'] ?? 'Unknown',
                 'confidence' => $data['confidence'] ?? 0,
                 'status' => $data['status'] ?? 'blocked',
+                'status_code' => $status_code,
                 'user_agent' => $data['user_agent'] ?? '',
                 'referer' => $data['referer'] ?? '',
                 'request_body' => $data['request_body'] ?? '',
@@ -132,6 +141,15 @@ class WAF_FW_Logger {
         $url = !empty($data['url']) ? $data['url'] : substr($_SERVER['REQUEST_URI'] ?? '/', 0, 500);
         $method = !empty($data['method']) ? $data['method'] : ($_SERVER['REQUEST_METHOD'] ?? 'GET');
         $status = !empty($data['status']) ? $data['status'] : 'allowed';
+        $http_code = 200;
+        if (!empty($data['status_code'])) {
+            $http_code = (int) $data['status_code'];
+        } elseif (function_exists('http_response_code')) {
+            $detected_code = (int) http_response_code();
+            if ($detected_code >= 100 && $detected_code < 600) {
+                $http_code = $detected_code;
+            }
+        }
         $user_agent = !empty($data['user_agent']) ? $data['user_agent'] : substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 300);
 
         $wpdb->insert(
@@ -142,6 +160,7 @@ class WAF_FW_Logger {
                 'url' => $url,
                 'method' => $method,
                 'status' => $status,
+                'status_code' => $http_code,
                 'user_agent' => $user_agent,
                 'created_at' => !empty($data['created_at']) ? $data['created_at'] : current_time('mysql'),
             ]
@@ -677,19 +696,28 @@ class WAF_FW_Logger {
 
         $status = strtolower(trim($args['status'] ?? ''));
 
-        // Dual-Stream Unified Traffic Ledger: Seamlessly combines 200 Allowed Traffic and 403 Mitigated Attacks
-        if ($status === 'blocked' || $status === 'threat' || $status === 'mitigated' || $status === '403') {
-            $table_query = "SELECT id, ip, country_code, url, method, attack_type, confidence, status, rule_matched, user_agent, referer, request_body, reference_id, details, created_at FROM $attacks_table";
-        } elseif ($status === 'allowed' || $status === 'clean' || $status === '200') {
-            $table_query = "SELECT id, ip, country_code, url, method, 'Clean Traffic' AS attack_type, 0.05 AS confidence, status, '' AS rule_matched, user_agent, '' AS referer, '' AS request_body, '' AS reference_id, '' AS details, created_at FROM $requests_table";
+        // Dual-Stream Unified Traffic Ledger: Seamlessly combines Allowed Traffic (200/301/404/500) and Mitigated Attacks (403/429/401)
+        if ($status === 'blocked' || $status === 'threat' || $status === 'mitigated') {
+            $table_query = "SELECT id, ip, country_code, url, method, attack_type, confidence, status, COALESCE(status_code, 403) AS status_code, rule_matched, user_agent, referer, request_body, reference_id, details, created_at FROM $attacks_table";
+        } elseif ($status === 'allowed' || $status === 'clean') {
+            $table_query = "SELECT id, ip, country_code, url, method, 'Clean Traffic' AS attack_type, 0.05 AS confidence, status, COALESCE(status_code, 200) AS status_code, '' AS rule_matched, user_agent, '' AS referer, '' AS request_body, '' AS reference_id, '' AS details, created_at FROM $requests_table";
         } else {
-            $table_query = "(SELECT id, ip, country_code, url, method, attack_type, confidence, status, rule_matched, user_agent, referer, request_body, reference_id, details, created_at FROM $attacks_table)
+            $table_query = "(SELECT id, ip, country_code, url, method, attack_type, confidence, status, COALESCE(status_code, 403) AS status_code, rule_matched, user_agent, referer, request_body, reference_id, details, created_at FROM $attacks_table)
                             UNION ALL
-                            (SELECT id, ip, country_code, url, method, 'Clean Traffic' AS attack_type, 0.05 AS confidence, status, '' AS rule_matched, user_agent, '' AS referer, '' AS request_body, '' AS reference_id, '' AS details, created_at FROM $requests_table)";
+                            (SELECT id, ip, country_code, url, method, 'Clean Traffic' AS attack_type, 0.05 AS confidence, status, COALESCE(status_code, 200) AS status_code, '' AS rule_matched, user_agent, '' AS referer, '' AS request_body, '' AS reference_id, '' AS details, created_at FROM $requests_table)";
         }
 
         $where = ['1=1'];
         $params = [];
+
+        if (preg_match('/^\d{3}$/', $status)) {
+            $where[] = "status_code = %d";
+            $params[] = (int) $status;
+        } elseif ($status === '3xx') {
+            $where[] = "status_code >= 300 AND status_code < 400";
+        } elseif ($status === '5xx') {
+            $where[] = "status_code >= 500 AND status_code < 600";
+        }
 
         if (!empty($args['search'])) {
             $search = '%' . $wpdb->esc_like($args['search']) . '%';
@@ -733,9 +761,18 @@ class WAF_FW_Logger {
         $total_attacks_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table");
         $total_allowed_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $requests_table");
         $distinct_ips = (int) $wpdb->get_var("SELECT COUNT(DISTINCT ip) FROM ($table_query) AS d_ips");
+        $stat_blocked = (int) get_option('waf_fw_stats_blocked', 0);
+        $stat_allowed = (int) get_option('waf_fw_stats_allowed', 0);
+        $lifetime_blocked = max($total_attacks_count, $stat_blocked);
+        $lifetime_allowed = max($total_allowed_count, $stat_allowed);
+        $lifetime_total = $lifetime_blocked + $lifetime_allowed;
 
         return [
             'total' => $total,
+            'retained_total' => $total,
+            'lifetime_total' => $lifetime_total,
+            'lifetime_blocked' => $lifetime_blocked,
+            'lifetime_allowed' => $lifetime_allowed,
             'total_blocked' => $total_attacks_count,
             'total_allowed' => $total_allowed_count,
             'unique_ips' => $distinct_ips,

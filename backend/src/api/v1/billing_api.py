@@ -74,6 +74,9 @@ class CheckoutRequest(BaseModel):
     email: str | None = None
     return_url: str | None = None
     success_url: str | None = None
+    action: str | None = "subscribe"
+    additional_slots: int | None = None
+    is_renewal: bool | None = False
 
 
 class ChangePlanRequest(BaseModel):
@@ -134,12 +137,19 @@ async def create_checkout(body: CheckoutRequest, user=Depends(get_current_user_o
     customer_email = (user.get("email", "") if user else "") or body.customer_email or body.email or ""
     return_url = body.return_url or body.success_url or "http://localhost:5173/settings"
 
+    action = str(body.action or ("renew" if body.is_renewal else "subscribe")).lower()
+    additional_slots = int(body.additional_slots or 0)
+    is_renewal = bool(body.is_renewal or action in ("renew", "renewal", "extend"))
+
     custom_data = {
         "user_id": uid,
         "plan": body.plan or "pro",
         "billing_cycle": "yearly" if fleet_calc["is_yearly"] else "monthly",
         "website_limit": quantity,
         "sites_count": quantity,
+        "action": action,
+        "additional_slots": additional_slots,
+        "is_renewal": is_renewal,
         "discount_percent": fleet_calc["discount_percent"],
         "final_total": fleet_calc["final_total"],
         "unit_price": fleet_calc["unit_price"]
@@ -215,6 +225,8 @@ async def verify_transaction(
     plan: str | None = "pro",
     cycle: str | None = "monthly",
     sites: int | None = 1,
+    action: str | None = None,
+    is_renewal: bool | None = False,
     user=Depends(get_current_user)
 ):
     """Retrieve and verify a completed Paddle transaction, returning accurate receipt info.
@@ -257,11 +269,20 @@ async def verify_transaction(
 
     # Verify ownership binding to prevent cross-account transaction theft/replay
     custom = txn_data.get("custom_data") or {}
+    if not isinstance(custom, dict):
+        custom = {}
+    txn_data["custom_data"] = custom
+
     txn_user_id = str(custom.get("user_id") or "")
     current_uid = str(user.get("id") or user.get("_id"))
+    current_email = str((user or {}).get("email") or "").strip().lower()
+    txn_email = str((txn_data.get("customer") or {}).get("email") or txn_data.get("customer_email") or "").strip().lower()
 
-    if txn_user_id and txn_user_id != current_uid:
-        raise HTTPException(status_code=403, detail="Transaction does not belong to this user account")
+    if txn_user_id:
+        if txn_user_id != current_uid:
+            raise HTTPException(status_code=403, detail="Transaction does not belong to this user account")
+    elif not txn_email or txn_email != current_email:
+        raise HTTPException(status_code=403, detail="Transaction ownership could not be verified for this account")
 
     # Authoritative server-side fulfillment for verified transaction
     SubscriptionService(db).record_transaction(current_uid, {"data": txn_data, "event_type": "transaction.completed"})
@@ -328,10 +349,10 @@ async def cancel_subscription(user=Depends(get_current_user)):
 
     now = datetime.now()
     plan_expires = user_doc.get("plan_expires")
-    if not plan_expires or (isinstance(plan_expires, datetime) and plan_expires < now):
-        expiry_dt = now + timedelta(days=30)
+    if isinstance(plan_expires, datetime) and plan_expires > now:
+        expiry_dt = plan_expires
     else:
-        expiry_dt = plan_expires if isinstance(plan_expires, datetime) else now + timedelta(days=30)
+        expiry_dt = now
     
     expiry_label = expiry_dt.strftime("%B %d, %Y")
 
@@ -421,15 +442,6 @@ async def paddle_webhook(request: Request):
                     "data": dup_data,
                     **dup_data
                 }
-            evt_doc = {
-                "event_id": event_id,
-                "event_type": event_type,
-                "received_at": datetime.now()
-            }
-            if hasattr(db, "paddle_events"):
-                db.paddle_events.insert_one(evt_doc)
-            if hasattr(db, "billing_webhook_events"):
-                db.billing_webhook_events.insert_one(evt_doc)
         except Exception:
             pass
 
@@ -467,6 +479,20 @@ async def paddle_webhook(request: Request):
         service.record_transaction(user_id, event)
     elif "subscription." in event_type:
         service.upsert_paddle_subscription(user_id, event)
+
+    if event_id:
+        try:
+            evt_doc = {
+                "event_id": event_id,
+                "event_type": event_type,
+                "received_at": datetime.now()
+            }
+            if hasattr(db, "paddle_events"):
+                db.paddle_events.insert_one(evt_doc)
+            if hasattr(db, "billing_webhook_events"):
+                db.billing_webhook_events.insert_one(evt_doc)
+        except Exception:
+            pass
     
     action = "activated" if event_type.startswith("transaction.") else "processed"
     ret_res = {

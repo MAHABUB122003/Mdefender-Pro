@@ -99,7 +99,7 @@ export default function UserSettings() {
   const [terminatingAll, setTerminatingAll] = useState(false)
 
   // API Key
-  const [apiKey, setApiKey] = useState(cachedUser?.api_key || 'mdf_live_sec_sample_key')
+  const [apiKey, setApiKey] = useState(cachedUser?.api_key || '')
   const [isKeyMasked, setIsKeyMasked] = useState(true)
   const [copiedKey, setCopiedKey] = useState(false)
   const [regeneratingKey, setRegeneratingKey] = useState(false)
@@ -734,7 +734,7 @@ export default function UserSettings() {
               }}
             >
               {nameLoading && <RotateCw size={14} style={{ animation: 'spin 1s linear infinite' }} />}
-              <span>Save Profile Changes</span>
+              <span>Save</span>
             </button>
           </form>
         </div>

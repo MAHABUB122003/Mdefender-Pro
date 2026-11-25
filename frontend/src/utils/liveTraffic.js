@@ -15,7 +15,7 @@ export function normalizeLiveTrafficResponse(data, perPage) {
   const totalPages = Math.max(1, parseCount(data?.total_pages) ?? Math.ceil(total / perPage));
   const normalized = { logs: rows, total, total_pages: totalPages };
 
-  for (const key of ['total_blocked', 'total_allowed', 'unique_ips']) {
+  for (const key of ['total_blocked', 'total_allowed', 'unique_ips', 'retained_total', 'lifetime_total', 'lifetime_blocked', 'lifetime_allowed']) {
     const count = parseCount(data?.[key]);
     if (count !== undefined) normalized[key] = count;
   }
@@ -25,7 +25,7 @@ export function normalizeLiveTrafficResponse(data, perPage) {
 
 export function isBlockedTrafficLog(log) {
   const responseCode = Number(log?.response_code ?? log?.http_code ?? log?.status_code);
-  if (responseCode === 403) return true;
+  if (responseCode === 403 || responseCode === 429 || responseCode === 401) return true;
 
   const status = String(log?.status ?? '').trim().toLowerCase();
   const action = String(log?.action ?? '').trim().toLowerCase();
@@ -35,20 +35,22 @@ export function isBlockedTrafficLog(log) {
 function isAllowedTrafficLog(log) {
   if (isBlockedTrafficLog(log)) return false;
   const responseCode = Number(log?.response_code ?? log?.http_code ?? log?.status_code);
-  if (responseCode >= 200 && responseCode < 400) return true;
+  if (responseCode >= 200 && responseCode < 600) return true;
   const status = String(log?.status ?? '').trim().toLowerCase();
   const action = String(log?.action ?? '').trim().toLowerCase();
   return ALLOWED_TRAFFIC_STATUSES.has(status) || ALLOWED_TRAFFIC_STATUSES.has(action);
 }
 
-export function getLiveTrafficMetrics(data) {
+export function getLiveTrafficMetrics(data, isFiltered = false) {
   const logs = Array.isArray(data?.logs) ? data.logs : [];
-  const total = parseCount(data?.total) ?? logs.length;
-  const blockedCount = parseCount(data?.total_blocked) ?? logs.filter(isBlockedTrafficLog).length;
-  const allowedCount = parseCount(data?.total_allowed) ?? logs.filter(isAllowedTrafficLog).length;
+  const retainedTotal = parseCount(data?.retained_total) ?? parseCount(data?.total) ?? logs.length;
+  const total = (!isFiltered ? parseCount(data?.lifetime_total) : undefined) ?? parseCount(data?.total) ?? logs.length;
+  const blockedCount = (!isFiltered ? parseCount(data?.lifetime_blocked) : undefined) ?? parseCount(data?.total_blocked) ?? logs.filter(isBlockedTrafficLog).length;
+  const allowedCount = (!isFiltered ? parseCount(data?.lifetime_allowed) : undefined) ?? parseCount(data?.total_allowed) ?? logs.filter(isAllowedTrafficLog).length;
   const uniqueIps = parseCount(data?.unique_ips) ?? new Set(logs.map(log => log?.ip).filter(Boolean)).size;
   return {
     total,
+    retainedTotal,
     blockedCount,
     allowedCount,
     uniqueIps,

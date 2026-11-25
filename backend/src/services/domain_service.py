@@ -102,7 +102,7 @@ PLAN_LIMITS = {
 
 class DomainService:
     def __init__(self, db: Optional[MongoDB] = None):
-        self.db = db or MongoDB()
+        self.db = db if db is not None else MongoDB()
         self.dns_zone_svc = DNSZoneService(self.db)
 
     @staticmethod

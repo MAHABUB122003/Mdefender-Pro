@@ -166,12 +166,12 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
     });
   }, []);
 
-  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-  const testTrialParam = urlParams ? urlParams.get('test_trial_days') : null;
-  const testProParam = urlParams ? urlParams.get('test_pro') : null;
-
   const rawProfile = typeof window !== 'undefined' ? (userStore.get('profile') || {}) : {};
   const cachedProfile = rawProfile?.user || rawProfile || {};
+  const _allowTestOverride = import.meta.env.DEV || Boolean(cachedProfile?.is_admin || cachedProfile?.role === 'super_admin');
+  const urlParams = (_allowTestOverride && typeof window !== 'undefined') ? new URLSearchParams(window.location.search) : null;
+  const testTrialParam = urlParams ? urlParams.get('test_trial_days') : null;
+  const testProParam = urlParams ? urlParams.get('test_pro') : null;
   const storedPlan = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || '') : '';
   const storedIsPaid = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_is_paid') === 'true') : false;
   const activePlan = (testProParam === 'true' ? 'pro' : (cachedProfile?.plan || cachedProfile?.effective_plan || storedPlan || 'free')).toLowerCase();

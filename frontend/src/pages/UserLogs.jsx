@@ -721,7 +721,8 @@ export default function UserLogs() {
   };
 
   const logsList = Array.isArray(logs?.logs) ? logs.logs : [];
-  const kpiMetrics = useMemo(() => getLiveTrafficMetrics(logs), [logs]);
+  const isFiltered = Boolean(search || statusFilter || typeFilter || dateFrom || dateTo);
+  const kpiMetrics = useMemo(() => getLiveTrafficMetrics(logs, isFiltered), [logs, isFiltered]);
 
   return (
     <div style={{ maxWidth: '1720px', margin: '0 auto', padding: '4px 0 48px' }}>
@@ -942,10 +943,10 @@ export default function UserLogs() {
             </div>
             <div>
               <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Total Ingress Logs
+                Total Requests
               </div>
               <div
-                title={`${formatExactNumber(kpiMetrics.total)} Total Ingress Logs`}
+                title={`${formatExactNumber(kpiMetrics.total)} Total Requests (${formatExactNumber(kpiMetrics.retainedTotal)} retained logs)`}
                 style={{ fontSize: '17px', fontWeight: '700', color: '#10201E', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.03em', lineHeight: '1.1', marginTop: '1px', cursor: 'default' }}>
                 {formatMetricNumber(kpiMetrics.total)}
               </div>
@@ -979,7 +980,7 @@ export default function UserLogs() {
             </div>
             <div>
               <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                403 Intercepted Threats
+                Blocked Threats
               </div>
               <div
                 title={`${formatExactNumber(kpiMetrics.blockedCount)} Intercepted Threats`}
@@ -1016,7 +1017,7 @@ export default function UserLogs() {
             </div>
             <div>
               <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                200 Clean Ingress
+                Allowed Traffic
               </div>
               <div
                 title={`${formatExactNumber(kpiMetrics.allowedCount)} Clean Ingress Logs`}
@@ -1161,8 +1162,14 @@ export default function UserLogs() {
               }}
             >
               <option value="">All Ingress Traffic</option>
-              <option value="blocked">403 Intercepted Only</option>
-              <option value="allowed">200 Allowed Traffic Only</option>
+              <option value="blocked">Blocked Only (403/429/401)</option>
+              <option value="allowed">Allowed Traffic Only</option>
+              <option value="200">200 OK</option>
+              <option value="3xx">3xx Redirects (301/302)</option>
+              <option value="403">403 Forbidden (WAF)</option>
+              <option value="404">404 Not Found (Probes)</option>
+              <option value="429">429 Rate Limited</option>
+              <option value="5xx">5xx Server Errors</option>
             </select>
           </div>
 
@@ -2022,7 +2029,7 @@ export default function UserLogs() {
                         fontWeight: '700',
                         color: isBlocked ? '#DC2626' : '#1E293B'
                       }}>
-                        {log.status_code || (isBlocked ? '403' : '200')}
+                        {log?.response_code || log?.status_code || (isBlocked ? '403' : '200')}
                       </span>
                     </div>
 

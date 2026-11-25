@@ -157,7 +157,7 @@ def _score_to_grade(score: int) -> Dict[str, str]:
 
 class ReportService:
     def __init__(self, db=None):
-        self.db = db or MongoDB()
+        self.db = db if db is not None else MongoDB()
 
     def _resolve_user_doc(self, user: Any) -> Dict[str, Any]:
         if isinstance(user, dict) and user.get("email") and user.get("id"):
@@ -839,6 +839,7 @@ class ReportService:
         ]
 
         return {
+            "id": report_id,
             "report_id": report_id,
             "generated_at": now_utc.isoformat(),
             "generated_at_label": now_utc.strftime("%b %d, %Y at %H:%M UTC"),

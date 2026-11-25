@@ -99,7 +99,8 @@ export default function UserSidebar({ isOpen, onClose }) {
   const userEmail = cachedProfile.email || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_email') : '') || 'operator@mdefender.io'
   const userAvatar = cachedProfile.avatar || cachedProfile.picture || cachedProfile.photo_url || (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_avatar') || localStorage.getItem('mdefender_user_photo')) : null)
 
-  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
+  const _allowTestOverride = import.meta.env.DEV || Boolean(cachedProfile?.is_admin || cachedProfile?.role === 'super_admin')
+  const urlParams = (_allowTestOverride && typeof window !== 'undefined') ? new URLSearchParams(window.location.search) : null
   const testTrialParam = urlParams ? urlParams.get('test_trial_days') : null
   const testProParam = urlParams ? urlParams.get('test_pro') : null
 

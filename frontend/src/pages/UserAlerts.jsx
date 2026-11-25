@@ -868,7 +868,7 @@ export default function UserAlerts() {
                   }}
                 >
                   <Check size={13} />
-                  <span>Save Recipients</span>
+                  <span>Save</span>
                 </button>
               </div>
             </form>
@@ -966,7 +966,7 @@ export default function UserAlerts() {
                   }}
                 >
                   <Check size={13} />
-                  <span>Save Endpoint</span>
+                  <span>Save</span>
                 </button>
               </div>
             </form>

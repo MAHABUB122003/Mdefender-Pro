@@ -57,6 +57,7 @@ export default function PaymentSuccess() {
   const cycle = (searchParams.get('cycle') || 'monthly').toLowerCase();
   const rawSites = searchParams.get('sites') || searchParams.get('sites_count') || '1';
   const sitesCount = Math.max(1, parseInt(rawSites, 10) || 1);
+  const action = searchParams.get('action') || 'subscribe';
 
   const isYearly = ['yearly', 'annual', 'annually', '1 year'].includes(cycle);
 
@@ -73,6 +74,7 @@ export default function PaymentSuccess() {
           plan,
           cycle: isYearly ? 'yearly' : 'monthly',
           sites: sitesCount,
+          action,
         });
 
         const data = res?.data || res;

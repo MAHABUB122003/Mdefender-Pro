@@ -260,16 +260,22 @@ export default function UserPricing() {
 
       // 2. Request backend to create transaction with custom quantity and dynamic discount
       const userEmail = profile?.email || userStore.get('profile')?.email || '';
+      const isRenewal = Boolean(allocatedSlots > 0 && (sitesCount === allocatedSlots || isPaidExpired));
+      const isExpand = Boolean(allocatedSlots > 0 && sitesCount > allocatedSlots && isPaidActive);
+      const checkoutAction = isRenewal ? 'renew' : (isExpand ? 'expand' : 'subscribe');
+
       const res = await api.createPaddleCheckout({
         plan: 'pro',
         sites_count: sitesCount,
         quantity: sitesCount,
         sites: sitesCount,
         billing_cycle: billingCycle,
+        action: checkoutAction,
+        is_renewal: isRenewal,
         customer_email: userEmail,
         email: userEmail,
         return_url: window.location.href,
-        success_url: `${window.location.origin}/payment/success?plan=pro&cycle=${billingCycle}&sites=${sitesCount}`,
+        success_url: `${window.location.origin}/payment/success?plan=pro&cycle=${billingCycle}&sites=${sitesCount}&action=${checkoutAction}`,
       });
 
       if (!res.success && res.error) {
@@ -296,7 +302,7 @@ export default function UserPricing() {
               displayMode: 'overlay',
               theme: 'light',
               locale: 'en',
-              successUrl: `${window.location.origin}/payment/success?plan=pro&cycle=${billingCycle}&sites=${sitesCount}${checkoutData.checkout_id ? `&txn_id=${checkoutData.checkout_id}` : ''}`,
+              successUrl: `${window.location.origin}/payment/success?plan=pro&cycle=${billingCycle}&sites=${sitesCount}&action=${checkoutAction}${checkoutData.checkout_id ? `&txn_id=${checkoutData.checkout_id}` : ''}`,
             },
           });
           return;
@@ -992,7 +998,7 @@ export default function UserPricing() {
                 </span>
               ) : (
                 <span>
-                  Billed monthly at <strong>${monthlyRate}.00 per website</strong> · Cancel anytime
+                  Billed monthly at <strong>${Number(monthlyRate).toFixed(2)} per website</strong> · Cancel anytime
                 </span>
               )}
             </div>
@@ -1025,7 +1031,13 @@ export default function UserPricing() {
                 <span>Preparing Secure Checkout...</span>
               ) : (
                 <>
-                  <span>Activate &amp; Pay for {sitesCount} {sitesCount === 1 ? 'Site' : 'Sites'}</span>
+                  <span>
+                    {isPaidActive && sitesCount === allocatedSlots
+                      ? `Renew Subscription for ${sitesCount} ${sitesCount === 1 ? 'Site' : 'Sites'}`
+                      : isPaidActive && sitesCount > allocatedSlots
+                      ? `Expand Fleet to ${sitesCount} ${sitesCount === 1 ? 'Site' : 'Sites'}`
+                      : `Activate & Pay for ${sitesCount} ${sitesCount === 1 ? 'Site' : 'Sites'}`}
+                  </span>
                   <ArrowRight size={16} strokeWidth={2.4} />
                 </>
               )}
@@ -1231,10 +1243,11 @@ export default function UserPricing() {
           plan="pro"
           billingCycle={isYearly ? 'yearly' : 'monthly'}
           siteCount={sitesCount}
+          action={isPaidActive ? (sitesCount > allocatedSlots ? 'expand' : 'renew') : 'subscribe'}
           pricingConfig={pricingConfig}
           onSuccess={() => {
             setPaymentModalOpen(false);
-            showToast(`Successfully upgraded to ${sitesCount} website licenses!`, false);
+            showToast(`Successfully processed transaction for ${sitesCount} website licenses!`, false);
             fetchBilling();
           }}
         />

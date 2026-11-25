@@ -42,6 +42,7 @@ class TestRemoteHardeningSync(unittest.TestCase):
 
     def test_1_get_security_settings(self):
         orig_gow = ws_module.get_owned_website
+        orig_glw = getattr(ws_module, "get_licensed_website", None)
         try:
             ws_module.get_owned_website = lambda u, wid: self.mock_site
             res = asyncio.run(get_security_settings("site_wp_1", user=self.user_a))
@@ -52,9 +53,12 @@ class TestRemoteHardeningSync(unittest.TestCase):
             self.assertEqual(res["data"]["settings"]["blocked_countries"], ["CN"])
         finally:
             ws_module.get_owned_website = orig_gow
+            if orig_glw:
+                ws_module.get_licensed_website = orig_glw
 
     def test_2_patch_security_settings_updates_db(self):
         orig_gow = ws_module.get_owned_website
+        orig_glw = getattr(ws_module, "get_licensed_website", None)
         mock_db = MagicMock()
         mock_db.websites.find_one.return_value = {
             **self.mock_site,
@@ -65,6 +69,7 @@ class TestRemoteHardeningSync(unittest.TestCase):
 
         try:
             ws_module.get_owned_website = lambda u, wid: self.mock_site
+            ws_module.get_licensed_website = lambda u, wid: self.mock_site
             with patch("src.api.v1.websites_api.MongoDB", return_value=mock_db):
                 body = SecuritySettingsUpdate(
                     waf_mode="monitor",
@@ -86,6 +91,8 @@ class TestRemoteHardeningSync(unittest.TestCase):
                 self.assertEqual(updated_fields["blocked_countries"], ["CN", "RU"])
         finally:
             ws_module.get_owned_website = orig_gow
+            if orig_glw:
+                ws_module.get_licensed_website = orig_glw
 
     def test_3_idor_tenant_isolation(self):
         """Ensure User B cannot access or update User A's security settings."""

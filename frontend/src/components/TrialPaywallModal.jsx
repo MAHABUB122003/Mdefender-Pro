@@ -94,7 +94,6 @@ export default function TrialPaywallModal() {
   const testProParam = isPrivilegedAdmin && urlParams ? urlParams.get('test_pro') : null;
 
   const storedPlan = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || '') : '';
-  const storedIsPaid = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_is_paid') === 'true') : false;
   const storedPaymentStatus = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_payment_status') || '') : '';
 
   const activePlan = (userObj?.plan || userObj?.effective_plan || storedPlan || 'free').toLowerCase();
@@ -106,9 +105,8 @@ export default function TrialPaywallModal() {
     testProParam === 'true' ||
     userObj?.is_admin ||
     userObj?.role === 'super_admin' ||
-    userObj?.is_paid ||
-    storedIsPaid ||
-    (hasPaidPlan && paymentStatus !== 'expired' && paymentStatus !== 'past_due' && paymentStatus !== 'canceled' && paymentStatus !== 'cancelled')
+    (userObj?.is_paid && paymentStatus === 'active') ||
+    (hasPaidPlan && paymentStatus === 'active')
   );
 
   const isPaidExpired = Boolean(
@@ -322,6 +320,7 @@ export default function TrialPaywallModal() {
 
       // 2. Request Paddle Checkout session from backend
       const userEmail = profile?.email || userStore.get('profile')?.email || '';
+      const isRenewalAction = Boolean(isPaidExpired || Number(userObj?.purchased_slots || 0) > 0);
       const res = await api.createPaddleCheckout({
         plan: 'pro',
         billing_cycle: billingCycle,
@@ -331,6 +330,8 @@ export default function TrialPaywallModal() {
         site_count: siteCount,
         customer_email: userEmail,
         email: userEmail,
+        action: isRenewalAction ? 'renew' : 'subscribe',
+        is_renewal: isRenewalAction,
       });
 
       if (res && res.success === false && res.error) {
@@ -350,7 +351,7 @@ export default function TrialPaywallModal() {
               displayMode: 'overlay',
               theme: 'light',
               locale: 'en',
-              successUrl: `${window.location.origin}/payment/success?plan=pro&cycle=${billingCycle}&sites=${siteCount}${checkoutData.checkout_id ? `&txn_id=${checkoutData.checkout_id}` : ''}`,
+              successUrl: `${window.location.origin}/payment/success?plan=pro&cycle=${billingCycle}&sites=${siteCount}&action=${isRenewalAction ? 'renew' : 'subscribe'}${checkoutData.checkout_id ? `&txn_id=${checkoutData.checkout_id}` : ''}`,
             },
           });
           return;
@@ -473,7 +474,7 @@ export default function TrialPaywallModal() {
               ) : isHardLockout ? (
                 <>
                   <Lock size={12} strokeWidth={2.5} />
-                  <span>{pricingConfig?.trial_days || 14}-Day Trial Concluded</span>
+                  <span>{dynamicPricing?.trial_days || 14}-Day Trial Concluded</span>
                 </>
               ) : (
                 <>
@@ -619,7 +620,7 @@ export default function TrialPaywallModal() {
             {isPaidExpired
               ? 'Your MDefender Pro Fleet Protection Is Paused'
               : isHardLockout
-                ? `Your ${pricingConfig?.trial_days || 14}-Day Free Trial Has Concluded`
+                ? `Your ${dynamicPricing?.trial_days || 14}-Day Free Trial Has Concluded`
                 : 'Keep Your Fleet Protected with Enterprise SecOps'}
           </h1>
           <p style={{

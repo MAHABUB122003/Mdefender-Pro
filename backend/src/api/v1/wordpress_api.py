@@ -631,78 +631,29 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
             "command": None
         }
 
-    stored = db.wordpress_sites.find_one({"website_id": website_id})
-
-    if not stored:
-
-        db.wordpress_sites.update_one(
-
-            {"website_id": website_id},
-
-            {"$set": {
-
-                "website_id": website_id,
-
-                "user_id": user_id,
-
-                "domain": body.domain,
-
-                "connected": True,
-
-                "connected_at": datetime.now(),
-
-                "last_heartbeat": datetime.now(),
-
-                "plugin_version": body.plugin_version,
-
-                "status": "online",
-
-            }},
-
-            upsert=True
-
-        )
-
-
-
     updates = {
-
         "status": body.status,
-
         "last_heartbeat": datetime.now(),
-
     }
-
     site_updates = {"last_activity": datetime.now()}
 
     if body.plugins is not None:
-
         updates["plugins"] = body.plugins
-
         site_updates["plugins"] = body.plugins
 
     if body.themes is not None:
-
         updates["themes"] = body.themes
-
         site_updates["themes"] = body.themes
 
     if body.theme is not None:
-
         updates["theme"] = body.theme
-
         site_updates["theme"] = body.theme
 
     if body.hardening is not None:
-
         updates["hardening"] = body.hardening
-
         site_updates["hardening"] = body.hardening
-
         for hk, hv in body.hardening.items():
-
             if hk in ("disable_xmlrpc", "block_uploads_php", "disable_file_editing", "hide_wp_version", "prevent_user_enumeration", "security_headers", "file_permissions_check", "login_two_factor", "disable_directory_listing", "hide_login_url", "admin_ip_whitelist_enabled"):
-
                 site_updates[hk] = bool(hv)
             elif hk in ("custom_login_slug", "login_redirect_type"):
                 site_updates[hk] = str(hv or "")
@@ -710,191 +661,99 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
                 site_updates[hk] = [str(x).strip() for x in hv if str(x).strip()] if isinstance(hv, list) else []
 
     if body.backups is not None:
-
         updates["backups"] = body.backups
-
         site_updates["backups"] = body.backups
 
-
-
     if body.plugin_version:
-
         updates["plugin_version"] = body.plugin_version
 
     if body.stats:
-
         updates["last_stats"] = body.stats
-
         today_str = datetime.now().strftime("%Y-%m-%d")
-
         now_dt = datetime.now()
-
         
-
         req_blocked = int(body.stats.get("requests_blocked", 0) or 0)
-
         req_allowed = int(body.stats.get("requests_allowed", 0) or 0)
-
         total_site_reqs = req_blocked + req_allowed
 
-
-
         # Check if date changed for today's counter reset
-
         last_date = website.get("requests_today_date", "")
-
         site_prev_today = 0 if last_date != today_str else website.get("requests_today", 0)
-
         site_prev_blocked_today = 0 if last_date != today_str else website.get("blocked_today", 0)
 
-
-
         # Delta computation
-
         old_lifetime_reqs = website.get("total_requests", 0)
-
         old_lifetime_blocked = website.get("total_blocked", 0)
-
         new_lifetime_reqs = max(total_site_reqs, old_lifetime_reqs)
-
         new_lifetime_blocked = max(req_blocked, old_lifetime_blocked)
-
         
-
         delta_reqs = max(0, new_lifetime_reqs - old_lifetime_reqs)
-
         delta_blocked = max(0, new_lifetime_blocked - old_lifetime_blocked)
 
-
-
         new_today_reqs = site_prev_today + delta_reqs
-
         new_today_blocked = site_prev_blocked_today + delta_blocked
 
+        site_updates.update({
+            "total_requests": new_lifetime_reqs,
+            "total_blocked": new_lifetime_blocked,
+            "requests_today": new_today_reqs,
+            "blocked_today": new_today_blocked,
+            "requests_today_date": today_str,
+            "last_activity": now_dt,
+        })
 
-
-        w_cond = {"$or": [{"_id": website_id}]}
-
-        if ObjectId.is_valid(str(website_id)):
-
-            w_cond["$or"].append({"_id": ObjectId(str(website_id))})
-
-
-
-        db.websites.update_one(
-
-            w_cond,
-
-            {
-
-                "$set": {
-
-                    "total_requests": new_lifetime_reqs,
-
-                    "total_blocked": new_lifetime_blocked,
-
-                    "requests_today": new_today_reqs,
-
-                    "blocked_today": new_today_blocked,
-
-                    "requests_today_date": today_str,
-
-                    "last_activity": now_dt,
-
-                }
-
-            }
-
-        )
-
-        try:
-
-            u_id = auth_data.get("user_id")
-
-            u_matches = [{"_id": u_id}, {"id": u_id}]
-
-            if ObjectId.is_valid(str(u_id)):
-
-                u_matches.append({"_id": ObjectId(str(u_id))})
-
-            
-
-            # Aggregate totals across all websites owned by this user
-
-            all_user_sites = list(db.websites.find({"$or": [{"user_id": str(u_id)}, {"user_id": ObjectId(str(u_id))}] if ObjectId.is_valid(str(u_id)) else [{"user_id": str(u_id)}]}))
-
-            user_tot_req = sum(s.get("total_requests", 0) for s in all_user_sites)
-
-            user_tot_blk = sum(s.get("total_blocked", 0) for s in all_user_sites)
-
-            user_today_req = sum(s.get("requests_today", 0) for s in all_user_sites if s.get("requests_today_date") == today_str)
-
-            user_tot_req = max(user_tot_req, user_today_req)
-
-
-
-            db.users.update_one(
-
-                {"$or": u_matches},
-
-                {
-
-                    "$set": {
-
-                        "total_requests": user_tot_req,
-
-                        "total_blocked": user_tot_blk,
-
-                        "requests_today": user_today_req,
-
-                        "requests_today_date": today_str,
-
-                        "updated_at": now_dt,
-
+        if delta_reqs > 0 or delta_blocked > 0:
+            try:
+                u_id = auth_data.get("user_id")
+                u_matches = [{"_id": u_id}, {"id": u_id}]
+                if ObjectId.is_valid(str(u_id)):
+                    u_matches.append({"_id": ObjectId(str(u_id))})
+                
+                db.users.update_one(
+                    {"$or": u_matches},
+                    {
+                        "$inc": {
+                            "total_requests": delta_reqs,
+                            "total_blocked": delta_blocked,
+                            "requests_today": delta_reqs,
+                            "blocked_today": delta_blocked,
+                        },
+                        "$set": {
+                            "requests_today_date": today_str,
+                            "updated_at": now_dt,
+                        }
                     }
-
-                }
-
-            )
-
-        except Exception:
-
-            pass
-
-        
+                )
+            except Exception:
+                pass
 
     w_cond = {"$or": [{"_id": website_id}]}
-
     if ObjectId.is_valid(str(website_id)):
-
         w_cond["$or"].append({"_id": ObjectId(str(website_id))})
 
-
-
     wp_site_cond = {"$or": [{"website_id": str(auth_data["website_id"])}]}
-
     if ObjectId.is_valid(str(auth_data["website_id"])):
-
         wp_site_cond["$or"].append({"website_id": ObjectId(str(auth_data["website_id"]))})
 
-
-
     db.websites.update_one(
-
         w_cond,
-
         {"$set": site_updates},
-
     )
 
-
-
+    wp_set_on_insert = {
+        "website_id": str(auth_data["website_id"]),
+        "user_id": user_id,
+        "domain": body.domain,
+        "connected": True,
+        "connected_at": datetime.now(),
+    }
     db.wordpress_sites.update_one(
-
         wp_site_cond,
-
-        {"$set": updates},
-
+        {
+            "$set": updates,
+            "$setOnInsert": wp_set_on_insert,
+        },
+        upsert=True
     )
 
 
@@ -1030,102 +889,50 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
 
 
 
+    # Build strict scoped query (never full-collection scan across all tenants)
+    _scope_conds = [{"is_global": True}]
+    if user_id:
+        _u_str = str(user_id)
+        _scope_conds.extend([{"user_id": _u_str}, {"added_by_user_id": _u_str}])
+        if ObjectId.is_valid(_u_str):
+            _scope_conds.extend([{"user_id": ObjectId(_u_str)}, {"added_by_user_id": ObjectId(_u_str)}])
+    if user_email:
+        _scope_conds.append({"added_by": user_email})
+    _tenant_query = {"$or": _scope_conds}
+
     raw_blacklist = []
-
-    for item in db.blacklist.find():
-
+    for item in db.blacklist.find(_tenant_query):
         ip_val = (item.get("ip") or "").strip()
-
         if not ip_val:
-
             continue
-
         exp = item.get("expires_at")
-
         if exp:
-
             if isinstance(exp, str):
-
                 try:
-
                     exp = datetime.fromisoformat(exp.replace("Z", "+00:00"))
-
                 except Exception:
-
                     try:
-
                         exp = datetime.strptime(exp, "%Y-%m-%d %H:%M:%S")
-
                     except Exception:
-
                         exp = None
-
             if isinstance(exp, datetime) and exp <= now:
-
                 continue
-
-        
-
-        item_u = str(item.get("user_id") or item.get("added_by_user_id") or "")
-
-        item_email = item.get("added_by", "")
-
-        is_global = item.get("is_global", False)
-
-        if not user_id or is_global or not item_u or item_u == str(user_id) or (user_email and item_email == user_email):
-
-            raw_blacklist.append(ip_val)
-
+        raw_blacklist.append(ip_val)
     blacklist = list(set(raw_blacklist))
 
-
-
     # Fetch active whitelisted IPs (scoped to user or is_global)
-
     raw_whitelist = []
-
-    for item in db.whitelist.find():
-
+    for item in db.whitelist.find(_tenant_query):
         ip_val = (item.get("ip") or "").strip()
-
-        if not ip_val:
-
-            continue
-
-        item_u = str(item.get("user_id") or item.get("added_by_user_id") or "")
-
-        item_email = item.get("added_by", "")
-
-        is_global = item.get("is_global", False)
-
-        if not user_id or is_global or not item_u or item_u == str(user_id) or (user_email and item_email == user_email):
-
+        if ip_val:
             raw_whitelist.append(ip_val)
-
     whitelist = list(set(raw_whitelist))
 
-
-
     # Fetch active country blocks (strictly scoped to user or is_global)
-
     country_set = set()
-
-    for item in db.country_blocks.find():
-
+    for item in db.country_blocks.find(_tenant_query):
         c_code = (item.get("country_code") or "").strip().upper()
-
-        if not c_code or len(c_code) != 2:
-
-            continue
-
-        item_u = str(item.get("user_id") or item.get("added_by_user_id") or "")
-
-        item_email = item.get("added_by", "")
-
-        is_global = item.get("is_global", False)
-
-        if not user_id or is_global or not item_u or item_u == str(user_id) or (user_email and item_email == user_email):
-
+        if c_code and len(c_code) == 2:
             country_set.add(c_code)
 
     # Merge website-specific blocked countries
@@ -1259,107 +1066,49 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None, wait=False):
             # Build fresh active Blacklist with robust date parsing
 
             now = datetime.now()
+            _push_scope = [{"is_global": True}]
+            if u_str:
+                _push_scope.extend([{"user_id": u_str}, {"added_by_user_id": u_str}])
+                if ObjectId.is_valid(u_str):
+                    _push_scope.extend([{"user_id": ObjectId(u_str)}, {"added_by_user_id": ObjectId(u_str)}])
+            if user_email:
+                _push_scope.append({"added_by": user_email})
+            _push_query = {"$or": _push_scope}
 
             raw_bl = []
-
-            for item in db.blacklist.find():
-
+            for item in db.blacklist.find(_push_query):
                 ip_val = (item.get("ip") or "").strip()
-
                 if not ip_val or ip_val in ("127.0.0.1", "::1", "0.0.0.0", "localhost"):
-
                     continue
-
                 exp = item.get("expires_at")
-
                 if exp:
-
                     if isinstance(exp, str):
-
                         try:
-
                             exp = datetime.fromisoformat(exp.replace("Z", "+00:00"))
-
                         except Exception:
-
                             try:
-
                                 exp = datetime.strptime(exp, "%Y-%m-%d %H:%M:%S")
-
                             except Exception:
-
                                 exp = None
-
                     if isinstance(exp, datetime) and exp <= now:
-
                         continue
-
-                
-
-                item_u = str(item.get("user_id") or item.get("added_by_user_id") or "")
-
-                item_email = item.get("added_by", "")
-
-                is_global = item.get("is_global", False)
-
-                if not u_str or is_global or not item_u or item_u == u_str or (user_email and item_email == user_email):
-
-                    raw_bl.append(ip_val)
-
-            
-
+                raw_bl.append(ip_val)
             blacklist = list(set(raw_bl))
 
-
-
             # Build fresh active Whitelist
-
             raw_wl = []
-
-            for item in db.whitelist.find():
-
+            for item in db.whitelist.find(_push_query):
                 ip_val = (item.get("ip") or "").strip()
-
-                if not ip_val:
-
-                    continue
-
-                item_u = str(item.get("user_id") or item.get("added_by_user_id") or "")
-
-                item_email = item.get("added_by", "")
-
-                is_global = item.get("is_global", False)
-
-                if not u_str or is_global or not item_u or item_u == u_str or (user_email and item_email == user_email):
-
+                if ip_val:
                     raw_wl.append(ip_val)
-
             whitelist = list(set(raw_wl))
 
-
-
-            # Build fresh Country Blocks with robust parsing
-
+            # Build fresh Country Blocks
             country_set = set()
-
-            for item in db.country_blocks.find():
-
+            for item in db.country_blocks.find(_push_query):
                 c_code = (item.get("country_code") or "").strip().upper()
-
-                if not c_code or len(c_code) != 2:
-
-                    continue
-
-                item_u = str(item.get("user_id") or item.get("added_by_user_id") or "")
-
-                item_email = item.get("added_by", "")
-
-                is_global = item.get("is_global", False)
-
-                if not u_str or is_global or not item_u or item_u == u_str or (user_email and item_email == user_email):
-
+                if c_code and len(c_code) == 2:
                     country_set.add(c_code)
-
             blocked_countries = list(country_set)
 
 
@@ -2251,23 +2000,23 @@ async def agent_disconnect_wordpress(body: AgentDisconnectRequest, request: Requ
     db = MongoDB()
     auth_header = request.headers.get("Authorization", "")
     bearer_key = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else ""
-    api_key = (body.api_key or bearer_key or "").strip()
+    api_key = (body.api_key or bearer_key or request.headers.get("X-API-Key") or "").strip()
+    if not api_key or len(api_key) < 16:
+        raise HTTPException(status_code=401, detail="Valid API key is required to disconnect WordPress site.")
 
     website = None
     if body.website_id:
-        website = db.websites.find_one({"_id": body.website_id}) or db.websites.find_one({"id": body.website_id})
+        candidate = db.websites.find_one({"_id": body.website_id}) or db.websites.find_one({"id": body.website_id})
+        if candidate and candidate.get("api_key") == api_key:
+            website = candidate
 
-    if not website and body.domain and api_key and len(api_key) >= 16:
-        auth_data = verify_api_key(db, api_key, body.domain)
+    if not website and (body.domain or api_key):
+        auth_data = verify_api_key(db, api_key, body.domain or "")
         if auth_data and auth_data.get("website"):
             website = auth_data["website"]
 
-    if not website and body.domain:
-        raw_dom = body.domain or ""
-        clean_dom = re.sub(r"^https?:\/\/", "", raw_dom, flags=re.I).split("/")[0].split(":")[0].strip().lower()
-        clean_dom = re.sub(r"^www\.", "", clean_dom, flags=re.I)
-        if clean_dom:
-            website = db.websites.find_one({"domain": clean_dom}) or db.websites.find_one({"domain": f"www.{clean_dom}"})
+    if not website:
+        raise HTTPException(status_code=403, detail="API key does not match the target WordPress site.")
 
     if website:
         site_id = website.get("_id") or website.get("id")
@@ -2459,7 +2208,7 @@ async def update_core_auto_update_policy(website_id: str, body: CorePolicyReques
 
     """Configure auto-update policy (minor, all, disabled)."""
 
-    get_owned_website(user, website_id)
+    get_licensed_website(user, website_id)
 
     user_id = str(user.get("id") or user.get("_id") or "")
 

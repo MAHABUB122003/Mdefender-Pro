@@ -274,7 +274,7 @@ def verify_api_key(db, api_key, domain=None, site_url=None):
                     "verified": True,
                     "subscription_status": sub_status,
                     "trial_starts_at": now,
-                    "trial_ends_at": now + timedelta(days=14),
+                    "trial_ends_at": now + timedelta(days=int(PlanService(db).get_dynamic_pricing_config().get("trial_days") or 14)),
                     "connected_at": now,
                     "last_activity": now,
                     "created_at": now,

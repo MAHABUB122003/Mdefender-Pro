@@ -1065,7 +1065,6 @@ export default function BulkLoginGateway() {
                                         e.currentTarget.style.color = '#FFFFFF'
                                         e.currentTarget.style.borderColor = '#B91C1C'
                                         e.currentTarget.style.boxShadow = '0 2px 6px rgba(220, 38, 38, 0.35)'
-                                        e.currentTarget.style.transform = 'translateY(-1px)'
                                       }
                                     }}
                                     onMouseLeave={(e) => {

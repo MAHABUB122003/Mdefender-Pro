@@ -60,7 +60,7 @@ def _invalidate_cache(user_id: str = None, website_id: str = None):
 
 class LicenseSlotService:
     def __init__(self, db=None):
-        self.db = db or MongoDB()
+        self.db = db if db is not None else MongoDB()
 
     def _normalize_id(self, val):
         if not val:
@@ -169,9 +169,19 @@ class LicenseSlotService:
                 payment_status == "active" and plan != "free" and (not plan_expires or plan_expires > now_dt)
             )
         )
-        is_trial_eligible_status = payment_status not in ("expired", "refunded")
+        # Strict Anti-Resurrection Shield: Expired trial users can NEVER be reactivated without paying
+        is_trial_concluded = bool(
+            user_doc.get("trial_exhausted") is True or
+            payment_status in ("expired", "refunded", "trial_expired") or
+            (trial_ends and trial_ends <= now_dt)
+        )
+        is_trial_eligible_status = not is_trial_concluded
         is_trial_active = (not is_paid) and (t_days_rem > 0) and is_trial_eligible_status and not has_subscription_expired
-        if is_trial_active and payment_status in ("trial_expired", "unlicensed", "none", "", None):
+        if not is_trial_active and not is_paid:
+            if t_days_rem <= 0 or is_trial_concluded:
+                if payment_status in ("trialing", "trial", "none", "", None):
+                    payment_status = "trial_expired" if plan == "free" else "expired"
+        elif is_trial_active and payment_status in ("unlicensed", "none", "", None):
             payment_status = "trialing"
 
         # Multi-Batch Additive Fleet Slot Resolution (Granular Per-Batch Expiration)
@@ -352,28 +362,15 @@ class LicenseSlotService:
             if len(target_licensed_ids) > total_slots:
                 # Trim excess if total_slots decreased (e.g. downgraded or transitioned from trial)
                 target_licensed_ids = target_licensed_ids[:total_slots]
-            elif user_doc.get("licensed_website_ids") is None and len(valid_site_id_set) > 0:
-                # Initial auto-provisioning for fresh fleet upgrade when never configured
-                has_explicit_pauses = any(bool(w.get("protection_paused")) for w in websites)
-                if not has_explicit_pauses:
-                    available_sites = [str(w["_id"]) for w in websites]
-                    target_licensed_ids = available_sites[:total_slots]
-                    for overflow_w in websites:
-                        ow_id = str(overflow_w["_id"])
-                        if ow_id not in target_licensed_ids:
-                            ow_query = {"_id": ObjectId(ow_id)} if ObjectId.is_valid(ow_id) else {"_id": ow_id}
-                            self.db.websites.update_one(ow_query, {"$set": {"protection_paused": True}})
-            elif len(target_licensed_ids) == 0 and not user_doc.get("licensed_website_ids") and len(valid_site_id_set) > 0:
-                # Fresh user without explicit licensed list: auto-provision up to total_slots
-                has_explicit_pauses = any(bool(w.get("protection_paused")) for w in websites)
-                if not has_explicit_pauses:
-                    available_sites = [str(w["_id"]) for w in websites]
-                    target_licensed_ids = available_sites[:total_slots]
-                    for overflow_w in websites:
-                        ow_id = str(overflow_w["_id"])
-                        if ow_id not in target_licensed_ids:
-                            ow_query = {"_id": ObjectId(ow_id)} if ObjectId.is_valid(ow_id) else {"_id": ow_id}
-                            self.db.websites.update_one(ow_query, {"$set": {"protection_paused": True}})
+            elif len(target_licensed_ids) == 0 and len(valid_site_id_set) > 0:
+                # Active paid fleet with unallocated sites (fresh upgrade or reactivation after expiration)
+                available_sites = [str(w["_id"]) for w in websites]
+                target_licensed_ids = available_sites[:total_slots]
+                for overflow_w in websites:
+                    ow_id = str(overflow_w["_id"])
+                    if ow_id not in target_licensed_ids:
+                        ow_query = {"_id": ObjectId(ow_id)} if ObjectId.is_valid(ow_id) else {"_id": ow_id}
+                        self.db.websites.update_one(ow_query, {"$set": {"protection_paused": True, "is_licensed": False, "license_status": "unlicensed"}})
         # Case 3: Trial expired and no active payment -> Zero licensed
         else:
             target_licensed_ids = []
@@ -413,6 +410,7 @@ class LicenseSlotService:
                         {"$set": {
                             "is_licensed": should_be_licensed,
                             "license_status": new_status,
+                            "protection_paused": not should_be_licensed,
                             "is_protected": should_be_licensed and bool(w.get("is_active", True)),
                             "updated_at": datetime.now()
                         }}
@@ -449,15 +447,32 @@ class LicenseSlotService:
         if wid_str in current_licensed:
             return True, "Website already holds an active license slot."
 
-        if len(current_licensed) >= state["purchased_slots"]:
-            return False, f"Slot limit reached: All {state['purchased_slots']} license slot(s) are currently in use. Release a slot from another site or upgrade your fleet plan."
+        max_slots = int(state.get("purchased_slots") or 0)
+        if max_slots <= 0:
+            return False, "You do not have any active license slots. Upgrade your fleet plan to protect more sites."
 
-        # Atomic update on user document
-        user_query = {"_id": ObjectId(uid_str)} if ObjectId.is_valid(uid_str) else {"_id": uid_str}
+        if len(current_licensed) >= max_slots:
+            return False, f"Slot limit reached: All {max_slots} license slot(s) are currently in use. Release a slot from another site or upgrade your fleet plan."
+
+        # Mathematically guaranteed atomic concurrency gate:
+        # In MongoDB, if an array has < max_slots elements, index (max_slots - 1) does NOT exist.
+        # This prevents TOCTOU race conditions when multiple concurrent requests attempt to assign slots simultaneously.
+        user_target_id = user_doc.get("_id") or (ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str)
+        user_query = {
+            "_id": user_target_id,
+            f"licensed_website_ids.{max_slots - 1}": {"$exists": False}
+        }
         upd = self.db.users.update_one(
             user_query,
             {"$addToSet": {"licensed_website_ids": wid_str}}
         )
+
+        if upd.modified_count == 0:
+            fresh_user = self._get_user_doc(uid_str) or {}
+            fresh_licensed = [str(x) for x in fresh_user.get("licensed_website_ids", []) if x]
+            if wid_str in fresh_licensed:
+                return True, "Website already holds an active license slot."
+            return False, f"Slot limit reached: All {max_slots} license slot(s) are currently in use. Release a slot from another site or upgrade your fleet plan."
 
         # Update website
         self.db.websites.update_one(
@@ -678,7 +693,7 @@ class LicenseSlotService:
         # Check trial
         if state["is_trial_active"]:
             _LICENSE_CACHE[cache_key] = (True, now + CACHE_TTL_SECONDS)
-            return True, "14-day trial active"
+            return True, f"{state.get('trial_days_remaining', 14)}-day trial active"
 
         # Check paid subscription & slot assignment
         if not state["is_paid"]:

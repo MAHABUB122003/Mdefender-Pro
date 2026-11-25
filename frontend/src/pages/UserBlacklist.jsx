@@ -634,8 +634,8 @@ export default function UserBlacklist({ activeMode }) {
           100% { background-position: 200% 0; }
         }
         @keyframes mdfFadeIn {
-          from { opacity: 0; transform: translateY(4px); }
-          to { opacity: 1; transform: translateY(0); }
+          from { opacity: 0.6; }
+          to { opacity: 1; }
         }
         .mdf-shimmer {
           background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);

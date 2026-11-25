@@ -441,7 +441,7 @@ function BulkUptimeContent() {
   const probeSite = useCallback(async (site, notify = false) => {
     const sId = site.id || site._id
     if (!sId) return
-    setProbingSiteId(sId)
+    if (notify) setProbingSiteId(sId)
     try {
       const res = await api.probeWebsiteHealth(sId)
       const data = res?.data || res
@@ -463,7 +463,7 @@ function BulkUptimeContent() {
       }))
       if (notify) showToast(`Probe failed: ${err.message}`, true)
     } finally {
-      setProbingSiteId(null)
+      if (notify) setProbingSiteId(null)
     }
   }, [])
 

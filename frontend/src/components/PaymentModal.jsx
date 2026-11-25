@@ -46,6 +46,7 @@ export default function PaymentModal({
   billingCycle = 'monthly',
   siteCount = 1,
   pricingConfig,
+  action = 'subscribe',
   onSuccess
 }) {
   const [loading, setLoading] = useState(false);
@@ -184,16 +185,19 @@ export default function PaymentModal({
       }
 
       // 2. Request backend to create transaction
+      const isRenewal = action === 'renew';
       const res = await api.createPaddleCheckout({
         plan,
         billing_cycle: billingCycle,
         sites_count: count,
+        action,
+        is_renewal: isRenewal,
         customer_email: emailToSend,
         email: emailToSend,
         billing_country: selectedCountry,
         full_name: fullName,
         return_url: window.location.href,
-        success_url: window.location.origin + '/payment/success?plan=' + plan + '&cycle=' + billingCycle + '&sites=' + count,
+        success_url: window.location.origin + '/payment/success?plan=' + plan + '&cycle=' + billingCycle + '&sites=' + count + '&action=' + action,
       });
 
       if (!res.success && res.error) {

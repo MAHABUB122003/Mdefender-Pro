@@ -160,10 +160,10 @@ function DashboardSkeleton({ userName }) {
       {/* KPI Grid Skeleton (4 Cards) */}
       <div className="mdui-grid mdui-kpi-grid">
         {[
-          { label: 'Requests inspected', w: 120 },
-          { label: 'Threats blocked', w: 90 },
-          { label: 'Protected sites', w: 80 },
-          { label: 'Block rate', w: 95 }
+          { label: 'Total requests', w: 120 },
+          { label: 'Requests today', w: 90 },
+          { label: 'Allowed requests', w: 110 },
+          { label: 'Blocked requests', w: 95 }
         ].map((item, idx) => (
           <div key={idx} style={{
             background: 'var(--md-surface, #fff)',
@@ -320,10 +320,16 @@ export default function UserDashboard() {
   const posture = postureFor(sites);
   const selectedSite = selectedWebsite !== 'all' ? sites.find((s) => s && (s.id === selectedWebsite || s._id === selectedWebsite)) : null;
 
+  const totalRequests = Number(data?.total_requests || 0);
   const requestsToday = Number(data?.requests_today || 0);
+  const totalBlocked = Number(data?.total_blocked ?? data?.blocked_total ?? 0);
   const blockedToday = Number(data?.blocked_today || 0);
+  const totalAllowed = Number(data?.total_allowed ?? Math.max(0, totalRequests - totalBlocked));
+  const allowedToday = Number(data?.allowed_today ?? Math.max(0, requestsToday - blockedToday));
   const activeSites = Number(data?.active_websites ?? sites.filter((s) => s && s.status === 'active').length);
-  const blockRate = requestsToday > 0 ? (blockedToday / requestsToday) * 100 : 0;
+  const blockRate = totalRequests > 0 ? (totalBlocked / totalRequests) * 100 : (requestsToday > 0 ? (blockedToday / requestsToday) * 100 : 0);
+  const todayBlockRate = requestsToday > 0 ? (blockedToday / requestsToday) * 100 : 0;
+  const cleanRate = totalRequests > 0 ? ((totalAllowed / totalRequests) * 100).toFixed(1) : '100.0';
 
   const labels = lastSevenDays();
   const cleanSeries = Array.isArray(data?.daily_clean) ? data.daily_clean : [];
@@ -465,8 +471,8 @@ export default function UserDashboard() {
         .mdf-ud { display: flex; flex-direction: column; gap: 14px; max-width: 1680px; margin: 0 auto; width: 100%; }
         .mdf-ud-fadein { animation: mdf-fadein 0.25s ease-out; }
         @keyframes mdf-fadein {
-          from { opacity: 0.4; transform: translateY(3px); }
-          to { opacity: 1; transform: translateY(0); }
+          from { opacity: 0.6; }
+          to { opacity: 1; }
         }
         .mdf-ud-select {
           height: 36px; min-width: 190px; border: 1px solid var(--md-line-strong, #cfd5cb);
@@ -574,7 +580,7 @@ export default function UserDashboard() {
           </p>
           <p className="mdf-ud-posture-sub">
             {sites.length
-              ? `${requestsToday.toLocaleString()} requests inspected today · ${blockedToday.toLocaleString()} blocked · ${blockRate.toFixed(1)}% block rate`
+              ? `${requestsToday.toLocaleString()} requests inspected today · ${blockedToday.toLocaleString()} blocked · ${todayBlockRate.toFixed(1)}% block rate`
               : 'Connect your first WordPress site to start inspecting traffic and blocking attacks.'}
           </p>
           <div className="mdf-ud-tasks">
@@ -601,30 +607,34 @@ export default function UserDashboard() {
 
       <div className="mdui-grid mdui-kpi-grid">
         <StatCard
-          label="Requests inspected"
+          label="Total requests"
+          value={formatMetricNumber(totalRequests)}
+          hint="Lifetime inspected traffic"
+          icon={Globe2}
+        />
+        <StatCard
+          label="Requests today"
           value={formatMetricNumber(requestsToday)}
-          hint={`${formatMetricNumber(data?.total_requests || 0)} total lifetime`}
+          hint="Active traffic in last 24h"
           icon={Activity}
+          trend={requestsToday > 0 ? `${formatMetricNumber(allowedToday)} clean` : 'Awaiting traffic'}
+          trendDir={requestsToday > 0 ? 'up' : 'neutral'}
         />
         <StatCard
-          label="Threats blocked"
-          value={formatMetricNumber(blockedToday)}
-          hint={`${blockRate.toFixed(1)}% of today's traffic`}
-          icon={ShieldAlert}
-          trend={blockedToday > 0 ? 'Shield held' : 'No attacks today'}
-          trendDir={blockedToday > 0 ? 'up' : 'neutral'}
-        />
-        <StatCard
-          label="Protected sites"
-          value={`${activeSites}/${sites.length || 0}`}
-          hint={sites.length ? `${sites.length - activeSites} need attention` : 'No sites connected yet'}
+          label="Allowed requests"
+          value={formatMetricNumber(totalAllowed)}
+          hint={`${cleanRate}% clean traffic passing`}
           icon={ShieldCheck}
+          trend="Clean ingress"
+          trendDir="up"
         />
         <StatCard
-          label="Block rate"
-          value={`${blockRate.toFixed(1)}%`}
-          hint="Blocked vs inspected today"
-          icon={Gauge}
+          label="Blocked requests"
+          value={formatMetricNumber(totalBlocked)}
+          hint={blockedToday > 0 ? `${formatMetricNumber(blockedToday)} mitigated today` : 'No attacks today'}
+          icon={ShieldAlert}
+          trend={totalBlocked > 0 ? `${blockRate.toFixed(1)}% mitigated` : 'Shield holding'}
+          trendDir={totalBlocked > 0 ? 'neutral' : 'up'}
         />
       </div>
 

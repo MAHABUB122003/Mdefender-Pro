@@ -15,6 +15,29 @@ class WAF_FW_DB {
     public function __construct() {
         global $wpdb;
         $this->wpdb = $wpdb ? $wpdb : ($GLOBALS['wpdb'] ?? null);
+        $this->ensure_status_code_columns();
+    }
+
+    public function ensure_status_code_columns() {
+        static $done = false;
+        if ($done || !$this->wpdb) return;
+        $done = true;
+        if (function_exists('get_option') && get_option('waf_fw_db_status_code_v1') === '1') {
+            return;
+        }
+        $attacks_table = $this->get_attacks_table();
+        $requests_table = $this->get_requests_table();
+        $att_col = $this->wpdb->get_results("SHOW COLUMNS FROM $attacks_table LIKE 'status_code'");
+        if (empty($att_col)) {
+            @$this->wpdb->query("ALTER TABLE $attacks_table ADD COLUMN status_code SMALLINT UNSIGNED DEFAULT 403 AFTER status");
+        }
+        $req_col = $this->wpdb->get_results("SHOW COLUMNS FROM $requests_table LIKE 'status_code'");
+        if (empty($req_col)) {
+            @$this->wpdb->query("ALTER TABLE $requests_table ADD COLUMN status_code SMALLINT UNSIGNED DEFAULT 200 AFTER status");
+        }
+        if (function_exists('update_option')) {
+            update_option('waf_fw_db_status_code_v1', '1', true);
+        }
     }
 
     public function install_tables() {
@@ -36,6 +59,7 @@ class WAF_FW_DB {
             attack_type VARCHAR(100) NOT NULL,
             confidence DECIMAL(5,2) DEFAULT 0.00,
             status VARCHAR(20) DEFAULT 'blocked',
+            status_code SMALLINT UNSIGNED DEFAULT 403,
             user_agent TEXT,
             referer TEXT,
             request_body TEXT,
@@ -56,6 +80,7 @@ class WAF_FW_DB {
             url TEXT NOT NULL,
             method VARCHAR(10) DEFAULT 'GET',
             status VARCHAR(20) DEFAULT 'allowed',
+            status_code SMALLINT UNSIGNED DEFAULT 200,
             user_agent TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_ip (ip),

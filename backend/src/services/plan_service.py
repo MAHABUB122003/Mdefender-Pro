@@ -156,7 +156,7 @@ _PRICING_CACHE_TTL = 300  # 5 minutes
 
 class PlanService:
     def __init__(self, db=None):
-        self.db = db or MongoDB()
+        self.db = db if db is not None else MongoDB()
 
     def get_price_id(self, plan_id, billing_cycle="monthly"):
         """Get the specific Paddle price ID for a plan and billing cycle."""
@@ -374,6 +374,37 @@ class PlanService:
                     "is_paid": {"$ne": True}
                 }))
                 for u in trial_users:
+                    current_ends = u.get("custom_trial_ends_at") or u.get("trial_ends_at")
+                    if current_ends:
+                        if isinstance(current_ends, str):
+                            try:
+                                current_ends = datetime.fromisoformat(current_ends)
+                            except Exception:
+                                current_ends = None
+                        if current_ends and hasattr(current_ends, "tzinfo") and current_ends.tzinfo is None:
+                            current_ends = current_ends.replace(tzinfo=timezone.utc)
+
+                    # STRICT ANTI-RESURRECTION RULE (International SaaS Standard):
+                    # If a user's free trial has ALREADY concluded, expired, or been exhausted,
+                    # a global promotional trial duration change MUST NEVER resurrect their account or grant free protection.
+                    # Expired users must remain expired and can only regain protection by purchasing a Pro subscription.
+                    is_already_expired = bool(
+                        u.get("trial_exhausted") is True or
+                        u.get("payment_status") in ("trial_expired", "expired", "unlicensed") or
+                        (current_ends and current_ends <= now_utc)
+                    )
+                    if is_already_expired:
+                        self.db.users.update_one(
+                            {"_id": u["_id"]},
+                            {"$set": {
+                                "trial_exhausted": True,
+                                "trial_days_remaining": 0,
+                                "payment_status": "trial_expired" if u.get("payment_status") != "expired" else "expired"
+                            }}
+                        )
+                        continue
+
+                    # For currently active trial users only:
                     u_created = u.get("created_at") or now_utc
                     if isinstance(u_created, str):
                         try:
@@ -387,18 +418,8 @@ class PlanService:
 
                     # Grandfathering & Entitlement Protection Rule (International SaaS Standard):
                     # Never shorten, truncate, or downgrade a previously granted promotional trial!
-                    current_ends = u.get("custom_trial_ends_at") or u.get("trial_ends_at")
-                    if current_ends:
-                        if isinstance(current_ends, str):
-                            try:
-                                current_ends = datetime.fromisoformat(current_ends)
-                            except Exception:
-                                current_ends = None
-                        if current_ends and hasattr(current_ends, "tzinfo") and current_ends.tzinfo is None:
-                            current_ends = current_ends.replace(tzinfo=timezone.utc)
-                        if current_ends and current_ends > new_ends:
-                            # Keep their previously granted longer promotional trial duration
-                            new_ends = current_ends
+                    if current_ends and current_ends > new_ends:
+                        new_ends = current_ends
 
                     rem_days = max(0, int(math.ceil((new_ends - now_utc).total_seconds() / 86400)))
                     new_status = "trialing" if rem_days > 0 else "trial_expired"
@@ -410,6 +431,10 @@ class PlanService:
                             "trial_days_remaining": rem_days,
                             "payment_status": new_status if u.get("payment_status") in ("trialing", "trial_expired", "unlicensed", None) else u.get("payment_status")
                         }}
+                    )
+                    self.db.websites.update_many(
+                        {"user_id": {"$in": [str(u["_id"]), u["_id"]]}},
+                        {"$set": {"trial_ends_at": new_ends}}
                     )
             except Exception:
                 pass

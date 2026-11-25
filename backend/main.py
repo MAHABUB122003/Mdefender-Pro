@@ -923,7 +923,8 @@ def verify_user_token_compat(request: Request):
     resolved_full_name = user.get('full_name') or user.get('name') or user.get('username') or ''
     resolved_username = user.get('username') or (user.get('email', '').split('@')[0] if user.get('email') else '')
     
-    return {
+    user_data = dict(user)
+    user_data.update({
         '_id': user['_id'],
         'id': str(user['_id']),
         'email': user.get('email', ''),
@@ -946,7 +947,18 @@ def verify_user_token_compat(request: Request):
         'organization_type': user.get('organization_type', ''),
         'created_at': user.get('created_at'),
         'last_login': user.get('last_login'),
-    }
+        'is_paid': user.get('is_paid', False),
+        'payment_status': user.get('payment_status', 'none'),
+        'plan_expires': user.get('plan_expires'),
+        'trial_days_remaining': user.get('trial_days_remaining'),
+        'trial_ends_at': user.get('trial_ends_at'),
+        'trial_ends': user.get('trial_ends'),
+        'purchased_slots': user.get('purchased_slots'),
+        'trial_exhausted': user.get('trial_exhausted', False),
+        'custom_trial_ends_at': user.get('custom_trial_ends_at'),
+        'trial_starts_at': user.get('trial_starts_at'),
+    })
+    return user_data
 
 
 @app.get("/")
@@ -1666,7 +1678,7 @@ async def process_payment_wallet(request: Request, user: dict = Depends(verify_u
 
 @app.get("/api/payment/history")
 async def get_user_payment_history(user: dict = Depends(verify_user_token_compat)):
-    db = get_db()
+    db = MongoDB()
     from bson import ObjectId
     uid = str(user.get("_id") or user.get("id"))
     u_oid = ObjectId(uid) if ObjectId.is_valid(uid) else uid
@@ -2203,11 +2215,12 @@ async def user_delete_blacklist(request: Request, user: dict = Depends(verify_us
         del_conds.append({'website_id': {'$in': user_site_ids}})
     
     if website_id and website_id != 'all':
-        db.blacklist.delete_many({'ip': ip, 'website_id': website_id})
-        db.blacklist.delete_many({'ip': ip, '$or': del_conds})
         matched = [s for s in all_sites if str(s.get('_id')) == website_id or str(s.get('id')) == website_id or s.get('domain') == website_id or s.get('name') == website_id]
         if matched:
             target_sites = matched
+            db.blacklist.delete_many({'ip': ip, 'website_id': website_id, '$or': del_conds})
+        else:
+            db.blacklist.delete_many({'ip': ip, '$or': del_conds})
     else:
         db.blacklist.delete_many({'ip': ip, '$or': del_conds})
 
@@ -2908,8 +2921,12 @@ async def user_save_security_config(request: Request, user: dict = Depends(verif
     if ws_update:
         ws_update['updated_at'] = datetime.now()
         if website_id and website_id != 'all':
+            u_conds = [{'user_id': user['_id']}, {'user_id': str(user['_id'])}]
             db.websites.update_one(
-                {'$or': [{'_id': website_id}, {'id': website_id}, {'domain': website_id}]},
+                {'$and': [
+                    {'$or': [{'_id': website_id}, {'id': website_id}, {'domain': website_id}]},
+                    {'$or': u_conds}
+                ]},
                 {'$set': ws_update}
             )
         else:
@@ -3040,14 +3057,18 @@ async def user_delete_auto_block(request: Request, user: dict = Depends(verify_u
         return {'status': 'error', 'message': 'IP address is required'}
     from bson import ObjectId
     u_str = str(user['_id'])
-    del_conds = [{'user_id': u_str}, {'added_by_user_id': u_str}, {'added_by_user_id': {'$exists': False}}, {'added_by_user_id': None}]
+    del_conds = [{'user_id': u_str}, {'added_by_user_id': u_str}]
     if ObjectId.is_valid(u_str):
         del_conds.append({'user_id': ObjectId(u_str)})
         del_conds.append({'added_by_user_id': ObjectId(u_str)})
-    
+    owned_sites = get_user_connected_wordpress_sites(user)
+    owned_ids = [str(s.get('_id') or s.get('id') or '') for s in owned_sites if (s.get('_id') or s.get('id'))]
+    if owned_ids:
+        del_conds.append({'website_id': {'$in': owned_ids}})
+
     db.blacklist.delete_many({'ip': ip, '$or': del_conds})
-    db.auto_blocks.delete_many({'ip': ip})
-    db.attack_attempts.delete_many({'ip': ip})
+    db.auto_blocks.delete_many({'ip': ip, '$or': del_conds})
+    db.attack_attempts.delete_many({'ip': ip, '$or': del_conds})
     
     from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
     push_instant_sync_to_wordpress(user_id=user['_id'])
@@ -3091,6 +3112,19 @@ async def user_security_audit(request: Request, user: dict = Depends(verify_user
     url = (data.get('url') or '').strip()
     if not url:
         return {'status': 'error', 'message': 'Website URL is required'}
+
+    is_admin = user.get('is_admin') or user.get('role') in ('admin', 'super_admin')
+    if not is_admin:
+        target_host = url.lower().replace('https://', '').replace('http://', '').split('/')[0].split(':')[0]
+        owned_sites = get_user_connected_wordpress_sites(user)
+        owned_hosts = set()
+        for s in owned_sites:
+            for k in ('domain', 'url', 'name'):
+                v = str(s.get(k) or '').lower().replace('https://', '').replace('http://', '').split('/')[0].split(':')[0]
+                if v:
+                    owned_hosts.add(v)
+        if target_host not in owned_hosts:
+            raise HTTPException(status_code=403, detail="You can only audit websites connected to your account.")
     
     try:
         from src.services.security_scanner_service import SecurityScannerService

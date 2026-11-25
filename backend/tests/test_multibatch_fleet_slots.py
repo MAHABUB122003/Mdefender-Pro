@@ -26,11 +26,13 @@ def test_multibatch_additive_fleet_slots():
 
     try:
         # Step 1: User purchases 5 slots (e.g. at Day 0)
+        t1 = f"txn_batch_001_{test_uid[:8]}"
+        t2 = f"txn_batch_002_{test_uid[:8]}"
         sub_svc.record_transaction(test_uid, {
-            'id': 'txn_batch_001',
+            'id': t1,
             'event_type': 'transaction.completed',
             'data': {
-                'id': 'txn_batch_001',
+                'id': t1,
                 'status': 'completed',
                 'custom_data': {'user_id': test_uid, 'sites_count': 5, 'billing_cycle': 'monthly'}
             }
@@ -42,10 +44,10 @@ def test_multibatch_additive_fleet_slots():
 
         # Step 2: 10 days later, user purchases 10 more slots
         sub_svc.record_transaction(test_uid, {
-            'id': 'txn_batch_002',
+            'id': t2,
             'event_type': 'transaction.completed',
             'data': {
-                'id': 'txn_batch_002',
+                'id': t2,
                 'status': 'completed',
                 'custom_data': {'user_id': test_uid, 'sites_count': 10, 'billing_cycle': 'monthly'}
             }

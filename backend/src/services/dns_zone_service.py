@@ -402,7 +402,7 @@ class DNSZoneService:
 
 
 
-        self.db = db or MongoDB()
+        self.db = db if db is not None else MongoDB()
 
 
 

@@ -1273,6 +1273,48 @@ function waf_fw_handle_cloud_sync_webhook() {
                 $scanned_count = 0;
                 $id_counter = 1;
 
+                if (!function_exists('mdf_scan_files_batch_with_intelligence')) {
+                    function mdf_scan_files_batch_with_intelligence($scanner, $file_list, $category, &$findings, &$scanned_count, &$id_counter) {
+                        if (empty($file_list) || !$scanner) return;
+                        $intel = method_exists($scanner, 'check_files_cloud_intelligence') 
+                            ? $scanner->check_files_cloud_intelligence($file_list) 
+                            : ['clean' => [], 'malicious' => [], 'unknown' => $file_list];
+                        $clean_set = !empty($intel['clean']) ? array_flip($intel['clean']) : [];
+                        if (!empty($intel['malicious'])) {
+                            foreach ($intel['malicious'] as $mal) {
+                                $m_path = $mal['file_path'] ?? '';
+                                $full_m_path = ABSPATH . ltrim($m_path, '/');
+                                $findings[] = [
+                                    'id'            => $id_counter++,
+                                    'file'          => $m_path,
+                                    'type'          => 'malware',
+                                    'category'      => ucfirst($category),
+                                    'severity'      => strtolower($mal['severity'] ?? 'critical'),
+                                    'severityLabel' => ucfirst($mal['severity'] ?? 'Critical'),
+                                    'score'         => intval($mal['risk_score'] ?? 100),
+                                    'threat_name'   => 'Known Threat Intelligence Match: ' . ($mal['description'] ?? 'Malware Hash Match'),
+                                    'details'       => 'Identified by cloud threat intelligence. Family: ' . ($mal['threat_family'] ?? 'Malware'),
+                                    'signals'       => ['14M Threat Intelligence', 'Cryptographic SHA-256 Match'],
+                                    'status'        => 'active',
+                                    'is_deletable'  => true,
+                                    'is_repairable' => false,
+                                ];
+                                $clean_set[$full_m_path] = true;
+                            }
+                        }
+                        foreach ($file_list as $fpath) {
+                            $scanned_count++;
+                            if (isset($clean_set[$fpath])) {
+                                continue;
+                            }
+                            $res = $scanner->scan_file_multi_signal($fpath, $category);
+                            if ($res && !empty($res['findings'])) {
+                                $findings[] = mdf_format_threat_finding($fpath, $res, $id_counter++);
+                            }
+                        }
+                    }
+                }
+
                 if ($scanner) {
                     // 1. WordPress Root & Core Files (Scans all PHP/executable files in root directory)
                     $root_entries = @scandir(ABSPATH) ?: [];
@@ -1336,6 +1378,7 @@ function waf_fw_handle_cloud_sync_webhook() {
                     foreach ([ABSPATH . 'wp-admin/', ABSPATH . 'wp-includes/'] as $core_dir) {
                         if (!is_dir($core_dir)) continue;
                         $dir_count = 0;
+                        $core_batch = [];
                         try {
                             $it = new RecursiveIteratorIterator(
                                 new RecursiveDirectoryIterator($core_dir, RecursiveDirectoryIterator::SKIP_DOTS),
@@ -1352,13 +1395,17 @@ function waf_fw_handle_cloud_sync_webhook() {
                                         if ((microtime(true) - $start_time) > 240) {
                                             break;
                                         }
-                                        $scanned_count++;
-                                        $res = $scanner->scan_file_multi_signal($file->getPathname(), 'core');
-                                        if ($res && !empty($res['findings'])) {
-                                            $findings[] = mdf_format_threat_finding($file->getPathname(), $res, $id_counter++);
+                                        $core_batch[] = $file->getPathname();
+                                        if (count($core_batch) >= 100) {
+                                            mdf_scan_files_batch_with_intelligence($scanner, $core_batch, 'core', $findings, $scanned_count, $id_counter);
+                                            $core_batch = [];
                                         }
                                     }
                                 }
+                            }
+                            if (!empty($core_batch)) {
+                                mdf_scan_files_batch_with_intelligence($scanner, $core_batch, 'core', $findings, $scanned_count, $id_counter);
+                                $core_batch = [];
                             }
                         } catch (\Exception $e) {}
                     }
@@ -1366,6 +1413,7 @@ function waf_fw_handle_cloud_sync_webhook() {
                     // 2. Plugins Directory (Recursive scan of all plugin files)
                     $plugins_dir = ABSPATH . 'wp-content/plugins/';
                     if (is_dir($plugins_dir)) {
+                        $plugin_batch = [];
                         try {
                             $it = new RecursiveIteratorIterator(
                                 new RecursiveDirectoryIterator($plugins_dir, RecursiveDirectoryIterator::SKIP_DOTS),
@@ -1386,13 +1434,17 @@ function waf_fw_handle_cloud_sync_webhook() {
                                         if ((microtime(true) - $start_time) > 240) {
                                             break;
                                         }
-                                        $scanned_count++;
-                                        $res = $scanner->scan_file_multi_signal($file->getPathname(), 'plugins');
-                                        if ($res && !empty($res['findings'])) {
-                                            $findings[] = mdf_format_threat_finding($file->getPathname(), $res, $id_counter++);
+                                        $plugin_batch[] = $file->getPathname();
+                                        if (count($plugin_batch) >= 100) {
+                                            mdf_scan_files_batch_with_intelligence($scanner, $plugin_batch, 'plugins', $findings, $scanned_count, $id_counter);
+                                            $plugin_batch = [];
                                         }
                                     }
                                 }
+                            }
+                            if (!empty($plugin_batch)) {
+                                mdf_scan_files_batch_with_intelligence($scanner, $plugin_batch, 'plugins', $findings, $scanned_count, $id_counter);
+                                $plugin_batch = [];
                             }
                         } catch (\Exception $e) {}
                     }
@@ -1400,6 +1452,7 @@ function waf_fw_handle_cloud_sync_webhook() {
                     // 3. Themes Directory (Recursive scan of all theme files)
                     $themes_dir = ABSPATH . 'wp-content/themes/';
                     if (is_dir($themes_dir)) {
+                        $theme_batch = [];
                         try {
                             $it = new RecursiveIteratorIterator(
                                 new RecursiveDirectoryIterator($themes_dir, RecursiveDirectoryIterator::SKIP_DOTS),
@@ -1409,13 +1462,17 @@ function waf_fw_handle_cloud_sync_webhook() {
                                 if ($file->isFile()) {
                                     $ext = strtolower($file->getExtension());
                                     if (in_array($ext, ['php', 'phtml', 'inc', 'js', 'html', 'htm', 'txt', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'])) {
-                                        $scanned_count++;
-                                        $res = $scanner->scan_file_multi_signal($file->getPathname(), 'themes');
-                                        if ($res && !empty($res['findings'])) {
-                                            $findings[] = mdf_format_threat_finding($file->getPathname(), $res, $id_counter++);
+                                        $theme_batch[] = $file->getPathname();
+                                        if (count($theme_batch) >= 100) {
+                                            mdf_scan_files_batch_with_intelligence($scanner, $theme_batch, 'themes', $findings, $scanned_count, $id_counter);
+                                            $theme_batch = [];
                                         }
                                     }
                                 }
+                            }
+                            if (!empty($theme_batch)) {
+                                mdf_scan_files_batch_with_intelligence($scanner, $theme_batch, 'themes', $findings, $scanned_count, $id_counter);
+                                $theme_batch = [];
                             }
                         } catch (\Exception $e) {}
                     }
@@ -5337,11 +5394,13 @@ function waf_fw_analyze_request() {
 
         add_action('shutdown', function() use ($eval_c_ip, $req_uri_logged, $req_meth_logged, $req_ua_logged) {
             if (class_exists('WAF_FW_Logger')) {
+                $resp_code = (function_exists('http_response_code') && http_response_code()) ? (int) http_response_code() : 200;
                 WAF_FW_Logger::instance()->log_request([
                     'ip' => $eval_c_ip,
                     'url' => $req_uri_logged,
                     'method' => $req_meth_logged,
                     'status' => 'allowed',
+                    'status_code' => $resp_code,
                     'user_agent' => $req_ua_logged
                 ]);
             }
@@ -5409,11 +5468,13 @@ function waf_fw_analyze_rest_request() {
 
         add_action('shutdown', function() use ($rest_c_ip, $rest_uri_logged, $rest_meth_logged, $rest_ua_logged) {
             if (class_exists('WAF_FW_Logger')) {
+                $resp_code = (function_exists('http_response_code') && http_response_code()) ? (int) http_response_code() : 200;
                 WAF_FW_Logger::instance()->log_request([
                     'ip' => $rest_c_ip,
                     'url' => $rest_uri_logged,
                     'method' => $rest_meth_logged,
                     'status' => 'allowed',
+                    'status_code' => $resp_code,
                     'user_agent' => $rest_ua_logged
                 ]);
             }

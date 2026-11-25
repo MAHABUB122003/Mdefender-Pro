@@ -97,6 +97,8 @@ import re
 import time
 import os
 import sys
+import asyncio
+import httpx
 import requests
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
@@ -1899,11 +1901,17 @@ async def add_website(body: WebsiteCreate, user=Depends(get_current_user)):
 
         raise HTTPException(status_code=409, detail=f"{plat_label} '{clean_domain}' is already registered on your account")
 
-
-
-
-
-
+    # Domain Free Trial Anti-Churning Protection
+    from src.services.license_slot_service import LicenseSlotService
+    u_lic_state = LicenseSlotService(db).resolve_user_license_state(user)
+    if not u_lic_state.get("is_paid"):
+        history_entry = db.trial_domain_history.find_one({"domain": clean_domain})
+        current_uid_str = str(user.get("id") or user.get("_id"))
+        if history_entry and str(history_entry.get("first_used_by")) != current_uid_str:
+            raise HTTPException(
+                status_code=403,
+                detail=f"The domain '{clean_domain}' has already consumed its free trial on MDefender. A Pro fleet subscription is required to connect and protect this website."
+            )
 
     website_id = str(uuid.uuid4())
 
@@ -2130,6 +2138,18 @@ async def add_website(body: WebsiteCreate, user=Depends(get_current_user)):
 
 
         db.websites.insert_one(website)
+        try:
+            db.trial_domain_history.update_one(
+                {"domain": clean_domain},
+                {"$setOnInsert": {
+                    "domain": clean_domain,
+                    "first_used_by": str(user.get("id") or user.get("_id")),
+                    "created_at": datetime.now()
+                }},
+                upsert=True
+            )
+        except Exception:
+            pass
 
 
 
@@ -3563,11 +3583,7 @@ async def update_security_settings(website_id: str, body: SecuritySettingsUpdate
 
 
 
-
-
-
-
-    website = get_owned_website(user, website_id)
+    website = get_licensed_website(user, website_id)
 
 
 
@@ -4876,7 +4892,8 @@ async def trigger_website_scan(website_id: str, body: WebsiteScanTriggerRequest 
 
 
                 scan_timeout = 45.0 if scan_type == "quick" else 150.0
-                resp = requests.post(ep, json={"action": "trigger_scan", "scan_id": scan_id, "scan_type": scan_type}, headers=headers, timeout=scan_timeout, verify=False)
+                async with httpx.AsyncClient(verify=False, timeout=httpx.Timeout(scan_timeout, connect=5.0)) as _async_client:
+                    resp = await _async_client.post(ep, json={"action": "trigger_scan", "scan_id": scan_id, "scan_type": scan_type}, headers=headers)
 
 
 
@@ -5512,24 +5529,6 @@ async def trigger_website_scan(website_id: str, body: WebsiteScanTriggerRequest 
                             except Exception:
                                 pass
 
-            # Core wp-login.php integrity check
-            wp_login_path = os.path.join(local_path, "wp-login.php")
-            if os.path.exists(wp_login_path):
-                fallback_findings.append({
-                    "id": f"mdf-threat-{len(fallback_findings) + 1}",
-                    "file": "wp-login.php",
-                    "path": "wp-login.php",
-                    "threat_name": "WordPress core file modified: wp-login.php",
-                    "type": "WordPress security",
-                    "category": "WordPress Core",
-                    "severity": "WARNING",
-                    "severityLabel": "Warning",
-                    "score": 50,
-                    "details": "Core SHA-256 divergence detected on server disk: wp-login.php differs from pristine release.",
-                    "status": "active",
-                    "is_deletable": False,
-                    "is_repairable": True
-                })
         except Exception as e:
             logger.warning(f"Local scanner fallback error: {e}")
 
@@ -5567,7 +5566,7 @@ async def trigger_website_scan(website_id: str, body: WebsiteScanTriggerRequest 
 
     score = max(20, 100 - len(fallback_findings) * 15) if fallback_findings else 95
     threat_level = "HIGH" if score < 50 else ("MEDIUM" if fallback_findings else "LOW")
-    total_files = max(10381, len(fallback_findings) * 150 + 2450)
+    total_files = len(fallback_findings)
 
     db.malware_scans.update_one(
         {"_id": scan_id},
@@ -5693,7 +5692,8 @@ async def get_website_scans(website_id: str, limit: int = 10, user=Depends(get_c
 
         for ep in candidates:
             try:
-                resp = requests.post(ep, json={"action": "get_scan_results"}, headers=headers, timeout=5.0, verify=False)
+                async with httpx.AsyncClient(verify=False, timeout=httpx.Timeout(5.0, connect=2.5)) as _async_client:
+                    resp = await _async_client.post(ep, json={"action": "get_scan_results"}, headers=headers)
                 if resp.status_code == 200:
                     rj = resp.json()
                     if rj.get("success") or rj.get("status") == "completed":
@@ -5879,7 +5879,8 @@ async def quarantine_website_file(website_id: str, body: dict = None, user=Depen
     result_payload = {'status': 'success', 'message': f'File {file_path} marked as quarantined.'}
     for ep in candidates:
         try:
-            r = requests.post(ep, json={'file': file_path, 'action': 'quarantine_file', 'api_key': api_key, 'site_token': site_token}, headers=headers, timeout=8.0, verify=False)
+            async with httpx.AsyncClient(verify=False, timeout=httpx.Timeout(8.0, connect=3.0)) as _async_client:
+                r = await _async_client.post(ep, json={'file': file_path, 'action': 'quarantine_file', 'api_key': api_key, 'site_token': site_token}, headers=headers)
             if r.status_code == 200:
                 result_payload = r.json()
                 break
@@ -5981,7 +5982,7 @@ async def quarantine_website_file(website_id: str, body: dict = None, user=Depen
 
 @router.post("/{website_id}/scan/diff")
 async def diff_website_file(website_id: str, body: dict = None, user=Depends(get_current_user)):
-    website = get_owned_website(user, website_id)
+    website = get_licensed_website(user, website_id)
     file_path = (body or {}).get("file", "")
     target_url = website.get("url") or website.get("domain") or ""
     if target_url and not target_url.startswith("http"):
@@ -6003,7 +6004,8 @@ async def diff_website_file(website_id: str, body: dict = None, user=Depends(get
     diff_data = {'file': file_path, 'original_code': '', 'local_code': ''}
     for ep in candidates:
         try:
-            r = requests.post(ep, json={'file': file_path, 'action': 'diff_core_file', 'api_key': api_key, 'site_token': site_token}, headers=headers, timeout=10.0, verify=False)
+            async with httpx.AsyncClient(verify=False, timeout=httpx.Timeout(10.0, connect=3.0)) as _async_client:
+                r = await _async_client.post(ep, json={'file': file_path, 'action': 'diff_core_file', 'api_key': api_key, 'site_token': site_token}, headers=headers)
             if r.status_code == 200:
                 resp_json = r.json()
                 diff_data = resp_json.get('data') or resp_json
@@ -6014,7 +6016,7 @@ async def diff_website_file(website_id: str, body: dict = None, user=Depends(get
 
 @router.post("/{website_id}/scan/view-file")
 async def view_website_file(website_id: str, body: dict = None, user=Depends(get_current_user)):
-    website = get_owned_website(user, website_id)
+    website = get_licensed_website(user, website_id)
     file_path = (body or {}).get("file", "")
     target_url = website.get("url") or website.get("domain") or ""
     if target_url and not target_url.startswith("http"):
@@ -6036,7 +6038,8 @@ async def view_website_file(website_id: str, body: dict = None, user=Depends(get
     file_data = {'file': file_path, 'content': '', 'lines': 0}
     for ep in candidates:
         try:
-            r = requests.post(ep, json={'file': file_path, 'action': 'view_file', 'api_key': api_key, 'site_token': site_token}, headers=headers, timeout=10.0, verify=False)
+            async with httpx.AsyncClient(verify=False, timeout=httpx.Timeout(10.0, connect=3.0)) as _async_client:
+                r = await _async_client.post(ep, json={'file': file_path, 'action': 'view_file', 'api_key': api_key, 'site_token': site_token}, headers=headers)
             if r.status_code == 200:
                 resp_json = r.json()
                 file_data = resp_json.get('data') or resp_json
@@ -6470,22 +6473,8 @@ async def pause_website(website_id: str, user=Depends(get_current_user)):
 
 
 @router.post("/{website_id}/resume")
-
-
-
-
-
-
-
 async def resume_website(website_id: str, user=Depends(get_current_user)):
-
-
-
-
-
-
-
-    website = get_owned_website(user, website_id)
+    website = get_licensed_website(user, website_id)
 
 
 
@@ -6654,22 +6643,8 @@ class BotChallengeToggle(BaseModel):
 
 
 async def toggle_bot_challenge(website_id: str, body: BotChallengeToggle, user=Depends(get_current_user)):
-
-
-
-
-
-
-
     """Toggles MDefender Turnstile bot challenge ON/OFF for this domain/website."""
-
-
-
-
-
-
-
-    website = get_owned_website(user, website_id)
+    website = get_licensed_website(user, website_id)
 
 
 
@@ -9710,7 +9685,7 @@ async def execute_remote_action(website_id: str, body: RemoteActionRequest, user
     target_status = body.status or ("active" if "activate" in body.action else "inactive")
     target_tslug = body.theme_slug or body.theme or body.slug or ""
 
-    def process_site(ws):
+    async def process_site(ws, client):
         # 1. Immediate local DB state update to guarantee zero UI lag and persistent state
         site_updates = {}
         if body.action == "toggle_plugin":
@@ -9912,7 +9887,7 @@ async def execute_remote_action(website_id: str, body: RemoteActionRequest, user
         for ep in candidates:
             try:
                 act_timeout = 25.0 if ("install" in body.action or "update" in body.action) else 3.5
-                resp = requests.post(ep, json=action_payload, headers=headers, timeout=act_timeout, verify=False)
+                resp = await client.post(ep, json=action_payload, headers=headers, timeout=httpx.Timeout(act_timeout, connect=2.5))
                 if resp.status_code == 200:
                     try:
                         resp_json = resp.json()
@@ -9946,8 +9921,7 @@ async def execute_remote_action(website_id: str, body: RemoteActionRequest, user
                             site_result["inventory"] = inv
                     break
                 site_result["message"] = f"WordPress origin returned HTTP {resp.status_code}."
-            except (requests.exceptions.ConnectionError, requests.exceptions.ConnectTimeout, requests.exceptions.Timeout) as exc:
-                # Unreachable host or DNS failure - immediately break out of candidate loop
+            except (httpx.ConnectError, httpx.ConnectTimeout, httpx.TimeoutException) as exc:
                 site_result["message"] = f"Could not connect to WordPress origin: {exc}"
                 break
             except Exception as exc:
@@ -9955,9 +9929,9 @@ async def execute_remote_action(website_id: str, body: RemoteActionRequest, user
 
         return site_result
 
-    # Process all websites concurrently
-    with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(websites), 10)) as executor:
-        results = list(executor.map(process_site, websites))
+    # Process all websites concurrently without blocking event loop
+    async with httpx.AsyncClient(verify=False) as client:
+        results = await asyncio.gather(*[process_site(ws, client) for ws in websites])
 
     # 3. Clear dashboard cache so subsequent queries get live data
     try:
@@ -10364,7 +10338,8 @@ async def check_pwned_password_api(body: PwnedPasswordCheckRequest, user=Depends
     }
 
     try:
-        resp = requests.get(url, headers=headers, timeout=6.0)
+        async with httpx.AsyncClient(timeout=httpx.Timeout(6.0, connect=3.0)) as client:
+            resp = await client.get(url, headers=headers)
         if resp.status_code != 200:
             return success({
                 "pwned": False,
@@ -10418,11 +10393,11 @@ async def get_global_breaches(query: Optional[str] = None, limit: int = 50, user
     # Cache for 2 hours
     if not _global_breaches_cache["data"] or (now - _global_breaches_cache["timestamp"] > 7200):
         try:
-            r = requests.get(
-                "https://haveibeenpwned.com/api/v3/breaches",
-                headers={"User-Agent": "MDefender-Pro-Breach-Intelligence/1.0"},
-                timeout=8.0
-            )
+            async with httpx.AsyncClient(timeout=httpx.Timeout(8.0, connect=3.0)) as client:
+                r = await client.get(
+                    "https://haveibeenpwned.com/api/v3/breaches",
+                    headers={"User-Agent": "MDefender-Pro-Breach-Intelligence/1.0"}
+                )
             if r.status_code == 200:
                 _global_breaches_cache["data"] = r.json()
                 _global_breaches_cache["timestamp"] = now
@@ -12822,7 +12797,8 @@ async def get_safe_updates_history(website_id: str, user=Depends(get_current_use
             site_token = website.get("site_token") or ""
             sep = "&" if "?" in target_url else "?"
             remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=get_safe_update_history&site_token={site_token}&api_key={api_key}"
-            resp = requests.get(remote_url, timeout=5, verify=False)
+            async with httpx.AsyncClient(timeout=httpx.Timeout(5.0, connect=2.5), verify=False) as client:
+                resp = await client.get(remote_url)
             if resp.status_code == 200:
                 body = resp.json()
                 h = body.get("action_result", {}).get("history", [])
@@ -12896,7 +12872,8 @@ async def run_safe_update_pipeline(website_id: str, body: SafeUpdateRequest, use
             headers.update({"Authorization": f"Bearer {api_key}", "X-API-Key": api_key})
         if site_token:
             headers["X-Site-Token"] = site_token
-        resp = requests.post(remote_url, json=payload, headers=headers, timeout=12, verify=False)
+        async with httpx.AsyncClient(timeout=httpx.Timeout(15.0, connect=4.0), verify=False) as client:
+            resp = await client.post(remote_url, json=payload, headers=headers)
         if resp.status_code == 200:
             response_data = resp.json()
             res_json = response_data.get("action_result", {}) if isinstance(response_data, dict) else {}
@@ -13156,7 +13133,7 @@ async def toggle_hardening_control(website_id: str, body: HardeningToggleRequest
 @router.post("/{website_id}/hardening/verify-probes")
 async def verify_hardening_probes(website_id: str, user=Depends(get_current_user)):
     """Run the 10-Point Live Penetration Probe Suite against origin."""
-    website = get_owned_website(user, website_id)
+    website = get_licensed_website(user, website_id)
     target_url = website.get("url") or website.get("domain") or ""
     if target_url and not target_url.startswith("http"):
         target_url = "http://localhost/mahabub" if "localhost" in target_url else f"https://{target_url}"
@@ -13185,7 +13162,7 @@ async def verify_hardening_probes(website_id: str, user=Depends(get_current_user
 @router.post("/{website_id}/hardening/rotate-salts")
 async def rotate_website_salts(website_id: str, user=Depends(get_current_user)):
     """Generate fresh 64-char security keys and salts with zero downtime."""
-    website = get_owned_website(user, website_id)
+    website = get_licensed_website(user, website_id)
     target_url = website.get("url") or website.get("domain") or ""
     if target_url and not target_url.startswith("http"):
         target_url = "http://localhost/mahabub" if "localhost" in target_url else f"https://{target_url}"
@@ -13236,7 +13213,8 @@ async def get_website_database_status(website_id: str, user=Depends(get_current_
     try:
         sep = "&" if "?" in target_url else "?"
         remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=get_db_optimizer_status&site_token={site_token}&api_key={api_key}"
-        resp = requests.get(remote_url, timeout=8, verify=False)
+        async with httpx.AsyncClient(timeout=httpx.Timeout(8.0, connect=3.0), verify=False) as client:
+            resp = await client.get(remote_url)
         if resp.status_code == 200:
             res_json = resp.json().get("action_result", {})
             if res_json:
@@ -13265,7 +13243,8 @@ async def optimize_website_database(website_id: str, body: DatabaseOptimizeReque
         sep = "&" if "?" in target_url else "?"
         remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=run_db_optimization&site_token={site_token}&api_key={api_key}"
         payload = {"targets": body.targets}
-        resp = requests.post(remote_url, json=payload, timeout=25, verify=False)
+        async with httpx.AsyncClient(timeout=httpx.Timeout(25.0, connect=5.0), verify=False) as client:
+            resp = await client.post(remote_url, json=payload)
         if resp.status_code == 200:
             data = resp.json().get("action_result", {})
             if data:
@@ -13280,8 +13259,6 @@ async def optimize_website_database(website_id: str, body: DatabaseOptimizeReque
 @router.post("/bulk/database/optimize")
 async def bulk_optimize_databases(body: DatabaseOptimizeRequest, user=Depends(get_current_user)):
     """Concurrently optimize databases across fleet of websites."""
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
     # Get user websites
     db = MongoDB()
     user_id_str = str(user.get("id") or user.get("_id") or user.get("user_id") or "")
@@ -13301,9 +13278,7 @@ async def bulk_optimize_databases(body: DatabaseOptimizeRequest, user=Depends(ge
         target_ids = set([str(x) for x in (user_doc.get("licensed_website_ids", []) if user_doc else [])])
         sites = [s for s in sites if str(s.get("_id")) in target_ids or str(s.get("id")) in target_ids]
 
-    results = []
-
-    def _opt_one(s):
+    async def _opt_one(s, client):
         target_url = s.get("url") or s.get("domain") or ""
         if target_url and not target_url.startswith("http"):
             target_url = "http://localhost/mahabub" if "localhost" in target_url else f"https://{target_url}"
@@ -13318,7 +13293,7 @@ async def bulk_optimize_databases(body: DatabaseOptimizeRequest, user=Depends(ge
         try:
             sep = "&" if "?" in target_url else "?"
             remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=run_db_optimization&site_token={site_token}&api_key={api_key}"
-            resp = requests.post(remote_url, json={"targets": body.targets}, timeout=25, verify=False)
+            resp = await client.post(remote_url, json={"targets": body.targets})
             if resp.status_code == 200:
                 data = resp.json().get("action_result", {})
                 return {"website_id": sid, "domain": domain, "success": True, "data": data}
@@ -13326,10 +13301,8 @@ async def bulk_optimize_databases(body: DatabaseOptimizeRequest, user=Depends(ge
         except Exception as exc:
             return {"website_id": sid, "domain": domain, "success": False, "error": str(exc)}
 
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        futures = {executor.submit(_opt_one, s): s for s in sites}
-        for fut in as_completed(futures):
-            results.append(fut.result())
+    async with httpx.AsyncClient(timeout=httpx.Timeout(25.0, connect=5.0), verify=False) as client:
+        results = await asyncio.gather(*[_opt_one(s, client) for s in sites])
 
     return success({
         "total_sites": len(sites),
@@ -13373,7 +13346,8 @@ async def get_website_environment_status(website_id: str, user=Depends(get_curre
     try:
         sep = "&" if "?" in target_url else "?"
         remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=get_environment_status&site_token={site_token}&api_key={api_key}"
-        resp = requests.get(remote_url, timeout=8, verify=False)
+        async with httpx.AsyncClient(timeout=httpx.Timeout(8.0, connect=3.0), verify=False) as client:
+            resp = await client.get(remote_url)
         if resp.status_code == 200:
             res_json = resp.json().get("action_result", {})
             if res_json:
@@ -13388,7 +13362,7 @@ async def get_website_environment_status(website_id: str, user=Depends(get_curre
 @router.post("/{website_id}/environment/lockdown")
 async def enforce_website_environment_lockdown(website_id: str, body: EnvironmentLockdownRequest, user=Depends(get_current_user)):
     """Enforce production debug lockdown and security constants on origin WordPress instance."""
-    website = get_owned_website(user, website_id)
+    website = get_licensed_website(user, website_id)
     target_url = website.get("url") or website.get("domain") or ""
     if target_url and not target_url.startswith("http"):
         target_url = "http://localhost/mahabub" if "localhost" in target_url else f"https://{target_url}"
@@ -13402,7 +13376,8 @@ async def enforce_website_environment_lockdown(website_id: str, body: Environmen
         sep = "&" if "?" in target_url else "?"
         remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=enforce_environment_lockdown&site_token={site_token}&api_key={api_key}"
         payload = {"options": body.options.dict()}
-        resp = requests.post(remote_url, json=payload, timeout=20, verify=False)
+        async with httpx.AsyncClient(timeout=httpx.Timeout(20.0, connect=5.0), verify=False) as client:
+            resp = await client.post(remote_url, json=payload)
         if resp.status_code == 200:
             data = resp.json().get("action_result", {})
             if data:
@@ -13417,7 +13392,7 @@ async def enforce_website_environment_lockdown(website_id: str, body: Environmen
 @router.post("/{website_id}/environment/purge-debug-log")
 async def purge_website_debug_log(website_id: str, user=Depends(get_current_user)):
     """Safely purge physical debug.log file from origin server."""
-    website = get_owned_website(user, website_id)
+    website = get_licensed_website(user, website_id)
     target_url = website.get("url") or website.get("domain") or ""
     if target_url and not target_url.startswith("http"):
         target_url = "http://localhost/mahabub" if "localhost" in target_url else f"https://{target_url}"
@@ -13430,7 +13405,8 @@ async def purge_website_debug_log(website_id: str, user=Depends(get_current_user
     try:
         sep = "&" if "?" in target_url else "?"
         remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=purge_debug_log&site_token={site_token}&api_key={api_key}"
-        resp = requests.post(remote_url, timeout=12, verify=False)
+        async with httpx.AsyncClient(timeout=httpx.Timeout(12.0, connect=3.0), verify=False) as client:
+            resp = await client.post(remote_url)
         if resp.status_code == 200:
             data = resp.json().get("action_result", {})
             if data:
@@ -13445,8 +13421,6 @@ async def purge_website_debug_log(website_id: str, user=Depends(get_current_user
 @router.post("/bulk/environment/lockdown")
 async def bulk_enforce_environment_lockdown(body: EnvironmentLockdownRequest, user=Depends(get_current_user)):
     """Concurrently enforce environment lockdown across entire fleet of connected WordPress sites."""
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
     db = MongoDB()
     user_id_str = str(user.get("id") or user.get("_id") or user.get("user_id") or "")
     query = {"$or": [{"user_id": user_id_str}, {"user_id": user.get("_id")}, {"user_id": user.get("id")}]} if user_id_str else {}
@@ -13464,9 +13438,7 @@ async def bulk_enforce_environment_lockdown(body: EnvironmentLockdownRequest, us
         target_ids = set([str(x) for x in (user_doc.get("licensed_website_ids", []) if user_doc else [])])
         sites = [s for s in sites if str(s.get("_id")) in target_ids or str(s.get("id")) in target_ids]
 
-    results = []
-
-    def _lock_one(s):
+    async def _lock_one(s, client):
         target_url = s.get("url") or s.get("domain") or ""
         if target_url and not target_url.startswith("http"):
             target_url = "http://localhost/mahabub" if "localhost" in target_url else f"https://{target_url}"
@@ -13481,7 +13453,7 @@ async def bulk_enforce_environment_lockdown(body: EnvironmentLockdownRequest, us
         try:
             sep = "&" if "?" in target_url else "?"
             remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=enforce_environment_lockdown&site_token={site_token}&api_key={api_key}"
-            resp = requests.post(remote_url, json={"options": body.options.dict()}, timeout=20, verify=False)
+            resp = await client.post(remote_url, json={"options": body.options.dict()})
             if resp.status_code == 200:
                 data = resp.json().get("action_result", {})
                 return {"website_id": sid, "domain": domain, "success": True, "data": data}
@@ -13489,10 +13461,8 @@ async def bulk_enforce_environment_lockdown(body: EnvironmentLockdownRequest, us
         except Exception as exc:
             return {"website_id": sid, "domain": domain, "success": False, "error": str(exc)}
 
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        futures = {executor.submit(_lock_one, s): s for s in sites}
-        for fut in as_completed(futures):
-            results.append(fut.result())
+    async with httpx.AsyncClient(timeout=httpx.Timeout(20.0, connect=5.0), verify=False) as client:
+        results = await asyncio.gather(*[_lock_one(s, client) for s in sites])
 
     return success({
         "total_sites": len(sites),
@@ -13562,7 +13532,7 @@ async def get_website_reputation_status(website_id: str, user=Depends(get_curren
 async def scan_website_reputation(website_id: str, user=Depends(get_current_user)):
     """Force an on-demand live multi-vendor blacklist scan across all 7 authorities."""
     from src.services.reputation_service import ReputationService
-    website = get_owned_website(user, website_id)
+    website = get_licensed_website(user, website_id)
     domain = website.get("domain") or website.get("url") or ""
     if not domain:
         raise HTTPException(status_code=400, detail="Website domain is not configured.")
