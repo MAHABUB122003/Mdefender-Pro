@@ -165,10 +165,11 @@ class WAF_FW_Admin {
     }
 
     public function ajax_save_connection() {
-        check_ajax_referer('waf_connector_nonce_action', 'waf_connector_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => 'Unauthorized permissions']);
-        }
+        try {
+            check_ajax_referer('waf_connector_nonce_action', 'waf_connector_nonce');
+            if (!current_user_can('manage_options')) {
+                wp_send_json_error(['message' => 'Unauthorized permissions']);
+            }
 
         $api_key = sanitize_text_field(trim($_POST['waf_api_key'] ?? ''));
         $cloud_url = esc_url_raw(trim($_POST['waf_cloud_url'] ?? ''));
@@ -267,16 +268,23 @@ class WAF_FW_Admin {
         update_option('waf_fw_connected', 'yes');
         update_option('waf_fw_last_sync', current_time('mysql'));
 
-        if (class_exists('WAF_FW_Engine')) {
-            WAF_FW_Engine::instance()->export_fast_cache();
-        }
+            try {
+                if (class_exists('WAF_FW_Engine')) {
+                    WAF_FW_Engine::instance()->export_fast_cache();
+                }
+            } catch (\Throwable $cacheErr) {
+                // Non-fatal: fast cache will rebuild on next request
+            }
 
-        wp_send_json_success([
-            'message' => 'Successfully connected to MDefender Pro Cloud Fleet!',
-            'trial_days' => $trial_days,
-            'status' => 'connected',
-            'last_sync' => date_i18n('M j, Y - H:i:s')
-        ]);
+            wp_send_json_success([
+                'message' => 'Successfully connected to MDefender Pro Cloud Fleet!',
+                'trial_days' => $trial_days,
+                'status' => 'connected',
+                'last_sync' => date_i18n('M j, Y - H:i:s')
+            ]);
+        } catch (\Throwable $e) {
+            wp_send_json_error(['message' => 'Plugin connection error: ' . $e->getMessage()]);
+        }
     }
 
     public function ajax_disconnect() {

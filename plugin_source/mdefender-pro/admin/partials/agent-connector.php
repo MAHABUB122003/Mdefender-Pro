@@ -607,9 +607,30 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
 
             fetch(ajaxurl, {
                 method: 'POST',
+                credentials: 'same-origin',
                 body: formData
             })
-            .then(function(res) { return res.json(); })
+            .then(function(res) {
+                return res.text().then(function(rawText) {
+                    var parsed = null;
+                    try {
+                        parsed = JSON.parse(rawText);
+                    } catch (parseErr) {
+                        var jsonStart = rawText.indexOf('{');
+                        var jsonEnd = rawText.lastIndexOf('}');
+                        if (jsonStart !== -1 && jsonEnd > jsonStart) {
+                            try {
+                                parsed = JSON.parse(rawText.slice(jsonStart, jsonEnd + 1));
+                            } catch (e2) {}
+                        }
+                    }
+                    if (!parsed) {
+                        var snippet = (rawText || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 140);
+                        throw new Error('WordPress AJAX returned HTTP ' + res.status + (snippet ? ': ' + snippet : ' (empty or invalid response)'));
+                    }
+                    return parsed;
+                });
+            })
             .then(function(json) {
                 submitBtn.disabled = false;
                 if (btnSpinner) btnSpinner.style.display = 'none';
@@ -641,7 +662,8 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
                 submitBtn.disabled = false;
                 if (btnSpinner) btnSpinner.style.display = 'none';
                 if (btnText) btnText.textContent = originalText;
-                showNotification('error', 'Network error communicating with WordPress. Please try again.');
+                var detail = (err && err.message) ? err.message : 'Network error communicating with WordPress. Please try again.';
+                showNotification('error', detail);
             });
         });
     }

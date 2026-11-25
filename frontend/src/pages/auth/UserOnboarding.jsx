@@ -99,14 +99,19 @@ const referralOptions = [
 
 export default function UserOnboarding() {
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(1); // 1 = Workspace, 2 = Origin Connect
+  const cachedProfileInit = userStore.get('profile');
+  const storedStepInit = typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_onboarding_step') : null;
+  const initialStep = (cachedProfileInit?.onboarding_step === 'connect' || cachedProfileInit?.websites?.length > 0 || storedStepInit === '2') ? 2 : 1;
+
+  const [currentStep, setCurrentStep] = useState(initialStep); // 1 = Workspace, 2 = Origin Connect
+  const [initializing, setInitializing] = useState(() => !(cachedProfileInit || storedStepInit));
   const [loading, setLoading] = useState(false);
-  const [userProfile, setUserProfile] = useState(null);
-  const [apiKey, setApiKey] = useState('');
+  const [userProfile, setUserProfile] = useState(cachedProfileInit || null);
+  const [apiKey, setApiKey] = useState(() => cachedProfileInit?.api_key || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_api_key') : '') || '');
   const [showKey, setShowKey] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [hasVisitedStep2, setHasVisitedStep2] = useState(false);
+  const [hasVisitedStep2, setHasVisitedStep2] = useState(initialStep === 2);
 
   // Step 1 Form State
   const [fullName, setFullName] = useState('');
@@ -144,10 +149,13 @@ export default function UserOnboarding() {
         if (profile.onboarding_step === 'connect' || profile.websites?.length > 0) {
           setCurrentStep(2);
           setHasVisitedStep2(true);
+          if (typeof localStorage !== 'undefined') localStorage.setItem('mdefender_onboarding_step', '2');
         }
+        setInitializing(false);
       })
       .catch(err => {
         console.error('Failed to load user profile for onboarding:', err);
+        if (isMounted) setInitializing(false);
       });
 
     return () => { isMounted = false; };
@@ -288,6 +296,7 @@ export default function UserOnboarding() {
 
       setHasVisitedStep2(true);
       setCurrentStep(2);
+      if (typeof localStorage !== 'undefined') localStorage.setItem('mdefender_onboarding_step', '2');
       setPollingActive(true);
     } catch (err) {
       setErrorMsg(err.message || 'Failed to save workspace configuration. Please try again.');
@@ -305,6 +314,23 @@ export default function UserOnboarding() {
     localStorage.clear();
     navigate('/user/login', { replace: true });
   };
+
+  if (initializing) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: brandTokens.bodyBg,
+        color: brandTokens.textBody,
+        fontSize: '14px',
+        fontWeight: 600
+      }}>
+        Loading workspace...
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -381,7 +407,10 @@ export default function UserOnboarding() {
             {/* Step 1 Item (Interactive & Clickable if user can navigate) */}
             <div
               onClick={() => {
-                if (currentStep === 2) setCurrentStep(1);
+                if (currentStep === 2) {
+                  setCurrentStep(1);
+                  if (typeof localStorage !== 'undefined') localStorage.setItem('mdefender_onboarding_step', '1');
+                }
               }}
               style={{
                 display: 'flex',
@@ -889,7 +918,10 @@ export default function UserOnboarding() {
             <div style={{ marginBottom: '24px' }}>
               <button
                 type="button"
-                onClick={() => setCurrentStep(1)}
+                onClick={() => {
+                  setCurrentStep(1);
+                  if (typeof localStorage !== 'undefined') localStorage.setItem('mdefender_onboarding_step', '1');
+                }}
                 style={{
                   background: '#FFFFFF',
                   border: `1px solid ${brandTokens.cardBorder}`,
