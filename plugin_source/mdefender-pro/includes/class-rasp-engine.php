@@ -316,6 +316,9 @@ class WAF_FW_RASP_Engine {
      * preventing direct execution of PHP files.
      */
     public function enforce_uploads_execution_barrier() {
+        if (function_exists('waf_fw_is_cloud_active') && !waf_fw_is_cloud_active()) {
+            return;
+        }
         if (function_exists('get_option') && get_option('waf_fw_disable_php_in_uploads', 'yes') !== 'yes') {
             return;
         }
@@ -335,13 +338,18 @@ class WAF_FW_RASP_Engine {
             return;
         }
 
-        // 1. Apache / LiteSpeed .htaccess protection
+        // 1. Apache / LiteSpeed .htaccess protection (Apache 2.2 & 2.4 compatible, never blocks .js)
         $htaccess_file = rtrim($basedir, '/\\') . '/.htaccess';
         if (!file_exists($htaccess_file)) {
             $content = "# MDefender Pro - Upload Directory PHP Execution Shield\n" .
-                       "<FilesMatch \"\.(?i:php|phtml|php3|php4|php5|php7|php8|phps|pht|inc|pl|py|cgi|asp|js|sh)$\">\n" .
-                       "  Order Deny,Allow\n" .
-                       "  Deny from all\n" .
+                       "<FilesMatch \"\.(?i:php|phtml|php3|php4|php5|php7|php8|phps|pht|inc|pl|py|cgi|asp|sh)$\">\n" .
+                       "  <IfModule mod_authz_core.c>\n" .
+                       "    Require all denied\n" .
+                       "  </IfModule>\n" .
+                       "  <IfModule !mod_authz_core.c>\n" .
+                       "    Order Deny,Allow\n" .
+                       "    Deny from all\n" .
+                       "  </IfModule>\n" .
                        "</FilesMatch>\n";
             @file_put_contents($htaccess_file, $content);
         }

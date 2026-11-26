@@ -51,7 +51,7 @@ foreach ($_COOKIE as $c_name => $c_val) {
         break;
     }
 }
-if ($has_wp_auth && empty($_GET['waf_test']) && empty($_POST['waf_test']) && empty($_FILES)) {
+if ($has_wp_auth && empty($_GET['waf_test']) && empty($_POST['waf_test'])) {
     return;
 }
 
@@ -283,7 +283,8 @@ $deobfuscated = (string) preg_replace('/(?:\xc0[\xae\x2e]|\xc1[\x8e\xae]|\xe0\x8
 // Hexadecimal & Unicode Escape Sequence Decoder
 if (strpos($deobfuscated, '\\u') !== false) {
     $deobfuscated = (string) preg_replace_callback('#\\\\u([0-9a-fA-F]{4})#', function($m) {
-        return mb_chr(hexdec($m[1]), 'UTF-8');
+        $cp = hexdec($m[1]);
+        return function_exists('mb_chr') ? mb_chr($cp, 'UTF-8') : html_entity_decode('&#' . $cp . ';', ENT_NOQUOTES, 'UTF-8');
     }, $deobfuscated);
 }
 if (strpos($deobfuscated, '\\x') !== false) {

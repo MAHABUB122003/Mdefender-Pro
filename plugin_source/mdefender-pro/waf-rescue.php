@@ -39,6 +39,53 @@ if (!is_array($pushed)) $pushed = [];
 $action = mdef_rescue_sanitize($_REQUEST['action'] ?? $pushed['action'] ?? 'ping');
 $filename = mdef_rescue_sanitize($_REQUEST['filename'] ?? $pushed['filename'] ?? '');
 
+// 3b. Strict Cryptographic Authentication Gate (never allow unauthenticated rescue execution)
+$mdef_authorized = (defined('ABSPATH') && function_exists('current_user_can') && current_user_can('manage_options'));
+if (!$mdef_authorized) {
+    $req_key = trim((string) ($_SERVER['HTTP_X_API_KEY'] ?? $_REQUEST['api_key'] ?? $pushed['api_key'] ?? ''));
+    $req_auth = trim((string) ($_SERVER['HTTP_AUTHORIZATION'] ?? ''));
+    if (stripos($req_auth, 'Bearer ') === 0) {
+        $req_key = trim(substr($req_auth, 7));
+    }
+    if (!empty($req_key) && strlen($req_key) >= 16) {
+        $wp_cfg = rtrim($wp_root, '/\\') . '/wp-config.php';
+        if (file_exists($wp_cfg)) {
+            $cfg_txt = @file_get_contents($wp_cfg);
+            if ($cfg_txt && preg_match("/define\s*\(\s*['\"]DB_NAME['\"]\s*,\s*['\"]([^'\"]+)['\"]/i", $cfg_txt, $m_db)
+                && preg_match("/define\s*\(\s*['\"]DB_USER['\"]\s*,\s*['\"]([^'\"]+)['\"]/i", $cfg_txt, $m_u)
+                && preg_match("/define\s*\(\s*['\"]DB_PASSWORD['\"]\s*,\s*['\"]([^'\"]*)['\"]/i", $cfg_txt, $m_p)
+                && preg_match("/define\s*\(\s*['\"]DB_HOST['\"]\s*,\s*['\"]([^'\"]+)['\"]/i", $cfg_txt, $m_h)) {
+                $tbl_prefix = 'wp_';
+                if (preg_match('/\$table_prefix\s*=\s*[\'"]([^\'"]+)[\'"]/', $cfg_txt, $m_px)) {
+                    $tbl_prefix = $m_px[1];
+                }
+                $mysqli = @new mysqli($m_h[1], $m_u[1], $m_p[1], $m_db[1]);
+                if ($mysqli && !$mysqli->connect_errno) {
+                    $opt_tbl = $mysqli->real_escape_string($tbl_prefix . 'options');
+                    $res = @$mysqli->query("SELECT option_value FROM `{$opt_tbl}` WHERE option_name IN ('waf_fw_api_key', 'waf_fw_ml_api_key', 'waf_fw_site_token')");
+                    if ($res) {
+                        while ($row = $res->fetch_assoc()) {
+                            $val = trim((string) ($row['option_value'] ?? ''));
+                            if (!empty($val) && hash_equals($val, $req_key)) {
+                                $mdef_authorized = true;
+                                break;
+                            }
+                        }
+                    }
+                    $mysqli->close();
+                }
+            }
+        }
+    }
+}
+if (!$mdef_authorized) {
+    if (!headers_sent()) {
+        http_response_code(401);
+    }
+    echo json_encode(['success' => false, 'message' => 'Unauthorized: Valid MDefender API Key required for rescue operations.']);
+    exit;
+}
+
 // 4. Resolve Backup Archive Storage Locations
 $site_host_sub = strtolower(preg_replace('/[^a-zA-Z0-9.\-_]/', '', $_SERVER['HTTP_HOST'] ?? ''));
 $possible_backup_dirs = array_unique(array_filter([
@@ -195,6 +242,11 @@ if ($action === 'restore' || $action === 'restore_backup') {
 
         // Skip directories and manifest
         if (substr($entry_name, -1) === '/' || $entry_name === 'mdefender-manifest.json' || strpos($entry_name, 'mdefender-backups') !== false) {
+            continue;
+        }
+
+        // Zip Slip / Path Traversal Guard
+        if (strpos($entry_name, '..') !== false || strpos($entry_name, '\\') !== false || strpos($entry_name, '/') === 0) {
             continue;
         }
 

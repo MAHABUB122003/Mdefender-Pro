@@ -921,6 +921,11 @@ class WAF_FW_Backup_Engine {
                 $stat = $zip->statIndex($i);
                 $entry_name = $stat['name'];
 
+                // Zip Slip / Path Traversal Guard
+                if (strpos($entry_name, '..') !== false || strpos($entry_name, '\\') !== false || strpos($entry_name, '/') === 0) {
+                    continue;
+                }
+
                 // Skip directories, database dumps, manifest, and backup storage itself
                 if (substr($entry_name, -1) === '/' || $entry_name === 'database.sql' || $entry_name === 'db/database.sql' || $entry_name === 'mdefender-manifest.json' || strpos($entry_name, 'mdefender-backups') !== false) {
                     continue;

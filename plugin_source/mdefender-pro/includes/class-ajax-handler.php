@@ -119,6 +119,9 @@ class WAF_FW_Ajax_Handler {
      * is present in the request or confirms valid administrator privileges.
      */
     private function verify_nonce() {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized'], 403);
+        }
         $nonce = $_REQUEST['nonce'] ?? $_SERVER['HTTP_X_WP_NONCE'] ?? '';
         if (empty($nonce)) {
             $raw = json_decode(file_get_contents('php://input'), true);
@@ -129,10 +132,7 @@ class WAF_FW_Ajax_Handler {
         if (!empty($nonce) && wp_verify_nonce($nonce, 'waf_fw_ajax')) {
             return;
         }
-        if (current_user_can('manage_options')) {
-            return;
-        }
-        wp_send_json_error(['message' => 'Security check failed'], 403);
+        wp_send_json_error(['message' => 'Security check failed (invalid or missing nonce)'], 403);
     }
 
     /**

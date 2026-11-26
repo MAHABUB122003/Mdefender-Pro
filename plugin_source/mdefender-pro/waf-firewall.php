@@ -289,19 +289,23 @@ if (defined('WAF_FW_MAIN_FILE')) {
     register_deactivation_hook(WAF_FW_MAIN_FILE, 'waf_fw_deactivate');
 }
 
-// Emergency Admin Access Recovery & Unlock Handler
+// Emergency Admin Access Recovery & Unlock Handler (strictly requires valid Cloud API Key)
 if (isset($_GET['mdefender_bypass']) || isset($_GET['mdefender_restore']) || isset($_GET['mdefender_reset']) || isset($_GET['waf_login_restore'])) {
-    update_option('waf_2fa_enforced', 'no');
-    update_option('waf_harden_login_guard', 'disabled');
-    update_option('waf_hold_press_enabled', 'no');
-    update_option('waf_harden_hide_login_url', 'no');
-    delete_option('waf_harden_login_rename');
-    delete_option('waf_hide_login_url');
-    delete_option('waf_harden_login_captcha');
-    delete_transient('waf_2fa_fails_' . md5($_SERVER['REMOTE_ADDR'] ?? ''));
-    global $wpdb;
-    if ($wpdb) {
-        $wpdb->query("DELETE FROM {$wpdb->usermeta} WHERE meta_key IN ('_waf_2fa_enabled', '_waf_2fa_secret', '_waf_2fa_recovery_codes')");
+    $provided_key = trim((string)($_GET['api_key'] ?? $_SERVER['HTTP_X_API_KEY'] ?? ''));
+    $stored_key = trim((string) get_option('waf_fw_api_key', get_option('waf_fw_ml_api_key', '')));
+    if (!empty($stored_key) && !empty($provided_key) && hash_equals($stored_key, $provided_key)) {
+        update_option('waf_2fa_enforced', 'no');
+        update_option('waf_harden_login_guard', 'disabled');
+        update_option('waf_hold_press_enabled', 'no');
+        update_option('waf_harden_hide_login_url', 'no');
+        delete_option('waf_harden_login_rename');
+        delete_option('waf_hide_login_url');
+        delete_option('waf_harden_login_captcha');
+        delete_transient('waf_2fa_fails_' . md5($_SERVER['REMOTE_ADDR'] ?? ''));
+        global $wpdb;
+        if ($wpdb) {
+            $wpdb->query("DELETE FROM {$wpdb->usermeta} WHERE meta_key IN ('_waf_2fa_enabled', '_waf_2fa_secret', '_waf_2fa_recovery_codes')");
+        }
     }
 }
 
@@ -4022,10 +4026,10 @@ add_action('rest_api_init', function() {
             $req_key = trim(str_ireplace('Bearer ', '', sanitize_text_field($raw_auth)));
             $req_token = sanitize_text_field($request->get_header('x-site-token') ?: $request->get_param('site_token') ?: '');
 
-            if (!empty($stored_key) && !empty($req_key) && (hash_equals($stored_key, $req_key) || strpos($stored_key, $req_key) !== false || hash_equals($req_key, $stored_key))) {
+            if (!empty($stored_key) && !empty($req_key) && hash_equals($stored_key, $req_key)) {
                 return true;
             }
-            if (!empty($stored_token) && !empty($req_token) && (hash_equals($stored_token, $req_token) || strcasecmp($stored_token, $req_token) === 0)) {
+            if (!empty($stored_token) && !empty($req_token) && hash_equals($stored_token, $req_token)) {
                 return true;
             }
             return new WP_Error('rest_forbidden', 'Unauthorized: Invalid MDefender API Key or Site Token.', ['status' => 401]);
@@ -4288,8 +4292,7 @@ add_action('rest_api_init', function() {
                 'action_result' => $action_result,
                 'inventory' => $inventory,
             ], 200);
-        },
-        'permission_callback' => '__return_true'
+        }
     ]);
 
     // Remote Live Logs Fetch Endpoint

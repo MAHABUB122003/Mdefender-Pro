@@ -1927,15 +1927,15 @@ class WAF_FW_Website_Hardening {
         $rules = [
             'block_directory_browsing' => [
                 'tag' => 'MDefender-Pro - Disable Directory Browsing',
-                'code' => "\n# MDefender-Pro - Disable Directory Browsing\nOptions -Indexes\n",
+                'code' => "\n# MDefender-Pro - Disable Directory Browsing\nIndexIgnore *\n",
             ],
             'protect_wp_config' => [
                 'tag' => 'MDefender-Pro - Protect wp-config.php',
-                'code' => "\n# MDefender-Pro - Protect wp-config.php\n<files wp-config.php>\norder allow,deny\ndeny from all\n</files>\n",
+                'code' => "\n# MDefender-Pro - Protect wp-config.php\n<files wp-config.php>\n<IfModule mod_authz_core.c>\nRequire all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\norder allow,deny\ndeny from all\n</IfModule>\n</files>\n",
             ],
             'block_php_uploads' => [
                 'tag' => 'MDefender-Pro - Block PHP in Uploads',
-                'code' => "\n# MDefender-Pro - Block PHP in Uploads\n<Files *.php>\ndeny from all\n</Files>\n",
+                'code' => "\n# MDefender-Pro - Block PHP in Uploads\n<Files *.php>\n<IfModule mod_authz_core.c>\nRequire all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\ndeny from all\n</IfModule>\n</Files>\n",
             ],
             'block_cpanel_probes' => [
                 'tag' => 'MDefender-Pro - Block cPanel & Server Admin Probes',
@@ -1943,7 +1943,7 @@ class WAF_FW_Website_Hardening {
             ],
             'protect_sensitive_files' => [
                 'tag' => 'MDefender-Pro - Protect Sensitive Files & Logs',
-                'code' => "\n# MDefender-Pro - Protect Sensitive Files & Logs\n<FilesMatch \"^.*(debug\\.log|\\.log|\\.sql|\\.bak|\\.env|\\.git|wp-config\\.php.*)$\">\nOrder allow,deny\nDeny from all\n</FilesMatch>\n",
+                'code' => "\n# MDefender-Pro - Protect Sensitive Files & Logs\n<FilesMatch \"^.*(debug\\.log|\\.log|\\.sql|\\.bak|\\.env|\\.git|wp-config\\.php.*)$\">\n<IfModule mod_authz_core.c>\nRequire all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\nOrder allow,deny\nDeny from all\n</IfModule>\n</FilesMatch>\n",
             ],
             'security_headers' => [
                 'tag' => 'MDefender-Pro - Enterprise HTTP Security Headers',
@@ -1953,20 +1953,22 @@ class WAF_FW_Website_Hardening {
         if (!isset($rules[$rule_type])) return false;
         $rule_info = $rules[$rule_type];
 
+        $is_root_htaccess = (defined('ABSPATH') && realpath(dirname($htaccess)) === realpath(ABSPATH));
+
         if ($create && !file_exists($htaccess)) {
             @file_put_contents($htaccess, $rule_info['code']);
-            self::ensure_wordpress_core_rewrite($htaccess);
+            if ($is_root_htaccess) self::ensure_wordpress_core_rewrite($htaccess);
             return true;
         }
         if (!file_exists($htaccess)) return false;
         $content = @file_get_contents($htaccess);
         if ($content === false) return false;
         if (strpos($content, $rule_info['tag']) !== false) {
-            self::ensure_wordpress_core_rewrite($htaccess);
+            if ($is_root_htaccess) self::ensure_wordpress_core_rewrite($htaccess);
             return true;
         }
         $written = @file_put_contents($htaccess, rtrim($content) . "\n" . $rule_info['code'], LOCK_EX);
-        self::ensure_wordpress_core_rewrite($htaccess);
+        if ($is_root_htaccess) self::ensure_wordpress_core_rewrite($htaccess);
         return $written;
     }
 
