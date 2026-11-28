@@ -374,6 +374,11 @@ $has_attack_marker = (
     stripos($deobfuscated_stripped, 'benchmark(') !== false ||
     stripos($deobfuscated_stripped, 'base64') !== false ||
     stripos($deobfuscated_stripped, 'etc/passwd') !== false ||
+    stripos($deobfuscated_stripped, 'order by') !== false ||
+    stripos($deobfuscated_stripped, 'group by') !== false ||
+    stripos($raw_combined, '%2527') !== false ||
+    stripos($raw_combined, '%2520') !== false ||
+    stripos($deobfuscated, '${') !== false ||
     stripos($deobfuscated, '$gt') !== false ||
     stripos($deobfuscated, '$where') !== false ||
     stripos($deobfuscated, '$regex') !== false ||
@@ -386,7 +391,21 @@ $has_attack_marker = (
     stripos($deobfuscated, 'metadata.google') !== false ||
     stripos($deobfuscated, 'gopher://') !== false ||
     stripos($deobfuscated, 'dict://') !== false ||
+    stripos($deobfuscated, 'dns://') !== false ||
+    stripos($deobfuscated, 'file://') !== false ||
     stripos($deobfuscated, 'php://') !== false ||
+    stripos($deobfuscated, 'burpcollaborator') !== false ||
+    stripos($deobfuscated, 'oast.') !== false ||
+    stripos($deobfuscated, 'interact.sh') !== false ||
+    stripos($deobfuscated, 'rO0AB') !== false ||
+    stripos($deobfuscated, 'aced 0005') !== false ||
+    stripos($deobfuscated, 'phar->') !== false ||
+    stripos($deobfuscated, '/rce') !== false ||
+    stripos($deobfuscated, '<callback>') !== false ||
+    stripos($deobfuscated, '<endpoint>') !== false ||
+    stripos($deobfuscated, '%eval;') !== false ||
+    stripos($deobfuscated, '%error;') !== false ||
+    stripos($deobfuscated, '%remote;') !== false ||
     stripos($deobfuscated, 'system.multicall') !== false ||
     stripos($deobfuscated, '__schema') !== false ||
     stripos($deobfuscated, '__type') !== false ||
@@ -396,11 +415,13 @@ $has_attack_marker = (
     stripos($deobfuscated, 'auto_prepend_file') !== false ||
     stripos($raw_combined, '%0d') !== false ||
     stripos($raw_combined, '%0a') !== false ||
+    stripos($raw_combined, '%00') !== false ||
     !empty($_SERVER['HTTP_X_FORWARDED_HOST']) ||
     !empty($_SERVER['HTTP_X_HOST']) ||
     !empty($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE']) ||
-    preg_match('@(?:attacker-phishing|evil-phishing)@i', ($_SERVER['HTTP_HOST'] ?? '')) ||
+    preg_match('@(?:attacker-phishing|evil-phishing|evil\.com|attacker\.com|jenkins|grafana|internal|Host:\s*|Content-Type:\s*|Forwarded)@i', ($_SERVER['HTTP_HOST'] ?? '')) ||
     preg_match('#\b(?:or|and)\s+(?:\d+=\d+|\w+=\w+)#i', $deobfuscated_stripped) ||
+    preg_match('@(?:\bwhoami\b|\bnslookup\b|`whoami`|\$\(whoami|\$\(sleep|\$\{IFS\}|%id%|!id!)@i', $raw_combined) ||
     (function() use ($deobfuscated, $mdefender_cur_host) {
         $curr_h = strtolower(preg_replace('/:\d+$/', '', $mdefender_cur_host));
         $s_eval = preg_replace('#https?://' . preg_quote($mdefender_cur_host, '#') . '\b#i', '', $deobfuscated);
@@ -626,7 +647,8 @@ if (!$is_blocked) {
     if (!empty($ua)) {
         $is_scanner_tool = (bool) preg_match('/(sqlmap|nikto|acunetix|dirbuster|gobuster|wpscan|hydra|masscan|zgrab|nmaplowercheck|nuclei|ffuf|feroxbuster)/i', $ua);
         $is_headless_env = (bool) preg_match('/(headlesschrome|phantomjs|puppeteer|scrapy|selenium)/i', $ua);
-        $is_header_rce   = (bool) preg_match('/(?:\(\)\s*\{|\b\/bin\/(?:bash|sh)\s+-c\b)/i', $mdefender_headers_flat);
+        $is_header_rce   = (bool) preg_match('/(?:\(\)\s*\{|\b\/bin\/(?:bash|sh)\s+-c\b|\$\{\s*(?:\$|\w+:)*(?:jndi|ldap|rmi|dns|lower|upper|env|sys)|\$\([^\)]+\)|`[^`]+`|\$\{[a-zA-Z0-9_\.:-]+\}|(?:;|\||&&)\s*(?:cat|ls|dir|whoami|id|uname|wget|curl|chmod|nc|bash|sh|powershell|cmd|sleep|nslookup)\b|"(?:whoami|id|cat)"|(?:\b(?:whoami|nslookup|sleep)\b.*burpcollaborator))/i', $mdefender_headers_flat);
+        $is_header_ssti  = (bool) preg_match('/(?:\$\{\s*[\"\']?(?:freemarker|java\.lang|ProcessBuilder|Runtime|Execute|ObjectConstructor|T\(org|T\(java|\.vars|\.version|\.data_model|\.now|\#rt|\#p|dwf\.newInstance|[\"\'][^\"\']+[\"\']\.(?:execute|toString)|getClass|\.getClass|[\"\']\w+[\"\']\s*[\+\-\*\/]\s*\d+|[0-9\s\*\+\-\/]{3,})[^\}]*\}|\$\{[^}]*(?:burpcollaborator|oast|execute\()[^}]*\}|\.getClass\(\))/i', $mdefender_headers_flat);
         if ($is_scanner_tool || ($is_headless_env && !$is_safe_preview_request)) {
             $is_blocked = true;
             $attack_name = 'Automated Vulnerability Scanner';
@@ -637,6 +659,11 @@ if (!$is_blocked) {
             $attack_name = 'Remote Code Execution (RCE)';
             $rule_name = 'Pre-Flight WAAP: Shellshock & Header RCE Guard';
             $block_reason = 'Malicious Shellshock / Header RCE sequence detected.';
+        } elseif ($is_header_ssti) {
+            $is_blocked = true;
+            $attack_name = 'Server-Side Template Injection (SSTI)';
+            $rule_name = 'Pre-Flight WAAP: Header SSTI & Expression Guard';
+            $block_reason = 'Malicious Template Expression (SSTI / SpEL) detected in HTTP header.';
         }
     }
 }
@@ -648,28 +675,28 @@ if (!$is_blocked && $has_attack_marker) {
     $eval_payload_no_ua = $raw_no_ua . ' ' . preg_replace('/\/\*.*?\*\//s', ' ', $raw_no_ua);
 
     // Check Module 1: SQL Injection (Classic, Union, Blind, Error, Stacked, DB functions, NoSQL)
-    if (preg_match('@(?:\bunion\b(?:\s+all)?\s+\bselect\b|\bdrop\b\s+\btable\b|\btruncate\b\s+\btable\b|(?:\b(?:or|and)\b\s+[\x27\x22]?\w+[\x27\x22]?\s*=\s*[\x27\x22]?\w+[\x27\x22]?)|(?:\b(?:or|and)\b\s+\d+\s*=\s*\d+\b)|(?:\b(?:or|and)\b\s+\x271\x27\s*=\s*\x271\x27)|(?:\x27|\x22|%27)\s*(?:--|#|\/\*|\bor\b|\band\b|\bunion\b|;)|(?:\b(?:sleep|benchmark|waitfor\s+delay|load_file|into\s+outfile|pg_sleep)\s*\()|\binformation_schema\b|(?:[\x27\x22]?\$(?:gt|ne|gte|nin|regex|where|in)[\x27\x22]?\s*:))@i', $eval_payload)) {
+    if (preg_match('@(?:\bunion\b(?:\s+all)?\s+\bselect\b|\bdrop\b\s+\btable\b|\btruncate\b\s+\btable\b|(?:\b(?:or|and)\b\s+[\x27\x22]?\w+[\x27\x22]?\s*=\s*[\x27\x22]?\w+[\x27\x22]?)|(?:\b(?:or|and)\b\s+\d+\s*=\s*\d+\b)|(?:\b(?:or|and)\b\s+\x271\x27\s*=\s*\x271\x27)|(?:\x27|\x22|%27)\s*(?:--|#|\/\*|\bor\b|\band\b|\bunion\b|;)|(?:\b(?:sleep|benchmark|waitfor\s+delay|load_file|into\s+outfile|pg_sleep)\s*\()|\binformation_schema\b|(?:[\x27\x22]?\$(?:gt|ne|gte|nin|regex|where|in)[\x27\x22]?\s*:)|(?:\border\s+by\s+\d+\b|\bgroup\s+by\s+\d+\b|\bhaving\s+\d+=\d+|(?:\|\||&&)\s*(?:\d+=\d+|[\x27\x22]\w+[\x27\x22]=[\x27\x22]\w+[\x27\x22])|(?:\x27|\x22|%27)\s*(?:order\s+by|group\s+by|union|having|limit|\b(?:or|and)\b|--|#|;)))@i', $eval_payload)) {
         $is_blocked = true;
         $attack_name = 'SQL Injection';
         $rule_name = 'Pre-Flight WAAP: SQL & NoSQL Injection Guard';
         $block_reason = 'Critical SQL / NoSQL Injection exploit payload intercepted by Pre-Flight WAAP.';
     }
     // Check Module 2: Cross-Site Scripting (XSS) & Polyglot Vectors
-    elseif (preg_match('@(?:<script[\s\S]*?>|\bon[a-z]{3,15}\s*=\s*[\x27\x22]?[^\x27\x22>]+|javascript\s*:\s*[^\s\x27\x22]+|\b(?:alert|prompt|confirm)\s*\([^\)]*\)|<(?:iframe|object|embed|svg|img)[^>]+(?:onload|onerror|src\s*=\s*[\x27\x22]?javascript)|jaVasCript:\/\*|\/\*<!\[CDATA\[\*\/)@i', $eval_payload)) {
+    elseif (preg_match('@(?:<script[\s\S]*?>|\bon[a-z]{3,15}\s*=\s*[\x27\x22]?[^\x27\x22>]+|javascript\s*:\s*[^\s\x27\x22]+|\b(?:alert|prompt|confirm)\s*\([^\)]*\)|<(?:iframe|object|embed|svg|img)[^>]+(?:onload|onerror|src\s*=\s*[\x27\x22]?javascript)|jaVasCript:\/\*|\/\*<!\[CDATA\[\*\/|(?:\%3C|<).*?(?:iframe|script|svg|img|object|embed).*?(?:\%3E|>|src|href))@i', $eval_payload)) {
         $is_blocked = true;
         $attack_name = 'Cross-Site Scripting (XSS)';
         $rule_name = 'Pre-Flight WAAP: Script Tag & Event Handler Guard';
         $block_reason = 'Cross-Site Scripting (XSS) payload intercepted by Pre-Flight WAAP.';
     }
     // Check Module 3: Command & Remote Code Execution (RCE) / Log4j / SSTI (Evaluated on body & URI to avoid mobile UA false positives)
-    elseif (preg_match('@(?:\b(?:system|exec|shell_exec|passthru|popen|proc_open|eval|assert|base64_decode)\s*[\(\[]|`[^`]+`|\$\([^\)]+\)|\b(?:bash\s+-i|dev\/tcp\/|nc\s+-e|powershell\s+-(?:enc|nop|c))|(?:;|&&|\|\|)\s*(?:cat|ls|dir|whoami|id|uname|wget|curl|chmod|nc|bash|sh|powershell|cmd)\b(?!\=)|(?:\|)\s*(?:cat|ls|dir|whoami|uname|wget|curl|chmod|nc|bash|powershell)\s+|\$\{\s*(?:jndi|ldap|rmi|dns)\s*:[^\}]+\}|\{\{\s*(?:[0-9\+\-\*\/]{3,}|(?:phpinfo|system|exec|passthru|shell_exec|eval|assert|_self|\$smarty|config)\b)|\$\{\s*[0-9\+\-\*\/]+\s*\})@i', $eval_payload_no_ua)) {
+    elseif (preg_match('@(?:\b(?:system|exec|shell_exec|passthru|popen|proc_open|eval|assert|base64_decode)\s*[\(\[]|`[^`]+`|\$\([^\)]+\)|\b(?:bash\s+-i|dev\/tcp\/|nc\s+-e|powershell\s+-(?:enc|nop|c))|(?:;|&&|\|\|)\s*(?:cat|ls|dir|whoami|id|uname|wget|curl|chmod|nc|bash|sh|powershell|cmd)\b(?!\=)|(?:\|)\s*(?:cat|ls|dir|whoami|uname|wget|curl|chmod|nc|bash|powershell)\s+|\$\{\s*(?:jndi|ldap|rmi|dns)\s*:[^\}]+\}|\{\{\s*(?:[0-9\+\-\*\/]{3,}|(?:phpinfo|system|exec|passthru|shell_exec|eval|assert|_self|\$smarty|config)\b)|\$\{\s*[0-9\+\-\*\/]+\s*\}|(?:\b(?:whoami|nslookup|sleep)\b|%id%|!id!|\bWhOaMi\b|\$\{IFS\}|%(?:0a|0d)\s*(?:id|whoami|cat|curl|wget|nslookup)|\/(?:\?|\*){3,}\/(?:\?|\*){3,})|(?:\$\{\s*[\"\']?(?:freemarker|java\.lang|ProcessBuilder|Runtime|Execute|ObjectConstructor|T\(org|T\(java|\.vars|\.version|\.data_model|\.now|\#rt|\#p|dwf\.newInstance|[\"\'][^\"\']+[\"\']\.(?:execute|toString)|[0-9\s\*\+\-\/]{3,})[^\}]*\}|\$\{[^}]*(?:burpcollaborator|oast|execute\()[^}]*\})|(?:\$\;\s*\/usr\/bin|\/usr\/bin\/(?:id|whoami|cat|ls|curl|wget)|\$\{PATH:[0-9:]+\}|\$\{\s*(?:\$\{\s*)+::-|\$\{\s*(?:env|sys):|p\?{2}swd))@i', $eval_payload_no_ua)) {
         $is_blocked = true;
         $attack_name = 'Remote Code Execution (RCE)';
         $rule_name = 'Pre-Flight WAAP: PHP Shell, Command, SSTI & JNDI Guard';
         $block_reason = 'Remote Command Execution (RCE) / SSTI / WebShell payload intercepted by Pre-Flight WAAP.';
     }
     // Check Module 4: Path Traversal, LFI/RFI & Overlong UTF-8 Evasion
-    elseif (preg_match('@(?:\.\.[;]?[\\\\/]){1,}|\/?etc\/(?:passwd|shadow|hosts|group)|(?:c:)?(?:[\\\\/]|;[\\\\/])*windows[\\\\/](?:system32|win\.ini)|php:\/\/(?:filter|input|memory|data)|(?:\.env|\.git\/|\.git$|\.htaccess|\.user\.ini|\.aws/credentials|wp-config\.php(?:\.(?:bak|old|swp)|~)?\b)|%(?:c0%[a-f0-9]{2}|c1%[a-f0-9]{2}|e0%80%[a-f0-9]{2}|u002[ef]|u005c|u221[56]|uff[0-3][a-f0-9])|\xc0[\x80-\xff]|\xc1[\x80-\xff]|\xe0\x80[\x80-\xff]@i', $eval_payload)) {
+    elseif (preg_match('@(?:\.\.[;]?[\\\\/]){1,}|\/?etc\/(?:passwd|shadow|hosts|group)|(?:c:)?(?:[\\\\/]|;[\\\\/])*windows[\\\\/](?:system32|win\.ini)|php:\/\/(?:filter|input|memory|data)|(?:\.env|\.git\/|\.git$|\.htaccess|\.user\.ini|\.aws/credentials|wp-config\.php(?:\.(?:bak|old|swp)|~)?\b)|%(?:c0%[a-f0-9]{2}|c1%[a-f0-9]{2}|e0%80%[a-f0-9]{2}|u002[ef]|u005c|u221[56]|uff[0-3][a-f0-9])|\xc0[\x80-\xff]|\xc1[\x80-\xff]|\xe0\x80[\x80-\xff]|(?:\b(?:file|page|include|path|template|doc|uri|url)=(?:https?|ftp):\/\/)|file:\/\/(?:\/[a-zA-Z0-9_\.\-]+)+@i', $eval_payload)) {
         $is_blocked = true;
         $attack_name = 'Path Traversal';
         $rule_name = 'Pre-Flight WAAP: Directory Traversal & Sensitive File Guard';
@@ -682,7 +709,8 @@ if (!$is_blocked && $has_attack_marker) {
         if (in_array($curr_h, ['localhost', '127.0.0.1', '::1'])) {
             $s_eval = preg_replace('#https?://(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?\b#i', '', $s_eval);
         }
-        return (bool) preg_match('@(?:https?|ftp|gopher|dict):\/\/(?:169\.254\.\d+\.\d+|127\.0\.0\.1|0\.0\.0\.0|localhost|\[::1\]|\[::ffff:(?:127\.|10\.|192\.168\.|172\.)\d+.*\]|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+|2130706433|0x7f000001|017700000001|metadata\.google(?:\.internal)?)@i', $s_eval);
+        return (bool) preg_match('@(?:https?|ftp|gopher|dict|dns|ldap|tftp):\/\/(?:169\.254\.\d+\.\d+|127\.0\.0\.1|0\.0\.0\.0|localhost|\[::1\]|\[::ffff:(?:127\.|10\.|192\.168\.|172\.)\d+.*\]|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+|2130706433|0x7f000001|017700000001|metadata\.google(?:\.internal)?|[^\s&]+burpcollaborator\.net|[^\s&]+oast\.(?:me|fun)|[^\s&]+interact\.sh)@i', $s_eval)
+            || (bool) preg_match('@(?:\b(?:url|uri|target|dest|endpoint|callback|website|redirect|src|file)=(?:https?|ftp|dict|dns|gopher|ldap|tftp):\/\/|(?:burpcollaborator\.net|interact\.sh|oast\.me|oast\.fun|requestbin|pipedream|webhook\.site)|<(?:callback|endpoint|image|url)[^>]*>https?:\/\/|file:\/\/(?:\/[a-zA-Z0-9_\.\-]+)+|(?:dict|dns|gopher|ldap|tftp):\/\/|<\?xml\b|X-aws-ec2-metadata)@i', $s_eval);
     })()) {
         $is_blocked = true;
         $attack_name = 'Server-Side Request Forgery (SSRF)';
@@ -690,7 +718,7 @@ if (!$is_blocked && $has_attack_marker) {
         $block_reason = 'Cloud Metadata / SSRF internal destination probe intercepted by Pre-Flight WAAP.';
     }
     // Check Module 6: XML External Entity (XXE) & Insecure Deserialization / XML-RPC Abuse
-    elseif (preg_match('@(?:<!ENTITY\s+(?:%\s+)?\w+\s+(?:SYSTEM|PUBLIC)\s+["\'][^"\']+["\']|<!DOCTYPE\s+\w+\s+\[|\bO:\d+:"[^"]+":\d+:\{|\ba:\d+:\{|system\.multicall\b|wp\.getUsersBlogs\b|<soapenv:Envelope\b.*?<!ENTITY)@i', $eval_payload)) {
+    elseif (preg_match('@(?:<!ENTITY\s+(?:%\s+)?\w+\s+(?:SYSTEM|PUBLIC)\s+["\'][^"\']+["\']|<!DOCTYPE\s+\w+\s+\[|\bO:\d+:"[^"]+":\d+:\{|\ba:\d+:\{|system\.multicall\b|wp\.getUsersBlogs\b|<soapenv:Envelope\b.*?<!ENTITY|(?:\%(?:eval|error|remote|file|d);\s*|rO0AB|aced\s*0005|\\\\xac\\\\xed\\\\x00\\\\x05|\\\\xac\\\\xed|\xac\xed|Cookie:\s*JSESSIONID|Header:\s*X-Content-Type|application\/x-java-serialized-object|\$phar->|new\s+Evil\(\)|(?:CakePHP|Drupal|Guzzle|Laminas|Laravel|Monolog|Symfony|ThinkPHP|Yii)\/RCE))@i', $eval_payload)) {
         $is_blocked = true;
         $attack_name = 'XML External Entity (XXE) / Deserialization';
         $rule_name = 'Pre-Flight WAAP: Parser Attack & Object Injection Guard';
@@ -719,7 +747,7 @@ if (!$is_blocked && $has_attack_marker) {
         $block_reason = 'GraphQL Schema Introspection or API Mass Assignment exploit intercepted by Pre-Flight WAAP.';
     }
     // Check Module 9: HTTP Protocol & Header Injection Prevention
-    elseif (preg_match('@(?:%0[da]|\r|\n)+(?:Set-Cookie:|Location:|<script|[a-z0-9\-_]+:)|(?:Transfer-Encoding.*Content-Length)|(?:Transfer-Encoding:\s*chunked.*Transfer-Encoding)|(?:Transfer-Encoding|TE\.CL)@i', $raw_combined) || (!empty($_SERVER['HTTP_X_FORWARDED_HOST']) && preg_match('@(?:evil-phishing|attacker-phishing)@i', $_SERVER['HTTP_X_FORWARDED_HOST'])) || (!empty($_SERVER['HTTP_X_HOST']) && preg_match('@(?:evil-phishing|attacker-phishing)@i', $_SERVER['HTTP_X_HOST'])) || !empty($_SERVER['HTTP_X_FORWARDED_TRANSFER_ENCODING']) || !empty($_SERVER['HTTP_X_CUSTOM_SMUGGLE'])) {
+    elseif (preg_match('@(?:%0[da]|\r|\n)+(?:Set-Cookie:|Location:|<script|[a-z0-9\-_]+:)|(?:Transfer-Encoding.*Content-Length)|(?:Transfer-Encoding:\s*chunked.*Transfer-Encoding)|(?:Transfer-Encoding|TE\.CL)@i', $raw_combined) || (!empty($_SERVER['HTTP_X_FORWARDED_HOST']) && preg_match('@(?:evil-phishing|attacker-phishing)@i', $_SERVER['HTTP_X_FORWARDED_HOST'])) || (!empty($_SERVER['HTTP_X_HOST']) && preg_match('@(?:evil-phishing|attacker-phishing)@i', $_SERVER['HTTP_X_HOST'])) || !empty($_SERVER['HTTP_X_FORWARDED_TRANSFER_ENCODING']) || !empty($_SERVER['HTTP_X_CUSTOM_SMUGGLE']) || preg_match('@(?:[\r\n]|Host:\s*|Content-Type:\s*|Forwarded-Host:\s*|Forwarded:\s*|\b(?:evil\.com|attacker\.com|jenkins|grafana|internal)\b)@i', ($_SERVER['HTTP_HOST'] ?? ''))) {
         $is_blocked = true;
         $attack_name = 'HTTP Protocol / Header Injection';
         $rule_name = 'Pre-Flight WAAP: CRLF Response Splitting & Host Poisoning Guard';
