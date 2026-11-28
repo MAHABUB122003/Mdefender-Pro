@@ -451,6 +451,7 @@ $has_attack_marker = (
     !empty($_POST['waf_hp']) ||
     !empty($_GET['anomaly_test']) ||
     preg_match('@(sqlmap|nikto|acunetix|dirbuster|gobuster|wpscan|hydra|masscan|zgrab|nmaplowercheck|nuclei|ffuf|feroxbuster)@i', ($_SERVER['HTTP_USER_AGENT'] ?? '')) ||
+    preg_match('@(?:\(\)\s*\{|\b(?:bash\s+-i|dev\/tcp\/|nc\s+-e|powershell\s+-(?:enc|nop|c)))@i', ($_SERVER['HTTP_USER_AGENT'] ?? '')) ||
     (!$is_safe_preview_request && preg_match('@(headlesschrome|phantomjs|puppeteer|scrapy|selenium)@i', ($_SERVER['HTTP_USER_AGENT'] ?? '')))
 );
 
@@ -625,11 +626,17 @@ if (!$is_blocked) {
     if (!empty($ua)) {
         $is_scanner_tool = (bool) preg_match('/(sqlmap|nikto|acunetix|dirbuster|gobuster|wpscan|hydra|masscan|zgrab|nmaplowercheck|nuclei|ffuf|feroxbuster)/i', $ua);
         $is_headless_env = (bool) preg_match('/(headlesschrome|phantomjs|puppeteer|scrapy|selenium)/i', $ua);
+        $is_header_rce   = (bool) preg_match('/(?:\(\)\s*\{|\b\/bin\/(?:bash|sh)\s+-c\b)/i', $mdefender_headers_flat);
         if ($is_scanner_tool || ($is_headless_env && !$is_safe_preview_request)) {
             $is_blocked = true;
             $attack_name = 'Automated Vulnerability Scanner';
             $rule_name = 'Pre-Flight WAAP: Scanner Signature Block';
             $block_reason = 'Automated vulnerability scanner signature detected.';
+        } elseif ($is_header_rce) {
+            $is_blocked = true;
+            $attack_name = 'Remote Code Execution (RCE)';
+            $rule_name = 'Pre-Flight WAAP: Shellshock & Header RCE Guard';
+            $block_reason = 'Malicious Shellshock / Header RCE sequence detected.';
         }
     }
 }
