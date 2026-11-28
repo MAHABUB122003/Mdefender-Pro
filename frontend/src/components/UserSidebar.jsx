@@ -94,9 +94,9 @@ export default function UserSidebar({ isOpen, onClose }) {
 
   const rawProfile = typeof window !== 'undefined' ? (userStore.get('profile') || {}) : {}
   const cachedProfile = rawProfile?.user || rawProfile || {}
-  const rawName = cachedProfile.name || cachedProfile.full_name || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_name') : null)
+  const rawName = cachedProfile.actor_name || cachedProfile.name || cachedProfile.full_name || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_name') : null)
   const userName = rawName || 'SecOps Lead Operator'
-  const userEmail = cachedProfile.email || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_email') : '') || 'operator@mdefender.io'
+  const userEmail = cachedProfile.actor_email || cachedProfile.email || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_email') : '') || 'operator@mdefender.io'
   const userAvatar = cachedProfile.avatar || cachedProfile.picture || cachedProfile.photo_url || (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_avatar') || localStorage.getItem('mdefender_user_photo')) : null)
 
   const _allowTestOverride = import.meta.env.DEV || Boolean(cachedProfile?.is_admin || cachedProfile?.role === 'super_admin')
@@ -109,6 +109,11 @@ export default function UserSidebar({ isOpen, onClose }) {
     : (cachedProfile.plan || (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || 'free') : 'free'))
   ).toLowerCase()
   const isPaid = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan)
+  const isTeamSession = Boolean(cachedProfile?.team_member_context)
+  const teamRole = (cachedProfile?.team_role || 'owner').toLowerCase()
+  const canSeeWpMgmt = !isTeamSession || teamRole === 'devops' || teamRole === 'secops'
+  const canSeeSecurity = !isTeamSession || teamRole === 'secops'
+  const canSeeBackup = !isTeamSession || teamRole === 'devops' || teamRole === 'secops'
 
   const userInitials = useMemo(() => {
     if (!userName || userName === 'User Profile') return 'SO'
@@ -540,6 +545,7 @@ export default function UserSidebar({ isOpen, onClose }) {
           </DropdownItem>
 
           {/* 4. WordPress Management > (Dropdown) */}
+          {canSeeWpMgmt && (
           <DropdownItem
             id="wordpress"
             label="WordPress Management"
@@ -598,8 +604,10 @@ export default function UserSidebar({ isOpen, onClose }) {
               <span style={{ pointerEvents: 'none' }}>Database Optimizer</span>
             </Link>
           </DropdownItem>
+          )}
 
           {/* 5. Access Control & Geo-Blocking > (Dropdown) */}
+          {canSeeSecurity && (
           <DropdownItem
             id="accessControl"
             label="Access & Geo-Blocking"
@@ -630,8 +638,10 @@ export default function UserSidebar({ isOpen, onClose }) {
               <span style={{ pointerEvents: 'none' }}>Country Blocking</span>
             </Link>
           </DropdownItem>
+          )}
 
           {/* 6. Backup & Recovery */}
+          {canSeeBackup && (
           <Link
             to="/user/bulk/backup"
             onClick={handleLinkClick}
@@ -642,8 +652,10 @@ export default function UserSidebar({ isOpen, onClose }) {
             </span>
             <span style={{ pointerEvents: 'none' }}>Backup &amp; Recovery</span>
           </Link>
+          )}
 
           {/* 7. Security Protection > (Dropdown) */}
+          {canSeeSecurity && (
           <DropdownItem
             id="securityProtection"
             label="Security Protection"
@@ -688,8 +700,10 @@ export default function UserSidebar({ isOpen, onClose }) {
               <span style={{ pointerEvents: 'none' }}>Post-Hack Recovery</span>
             </Link>
           </DropdownItem>
+          )}
 
           {/* 8. Security Center > (Dropdown) */}
+          {canSeeSecurity && (
           <DropdownItem
             id="securityCenter"
             label="Security Center"
@@ -720,8 +734,10 @@ export default function UserSidebar({ isOpen, onClose }) {
               <span style={{ pointerEvents: 'none' }}>Breach Intelligence &amp; HIBP</span>
             </Link>
           </DropdownItem>
+          )}
 
-          {/* 9. WordPress Sites */}
+          {/* 9. WordPress Sites (Owner Only) */}
+          {!isTeamSession && (
           <Link
             to="/user/websites"
             onClick={handleLinkClick}
@@ -732,8 +748,10 @@ export default function UserSidebar({ isOpen, onClose }) {
             </span>
             <span style={{ pointerEvents: 'none' }}>WordPress Sites</span>
           </Link>
+          )}
 
-          {/* 10. Team Members */}
+          {/* 10. Team Members (Owner Only) */}
+          {!isTeamSession && (
           <Link
             to="/user/team"
             onClick={handleLinkClick}
@@ -744,6 +762,7 @@ export default function UserSidebar({ isOpen, onClose }) {
             </span>
             <span style={{ pointerEvents: 'none' }}>Team Members</span>
           </Link>
+          )}
 
           {/* 12. Alerts & Notifications */}
           <Link
@@ -769,7 +788,8 @@ export default function UserSidebar({ isOpen, onClose }) {
             <span style={{ pointerEvents: 'none' }}>Security Reports</span>
           </Link>
 
-          {/* 13. Activity & Audit Logs */}
+          {/* 13. Activity & Audit Logs (Owner Only) */}
+          {!isTeamSession && (
           <Link
             to="/user/bulk/activity"
             onClick={handleLinkClick}
@@ -780,6 +800,7 @@ export default function UserSidebar({ isOpen, onClose }) {
             </span>
             <span style={{ pointerEvents: 'none' }}>Activity &amp; Audit Logs</span>
           </Link>
+          )}
         </nav>
 
         {/* ========================================================================= */}
@@ -857,7 +878,9 @@ export default function UserSidebar({ isOpen, onClose }) {
                       marginTop: '2px',
                       letterSpacing: '0.01em'
                     }}>
-                      {isPaid ? 'Pro Plan' : 'Free Plan'}
+                      {cachedProfile?.team_member_context
+                        ? `${(cachedProfile.team_role || 'team').toUpperCase()} • ${isPaid ? 'Pro Workspace' : 'Team Workspace'}`
+                        : (isPaid ? 'Pro Plan' : 'Free Plan')}
                     </span>
                     <span style={{
                       fontSize: '11px',
@@ -908,6 +931,7 @@ export default function UserSidebar({ isOpen, onClose }) {
                   </div>
                 </Link>
 
+                {!isTeamSession && (
                 <Link
                   to="/user/pricing"
                   onClick={() => { setShowProfileMenu(false); handleLinkClick(); }}
@@ -918,6 +942,7 @@ export default function UserSidebar({ isOpen, onClose }) {
                     <span>Plans &amp; Billing</span>
                   </div>
                 </Link>
+                )}
 
                 <Link
                   to="/user/support"
@@ -948,7 +973,8 @@ export default function UserSidebar({ isOpen, onClose }) {
             </div>
           )}
 
-          {/* Quick API Key Action Item (Positioned Directly Above Profile Trigger) */}
+          {/* Quick API Key Action Item (Owner Only — Hidden from Team Members) */}
+          {!isTeamSession && (
           <button
             type="button"
             onClick={handleCopyApiKey}
@@ -1000,6 +1026,7 @@ export default function UserSidebar({ isOpen, onClose }) {
               )}
             </div>
           </button>
+          )}
 
           {/* Unified Profile Trigger Bar */}
           <button
@@ -1057,7 +1084,7 @@ export default function UserSidebar({ isOpen, onClose }) {
                   marginTop: '2px',
                   letterSpacing: '0.01em'
                 }}>
-                  {isPaid ? 'Pro Plan' : 'Free Plan'}
+                  {isTeamSession ? `Team • ${teamRole.toUpperCase()}` : (isPaid ? 'Pro Plan' : 'Free Plan')}
                 </span>
               </div>
             </div>

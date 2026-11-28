@@ -35,6 +35,9 @@ function storeTokens(data) {
   if (typeof localStorage !== 'undefined') {
     if (data.access_token) localStorage.setItem('mdefender_access', data.access_token);
     if (data.refresh_token) localStorage.setItem('mdefender_refresh', data.refresh_token);
+    if (data.user?.role === 'super_admin' || data.user?.role === 'admin' || data.user?.is_admin) {
+      localStorage.setItem('mdefender_admin_access', data.access_token);
+    }
     if (data.user?.full_name || data.user?.name) {
       localStorage.setItem('mdefender_user_name', data.user.full_name || data.user.name);
     }
@@ -59,6 +62,7 @@ export function clearTokens() {
   if (typeof localStorage !== 'undefined') {
     localStorage.removeItem('mdefender_access');
     localStorage.removeItem('mdefender_refresh');
+    localStorage.removeItem('mdefender_admin_access');
     localStorage.removeItem('mdefender_user_name');
     localStorage.removeItem('mdefender_user_plan');
   }
@@ -110,7 +114,13 @@ async function executeSilentRefresh() {
 }
 
 async function apiCall(endpoint, options = {}) {
-  const accessToken = getAccessToken();
+  let accessToken = getAccessToken();
+  if (endpoint.startsWith('/api/v1/admin')) {
+    const adminToken = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_admin_access') || localStorage.getItem('mdefender_access')) : null;
+    if (adminToken) {
+      accessToken = adminToken;
+    }
+  }
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,
@@ -123,6 +133,12 @@ async function apiCall(endpoint, options = {}) {
   const csrf = getCsrfToken();
   if (csrf) {
     headers['X-CSRF-Token'] = csrf;
+  }
+
+  const activeWorkspaceOwner = typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_workspace_owner') : '';
+  const isPublicEndpoint = endpoint.startsWith('/api/v1/pricing/') || endpoint.startsWith('/api/v1/team/invites/verify') || endpoint.startsWith('/api/v1/team/invites/complete-signup');
+  if (activeWorkspaceOwner && !isPublicEndpoint && (!endpoint.startsWith('/api/auth/') || endpoint === '/api/auth/me')) {
+    headers['X-Workspace-Owner'] = activeWorkspaceOwner;
   }
 
   const isBackupOp = endpoint.includes('/backups');
@@ -417,10 +433,6 @@ export const api = {
     return response.json()
   },
   scanContent: (data) => apiCall('/api/scan', { method: 'POST', body: JSON.stringify(data) }),
-  getLogs: (params = {}) => {
-    const qs = new URLSearchParams(params).toString()
-    return apiCall(`/api/admin/logs${qs ? '?' + qs : ''}`)
-  },
   getRules: () => apiCall('/api/admin/rules'),
   createRule: (data) => apiCall('/api/admin/rules', { method: 'POST', body: JSON.stringify(data) }),
   updateRule: (id, data) => apiCall(`/api/admin/rules?id=${id}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -443,14 +455,6 @@ export const api = {
   addClient: (data) => apiCall('/api/admin/clients', { method: 'POST', body: JSON.stringify(data) }),
   updateClient: (id, data) => apiCall(`/api/admin/clients?id=${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteClient: (id) => apiCall(`/api/admin/clients?id=${id}`, { method: 'DELETE' }),
-  getBlacklist: (params) => {
-    const qs = params ? new URLSearchParams(params).toString() : ''
-    return apiCall(`/api/admin/blacklist${qs ? '?' + qs : ''}`)
-  },
-  addBlacklist: (data) => apiCall('/api/admin/blacklist', { method: 'POST', body: JSON.stringify(data) }),
-  removeBlacklist: (ip) => apiCall(`/api/admin/blacklist?ip=${encodeURIComponent(ip)}`, { method: 'DELETE' }),
-  promoteBlacklist: (ip) => apiCall('/api/admin/blacklist/promote', { method: 'POST', body: JSON.stringify({ ip }) }),
-  cleanExpiredBlacklist: () => apiCall('/api/admin/blacklist/clean-expired', { method: 'POST' }),
   getSettings: () => apiCall('/api/admin/settings'),
   updateSettings: (data) => apiCall('/api/admin/settings', { method: 'POST', body: JSON.stringify(data) }),
   changeAdminPassword: (data) => apiCall('/api/admin/change_password', { method: 'POST', body: JSON.stringify(data) }),
@@ -498,7 +502,6 @@ export const api = {
   adminDeleteTenantWebsite: (id) => apiCall(`/api/v1/admin/websites/${id}`, { method: 'DELETE' }),
   adminUpdateWebsiteWafMode: (id, waf_mode) => apiCall(`/api/v1/admin/websites/${id}/waf_mode`, { method: 'PUT', body: JSON.stringify({ waf_mode }) }),
   adminPingWebsite: (id) => apiCall(`/api/v1/admin/websites/${id}/ping`, { method: 'POST' }),
-  adminImpersonateUser: (userId) => apiCall(`/api/v1/admin/users/${userId}/impersonate`, { method: 'POST' }),
 
   // International Compliance & Audit Trail
   adminGetAuditLogs: (params) => {
@@ -518,8 +521,19 @@ export const api = {
   adminGetBroadcastNotices: () => apiCall('/api/v1/admin/broadcast-notice'),
   adminCreateBroadcastNotice: (data) => apiCall('/api/v1/admin/broadcast-notice', { method: 'POST', body: JSON.stringify(data) }),
 
+  // Team & Support RBAC + Platform Settings
+  adminGetTeam: () => apiCall('/api/v1/admin/team'),
+  adminCreateTeamMember: (data) => apiCall('/api/v1/admin/team', { method: 'POST', body: JSON.stringify(data) }),
+  adminUpdateTeamPermissions: (id, data) => apiCall(`/api/v1/admin/team/${encodeURIComponent(id)}/permissions`, { method: 'PUT', body: JSON.stringify(data) }),
+  adminToggleTeamStatus: (id) => apiCall(`/api/v1/admin/team/${encodeURIComponent(id)}/toggle-status`, { method: 'POST' }),
+  adminGetPlatformSettings: () => apiCall('/api/v1/admin/settings/platform'),
+  adminUpdatePlatformSettings: (data) => apiCall('/api/v1/admin/settings/platform', { method: 'PUT', body: JSON.stringify(data) }),
+  adminSendTestEmail: (recipient) => apiCall('/api/v1/admin/settings/test-email', { method: 'POST', body: JSON.stringify({ recipient }) }),
+
   adminGetOverview: (params = {}) => apiCall(`/api/v1/admin/overview${params?.fresh ? '?fresh=true' : ''}`),
   adminGetSystemHealth: () => apiCall('/api/v1/admin/system-health'),
+  adminGetFlags: () => apiCall('/api/v1/admin/flags'),
+  adminUpdateFlag: (data) => apiCall('/api/v1/admin/flags', { method: 'PUT', body: JSON.stringify(data) }),
 
   getUserProfile: () => apiCall('/api/user/profile'),
   updateUserProfile: (data) => apiCall('/api/user/profile', { method: 'PUT', body: JSON.stringify(data) }),
@@ -800,11 +814,17 @@ export const api = {
   runReportScheduleNow: (id) => apiCall(`/api/v1/reports/schedules/${id}/run-now`, { method: 'POST' }),
 
   // Team RBAC APIs
+  getTeamWorkspaces: () => apiCall('/api/v1/team/workspaces'),
   getTeamMembers: () => apiCall('/api/v1/team/members'),
   inviteTeamMember: (data) => apiCall('/api/v1/team/invite', { method: 'POST', body: JSON.stringify(data) }),
   updateTeamMember: (id, data) => apiCall(`/api/v1/team/members/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  toggleSuspendTeamMember: (id) => apiCall(`/api/v1/team/members/${id}/suspend`, { method: 'POST' }),
   deleteTeamMember: (id) => apiCall(`/api/v1/team/members/${id}`, { method: 'DELETE' }),
   revokeTeamInvite: (id) => apiCall(`/api/v1/team/invites/${id}`, { method: 'DELETE' }),
+  resendTeamInvite: (id) => apiCall(`/api/v1/team/invites/${id}/resend`, { method: 'POST' }),
+  verifyTeamInvite: (token) => apiCall(`/api/v1/team/invites/verify?token=${encodeURIComponent(token)}`),
+  acceptTeamInvite: (token) => apiCall('/api/v1/team/invites/accept', { method: 'POST', body: JSON.stringify({ token }) }),
+  completeTeamInviteSignup: (data) => apiCall('/api/v1/team/invites/complete-signup', { method: 'POST', body: JSON.stringify(data) }),
   getTeamAuditLogs: () => apiCall('/api/v1/team/audit'),
 
   // Real-Time Fleet Performance, SSL & Uptime Monitoring
@@ -916,6 +936,7 @@ export const api = {
   getUserSupportTicketDetails: (ticketId) => apiCall(`/api/user/support/tickets/${ticketId}`),
   replyUserSupportTicket: (ticketId, data) => apiCall(`/api/user/support/tickets/${ticketId}/reply`, { method: 'POST', body: JSON.stringify(data) }),
   deleteUserSupportTicket: (ticketId) => apiCall(`/api/user/support/tickets/${ticketId}`, { method: 'DELETE' }),
+  clearTokens,
 }
 
 export default api

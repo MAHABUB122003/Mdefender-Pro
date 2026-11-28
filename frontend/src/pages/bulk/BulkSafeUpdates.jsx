@@ -1084,22 +1084,35 @@ export default function BulkSafeUpdates() {
               <tbody>
                 {history.map((h) => {
                   const isClean = !h.rollback_triggered && !h.regression_detected
+                  const rawTs = h.created_at || h.timestamp || h.executed_at
+                  const parsedDt = rawTs ? new Date(rawTs) : null
+                  const timeLabel = parsedDt && !isNaN(parsedDt.getTime())
+                    ? parsedDt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : 'Recent'
+                  const fromVer = h.from_version || h.old_version || ''
+                  const toVer = h.to_version || h.new_version || ''
                   return (
                     <tr key={h.id} style={{ borderBottom: '1px solid #F0F4F2' }}>
                       <td style={{ padding: '14px', fontSize: '12px', color: '#60716B' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <Clock size={13} color="#9CA3AF" />
-                          <span>{new Date(h.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span>{timeLabel}</span>
                         </div>
                       </td>
                       <td style={{ padding: '14px' }}>
-                        <strong style={{ fontSize: '13px', color: '#0B2522' }}>{h.component_name || h.component_slug}</strong>
-                        <span style={{ display: 'block', fontSize: '11px', color: '#889892', textTransform: 'uppercase' }}>{h.component_type}</span>
+                        <strong style={{ fontSize: '13px', color: '#0B2522' }}>{h.component_name || h.component_slug || h.action || 'Safe Operation'}</strong>
+                        <span style={{ display: 'block', fontSize: '11px', color: '#889892', textTransform: 'uppercase' }}>{h.component_type || 'system'}</span>
                       </td>
                       <td style={{ padding: '14px', fontSize: '12px', fontWeight: 700 }}>
-                        <span style={{ color: '#6B7280' }}>v{h.from_version}</span>
-                        <span style={{ margin: '0 6px', color: '#9CA3AF' }}>&rarr;</span>
-                        <span style={{ color: isClean ? '#059669' : '#DC2626' }}>v{h.to_version}</span>
+                        {fromVer || toVer ? (
+                          <>
+                            <span style={{ color: '#6B7280' }}>{fromVer ? `v${fromVer}` : '—'}</span>
+                            <span style={{ margin: '0 6px', color: '#9CA3AF' }}>&rarr;</span>
+                            <span style={{ color: isClean ? '#059669' : '#DC2626' }}>{toVer ? `v${toVer}` : '—'}</span>
+                          </>
+                        ) : (
+                          <span style={{ color: '#6B7280' }}>{h.version_transition || 'Verified'}</span>
+                        )}
                       </td>
                       <td style={{ padding: '14px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

@@ -82,8 +82,11 @@ class BruteForceService:
 
         if lockout_until:
             if isinstance(lockout_until, datetime):
-                if lockout_until > datetime.now(timezone.utc):
-                    remaining = int((lockout_until - datetime.now(timezone.utc)).total_seconds() / 60)
+                if lockout_until.tzinfo is None:
+                    lockout_until = lockout_until.replace(tzinfo=timezone.utc)
+                now_utc = datetime.now(timezone.utc)
+                if lockout_until > now_utc:
+                    remaining = int((lockout_until - now_utc).total_seconds() / 60)
                     return True, remaining, False
                 else:
                     self.db.failed_logins.update_one(

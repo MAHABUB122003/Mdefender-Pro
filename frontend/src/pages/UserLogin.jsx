@@ -18,6 +18,7 @@ export default function UserLogin({ onLoginSuccess }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const planParam = searchParams.get('plan') || '';
   const cycleParam = searchParams.get('cycle') || 'monthly';
+  const redirectParam = searchParams.get('redirect') || '';
   const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -49,8 +50,9 @@ export default function UserLogin({ onLoginSuccess }) {
     }
   }, [showSuccess, searchParams, setSearchParams]);
 
-  const handleLoginSuccess = (user) => {
-    if (user) {
+  const handleLoginSuccess = async (user, extraData = {}) => {
+    let resolvedUser = user;
+    if (resolvedUser) {
       if (typeof localStorage !== 'undefined') {
         const keysToRemove = [];
         for (let i = 0; i < localStorage.length; i++) {
@@ -60,27 +62,37 @@ export default function UserLogin({ onLoginSuccess }) {
           }
         }
         keysToRemove.forEach(k => localStorage.removeItem(k));
+        if (extraData?.default_workspace_owner) {
+          localStorage.setItem('mdefender_workspace_owner', extraData.default_workspace_owner);
+          try {
+            const meRes = await api.getMe();
+            if (meRes?.user) {
+              resolvedUser = meRes.user;
+            }
+          } catch (_) {}
+        }
       }
-      userStore.set('profile', user);
-      if (user.api_key) {
-        localStorage.setItem('mdefender_api_key', user.api_key);
-        window.dispatchEvent(new CustomEvent('mdefender_api_key_updated', { detail: user.api_key }));
+      userStore.set('profile', resolvedUser);
+      if (resolvedUser.api_key) {
+        localStorage.setItem('mdefender_api_key', resolvedUser.api_key);
+        window.dispatchEvent(new CustomEvent('mdefender_api_key_updated', { detail: resolvedUser.api_key }));
       }
-      if (user.email) localStorage.setItem('mdefender_user_email', user.email);
-      if (user.plan) localStorage.setItem('mdefender_user_plan', user.plan);
-      if (user.is_paid !== undefined) localStorage.setItem('mdefender_is_paid', String(user.is_paid));
-      if (user.payment_status) localStorage.setItem('mdefender_payment_status', user.payment_status);
-      if (user.name) localStorage.setItem('mdefender_user_name', user.name);
-      if (user.trial_days_remaining !== undefined) localStorage.setItem('mdefender_trial_days', user.trial_days_remaining);
-      if (user.trial_ends_at) localStorage.setItem('mdefender_trial_ends_at', user.trial_ends_at);
-      if (user.created_at) localStorage.setItem('mdefender_user_created_at', user.created_at);
+      if (resolvedUser.email) localStorage.setItem('mdefender_user_email', resolvedUser.email);
+      if (resolvedUser.plan) localStorage.setItem('mdefender_user_plan', resolvedUser.plan);
+      if (resolvedUser.is_paid !== undefined) localStorage.setItem('mdefender_is_paid', String(resolvedUser.is_paid));
+      if (resolvedUser.payment_status) localStorage.setItem('mdefender_payment_status', resolvedUser.payment_status);
+      if (resolvedUser.name) localStorage.setItem('mdefender_user_name', resolvedUser.name);
+      if (resolvedUser.trial_days_remaining !== undefined) localStorage.setItem('mdefender_trial_days', resolvedUser.trial_days_remaining);
+      if (resolvedUser.trial_ends_at) localStorage.setItem('mdefender_trial_ends_at', resolvedUser.trial_ends_at);
+      if (resolvedUser.created_at) localStorage.setItem('mdefender_user_created_at', resolvedUser.created_at);
       userStore.invalidate('dashboard');
     }
     userStore.prefetchUserData(api);
-    if (onLoginSuccess && user) {
-      onLoginSuccess(user);
+    if (onLoginSuccess && resolvedUser) {
+      onLoginSuccess(resolvedUser);
     }
-    navigate(getPostLoginUrl(user), { replace: true });
+    const safeRedirect = redirectParam.startsWith('/') && !redirectParam.startsWith('//') ? redirectParam : '';
+    navigate(safeRedirect || getPostLoginUrl(resolvedUser), { replace: true });
   };
 
   const handleSubmit = async (e) => {
@@ -92,14 +104,14 @@ export default function UserLogin({ onLoginSuccess }) {
       if (mfaRequired) {
         const data = await api.verifyMFA(tempToken, mfaCode);
         if (data.status === 'success') {
-          handleLoginSuccess(data.user);
+          await handleLoginSuccess(data.user, data);
         } else {
           setError(data.message || 'Invalid 6-digit verification code.');
         }
       } else {
         const data = await api.login(emailOrUsername, password, rememberMe);
         if (data.status === 'success') {
-          handleLoginSuccess(data.user);
+          await handleLoginSuccess(data.user, data);
         } else if (data.mfa_required) {
           setMfaRequired(true);
           setTempToken(data.temp_token || '');

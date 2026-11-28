@@ -458,8 +458,10 @@ export default function UserDashboard() {
   };
 
   const underAttack = selectedSite ? Boolean(selectedSite.under_attack_mode) : sites.some((s) => s.under_attack_mode);
+  const cachedProf = userStore.get('profile')?.user || userStore.get('profile') || {};
+  const isTeamSession = Boolean(data?.user?.team_member_context || cachedProf?.team_member_context);
   const storedName = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_name') || '') : '';
-  const firstName = (data?.user?.name || data?.user?.full_name || storedName || '').trim().split(/\s+/)[0];
+  const firstName = (data?.user?.actor_name || cachedProf?.actor_name || data?.user?.name || data?.user?.full_name || storedName || '').trim().split(/\s+/)[0];
 
   if (loading && !data) {
     return <DashboardSkeleton userName={firstName} />;
@@ -553,9 +555,11 @@ export default function UserDashboard() {
             <Button variant="secondary" icon={Ban} onClick={() => setBlockOpen(true)}>
               Block IP
             </Button>
-            <Button variant="primary" icon={Globe2} onClick={() => navigate('/user/websites')}>
-              Manage sites
-            </Button>
+            {!isTeamSession && (
+              <Button variant="primary" icon={Globe2} onClick={() => navigate('/user/websites')}>
+                Manage sites
+              </Button>
+            )}
           </>
         }
       />
@@ -710,7 +714,7 @@ export default function UserDashboard() {
       <Card
         title="Sites"
         subtitle={selectedWebsite === 'all' ? 'Every site connected to this workspace' : 'Selected site'}
-        action={<Link to="/user/websites" style={{ fontSize: 12, color: 'var(--md-ink-3)', textDecoration: 'none' }}>View all sites</Link>}
+        action={!isTeamSession ? <Link to="/user/websites" style={{ fontSize: 12, color: 'var(--md-ink-3)', textDecoration: 'none' }}>View all sites</Link> : null}
         flush
       >
         {sites.length ? (
@@ -733,10 +737,17 @@ export default function UserDashboard() {
                   return (
                     <tr key={site.id}>
                       <td>
-                        <Link className="mdf-ud-site" to={`/user/websites`}>
-                          <Shield size={14} style={{ color: 'var(--md-ink-3)' }} />
-                          {site.domain || site.name || site.id}
-                        </Link>
+                        {isTeamSession ? (
+                          <span className="mdf-ud-site">
+                            <Shield size={14} style={{ color: 'var(--md-ink-3)' }} />
+                            {site.domain || site.name || site.id}
+                          </span>
+                        ) : (
+                          <Link className="mdf-ud-site" to={`/user/websites`}>
+                            <Shield size={14} style={{ color: 'var(--md-ink-3)' }} />
+                            {site.domain || site.name || site.id}
+                          </Link>
+                        )}
                         <div className="mdf-ud-scope">{site.platform || 'WordPress'} · {site.url || site.origin_server || '—'}</div>
                       </td>
                       <td>
@@ -751,9 +762,11 @@ export default function UserDashboard() {
                       </td>
                       <td style={{ fontSize: 11.5, color: 'var(--md-ink-3)' }}>{site.plugin_version ? `v${site.plugin_version}` : 'Not installed'}</td>
                       <td>
-                        <Link to="/user/websites" style={{ fontSize: 11.5, color: 'var(--md-ink-2)', textDecoration: 'none' }}>
-                          Open <ArrowUpRight size={11} style={{ verticalAlign: -1 }} />
-                        </Link>
+                        {!isTeamSession && (
+                          <Link to="/user/websites" style={{ fontSize: 11.5, color: 'var(--md-ink-2)', textDecoration: 'none' }}>
+                            Open <ArrowUpRight size={11} style={{ verticalAlign: -1 }} />
+                          </Link>
+                        )}
                       </td>
                     </tr>
                   );
@@ -764,9 +777,9 @@ export default function UserDashboard() {
         ) : (
           <EmptyState
             icon={Globe2}
-            title="No sites connected yet"
-            description="Add your first WordPress site, install the plugin and paste the site key to start blocking attacks."
-            action={<Button variant="primary" icon={ArrowRight} onClick={() => navigate('/user/websites')}>Connect a site</Button>}
+            title={isTeamSession ? 'No sites assigned yet' : 'No sites connected yet'}
+            description={isTeamSession ? 'Ask your Workspace Owner to assign WordPress sites to your team scope.' : 'Add your first WordPress site, install the plugin and paste the site key to start blocking attacks.'}
+            action={!isTeamSession ? <Button variant="primary" icon={ArrowRight} onClick={() => navigate('/user/websites')}>Connect a site</Button> : null}
           />
         )}
       </Card>

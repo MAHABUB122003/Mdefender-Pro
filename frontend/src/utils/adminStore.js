@@ -69,13 +69,12 @@ export const adminStore = {
   async prefetchAdminData(api) {
     if (!api) return;
     try {
-      const [overview, health, users, pricing, learningStats, logs, websites] = await Promise.allSettled([
+      const [overview, health, users, pricing, learningStats, websites] = await Promise.allSettled([
         api.adminGetOverview ? api.adminGetOverview() : null,
         api.adminGetSystemHealth ? api.adminGetSystemHealth() : null,
         api.adminGetAllUsers ? api.adminGetAllUsers({}) : null,
         api.adminGetPricing ? api.adminGetPricing() : null,
         api.adminGetLearningStats ? api.adminGetLearningStats() : null,
-        api.getLogs ? api.getLogs({ page: 1, limit: 30 }) : null,
         api.adminGetTenantWebsites ? api.adminGetTenantWebsites() : null,
       ]);
 
@@ -94,9 +93,6 @@ export const adminStore = {
       }
       if (learningStats.status === 'fulfilled' && learningStats.value?.data) {
         this.set('learning_stats', learningStats.value.data);
-      }
-      if (logs.status === 'fulfilled' && logs.value) {
-        this.set('global_logs', logs.value);
       }
       if (websites.status === 'fulfilled' && websites.value) {
         const list = websites.value?.data?.websites || (Array.isArray(websites.value) ? websites.value : websites.value.websites || []);

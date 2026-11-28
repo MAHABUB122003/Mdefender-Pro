@@ -36,7 +36,6 @@ function lazyRetry(componentImport) {
 
 const Login = lazyRetry(() => import('./pages/Login'))
 const Dashboard = lazyRetry(() => import('./pages/Dashboard'))
-const Logs = lazyRetry(() => import('./pages/Logs'))
 const Rules = lazyRetry(() => import('./pages/Rules'))
 const Clients = lazyRetry(() => import('./pages/Clients'))
 const AdminUsers = lazyRetry(() => import('./pages/AdminUsers'))
@@ -44,7 +43,6 @@ const AdminPricing = lazyRetry(() => import('./pages/AdminPricing'))
 const AdminSupport = lazyRetry(() => import('./pages/AdminSupport'))
 const AdminInspector = lazyRetry(() => import('./pages/AdminInspector'))
 const UserSupport = lazyRetry(() => import('./pages/UserSupport'))
-const Blacklist = lazyRetry(() => import('./pages/Blacklist'))
 const Settings = lazyRetry(() => import('./pages/Settings'))
 const Connect = lazyRetry(() => import('./pages/Connect'))
 const BlockPage = lazyRetry(() => import('./pages/BlockPage'))
@@ -80,6 +78,7 @@ const BulkDatabase = lazyRetry(() => import('./pages/bulk/BulkDatabase'))
 const BulkBlacklist = lazyRetry(() => import('./pages/bulk/BulkBlacklist'))
 const BulkActivity = lazyRetry(() => import('./pages/bulk/BulkActivity'))
 const UserTeam = lazyRetry(() => import('./pages/UserTeam'))
+const AcceptTeamInvite = lazyRetry(() => import('./pages/AcceptTeamInvite'))
 const UserAlerts = lazyRetry(() => import('./pages/UserAlerts'))
 const UserReports = lazyRetry(() => import('./pages/UserReports'))
 const UserTools = lazyRetry(() => import('./pages/UserTools'))
@@ -142,16 +141,53 @@ function PageFallback() {
   )
 }
 
+function isAdminPanelRole(u) {
+  if (!u) return false;
+  return u.role === 'super_admin' || u.role === 'admin' || u.role === 'support_lead' || u.role === 'support_agent' || Boolean(u.is_admin);
+}
+
+function hasAdminPerm(u, perm) {
+  if (!u) return false;
+  const perms = Array.isArray(u.permissions) ? u.permissions : [];
+  if (u.role === 'super_admin' || u.role === 'admin' || u.is_owner || perms.includes('*')) return true;
+  if (!perm || perm === 'owner_only') return false;
+  return perms.includes(perm);
+}
+
+function AdminPermRoute({ user, perm, children }) {
+  if (!hasAdminPerm(user, perm)) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+  return children;
+}
+
+function hasUserWorkspaceAccess(u, { ownerOnly = false, allowedRoles = null } = {}) {
+  if (!u) return false;
+  const isTeam = Boolean(u.team_member_context);
+  if (!isTeam) return true;
+  if (ownerOnly) return false;
+  if (!allowedRoles || allowedRoles.length === 0) return true;
+  const role = (u.team_role || 'auditor').toLowerCase();
+  return allowedRoles.includes(role);
+}
+
+function UserRoleRoute({ user, ownerOnly = false, allowedRoles = null, children }) {
+  if (!hasUserWorkspaceAccess(user, { ownerOnly, allowedRoles })) {
+    return <Navigate to="/user/dashboard" replace />;
+  }
+  return children;
+}
+
 function isUserOnboarded(u) {
   if (!u) return false;
-  if (u.role === 'super_admin' || u.is_admin) return true;
+  if (isAdminPanelRole(u)) return true;
   // Once onboarded, ALWAYS enter dashboard - even if all connected sites are later deleted
   return Boolean(u.onboarded);
 }
 
 function getPostLoginTarget(u) {
   if (!u) return '/user/login';
-  if (u.role === 'super_admin' || u.is_admin) return '/admin';
+  if (isAdminPanelRole(u)) return '/admin';
   const search = typeof window !== 'undefined' ? window.location.search || '' : '';
   if (search.includes('plan=')) return `/user/pricing${search}`;
 
@@ -166,7 +202,7 @@ function App() {
       )
       if (!hasToken) return null
       const cached = userStore.get('admin_profile') || userStore.get('profile')
-      return (cached && cached.role === 'super_admin') ? cached : null
+      return isAdminPanelRole(cached) ? cached : null
     } catch { return null }
   })
   const [userState, setUserState] = useState(() => {
@@ -204,29 +240,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // Intercept Support Impersonation URL Parameter
-    try {
-      if (typeof window !== 'undefined' && window.location.search) {
-        const urlParams = new URLSearchParams(window.location.search)
-        const impToken = urlParams.get('impersonate_token') || urlParams.get('impersonation_token')
-        const impUser = urlParams.get('user')
-        if (impToken) {
-          localStorage.setItem('mdefender_access', impToken)
-          localStorage.setItem('mdefender_is_impersonating', 'true')
-          if (impUser) localStorage.setItem('mdefender_impersonated_user', impUser)
-          
-          urlParams.delete('impersonate_token')
-          urlParams.delete('impersonation_token')
-          urlParams.delete('user')
-          const cleanQuery = urlParams.toString()
-          const newUrl = window.location.pathname + (cleanQuery ? `?${cleanQuery}` : '')
-          window.history.replaceState({}, '', newUrl)
-        }
-      }
-    } catch (e) {
-      console.warn('Impersonation token check error:', e)
-    }
-
     // Intercept Paddle Transaction URL Parameter (_ptxn) from default payment links
     try {
       if (typeof window !== 'undefined' && window.location.search) {
@@ -267,7 +280,7 @@ function App() {
 
     api.getMe().then(data => {
       const user = data.user
-      if (user.role === 'super_admin') {
+      if (isAdminPanelRole(user)) {
         setAdminUser(user)
         userStore.set('admin_profile', user)
         adminStore.prefetchAdminData(api)
@@ -363,6 +376,7 @@ function App() {
             )
           } />
 
+          <Route path="/team/accept" element={<AcceptTeamInvite />} />
           <Route path="/register" element={
             (userState && typeof localStorage !== 'undefined' && !!localStorage.getItem('mdefender_access')) ? <Navigate to={getPostLoginTarget(userState)} replace /> : <Register />
           } />
@@ -385,8 +399,8 @@ function App() {
           <Route path="dashboard" element={<UserDashboard />} />
           <Route path="logs" element={<UserLogs />} />
           <Route path="rules" element={<Navigate to="/user/dashboard" replace />} />
-          <Route path="domains" element={<Navigate to="/user/websites" replace />} />
-          <Route path="websites" element={<UserWebsites />} />
+          <Route path="domains" element={<UserRoleRoute user={userState} ownerOnly><Navigate to="/user/websites" replace /></UserRoleRoute>} />
+          <Route path="websites" element={<UserRoleRoute user={userState} ownerOnly><UserWebsites /></UserRoleRoute>} />
           <Route path="bulk-management" element={<Navigate to="/user/monitoring/uptime" replace />} />
           <Route path="bulk" element={<Navigate to="/user/monitoring/uptime" replace />} />
           <Route path="bulk/monitoring" element={<Navigate to="/user/monitoring/uptime" replace />} />
@@ -395,52 +409,52 @@ function App() {
           <Route path="monitoring/performance" element={<BulkPerformance />} />
           <Route path="monitoring/broken-links" element={<BulkBrokenLinks />} />
           <Route path="monitoring/blacklist" element={<BulkBlacklist />} />
-          <Route path="security/bot-shield" element={<UserTools activeMode="bot_shield" isBulk={true} />} />
-          <Route path="security/bot-defense" element={<UserTools activeMode="bot_shield" isBulk={true} />} />
-          <Route path="security/login-gateway" element={<BulkLoginGateway />} />
-          <Route path="security/rate-limits" element={<UserTools activeMode="rate_limits" isBulk={true} />} />
-          <Route path="security/2fa" element={<UserTools activeMode="twofactor" isBulk={true} />} />
-          <Route path="security/post-hack" element={<BulkPostHack />} />
-          <Route path="security/incident-response" element={<BulkPostHack />} />
-          <Route path="bulk/posthack" element={<BulkPostHack />} />
-          <Route path="security/threat-intelligence" element={<UserTools activeMode="whois" isBulk={true} />} />
-          <Route path="security/port-scanner" element={<SecurityPortScanner />} />
-          <Route path="security/breach-intelligence" element={<BulkBreachIntelligence />} />
-          <Route path="security/hibp" element={<BulkBreachIntelligence />} />
-          <Route path="security/pwned" element={<BulkBreachIntelligence />} />
-          <Route path="bulk/breach-intelligence" element={<BulkBreachIntelligence />} />
-          <Route path="bulk/plugins" element={<BulkPlugins />} />
-          <Route path="bulk/themes" element={<BulkThemes />} />
-          <Route path="bulk/core" element={<BulkCore />} />
-          <Route path="bulk/backup" element={<BulkBackup />} />
-          <Route path="backup" element={<BulkBackup />} />
-          <Route path="backups" element={<BulkBackup />} />
-          <Route path="bulk/backups" element={<BulkBackup />} />
-          <Route path="bulk/scanner" element={<BulkScanner />} />
-          <Route path="bulk/hardening" element={<BulkHardening />} />
-          <Route path="bulk/safe-updates" element={<BulkSafeUpdates />} />
-          <Route path="safe-updates" element={<Navigate to="/user/bulk/safe-updates" replace />} />
-          <Route path="bulk/database" element={<BulkDatabase />} />
-          <Route path="database" element={<Navigate to="/user/bulk/database" replace />} />
-          <Route path="bulk/environment" element={<Navigate to="/user/bulk/hardening?tab=environment" replace />} />
-          <Route path="environment" element={<Navigate to="/user/bulk/hardening?tab=environment" replace />} />
+          <Route path="security/bot-shield" element={<UserRoleRoute user={userState} allowedRoles={['secops']}><UserTools activeMode="bot_shield" isBulk={true} /></UserRoleRoute>} />
+          <Route path="security/bot-defense" element={<UserRoleRoute user={userState} allowedRoles={['secops']}><UserTools activeMode="bot_shield" isBulk={true} /></UserRoleRoute>} />
+          <Route path="security/login-gateway" element={<UserRoleRoute user={userState} allowedRoles={['secops']}><BulkLoginGateway /></UserRoleRoute>} />
+          <Route path="security/rate-limits" element={<UserRoleRoute user={userState} allowedRoles={['secops']}><UserTools activeMode="rate_limits" isBulk={true} /></UserRoleRoute>} />
+          <Route path="security/2fa" element={<UserRoleRoute user={userState} allowedRoles={['secops']}><UserTools activeMode="twofactor" isBulk={true} /></UserRoleRoute>} />
+          <Route path="security/post-hack" element={<UserRoleRoute user={userState} allowedRoles={['secops']}><BulkPostHack /></UserRoleRoute>} />
+          <Route path="security/incident-response" element={<UserRoleRoute user={userState} allowedRoles={['secops']}><BulkPostHack /></UserRoleRoute>} />
+          <Route path="bulk/posthack" element={<UserRoleRoute user={userState} allowedRoles={['secops']}><BulkPostHack /></UserRoleRoute>} />
+          <Route path="security/threat-intelligence" element={<UserRoleRoute user={userState} allowedRoles={['secops']}><UserTools activeMode="whois" isBulk={true} /></UserRoleRoute>} />
+          <Route path="security/port-scanner" element={<UserRoleRoute user={userState} allowedRoles={['secops']}><SecurityPortScanner /></UserRoleRoute>} />
+          <Route path="security/breach-intelligence" element={<UserRoleRoute user={userState} allowedRoles={['secops']}><BulkBreachIntelligence /></UserRoleRoute>} />
+          <Route path="security/hibp" element={<UserRoleRoute user={userState} allowedRoles={['secops']}><BulkBreachIntelligence /></UserRoleRoute>} />
+          <Route path="security/pwned" element={<UserRoleRoute user={userState} allowedRoles={['secops']}><BulkBreachIntelligence /></UserRoleRoute>} />
+          <Route path="bulk/breach-intelligence" element={<UserRoleRoute user={userState} allowedRoles={['secops']}><BulkBreachIntelligence /></UserRoleRoute>} />
+          <Route path="bulk/plugins" element={<UserRoleRoute user={userState} allowedRoles={['devops', 'secops']}><BulkPlugins /></UserRoleRoute>} />
+          <Route path="bulk/themes" element={<UserRoleRoute user={userState} allowedRoles={['devops', 'secops']}><BulkThemes /></UserRoleRoute>} />
+          <Route path="bulk/core" element={<UserRoleRoute user={userState} allowedRoles={['devops', 'secops']}><BulkCore /></UserRoleRoute>} />
+          <Route path="bulk/backup" element={<UserRoleRoute user={userState} allowedRoles={['devops', 'secops']}><BulkBackup /></UserRoleRoute>} />
+          <Route path="backup" element={<UserRoleRoute user={userState} allowedRoles={['devops', 'secops']}><BulkBackup /></UserRoleRoute>} />
+          <Route path="backups" element={<UserRoleRoute user={userState} allowedRoles={['devops', 'secops']}><BulkBackup /></UserRoleRoute>} />
+          <Route path="bulk/backups" element={<UserRoleRoute user={userState} allowedRoles={['devops', 'secops']}><BulkBackup /></UserRoleRoute>} />
+          <Route path="bulk/scanner" element={<UserRoleRoute user={userState} allowedRoles={['secops']}><BulkScanner /></UserRoleRoute>} />
+          <Route path="bulk/hardening" element={<UserRoleRoute user={userState} allowedRoles={['secops']}><BulkHardening /></UserRoleRoute>} />
+          <Route path="bulk/safe-updates" element={<UserRoleRoute user={userState} allowedRoles={['devops', 'secops']}><BulkSafeUpdates /></UserRoleRoute>} />
+          <Route path="safe-updates" element={<UserRoleRoute user={userState} allowedRoles={['devops', 'secops']}><Navigate to="/user/bulk/safe-updates" replace /></UserRoleRoute>} />
+          <Route path="bulk/database" element={<UserRoleRoute user={userState} allowedRoles={['devops', 'secops']}><BulkDatabase /></UserRoleRoute>} />
+          <Route path="database" element={<UserRoleRoute user={userState} allowedRoles={['devops', 'secops']}><Navigate to="/user/bulk/database" replace /></UserRoleRoute>} />
+          <Route path="bulk/environment" element={<UserRoleRoute user={userState} allowedRoles={['secops']}><Navigate to="/user/bulk/hardening?tab=environment" replace /></UserRoleRoute>} />
+          <Route path="environment" element={<UserRoleRoute user={userState} allowedRoles={['secops']}><Navigate to="/user/bulk/hardening?tab=environment" replace /></UserRoleRoute>} />
           <Route path="bulk/site-health" element={<Navigate to="/user/monitoring/performance" replace />} />
-          <Route path="bulk/activity" element={<BulkActivity />} />
-          <Route path="activity" element={<Navigate to="/user/bulk/activity" replace />} />
-          <Route path="activity-logs" element={<Navigate to="/user/bulk/activity" replace />} />
-          <Route path="audit-logs" element={<Navigate to="/user/bulk/activity" replace />} />
+          <Route path="bulk/activity" element={<UserRoleRoute user={userState} ownerOnly><BulkActivity /></UserRoleRoute>} />
+          <Route path="activity" element={<UserRoleRoute user={userState} ownerOnly><Navigate to="/user/bulk/activity" replace /></UserRoleRoute>} />
+          <Route path="activity-logs" element={<UserRoleRoute user={userState} ownerOnly><Navigate to="/user/bulk/activity" replace /></UserRoleRoute>} />
+          <Route path="audit-logs" element={<UserRoleRoute user={userState} ownerOnly><Navigate to="/user/bulk/activity" replace /></UserRoleRoute>} />
           <Route path="bulk/tools" element={<LegacyToolsRedirect />} />
-          <Route path="team" element={<UserTeam />} />
+          <Route path="team" element={<UserRoleRoute user={userState} ownerOnly><UserTeam /></UserRoleRoute>} />
           <Route path="alerts" element={<UserAlerts />} />
           <Route path="reports" element={<UserReports />} />
           <Route path="tools" element={<LegacyToolsRedirect />} />
-          <Route path="connect" element={<Navigate to="/user/websites" replace />} />
-          <Route path="pricing" element={<UserPricing />} />
-          <Route path="plans" element={<Navigate to="/user/pricing" replace />} />
-          <Route path="blacklist" element={<UserBlacklist activeMode="ip" />} />
-          <Route path="access/ip-blocklist" element={<UserBlacklist activeMode="ip" />} />
-          <Route path="access/ip-allowlist" element={<UserBlacklist activeMode="whitelist" />} />
-          <Route path="access/country-blocking" element={<UserBlacklist activeMode="country" />} />
+          <Route path="connect" element={<UserRoleRoute user={userState} ownerOnly><Navigate to="/user/websites" replace /></UserRoleRoute>} />
+          <Route path="pricing" element={<UserRoleRoute user={userState} ownerOnly><UserPricing /></UserRoleRoute>} />
+          <Route path="plans" element={<UserRoleRoute user={userState} ownerOnly><Navigate to="/user/pricing" replace /></UserRoleRoute>} />
+          <Route path="blacklist" element={<UserRoleRoute user={userState} allowedRoles={['secops']}><UserBlacklist activeMode="ip" /></UserRoleRoute>} />
+          <Route path="access/ip-blocklist" element={<UserRoleRoute user={userState} allowedRoles={['secops']}><UserBlacklist activeMode="ip" /></UserRoleRoute>} />
+          <Route path="access/ip-allowlist" element={<UserRoleRoute user={userState} allowedRoles={['secops']}><UserBlacklist activeMode="whitelist" /></UserRoleRoute>} />
+          <Route path="access/country-blocking" element={<UserRoleRoute user={userState} allowedRoles={['secops']}><UserBlacklist activeMode="country" /></UserRoleRoute>} />
           <Route path="settings" element={<UserSettings />} />
           <Route path="sessions" element={<Navigate to="/user/settings?tab=sessions" replace />} />
           <Route path="support" element={<UserSupport />} />
@@ -457,19 +471,17 @@ function App() {
         }>
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="pricing" element={<AdminPricing />} />
-          <Route path="clients" element={<Clients />} />
-          <Route path="websites" element={<Clients />} />
-          <Route path="logs" element={<Logs />} />
-          <Route path="rules" element={<Rules />} />
-          <Route path="blacklist" element={<Blacklist />} />
+          <Route path="users" element={<AdminPermRoute user={adminUser} perm="users.view"><AdminUsers /></AdminPermRoute>} />
+          <Route path="pricing" element={<AdminPermRoute user={adminUser} perm="owner_only"><AdminPricing /></AdminPermRoute>} />
+          <Route path="clients" element={<AdminPermRoute user={adminUser} perm="users.view"><Clients /></AdminPermRoute>} />
+          <Route path="websites" element={<AdminPermRoute user={adminUser} perm="users.view"><Clients /></AdminPermRoute>} />
+          <Route path="rules" element={<AdminPermRoute user={adminUser} perm="owner_only"><Rules /></AdminPermRoute>} />
           <Route path="settings" element={<Settings />} />
-          <Route path="learning" element={<AttackLearning />} />
-          <Route path="ddos" element={<DDoSDashboard />} />
-          <Route path="support" element={<AdminSupport />} />
-          <Route path="support/inquiries" element={<AdminSupport />} />
-          <Route path="support/inspector" element={<AdminInspector />} />
+          <Route path="learning" element={<AdminPermRoute user={adminUser} perm="owner_only"><AttackLearning /></AdminPermRoute>} />
+          <Route path="ddos" element={<AdminPermRoute user={adminUser} perm="owner_only"><DDoSDashboard /></AdminPermRoute>} />
+          <Route path="support" element={<AdminPermRoute user={adminUser} perm="support.tickets"><AdminSupport /></AdminPermRoute>} />
+          <Route path="support/inquiries" element={<AdminPermRoute user={adminUser} perm="support.tickets"><AdminSupport /></AdminPermRoute>} />
+          <Route path="support/inspector" element={<AdminPermRoute user={adminUser} perm="support.inspector"><AdminInspector /></AdminPermRoute>} />
         </Route>
 
         <Route path="/connect" element={

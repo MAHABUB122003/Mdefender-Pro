@@ -4,6 +4,7 @@ Endpoints for live fleet monitoring, Core Web Vitals audits (Mobile & Desktop),
 X.509 TLS certificate lifecycle inspection, and outage tracking.
 """
 
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -27,6 +28,15 @@ async def get_monitoring_overview(user=Depends(get_current_user)):
     """Retrieve aggregate fleet monitoring metrics: uptime %, avg latency, SSL status."""
     user_id = str(user.get("id") or user.get("_id") or "")
     overview = monitoring_svc.get_fleet_overview(user_id=user_id, wp_only=True)
+    if user.get("team_member_context") and isinstance(overview, dict) and isinstance(overview.get("sites"), list):
+        from src.api.v1.deps import filter_sites_by_team_scope
+        scoped = filter_sites_by_team_scope(user, overview["sites"])
+        overview["sites"] = scoped
+        overview["total_sites"] = len(scoped)
+        if "online_sites" in overview:
+            overview["online_sites"] = sum(1 for s in scoped if str(s.get("uptime_status") or s.get("status") or "").lower() in ("up", "online", "active"))
+        if "offline_sites" in overview:
+            overview["offline_sites"] = max(0, len(scoped) - int(overview.get("online_sites", 0)))
     return success(overview)
 
 
@@ -35,7 +45,7 @@ async def get_monitoring_overview(user=Depends(get_current_user)):
 async def probe_single_website(website_id: str, user=Depends(get_current_user)):
     """Run an immediate real-time HTTP health & latency probe against target website."""
     website = get_owned_website(user, website_id)
-    probe_res = monitoring_svc.probe_website_health(website)
+    probe_res = await asyncio.to_thread(monitoring_svc.probe_website_health, website)
     return success(probe_res)
 
 
@@ -90,7 +100,7 @@ async def trigger_performance_audit(
 async def get_ssl_status(website_id: str, user=Depends(get_current_user)):
     """Retrieve real X.509 SSL certificate validity, issuer, days remaining, and TLS cipher."""
     website = get_owned_website(user, website_id)
-    ssl_data = monitoring_svc.probe_ssl_certificate(website)
+    ssl_data = await asyncio.to_thread(monitoring_svc.probe_ssl_certificate, website)
     return success(ssl_data)
 
 
@@ -98,7 +108,7 @@ async def get_ssl_status(website_id: str, user=Depends(get_current_user)):
 async def probe_ssl_handshake(website_id: str, user=Depends(get_current_user)):
     """Force an active TLS socket handshake probe and refresh SSL telemetry."""
     website = get_owned_website(user, website_id)
-    ssl_data = monitoring_svc.probe_ssl_certificate(website)
+    ssl_data = await asyncio.to_thread(monitoring_svc.probe_ssl_certificate, website)
     return success(ssl_data)
 
 

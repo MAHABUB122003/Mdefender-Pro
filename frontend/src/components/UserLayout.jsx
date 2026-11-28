@@ -217,9 +217,6 @@ export default function UserLayout({ children, onLogout }) {
     }
   }, [])
 
-  const isImpersonating = typeof localStorage !== 'undefined' && localStorage.getItem('mdefender_is_impersonating') === 'true'
-  const impersonatedUser = typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_impersonated_user') : ''
-
   const rawProfile = userStore.get('profile') || userStore.get('dashboard')?.user || null
   const profile = rawProfile?.user || rawProfile || null
   const storedPlan = typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || '') : ''
@@ -241,20 +238,6 @@ export default function UserLayout({ children, onLogout }) {
     )
   )
 
-  const handleExitImpersonation = () => {
-    try {
-      localStorage.removeItem('mdefender_is_impersonating')
-      localStorage.removeItem('mdefender_impersonated_user')
-      if (window.opener) {
-        window.close()
-      } else {
-        window.location.href = '/admin/users'
-      }
-    } catch {
-      window.location.href = '/admin/users'
-    }
-  }
-
   return (
     <BackupRestoreProvider>
       <MalwareScanProvider>
@@ -269,44 +252,6 @@ export default function UserLayout({ children, onLogout }) {
         />
         <UserSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="main-content">
-          {isImpersonating && (
-            <div style={{
-              background: '#fef3c7',
-              borderBottom: '1px solid #fde68a',
-              padding: '9px 24px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              fontSize: '13px',
-              color: '#92400e',
-              fontWeight: '600',
-              position: 'sticky',
-              top: 0,
-              zIndex: 1000,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#d97706' }} />
-                <span>Super Admin Support Impersonation: Viewing workspace of <strong>{impersonatedUser || 'Customer'}</strong></span>
-              </div>
-              <button
-                type="button"
-                onClick={handleExitImpersonation}
-                style={{
-                  background: '#d97706',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '5px 14px',
-                  fontSize: '12px',
-                  fontWeight: '700',
-                  cursor: 'pointer'
-                }}
-              >
-                Exit Impersonation
-              </button>
-            </div>
-          )}
           <UserHeader onToggleSidebar={() => setSidebarOpen(prev => !prev)} onLogout={onLogout} />
           {isPaidExpired && location.pathname !== '/user/pricing' && (
             <div style={{

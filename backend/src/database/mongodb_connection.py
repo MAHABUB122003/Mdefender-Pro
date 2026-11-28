@@ -597,6 +597,20 @@ class InMemoryCollection:
                         else:
                             if doc_val not in in_list:
                                 return False
+                elif '$nin' in value:
+                    nin_list = value['$nin']
+                    if key == '_id' or key.endswith('_id'):
+                        nin_list_str = [str(x) for x in nin_list]
+                        doc_val_str = str(doc_val) if doc_val is not None else None
+                        if doc_val_str in nin_list_str:
+                            return False
+                    else:
+                        if isinstance(doc_val, list):
+                            if any(item in nin_list for item in doc_val):
+                                return False
+                        else:
+                            if doc_val in nin_list:
+                                return False
                 else:
                     if not check_eq(doc_val, value):
                         return False

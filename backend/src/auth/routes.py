@@ -180,12 +180,30 @@ async def login(data: LoginRequest, request: Request, response: Response):
         csrf_token, data.remember_me
     )
 
+    default_workspace_owner = None
+    u_obj = result.get('user') or {}
+    if not u_obj.get('is_paid') and int(u_obj.get('websites_count') or 0) == 0:
+        from src.database.mongodb_connection import MongoDB
+        _db = MongoDB()
+        u_id_str = str(u_obj.get('id') or u_obj.get('_id') or '')
+        u_em = (u_obj.get('email') or '').lower().strip()
+        or_q = []
+        if u_id_str:
+            or_q.append({'member_user_id': u_id_str})
+        if u_em:
+            or_q.append({'email': u_em})
+        if or_q:
+            tm = _db.team_members.find_one({'$or': or_q, 'status': 'active'})
+            if tm and tm.get('owner_id'):
+                default_workspace_owner = str(tm['owner_id'])
+
     return {
         'status': 'success',
         'user': result['user'],
         'access_token': result['access_token'],
         'refresh_token': result['refresh_token'],
         'csrf_token': csrf_token,
+        'default_workspace_owner': default_workspace_owner,
     }
 
 
@@ -207,12 +225,30 @@ async def verify_mfa(data: MFAChallengeRequest, request: Request, response: Resp
         csrf_token
     )
 
+    default_workspace_owner = None
+    u_obj = result.get('user') or {}
+    if not u_obj.get('is_paid') and int(u_obj.get('websites_count') or 0) == 0:
+        from src.database.mongodb_connection import MongoDB
+        _db = MongoDB()
+        u_id_str = str(u_obj.get('id') or u_obj.get('_id') or '')
+        u_em = (u_obj.get('email') or '').lower().strip()
+        or_q = []
+        if u_id_str:
+            or_q.append({'member_user_id': u_id_str})
+        if u_em:
+            or_q.append({'email': u_em})
+        if or_q:
+            tm = _db.team_members.find_one({'$or': or_q, 'status': 'active'})
+            if tm and tm.get('owner_id'):
+                default_workspace_owner = str(tm['owner_id'])
+
     return {
         'status': 'success',
         'user': result['user'],
         'access_token': result['access_token'],
         'refresh_token': result['refresh_token'],
         'csrf_token': csrf_token,
+        'default_workspace_owner': default_workspace_owner,
     }
 
 
@@ -247,6 +283,7 @@ async def admin_login(data: AdminLoginRequest, request: Request, response: Respo
         'access_token': result['access_token'],
         'refresh_token': result['refresh_token'],
         'csrf_token': csrf_token,
+        'user': result.get('user'),
     }
 
 
@@ -419,6 +456,13 @@ async def get_me(user: dict = Depends(get_current_user)):
             'username': user_uname,
             'role': user['role'],
             'is_admin': user.get('is_admin', user.get('role') == 'super_admin'),
+            'is_owner': user.get('is_owner', user.get('role') in ('super_admin', 'admin')),
+            'permissions': user.get('permissions', ['*'] if user.get('role') in ('super_admin', 'admin') else []),
+            'team_member_context': bool(user.get('team_member_context', False)),
+            'team_role': user.get('team_role'),
+            'team_scope': user.get('team_scope'),
+            'actor_name': user.get('actor_name'),
+            'actor_email': user.get('actor_email'),
             'email_verified': user.get('email_verified', False),
             'mfa_enabled': user.get('mfa_enabled', False),
             'plan': resolved_plan,
@@ -429,7 +473,7 @@ async def get_me(user: dict = Depends(get_current_user)):
             'trial_days_remaining': trial_days,
             'is_trial_active': is_trial_active,
             'trial_ends_at': user.get('trial_ends_at').isoformat() if hasattr(user.get('trial_ends_at'), 'isoformat') else str(user.get('trial_ends_at') or ''),
-            'api_key': user.get('api_key', ''),
+            'api_key': '' if user.get('team_member_context') else user.get('api_key', ''),
             'created_at': user.get('created_at'),
             'onboarded': user.get('onboarded', False),
             'websites_count': user.get('websites_count', 0),
@@ -675,12 +719,30 @@ async def google_callback(data: GoogleCallbackRequest, request: Request,
         csrf_token
     )
 
+    default_workspace_owner = None
+    u_obj = result.get('user') or {}
+    if not u_obj.get('is_paid') and int(u_obj.get('websites_count') or 0) == 0:
+        from src.database.mongodb_connection import MongoDB
+        _db = MongoDB()
+        u_id_str = str(u_obj.get('id') or u_obj.get('_id') or '')
+        u_em = (u_obj.get('email') or '').lower().strip()
+        or_q = []
+        if u_id_str:
+            or_q.append({'member_user_id': u_id_str})
+        if u_em:
+            or_q.append({'email': u_em})
+        if or_q:
+            tm = _db.team_members.find_one({'$or': or_q, 'status': 'active'})
+            if tm and tm.get('owner_id'):
+                default_workspace_owner = str(tm['owner_id'])
+
     return {
         'status': 'success',
         'user': result['user'],
         'access_token': result['access_token'],
         'refresh_token': result['refresh_token'],
         'csrf_token': csrf_token,
+        'default_workspace_owner': default_workspace_owner,
     }
 
 

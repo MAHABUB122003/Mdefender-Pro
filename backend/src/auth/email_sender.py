@@ -465,3 +465,82 @@ class AuthEmailService:
         except Exception as e:
             print(f"[AUTH EMAIL] Failed to send security alert: {e}")
             return False
+
+    def send_team_invite_email(
+        self,
+        to_email: str,
+        invitee_name: str,
+        owner_name: str,
+        role_title: str,
+        scope: str,
+        invite_url: str,
+    ) -> bool:
+        """Send a real workspace team invitation email with an acceptance link."""
+        try:
+            from email.mime.multipart import MIMEMultipart
+            from email.mime.text import MIMEText
+            from src.auth.config import AuthConfig
+
+            config = AuthConfig()
+            sender = (config.SMTP_USERNAME or 'noreply@mdefender-pro.io').strip()
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = f"You're invited to join {owner_name} on MDefender Pro"
+            msg['From'] = f"MDefender Pro <{sender}>"
+            msg['To'] = to_email
+
+            s_name = html_escape(invitee_name or to_email)
+            s_owner = html_escape(owner_name or 'Workspace Owner')
+            s_role = html_escape(role_title or 'Team Member')
+            s_scope = html_escape(scope or 'Global (All Sites)')
+            s_url = html_escape(invite_url)
+
+            html = f"""
+            <html>
+            <body style="margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:#F4F5F0; padding:36px 16px; color:#10201E;">
+              <div style="max-width:560px; margin:0 auto; background:#FFFFFF; border:1px solid #D9E1DC; border-radius:16px; overflow:hidden; box-shadow:0 8px 24px rgba(11,37,34,0.06);">
+                <div style="background:#0B2522; padding:22px 28px; color:#FFFFFF;">
+                  <div style="font-size:11px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; color:#E8792F;">MDefender Pro</div>
+                  <h2 style="margin:4px 0 0; font-size:20px; font-weight:800; color:#FFFFFF;">You're Invited to Join a Workspace</h2>
+                </div>
+                <div style="padding:28px;">
+                  <p style="margin:0 0 16px; font-size:14.5px; color:#334155; line-height:1.6;">
+                    Hi <strong>{s_name}</strong>,<br><br>
+                    <strong>{s_owner}</strong> has invited you to collaborate on their <strong>MDefender Pro</strong> WordPress Security &amp; Management workspace.
+                  </p>
+                  <div style="background:#FAFBF9; border:1px solid #D9E1DC; border-radius:12px; padding:16px 18px; margin:18px 0; font-size:13.5px;">
+                    <div style="margin-bottom:8px;"><span style="color:#60716B;">Assigned Role:</span> <strong style="color:#15803D;">{s_role}</strong></div>
+                    <div><span style="color:#60716B;">Site Access Scope:</span> <strong style="color:#10201E;">{s_scope}</strong></div>
+                  </div>
+                  <div style="text-align:center; margin:26px 0;">
+                    <a href="{s_url}" style="display:inline-block; background:#0B2522; color:#FFFFFF; text-decoration:none; padding:13px 28px; border-radius:10px; font-weight:700; font-size:14.5px;">
+                      Accept &amp; Join Workspace &rarr;
+                    </a>
+                  </div>
+                  <p style="font-size:12px; color:#64748B; line-height:1.5; margin:0 0 12px;">
+                    If the button doesn't work, copy and open this secure link:<br>
+                    <a href="{s_url}" style="color:#0284C7; word-break:break-all;">{s_url}</a>
+                  </p>
+                  <div style="font-size:11.5px; color:#64748B; margin-top:18px; border-top:1px solid #E2E8F0; padding-top:14px; line-height:1.5;">
+                    This single-use invitation expires in 7 days and is locked to <strong>{html_escape(to_email)}</strong>. If you did not expect this invitation, you can safely ignore this email.
+                  </div>
+                </div>
+              </div>
+            </body>
+            </html>
+            """
+
+            text_body = (
+                f"Hi {invitee_name or to_email},\n\n"
+                f"{owner_name} has invited you to join their MDefender Pro workspace.\n"
+                f"Role: {role_title}\n"
+                f"Scope: {scope}\n\n"
+                f"Accept invitation here: {invite_url}\n"
+            )
+
+            msg.attach(MIMEText(text_body, 'plain'))
+            msg.attach(MIMEText(html, 'html'))
+
+            return self._send_smtp_message(config, msg, to_email, purpose='team_invite')
+        except Exception as e:
+            print(f"[TEAM EMAIL] Failed to send team invite email: {e}")
+            return False

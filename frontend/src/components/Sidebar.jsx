@@ -1,14 +1,13 @@
 import { Link, useLocation } from 'react-router-dom'
 import { Fragment } from 'react'
+import userStore from '../utils/userStore'
 import {
   LayoutDashboard,
   LifeBuoy,
   Users,
   Globe,
   CreditCard,
-  ShieldAlert,
   Settings,
-  FileText,
   ShieldCheck,
   Brain,
   Activity,
@@ -41,31 +40,44 @@ export default function Sidebar({ isOpen, isCollapsed, onToggleCollapse, onClose
     return currentPath === toPath
   }
 
+  const adminProfile = userStore.get('admin_profile') || userStore.get('profile') || {}
+  const perms = Array.isArray(adminProfile.permissions) ? adminProfile.permissions : []
+  const isOwner = Boolean(
+    adminProfile.role === 'super_admin' ||
+    adminProfile.role === 'admin' ||
+    adminProfile.is_owner ||
+    perms.includes('*')
+  )
+  const canSee = (item) => {
+    if (isOwner) return true
+    if (!item.requiredPerm) return true
+    if (item.requiredPerm === 'owner_only') return false
+    return perms.includes(item.requiredPerm)
+  }
+
   const navGroups = [
     {
       label: 'Operations',
       items: [
         { to: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
-        { to: '/admin/support', label: 'Support Desk', icon: LifeBuoy }
+        { to: '/admin/support', label: 'Support Desk', icon: LifeBuoy, requiredPerm: 'support.tickets' }
       ]
     },
     {
       label: 'Customers',
       items: [
-        { to: '/admin/users', label: 'Tenants & Users', icon: Users },
-        { to: '/admin/clients', label: 'Protected Websites', icon: Globe },
-        { to: '/admin/pricing', label: 'Plans & Pricing', icon: CreditCard }
+        { to: '/admin/users', label: 'Tenants & Users', icon: Users, requiredPerm: 'users.view' },
+        { to: '/admin/clients', label: 'Protected Websites', icon: Globe, requiredPerm: 'users.view' },
+        { to: '/admin/pricing', label: 'Plans & Pricing', icon: CreditCard, requiredPerm: 'owner_only' }
       ]
     },
     {
       label: 'Security operations',
       items: [
-        { to: '/admin/blacklist', label: 'Global IP Blacklist', icon: ShieldAlert },
-        { to: '/admin/logs', label: 'Global Threat Logs', icon: FileText },
-        { to: '/admin/rules', label: 'Patches & Rules', icon: ShieldCheck },
-        { to: '/admin/learning', label: 'Evasion Lab', icon: Brain },
-        { to: '/admin/ddos', label: 'DDoS Shield', icon: Activity },
-        { to: '/admin/support/inspector', label: 'Remote Inspector', icon: Search }
+        { to: '/admin/rules', label: 'Patches & Rules', icon: ShieldCheck, requiredPerm: 'owner_only' },
+        { to: '/admin/learning', label: 'Evasion Lab', icon: Brain, requiredPerm: 'owner_only' },
+        { to: '/admin/ddos', label: 'DDoS Shield', icon: Activity, requiredPerm: 'owner_only' },
+        { to: '/admin/support/inspector', label: 'Remote Inspector', icon: Search, requiredPerm: 'support.inspector' }
       ]
     },
     {
@@ -74,7 +86,7 @@ export default function Sidebar({ isOpen, isCollapsed, onToggleCollapse, onClose
         { to: '/admin/settings', label: 'Settings', icon: Settings }
       ]
     }
-  ]
+  ].map(g => ({ ...g, items: g.items.filter(canSee) })).filter(g => g.items.length > 0)
 
   return (
     <aside

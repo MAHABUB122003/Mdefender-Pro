@@ -1587,7 +1587,18 @@ async def list_websites(platform: str | None = None, user=Depends(get_current_us
 
 
 
-    return success({"websites": [_website_out(d) for d in docs]})
+    from src.api.v1.deps import filter_sites_by_team_scope
+    docs = filter_sites_by_team_scope(user, docs)
+    is_team = bool(user.get("team_member_context"))
+    out_list = []
+    for d in docs:
+        item = _website_out(d)
+        if is_team:
+            item["api_key"] = ""
+            item["site_token"] = ""
+        out_list.append(item)
+
+    return success({"websites": out_list})
 
 
 
@@ -2758,14 +2769,12 @@ async def get_website(website_id: str, user=Depends(get_current_user)):
 
 
     website = get_owned_website(user, website_id)
+    item = _website_out(website)
+    if user.get("team_member_context"):
+        item["api_key"] = ""
+        item["site_token"] = ""
 
-
-
-
-
-
-
-    return success({"website": _website_out(website)})
+    return success({"website": item})
 
 
 
@@ -11433,6 +11442,8 @@ async def get_fleet_backups(user=Depends(get_current_user)):
 
 
     sites = list(db.websites.find({"$or": u_cond}))
+    from src.api.v1.deps import filter_sites_by_team_scope
+    sites = filter_sites_by_team_scope(user, sites)
 
 
 
@@ -12913,6 +12924,8 @@ async def get_fleet_safe_updates_summary(user=Depends(get_current_user)):
     db = MongoDB()
     user_id = str(user.get("id") or user.get("_id") or "")
     user_sites = list(db.websites.find({"user_id": user_id}))
+    from src.api.v1.deps import filter_sites_by_team_scope
+    user_sites = filter_sites_by_team_scope(user, user_sites)
     site_ids = [str(s["_id"]) for s in user_sites]
 
     logs = list(db.safe_updates_log.find({"website_id": {"$in": site_ids}}))

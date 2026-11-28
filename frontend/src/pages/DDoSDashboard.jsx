@@ -471,10 +471,8 @@ export default function DDoSDashboard() {
         paddingBottom: '2px'
       }}>
         {[
-          { id: 'overview', label: 'Live Traffic & Resources', icon: Activity },
-          { id: 'reputation', label: `Offending IPs & Ban List (${topIps.length})`, icon: Ban },
-          { id: 'alerts', label: `Security Alerts (${alertsList.length})`, icon: ShieldAlert },
-          { id: 'config', label: 'Shield Configuration', icon: Sliders }
+          { id: 'overview', label: 'Live Traffic & Mitigation', icon: Activity },
+          { id: 'config', label: 'Shield Configuration & Default Rate Limit', icon: Sliders }
         ].map(tab => {
           const Icon = tab.icon
           const isActive = activeTab === tab.id
@@ -695,118 +693,12 @@ export default function DDoSDashboard() {
         </div>
       )}
 
-      {/* ==================== TAB 2: REPUTATION BLOCKLIST ==================== */}
-      {activeTab === 'reputation' && (
-        <div style={{ background: '#FFFFFF', borderRadius: '10px', border: '1px solid #D9E1DC', overflow: 'hidden' }}>
-          <div style={{ padding: '14px 18px', borderBottom: '1px solid #D9E1DC', background: '#FBFCFA', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h3 style={{ margin: '0 0 2px', fontSize: '14px', color: '#0F172A', fontWeight: '800' }}>Active Volumetric Reputation Blacklist</h3>
-              <p style={{ color: '#64748B', fontSize: '12px', margin: 0 }}>IP addresses that repeatedly breached volumetric thresholds or triggered aggressive HTTP request floods.</p>
-            </div>
-            <span style={{ fontSize: '12px', color: '#64748B', fontWeight: '600' }}>{topIps.length} blocked endpoints</span>
-          </div>
-
-          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-            <table style={{ width: '100%', minWidth: '760px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-              <thead>
-                <tr style={{ background: '#FBFCFA', borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: '700' }}>
-                  <th style={{ padding: '12px 16px' }}>IP Address</th>
-                  <th style={{ padding: '12px 16px' }}>Flood Score</th>
-                  <th style={{ padding: '12px 16px' }}>Enforcement Level</th>
-                  <th style={{ padding: '12px 16px' }}>Trigger Reason</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topIps.length > 0 ? topIps.map((ipObj, i) => (
-                  <tr
-                    key={i}
-                    style={{ borderBottom: '1px solid #F1F5F9', transition: 'background-color 0.15s ease' }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F8FAFC'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FFFFFF'}
-                  >
-                    <td style={{ padding: '12px 16px', fontFamily: "'JetBrains Mono', monospace", fontWeight: '700', color: '#0F172A' }}>
-                      {ipObj.ip}
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '700', background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
-                        {ipObj.score || 85}/100
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '6px', background: '#FEF2F2', color: '#DC2626' }}>
-                        L{ipObj.level || 4} - Active Drop
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 16px', color: '#64748B', fontSize: '12px' }}>
-                      {ipObj.reason || 'Auto-blocked: Volumetric flood & repeated violation'}
-                    </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                      <button
-                        onClick={() => handleUnblockIP(ipObj.ip)}
-                        style={{ padding: '4px 10px', background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', borderRadius: '6px', fontSize: '11.5px', fontWeight: '700', cursor: 'pointer' }}
-                      >
-                        Unblock IP
-                      </button>
-                    </td>
-                  </tr>
-                )) : (
-                  <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', color: '#94A3B8', padding: '40px 16px' }}>
-                      No active reputation blocks recorded
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ==================== TAB 3: ALERTS ==================== */}
-      {activeTab === 'alerts' && (
-        <div style={{ background: '#FFFFFF', borderRadius: '10px', border: '1px solid #D9E1DC', overflow: 'hidden' }}>
-          <div style={{ padding: '14px 18px', borderBottom: '1px solid #D9E1DC', background: '#FBFCFA' }}>
-            <h3 style={{ margin: '0 0 2px', fontSize: '14px', color: '#0F172A', fontWeight: '800' }}>DDoS Mitigation Incident Log</h3>
-            <p style={{ color: '#64748B', fontSize: '12px', margin: 0 }}>Historical volumetric spikes, burst detections, and IP threshold triggers.</p>
-          </div>
-
-          <div style={{ padding: '16px' }}>
-            {alertsList.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {alertsList.map((al, idx) => (
-                  <div key={idx} style={{ padding: '12px 16px', background: '#FFFFFF', borderRadius: '8px', border: '1px solid #D9E1DC', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: al.severity === 'critical' ? '#FEF2F2' : '#FEF3C7', color: al.severity === 'critical' ? '#DC2626' : '#B45309', border: '1px solid ' + (al.severity === 'critical' ? '#FECACA' : '#FDE68A') }}>
-                        <ShieldAlert size={14} />
-                      </div>
-                      <div>
-                        <strong style={{ fontSize: '13px', color: '#0F172A' }}>{al.title || al.message || 'Volumetric Flood Blocked'}</strong>
-                        <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
-                          Source: <code style={{ fontFamily: "'JetBrains Mono', monospace", color: '#0F172A' }}>{al.ip || 'Unknown'}</code> &bull; Severity: <span style={{ color: al.severity === 'critical' ? '#DC2626' : '#D97706', fontWeight: '700', textTransform: 'uppercase' }}>{al.severity || 'high'}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <span style={{ fontSize: '12px', color: '#94A3B8' }}>{al.timestamp || 'Recent'}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#94A3B8', fontSize: '13px' }}>
-                <ShieldCheck size={32} color="#059669" style={{ margin: '0 auto 8px', display: 'block' }} />
-                No recent DDoS alerts recorded in this time window.
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ==================== TAB 4: CONFIGURATION ==================== */}
+      {/* ==================== TAB 2: CONFIGURATION ==================== */}
       {activeTab === 'config' && (
         <div style={{ background: '#FFFFFF', borderRadius: '10px', border: '1px solid #D9E1DC', overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid #D9E1DC', background: '#FBFCFA' }}>
-            <h3 style={{ margin: '0 0 2px', fontSize: '14px', color: '#0F172A', fontWeight: '800' }}>DDoS Protection Policy &amp; Rate Limits</h3>
-            <p style={{ color: '#64748B', fontSize: '12px', margin: 0 }}>Configure token-bucket burst thresholds, sliding window tolerances, and automatic IP ban durations.</p>
+            <h3 style={{ margin: '0 0 2px', fontSize: '14px', color: '#0F172A', fontWeight: '800' }}>DDoS Protection Policy &amp; Default Rate-Limit Baseline</h3>
+            <p style={{ color: '#64748B', fontSize: '12px', margin: 0 }}>Acts as the automatic platform baseline if a tenant has not customized per-site rate limits.</p>
           </div>
 
           <form onSubmit={handleSaveConfig} style={{ padding: '20px', maxWidth: '640px' }}>

@@ -811,6 +811,29 @@ def _detection_source(decision):
 
 # ---------- Events & stats (authenticated user) ----------
 
+def _apply_waf_team_scope(db, user: dict, query: dict):
+    """Restrict global WAF queries to the team member's assigned websites."""
+    if not user or not user.get("team_member_context"):
+        return query
+    from src.api.v1.deps import filter_sites_by_team_scope
+    uid = str(user.get("id") or user.get("_id") or "")
+    sites = list(db.websites.find({"user_id": uid}))
+    scoped = filter_sites_by_team_scope(user, sites)
+    allowed_ids = []
+    allowed_domains = []
+    for s in scoped:
+        for k in ("_id", "id", "website_id"):
+            if s.get(k):
+                allowed_ids.append(str(s[k]))
+        if s.get("domain"):
+            allowed_domains.append(str(s["domain"]).lower())
+    query["$or"] = [
+        {"website_id": {"$in": allowed_ids}},
+        {"domain": {"$in": allowed_domains}},
+    ]
+    return query
+
+
 @router.get("/events")
 async def list_events(request: Request, website_id: str | None = None,
                       user=Depends(get_current_user)):
@@ -819,6 +842,8 @@ async def list_events(request: Request, website_id: str | None = None,
     if website_id:
         get_owned_website(user, website_id)
         query["website_id"] = website_id
+    else:
+        _apply_waf_team_scope(db, user, query)
     params = dict(request.query_params)
     action = params.get("action")
     attack_type = params.get("attack_type")
@@ -840,6 +865,8 @@ async def overview(request: Request, website_id: str | None = None,
     if website_id:
         get_owned_website(user, website_id)
         query["website_id"] = website_id
+    else:
+        _apply_waf_team_scope(db, user, query)
 
     total = db.security_events.count_documents(query)
     blocked = db.security_events.count_documents({**query, "action": "block"})

@@ -1227,7 +1227,8 @@ class UserAPI:
             user = self.db.users.find_one({'_id': u_id}) or {'_id': u_id}
         user_id_str = str(user.get('_id', ''))
         user_id_obj = self._resolve_id(user_id_str)
-        cache_key = f"{user_id_str}_{website_id or 'all'}"
+        scope_suffix = f"_{user.get('team_scope')}" if user.get('team_member_context') else ""
+        cache_key = f"{user_id_str}_{website_id or 'all'}{scope_suffix}"
         now_ts = datetime.now().timestamp()
 
         if not force_refresh and cache_key in self._stats_cache:
@@ -1241,6 +1242,8 @@ class UserAPI:
         # Query websites from the websites collection scoped to the user
         websites_query = {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}
         websites_cursor = list(self.db.websites.find(websites_query))
+        from src.api.v1.deps import filter_sites_by_team_scope
+        websites_cursor = filter_sites_by_team_scope(user, websites_cursor)
 
         websites = []
         for w in websites_cursor:
@@ -1738,7 +1741,11 @@ class UserAPI:
             return res_data
 
         # Get all website domains and IDs owned by user (from both websites and wordpress_sites)
-        user_sites = list(self.db.websites.find({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}))
+        from src.api.v1.deps import filter_sites_by_team_scope
+        user_sites = filter_sites_by_team_scope(
+            user,
+            list(self.db.websites.find({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]})),
+        )
         user_domains = []
         user_site_ids = []
 
@@ -2127,20 +2134,7 @@ class UserAPI:
             ]
         }
         total_blocked = count_matching_status(blocked_query)
-        total_allowed = count_matching_status({
-            '$and': [
-                {
-                    '$or': [
-                        {'status': {'$in': list(_ALLOWED_REMOTE_STATUSES)}},
-                        {'action': {'$in': list(_ALLOWED_REMOTE_STATUSES)}},
-                        {'response_code': {'$gte': 200, '$lt': 400}},
-                        {'http_code': {'$gte': 200, '$lt': 400}},
-                        {'status_code': {'$gte': 200, '$lt': 400}},
-                    ]
-                },
-                {'$nor': [blocked_query]},
-            ]
-        })
+        total_allowed = max(0, total - total_blocked)
 
         site_domain_map = {}
         for s in user_sites:

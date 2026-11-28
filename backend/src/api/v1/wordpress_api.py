@@ -2162,17 +2162,17 @@ class CorePolicyRequest(BaseModel):
 
 
 @router.get("/core/status")
-
 async def get_wordpress_core_status(user=Depends(get_current_user)):
-
     """Fleet-wide WordPress Core versions, official WP.org release, and checksum integrity."""
-
     user_id = str(user.get("id") or user.get("_id") or "")
-
     svc = WordPressCoreService()
-
     matrix = svc.get_fleet_core_matrix(user_id=user_id)
-
+    if user.get("team_member_context") and isinstance(matrix, dict) and isinstance(matrix.get("sites"), list):
+        from src.api.v1.deps import filter_sites_by_team_scope
+        scoped = filter_sites_by_team_scope(user, matrix["sites"])
+        matrix["sites"] = scoped
+        if "total_sites" in matrix:
+            matrix["total_sites"] = len(scoped)
     return success(matrix)
 
 
@@ -2242,6 +2242,13 @@ async def update_all_sites_core(user=Depends(get_current_user)):
             raise HTTPException(status_code=402, detail="Active subscription required for fleet updates.")
     user_id = str(user.get("id") or user.get("_id") or "")
     svc = WordPressCoreService()
+    if user.get("team_member_context"):
+        from src.api.v1.deps import filter_sites_by_team_scope
+        db = MongoDB()
+        all_sites = list(db.websites.find({"user_id": user_id}))
+        scoped = filter_sites_by_team_scope(user, all_sites)
+        results = [svc.update_core(website_id=str(s.get("_id") or s.get("id")), user_id=user_id) for s in scoped]
+        return success({"updated": len(results), "results": results})
     res = svc.update_all_fleet(user_id=user_id)
     return success(res)
 

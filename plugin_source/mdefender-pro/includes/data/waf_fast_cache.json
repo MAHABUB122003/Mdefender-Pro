@@ -1,15 +1,12 @@
 {
-    "enabled": false,
-    "connected": false,
-    "is_licensed": false,
-    "waf_mode": "monitor",
-    "blacklist": [],
-    "whitelist": [],
-    "blocked_countries": [],
-    "rate_limit": 100,
-    "block_sqli": true,
-    "block_xss": true,
-    "block_rce": true,
-    "block_lfi": true,
-    "block_bots": true
+  "enabled": false,
+  "connected": false,
+  "is_licensed": false,
+  "license_status": "unlicensed",
+  "waf_mode": "disabled",
+  "updated_at": 1795702130,
+  "blacklist_ips": {},
+  "whitelist_ips": {},
+  "blocked_countries": [],
+  "local_server_country": "BD"
 }

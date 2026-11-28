@@ -309,7 +309,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
     allow_headers=[
         "Authorization", "Content-Type", "X-CSRF-Token",
-        "X-Request-ID", "X-Forwarded-For",
+        "X-Request-ID", "X-Forwarded-For", "X-Workspace-Owner", "X-API-Key",
     ],
 )
 
@@ -837,9 +837,22 @@ def verify_admin_token(request: Request):
     payload = jwt_svc.decode_access_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail='Invalid or expired token')
-    if not payload.get('is_admin'):
+    from src.auth.rbac import ADMIN_ROLES
+    if not payload.get('is_admin') and payload.get('role') not in ADMIN_ROLES:
         raise HTTPException(status_code=403, detail='Admin access required')
     return payload.get('email', payload.get('sub', ''))
+
+
+def require_admin_permission(permission: str):
+    def _dep(request: Request):
+        email = verify_admin_token(request)
+        user_doc = db.users.find_one({'email': email})
+        if user_doc:
+            from src.auth.rbac import has_permission
+            if not has_permission(user_doc, permission):
+                raise HTTPException(status_code=403, detail=f'Permission denied: requires {permission}')
+        return email
+    return _dep
 
 
 def verify_user_token_compat(request: Request):
@@ -958,7 +971,8 @@ def verify_user_token_compat(request: Request):
         'custom_trial_ends_at': user.get('custom_trial_ends_at'),
         'trial_starts_at': user.get('trial_starts_at'),
     })
-    return user_data
+    from src.auth.dependencies import _apply_team_workspace_context
+    return _apply_team_workspace_context(request, user_data)
 
 
 @app.get("/")
@@ -1113,11 +1127,6 @@ async def admin_logout_legacy(request: Request, response: Response, user: str = 
 async def admin_stats(user: str = Depends(verify_admin_token)):
     return admin_api.get_stats()
 
-@app.get("/api/admin/logs")
-async def admin_get_logs(request: Request, user: str = Depends(verify_admin_token)):
-    params = dict(request.query_params)
-    return admin_api.get_logs(params)
-
 @app.get("/api/admin/rules")
 async def admin_get_rules(user: str = Depends(verify_admin_token)):
     return admin_api.get_rules()
@@ -1158,57 +1167,33 @@ async def admin_delete_client(request: Request, user: str = Depends(verify_admin
     client_id = request.query_params.get('id')
     return admin_api.delete_client(client_id)
 
-@app.get("/api/admin/blacklist")
-async def admin_get_blacklist(request: Request, user: str = Depends(verify_admin_token)):
-    params = dict(request.query_params)
-    return admin_api.get_blacklist(params)
-
-@app.post("/api/admin/blacklist")
-async def admin_add_blacklist(request: Request, user: str = Depends(verify_admin_token)):
-    data = await request.json()
-    return admin_api.add_to_blacklist(data)
-
-@app.delete("/api/admin/blacklist")
-async def admin_delete_blacklist(request: Request, user: str = Depends(verify_admin_token)):
-    ip = request.query_params.get('ip')
-    return admin_api.remove_from_blacklist(ip)
-
-@app.post("/api/admin/blacklist/promote")
-async def admin_promote_blacklist(request: Request, user: str = Depends(verify_admin_token)):
-    data = await request.json()
-    ip = data.get('ip')
-    return admin_api.promote_to_permanent(ip)
-
-@app.post("/api/admin/blacklist/clean-expired")
-async def admin_clean_expired_blacklist(user: str = Depends(verify_admin_token)):
-    return admin_api.clean_expired_blacklist()
-
 @app.get("/api/admin/settings")
 async def admin_get_settings(user: str = Depends(verify_admin_token)):
     return admin_api.get_settings()
 
 @app.post("/api/admin/settings")
-async def admin_update_settings(request: Request, user: str = Depends(verify_admin_token)):
+async def admin_update_settings(request: Request, user: str = Depends(require_admin_permission("settings.manage"))):
     data = await request.json()
     return admin_api.update_settings(data)
 
 @app.post("/api/admin/change_password")
 async def admin_change_password(request: Request, user: str = Depends(verify_admin_token)):
     data = await request.json()
+    data['email'] = user
     return admin_api.change_password(data)
 
 @app.post("/api/admin/clean_logs")
-async def admin_clean_logs(request: Request, user: str = Depends(verify_admin_token)):
+async def admin_clean_logs(request: Request, user: str = Depends(require_admin_permission("settings.manage"))):
     data = await request.json()
     days = data.get('days', 30)
     return admin_api.clean_logs(days)
 
 @app.post("/api/admin/clean_all_logs")
-async def admin_clean_all_logs(user: str = Depends(verify_admin_token)):
+async def admin_clean_all_logs(user: str = Depends(require_admin_permission("settings.manage"))):
     return admin_api.clean_all_logs()
 
 @app.post("/api/admin/reset_stats/{collection}")
-async def admin_reset_stats(collection: str, user: str = Depends(verify_admin_token)):
+async def admin_reset_stats(collection: str, user: str = Depends(require_admin_permission("settings.manage"))):
     return admin_api.reset_stats(collection)
 
 @app.post("/api/admin/clean_auto_blocks")

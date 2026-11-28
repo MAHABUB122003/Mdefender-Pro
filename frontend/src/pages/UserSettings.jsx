@@ -43,11 +43,16 @@ export default function UserSettings() {
   const [profile, setProfile] = useState(() => cachedUser)
   const [loading, setLoading] = useState(() => !cachedUser)
 
+  const isTeamSession = Boolean(cachedUser?.team_member_context || (typeof localStorage !== 'undefined' && localStorage.getItem('mdefender_workspace_owner')))
+
   // URL Tab handling
   const tabFromUrl = searchParams.get('tab')
+  const allowedTabs = isTeamSession
+    ? ['profile', 'security', 'mfa', 'sessions', 'email']
+    : ['profile', 'security', 'mfa', 'sessions', 'api', 'email']
   const initialTab = (() => {
     if (tabFromUrl === '2fa') return 'mfa'
-    if (['profile', 'security', 'mfa', 'sessions', 'api', 'email'].includes(tabFromUrl)) return tabFromUrl
+    if (allowedTabs.includes(tabFromUrl)) return tabFromUrl
     return 'profile'
   })()
   const [activeTab, setActiveTab] = useState(initialTab)
@@ -56,10 +61,12 @@ export default function UserSettings() {
   useEffect(() => {
     const t = searchParams.get('tab')
     if (t === '2fa') setActiveTab('mfa')
-    else if (t && ['profile', 'security', 'mfa', 'sessions', 'api', 'email'].includes(t)) {
+    else if (t && allowedTabs.includes(t)) {
       setActiveTab(t)
+    } else if (t === 'api' && isTeamSession) {
+      setActiveTab('profile')
     }
-  }, [searchParams])
+  }, [searchParams, isTeamSession])
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId)
@@ -131,10 +138,12 @@ export default function UserSettings() {
       }
       setProfile(mergedUser)
       setNameForm({ name: mergedUser.full_name })
-      if (mergedUser.api_key) setApiKey(mergedUser.api_key)
-      userStore.set('profile', mergedUser)
-      if (mergedUser?.plan) localStorage.setItem('mdefender_user_plan', mergedUser.plan)
-      if (mergedUser?.full_name) localStorage.setItem('mdefender_user_name', mergedUser.full_name)
+      if (!isTeamSession) {
+        if (mergedUser.api_key) setApiKey(mergedUser.api_key)
+        userStore.set('profile', mergedUser)
+        if (mergedUser?.plan) localStorage.setItem('mdefender_user_plan', mergedUser.plan)
+        if (mergedUser?.full_name) localStorage.setItem('mdefender_user_name', mergedUser.full_name)
+      }
 
       try {
         const mfaData = await api.getMFAStatus()
@@ -571,7 +580,7 @@ export default function UserSettings() {
           { id: 'security', icon: Lock, label: 'Password & Security' },
           { id: 'mfa', icon: ShieldCheck, label: 'Two-Factor Auth (2FA)' },
           { id: 'sessions', icon: Laptop, label: `Active Sessions (${sessions.length || 1})` },
-          { id: 'api', icon: Terminal, label: 'API Keys & Integration' },
+          ...(isTeamSession ? [] : [{ id: 'api', icon: Terminal, label: 'API Keys & Integration' }]),
           { id: 'email', icon: Mail, label: 'Change Email' },
         ].map(t => {
           const Icon = t.icon
@@ -1357,7 +1366,7 @@ export default function UserSettings() {
       {/* ========================================================================= */}
       {/* TAB 5: API KEYS & DEVELOPER CLI                                           */}
       {/* ========================================================================= */}
-      {activeTab === 'api' && (
+      {activeTab === 'api' && !isTeamSession && (
         <div style={{
           background: '#FFFFFF',
           border: '1px solid #D9E1DC',

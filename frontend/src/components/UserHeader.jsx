@@ -57,6 +57,7 @@ const pageConfig = {
   '/user/access/country-blocking': { name: 'Geo Blocking', icon: Globe },
   '/user/pricing': { name: 'Pricing & Plans', icon: Tag },
   '/user/settings': { name: 'Settings', icon: Settings },
+  '/user/support': { name: 'Support Tickets', icon: FileText },
   '/user/team': { name: 'Team & Access', icon: User },
   '/user/alerts': { name: 'Security Alerts', icon: Bell },
   '/user/reports': { name: 'Security Reports', icon: FileText },
@@ -85,13 +86,19 @@ const pageConfig = {
 export default function UserHeader({ onToggleSidebar, onLogout }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showDomainMenu, setShowDomainMenu] = useState(false);
+  const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
+  const [workspaces, setWorkspaces] = useState([]);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState(() => (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_workspace_owner') || '') : ''));
   const [showNotifications, setShowNotifications] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [headerNotifs, setHeaderNotifs] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const headerProfile = userStore.get('profile')?.user || userStore.get('profile') || {};
   const storedName = localStorage.getItem('mdefender_user_name') || 'User';
-  const userName = storedName;
+  const isTeamSession = Boolean(headerProfile?.team_member_context);
+  const teamRoleLabel = (headerProfile?.team_role || 'team').toUpperCase();
+  const userName = headerProfile?.actor_name || storedName;
   const location = useLocation();
 
   const fetchHeaderNotifs = async () => {
@@ -106,6 +113,42 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
       // Ignore transient network errors on background poll
     }
   };
+
+  useEffect(() => {
+    api.getTeamWorkspaces()
+      .then((res) => {
+        const list = res?.data?.workspaces || [];
+        const savedOwner = typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_workspace_owner') : '';
+        const teamWs = list.find(w => !w.is_own);
+        const rawProf = userStore.get('profile');
+        const prof = rawProf?.user || rawProf || {};
+        const isPureTeammate = Boolean(teamWs && (prof?.team_member_context || (Number(prof?.websites_count || 0) === 0 && !prof?.is_paid)));
+        setWorkspaces(isPureTeammate ? list.filter(w => !w.is_own) : list);
+        if (!savedOwner && teamWs && Number(prof?.websites_count || 0) === 0 && !prof?.is_paid) {
+          localStorage.setItem('mdefender_workspace_owner', teamWs.owner_id);
+          userStore.clear();
+          window.location.reload();
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSwitchWorkspace = (ws) => {
+    if (ws.is_own) {
+      localStorage.removeItem('mdefender_workspace_owner');
+    } else {
+      localStorage.setItem('mdefender_workspace_owner', ws.owner_id);
+    }
+    userStore.clear();
+    setShowWorkspaceMenu(false);
+    window.location.reload();
+  };
+
+  const currentWorkspace = useMemo(() => {
+    if (!workspaces.length) return null;
+    if (!activeWorkspaceId) return workspaces.find(w => w.is_own) || workspaces[0];
+    return workspaces.find(w => w.owner_id === activeWorkspaceId) || workspaces[0];
+  }, [workspaces, activeWorkspaceId]);
 
   useEffect(() => {
     fetchHeaderNotifs();
@@ -282,6 +325,105 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
       </div>
 
       <div className="header-right" style={{ gap: '12px' }}>
+        {/* Workspace Switcher (shown when user has access to >1 workspace or is in a team workspace) */}
+        {workspaces.length > 1 && currentWorkspace && (
+          <div style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowWorkspaceMenu(!showWorkspaceMenu);
+                setShowDomainMenu(false);
+                setShowDropdown(false);
+                setShowNotifications(false);
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: currentWorkspace.is_own ? '#FFFFFF' : '#F0FDF4',
+                border: currentWorkspace.is_own ? '1px solid #D9E1DC' : '1px solid #86EFAC',
+                borderRadius: '8px',
+                padding: '6px 11px',
+                cursor: 'pointer',
+                maxWidth: '190px'
+              }}
+              title="Switch active workspace"
+            >
+              <Layers size={14} color={currentWorkspace.is_own ? '#10201E' : '#15803D'} style={{ flexShrink: 0 }} />
+              <span style={{ fontSize: '12.5px', fontWeight: '700', color: '#10201E', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {currentWorkspace.workspace_name}
+              </span>
+              {!currentWorkspace.is_own && (
+                <span style={{ fontSize: '10px', fontWeight: '800', color: '#15803D', textTransform: 'uppercase' }}>
+                  {currentWorkspace.role_id}
+                </span>
+              )}
+              <ChevronDown size={13} color="#60716B" style={{ flexShrink: 0 }} />
+            </button>
+
+            {showWorkspaceMenu && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  right: 0,
+                  minWidth: '250px',
+                  background: '#FFFFFF',
+                  borderRadius: '10px',
+                  border: '1px solid #D9E1DC',
+                  boxShadow: '0 8px 24px rgba(11, 37, 34, 0.12)',
+                  zIndex: 1055,
+                  padding: '6px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px'
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div style={{ padding: '6px 10px', fontSize: '10.5px', fontWeight: '700', color: '#87948D', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Switch Workspace
+                </div>
+                {workspaces.map((ws) => {
+                  const isActive = currentWorkspace.owner_id === ws.owner_id;
+                  return (
+                    <button
+                      key={ws.owner_id}
+                      type="button"
+                      onClick={() => handleSwitchWorkspace(ws)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        background: isActive ? '#E8F3EC' : 'transparent',
+                        color: isActive ? '#15803D' : '#10201E',
+                        fontSize: '12.5px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        textAlign: 'left'
+                      }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {ws.workspace_name}
+                        </div>
+                        <div style={{ fontSize: '10.5px', color: '#60716B', fontWeight: '600' }}>
+                          {ws.is_own ? 'Owner' : `${ws.role_id.toUpperCase()} • ${ws.scope}`}
+                        </div>
+                      </div>
+                      {isActive && <Check size={14} color="#15803D" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Sleek Enterprise Domain Scope Selector Pill (Matching media_1794253816956_bc218db4.png) */}
         <div style={{ position: 'relative' }}>
           <button
@@ -572,8 +714,8 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
           </div>
         </div>
 
-        {/* Modern 14-Day Free Trial Countdown (Hidden permanently when PRO) */}
-        {!isPro && (
+        {/* Modern 14-Day Free Trial Countdown (Hidden permanently when PRO or Team Session) */}
+        {!isPro && !isTeamSession && (
           <div className="header-trial-badge" style={{
             display: 'flex',
             alignItems: 'center',
@@ -665,7 +807,9 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
                   </span>
                 )}
               </div>
-              <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '2px', fontWeight: 500 }}>{planLabel}</div>
+              <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '2px', fontWeight: 500 }}>
+                {isTeamSession ? `${teamRoleLabel} • ${isPro ? 'Pro Workspace' : 'Team Workspace'}` : planLabel}
+              </div>
             </div>
             <Link to="/" onClick={() => setShowDropdown(false)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Globe size={14} />

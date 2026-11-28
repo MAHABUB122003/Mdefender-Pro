@@ -219,6 +219,9 @@ class ReportService:
             site_query = {"$and": [site_query, {"$or": id_matches}]}
 
         sites_raw = list(self.db.websites.find(site_query))
+        if isinstance(user, dict) and user.get("team_member_context"):
+            from src.api.v1.deps import filter_sites_by_team_scope
+            sites_raw = filter_sites_by_team_scope(user, sites_raw)
         domains = list({str(s.get("domain") or "").strip() for s in sites_raw if s.get("domain")})
 
         # 4 fast batched read queries across all domains in scope (0 HTTP calls to customer sites)

@@ -275,27 +275,6 @@ export default function AdminUsers() {
     }
   }
 
-  const handleImpersonate = async (tenant) => {
-    const tid = tenant.id || tenant._id
-    try {
-      setActionLoading(true)
-      const res = await api.adminImpersonateUser(tid)
-      const data = res?.data || res || {}
-      const token = data.token || data.session_token
-      if (token) {
-        showToast(`Support session initialized for ${tenant.email}! Opening view...`)
-        const userUrl = `/user/dashboard?impersonate_token=${encodeURIComponent(token)}&user=${encodeURIComponent(tenant.email)}`
-        window.open(userUrl, '_blank')
-      } else {
-        showToast('Support session created successfully!')
-      }
-    } catch (err) {
-      showToast(err.message || 'Support impersonation failed', true)
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
   const handleUnlock = async (tenant) => {
     const tid = tenant.id || tenant._id
     setActionLoading(true)
@@ -468,8 +447,8 @@ export default function AdminUsers() {
 
   const liveMetrics = useMemo(() => {
     const total = users.length
-    const pro = users.filter(u => isProPlan(u.plan)).length
-    const free = users.filter(u => !isProPlan(u.plan)).length
+    const pro = users.filter(u => u.is_paid || isProPlan(u.plan)).length
+    const free = users.filter(u => !u.is_paid && !isProPlan(u.plan)).length
     const verified = users.filter(u => u.email_verified).length
     const lockedSuspended = users.filter(u => u.is_locked || u.status === 'suspended' || u.is_active === false).length
     const owners = users.filter(u => u.organization_type === 'owner').length
@@ -505,8 +484,8 @@ export default function AdminUsers() {
       }
 
       // Tab filter
-      if (filterTab === 'pro') return isProPlan(u.plan)
-      if (filterTab === 'free') return !isProPlan(u.plan)
+      if (filterTab === 'pro') return u.is_paid || isProPlan(u.plan)
+      if (filterTab === 'free') return !u.is_paid && !isProPlan(u.plan)
       if (filterTab === 'owner') return u.organization_type === 'owner'
       if (filterTab === 'agency') return u.organization_type === 'agency'
       if (filterTab === 'freelance') return u.organization_type === 'freelance'
@@ -867,44 +846,44 @@ export default function AdminUsers() {
       {/* Main Tenant Table */}
       <div style={{
         background: '#FFFFFF',
-        borderRadius: '12px',
-        border: '1px solid #EFEFEF',
+        borderRadius: '16px',
+        border: '1px solid #D9E1DC',
         overflow: 'hidden',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)'
+        boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
       }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
             <thead>
-              <tr style={{ background: '#F8F9FA', borderBottom: '1px solid #EFEFEF', color: '#64748B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                <th style={{ padding: '12px 14px', width: '38px', textAlign: 'center' }}>
+              <tr style={{ background: '#FBFCFA', borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: '700' }}>
+                <th style={{ padding: '14px 16px', width: '38px', textAlign: 'center' }}>
                   <input
                     type="checkbox"
                     checked={allFilteredSelected}
                     onChange={toggleSelectAll}
-                    style={{ width: '15px', height: '15px', accentColor: '#2563EB', cursor: 'pointer' }}
+                    style={{ width: '15px', height: '15px', accentColor: '#2A8B68', cursor: 'pointer' }}
                     title={allFilteredSelected ? 'Deselect all' : 'Select all tenants'}
                   />
                 </th>
-                <th style={{ padding: '12px 18px', textAlign: 'left' }}>Tenant Identity & Persona</th>
-                <th style={{ padding: '12px 18px', textAlign: 'left' }}>Acquisition Channel</th>
-                <th style={{ padding: '12px 18px', textAlign: 'left' }}>Subscription</th>
-                <th style={{ padding: '12px 18px', textAlign: 'left' }}>Protected Fleets</th>
-                <th style={{ padding: '12px 18px', textAlign: 'left' }}>Account Health</th>
-                <th style={{ padding: '12px 18px', textAlign: 'left' }}>Last Activity</th>
-                <th style={{ padding: '12px 18px', textAlign: 'right' }}>Support Console</th>
+                <th style={{ padding: '14px 18px', textAlign: 'left' }}>Tenant Identity & Persona</th>
+                <th style={{ padding: '14px 18px', textAlign: 'left' }}>Acquisition Channel</th>
+                <th style={{ padding: '14px 18px', textAlign: 'left' }}>Subscription</th>
+                <th style={{ padding: '14px 18px', textAlign: 'left' }}>Protected Fleets</th>
+                <th style={{ padding: '14px 18px', textAlign: 'left' }}>Account Health</th>
+                <th style={{ padding: '14px 18px', textAlign: 'left' }}>Last Activity</th>
+                <th style={{ padding: '14px 18px', textAlign: 'right' }}>Support Console</th>
               </tr>
             </thead>
             <tbody>
               {loading && users.length === 0 ? (
                 <tr>
-                  <td colSpan="8" style={{ padding: '48px', textAlign: 'center', color: '#64748B' }}>
-                    <RefreshCw size={20} className="animate-spin" style={{ margin: '0 auto 8px', color: '#2563EB' }} />
+                  <td colSpan="8" style={{ padding: '48px', textAlign: 'center', color: '#60716B' }}>
+                    <RefreshCw size={20} className="animate-spin" style={{ margin: '0 auto 8px', color: '#2A8B68' }} />
                     Loading tenant directory...
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan="8" style={{ padding: '48px', textAlign: 'center', color: '#64748B' }}>
+                  <td colSpan="8" style={{ padding: '48px', textAlign: 'center', color: '#60716B' }}>
                     No tenants found matching your filter criteria.
                   </td>
                 </tr>
@@ -915,7 +894,11 @@ export default function AdminUsers() {
                   const isChecked = selectedUserIds.has(uid)
                   const siteCount = Array.isArray(u.websites) ? u.websites.length : (u.website_count || u.websites_count || 0)
                   const isSuspended = u.status === 'suspended' || u.is_active === false
-                  const isPro = isProPlan(u.plan)
+                  const isPro = u.is_paid || isProPlan(u.plan)
+                  const isTrial = !isPro && u.is_trial_active
+                  const trialDays = u.trial_days_remaining !== undefined ? u.trial_days_remaining : 0
+                  const slotsAllowed = u.slots_allowed || u.website_limit || (isPro ? 10 : 1)
+                  const slotsUsed = u.slots_used !== undefined ? u.slots_used : siteCount
                   const persona = getPersonaBadge(u.organization_type)
                   const PersonaIcon = persona.icon
 
@@ -924,35 +907,35 @@ export default function AdminUsers() {
                       key={uid}
                       onClick={() => setSelectedTenant(u)}
                       style={{
-                        borderBottom: '1px solid #F1F2F4',
-                        background: isChecked ? '#F5F3FF' : isSelected ? '#EFF6FF' : 'transparent',
+                        borderBottom: '1px solid #F1F5F9',
+                        background: isChecked ? '#FAFBF9' : isSelected ? '#FAFBF9' : '#FFFFFF',
                         cursor: 'pointer',
-                        transition: 'background 0.12s ease'
+                        transition: 'background-color 0.15s ease'
                       }}
-                      onMouseEnter={e => { if (!isSelected && !isChecked) e.currentTarget.style.background = '#FBFBFB' }}
-                      onMouseLeave={e => { if (!isSelected && !isChecked) e.currentTarget.style.background = 'transparent' }}
+                      onMouseEnter={e => { if (!isSelected && !isChecked) e.currentTarget.style.backgroundColor = '#F8FAFC' }}
+                      onMouseLeave={e => { if (!isSelected && !isChecked) e.currentTarget.style.backgroundColor = isChecked || isSelected ? '#FAFBF9' : '#FFFFFF' }}
                     >
                       {/* Selection Checkbox */}
-                      <td style={{ padding: '13px 14px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                      <td style={{ padding: '14px 16px', textAlign: 'center', verticalAlign: 'middle' }} onClick={e => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={isChecked}
                           onChange={e => toggleSelectUser(uid, e)}
-                          style={{ width: '15px', height: '15px', accentColor: '#7C3AED', cursor: 'pointer' }}
+                          style={{ width: '15px', height: '15px', accentColor: '#2A8B68', cursor: 'pointer' }}
                         />
                       </td>
 
                       {/* Identity & Persona */}
-                      <td style={{ padding: '13px 18px' }}>
+                      <td style={{ padding: '14px 18px', verticalAlign: 'middle' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <div style={{
                             width: '36px',
                             height: '36px',
                             borderRadius: '50%',
-                            background: isPro ? '#EFF6FF' : '#F1F5F9',
-                            border: isPro ? '1px solid #DBEAFE' : '1px solid #E2E8F0',
-                            color: isPro ? '#2563EB' : '#475569',
-                            fontSize: '12.5px',
+                            background: isPro ? '#E8F3EC' : '#F1F5F9',
+                            border: isPro ? '1px solid #CFE2D4' : '1px solid #D9E1DC',
+                            color: isPro ? '#2A8B68' : '#10201E',
+                            fontSize: '13px',
                             fontWeight: '700',
                             display: 'flex',
                             alignItems: 'center',
@@ -962,7 +945,7 @@ export default function AdminUsers() {
                             {(u.name || u.email || 'U')[0].toUpperCase()}
                           </div>
                           <div>
-                            <div style={{ fontWeight: '600', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <div style={{ fontWeight: '700', color: '#10201E', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <span>{u.name || 'Tenant User'}</span>
                               {u.role === 'super_admin' && (
                                 <span style={{
@@ -970,18 +953,18 @@ export default function AdminUsers() {
                                   fontWeight: '700',
                                   padding: '1px 6px',
                                   borderRadius: '4px',
-                                  background: '#F5F3FF',
-                                  color: '#7C3AED',
-                                  border: '1px solid #DDD6FE'
+                                  background: '#FAFBF9',
+                                  color: '#0B2522',
+                                  border: '1px solid #D9E1DC'
                                 }}>
                                   Admin
                                 </span>
                               )}
                             </div>
-                            <div style={{ fontSize: '11px', color: '#64748B', fontFamily: 'monospace', marginTop: '1px' }}>
+                            <div style={{ fontSize: '11px', color: '#60716B', fontFamily: 'monospace', marginTop: '1px' }}>
                               {u.email}
                             </div>
-                            <div style={{ marginTop: '4px' }}>
+                            <div style={{ marginTop: '3px' }}>
                               <span style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
@@ -1003,194 +986,218 @@ export default function AdminUsers() {
                       </td>
 
                       {/* Acquisition Channel */}
-                      <td style={{ padding: '13px 18px' }}>
+                      <td style={{ padding: '14px 18px', verticalAlign: 'middle' }}>
                         {u.referral_source ? (
                           <span style={{
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '5px',
-                            padding: '3px 9px',
-                            borderRadius: '6px',
-                            background: '#F8FAFC',
-                            border: '1px solid #E2E8F0',
-                            color: '#334155',
-                            fontSize: '11.5px',
+                            padding: '3px 10px',
+                            borderRadius: '9999px',
+                            background: '#FAFBF9',
+                            border: '1px solid #D9E1DC',
+                            color: '#10201E',
+                            fontSize: '11px',
                             fontWeight: '600'
                           }}>
-                            <Compass size={12} color="#059669" />
+                            <Compass size={11} color="#2A8B68" />
                             {u.referral_source}
                           </span>
                         ) : (
-                          <span style={{ color: '#94A3B8', fontSize: '11.5px' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '3px 10px',
+                            borderRadius: '9999px',
+                            background: '#FAFBF9',
+                            border: '1px solid #D9E1DC',
+                            color: '#60716B',
+                            fontSize: '11px',
+                            fontWeight: '600'
+                          }}>
                             Direct / Organic
                           </span>
                         )}
                       </td>
 
-                      {/* Subscription Plan ($4/site model) */}
-                      <td style={{ padding: '13px 18px' }}>
+                      {/* Subscription Plan & 14-Day Trial Countdown */}
+                      <td style={{ padding: '14px 18px', verticalAlign: 'middle' }}>
                         {isPro ? (
                           <span style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '5px',
-                            padding: '3px 9px',
+                            gap: '6px',
+                            padding: '3px 10px',
                             borderRadius: '9999px',
                             fontSize: '11px',
                             fontWeight: '700',
-                            background: '#EFF6FF',
-                            color: '#1D4ED8',
-                            border: '1px solid #BFDBFE'
+                            background: '#E8F3EC',
+                            color: '#2A8B68',
+                            border: '1px solid #CFE2D4'
                           }}>
-                            <Sparkles size={11} color="#2563EB" />
-                            PRO ($4/MO)
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', flexShrink: 0 }} />
+                            <span>PRO ($4/Site)</span>
+                          </span>
+                        ) : isTrial ? (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '3px 10px',
+                            borderRadius: '9999px',
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            background: '#FFFBEB',
+                            color: '#D97706',
+                            border: '1px solid #FDE68A'
+                          }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#F59E0B', flexShrink: 0 }} />
+                            <span>⏳ Trial: {trialDays} {trialDays === 1 ? 'Day' : 'Days'} Left</span>
                           </span>
                         ) : (
                           <span style={{
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '5px',
-                            padding: '3px 9px',
+                            padding: '3px 10px',
                             borderRadius: '9999px',
                             fontSize: '11px',
-                            fontWeight: '600',
-                            background: '#F1F5F9',
-                            color: '#475569',
-                            border: '1px solid #E2E8F0'
+                            fontWeight: '700',
+                            background: '#FEF2F2',
+                            color: '#DC2626',
+                            border: '1px solid #FECACA'
                           }}>
-                            FREE TIER
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#EF4444', flexShrink: 0 }} />
+                            <span>⚠️ Trial Expired</span>
                           </span>
                         )}
                       </td>
 
-                      {/* Connected Fleets */}
-                      <td style={{ padding: '13px 18px' }}>
+                      {/* Connected Fleets & Dynamic Slots */}
+                      <td style={{ padding: '14px 18px', verticalAlign: 'middle' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                           <span style={{
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '6px',
-                            color: siteCount > 0 ? '#0F172A' : '#94A3B8',
-                            fontWeight: '600',
+                            color: slotsUsed > 0 ? '#10201E' : '#94A3B8',
+                            fontWeight: '700',
                             fontSize: '12px'
                           }}>
-                            <Globe size={14} color={siteCount > 0 ? '#10B981' : '#94A3B8'} />
+                            <Globe size={13} color={slotsUsed > 0 ? '#10B981' : '#94A3B8'} />
                             <span>
-                              {siteCount} {u.website_limit && u.website_limit > 0 ? `/ ${u.website_limit}` : ''} {siteCount === 1 && (!u.website_limit || u.website_limit === 1) ? 'Site' : 'Sites'}
+                              {slotsUsed} / {slotsAllowed} {slotsAllowed === 1 ? 'Slot' : 'Slots'}
                             </span>
-                            {u.website_limit === -1 && (
-                              <span style={{ fontSize: '10px', color: '#7C3AED', fontWeight: '700', padding: '0 4px', background: '#F5F3FF', borderRadius: '3px', border: '1px solid #DDD6FE' }}>Unlimited</span>
+                            {slotsAllowed >= 100 && (
+                              <span style={{ fontSize: '10px', color: '#2A8B68', fontWeight: '700', padding: '1px 5px', background: '#E8F3EC', borderRadius: '4px', border: '1px solid #CFE2D4' }}>Unlimited</span>
                             )}
                           </span>
                           {Array.isArray(u.websites) && u.websites.length > 0 && (
-                            <span style={{ fontSize: '11px', color: '#64748B', fontFamily: 'monospace' }}>
-                              {u.websites[0].domain}
-                              {u.websites.length > 1 ? ` (+${u.websites.length - 1} more)` : ''}
+                            <span style={{
+                              background: '#F1F5F9',
+                              color: '#1E293B',
+                              border: '1px solid #E2E8F0',
+                              borderRadius: '6px',
+                              padding: '2px 7px',
+                              fontSize: '11px',
+                              fontWeight: '600',
+                              fontFamily: 'monospace',
+                              width: 'fit-content',
+                              maxWidth: '180px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {u.websites[0].domain || u.websites[0]}
+                              {u.websites.length > 1 ? ` (+${u.websites.length - 1})` : ''}
                             </span>
                           )}
                         </div>
                       </td>
 
                       {/* Account Health */}
-                      <td style={{ padding: '13px 18px' }}>
+                      <td style={{ padding: '14px 18px', verticalAlign: 'middle' }}>
                         {isSuspended ? (
                           <span style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '4px',
-                            padding: '2px 8px',
+                            gap: '6px',
+                            padding: '3px 10px',
                             borderRadius: '9999px',
                             fontSize: '11px',
-                            fontWeight: '600',
+                            fontWeight: '700',
                             background: '#FEF2F2',
                             color: '#DC2626',
                             border: '1px solid #FECACA'
                           }}>
-                            <XCircle size={11} /> Suspended
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#EF4444' }} />
+                            <span>Suspended</span>
                           </span>
                         ) : u.is_locked ? (
                           <span style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '4px',
-                            padding: '2px 8px',
+                            gap: '6px',
+                            padding: '3px 10px',
                             borderRadius: '9999px',
                             fontSize: '11px',
-                            fontWeight: '600',
+                            fontWeight: '700',
                             background: '#FFFBEB',
                             color: '#D97706',
                             border: '1px solid #FDE68A'
                           }}>
-                            <Lock size={11} /> Locked Out
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#F59E0B' }} />
+                            <span>Locked</span>
                           </span>
                         ) : (
                           <span style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '4px',
-                            padding: '2px 8px',
+                            gap: '6px',
+                            padding: '3px 10px',
                             borderRadius: '9999px',
                             fontSize: '11px',
-                            fontWeight: '600',
-                            background: '#ECFDF5',
-                            color: '#059669',
-                            border: '1px solid #A7F3D0'
+                            fontWeight: '700',
+                            background: '#E8F3EC',
+                            color: '#2A8B68',
+                            border: '1px solid #CFE2D4'
                           }}>
-                            <CheckCircle size={11} /> Active
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }} />
+                            <span>Active</span>
                           </span>
                         )}
                       </td>
 
                       {/* Last Activity */}
-                      <td style={{ padding: '13px 18px', color: '#64748B', fontSize: '12px' }}>
+                      <td style={{ padding: '14px 18px', verticalAlign: 'middle', color: '#60716B', fontSize: '12px' }}>
                         {u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Active Recently'}
                       </td>
 
                       {/* Quick Console Actions */}
-                      <td style={{ padding: '13px 18px', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                          <button
-                            type="button"
-                            onClick={() => handleImpersonate(u)}
-                            style={{
-                              padding: '5px 10px',
-                              borderRadius: '6px',
-                              background: '#EFF6FF',
-                              border: '1px solid #DBEAFE',
-                              color: '#2563EB',
-                              fontSize: '11.5px',
-                              fontWeight: '600',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}
-                            title="Open secure 30-min tenant session"
-                          >
-                            <Zap size={12} />
-                            Impersonate
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => setSelectedTenant(u)}
-                            style={{
-                              padding: '5px 10px',
-                              borderRadius: '6px',
-                              background: '#FFFFFF',
-                              border: '1px solid #EFEFEF',
-                              color: '#334155',
-                              fontSize: '11.5px',
-                              fontWeight: '600',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}
-                          >
-                            Inspect <ChevronRight size={12} />
-                          </button>
-                        </div>
+                      <td style={{ padding: '14px 18px', verticalAlign: 'middle', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTenant(u)}
+                          style={{
+                            padding: '7px 14px',
+                            borderRadius: '8px',
+                            background: '#0B2522',
+                            border: '1px solid #0B2522',
+                            color: '#FFFFFF',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            boxShadow: '0 1px 3px rgba(11, 37, 34, 0.08)',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <span>Inspect</span>
+                          <ChevronRight size={13} />
+                        </button>
                       </td>
                     </tr>
                   )
@@ -1201,7 +1208,7 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      {/* SLIDE-OVER TENANT DOSSIER DRAWER (WITH PROPER BACKDROP) */}
+      {/* SLIDE-OVER TENANT DOSSIER DRAWER (COMPACT UNIFIED VIEW) */}
       {selectedTenant && (
         <div style={{
           position: 'fixed',
@@ -1217,7 +1224,7 @@ export default function AdminUsers() {
             style={{
               position: 'fixed',
               inset: 0,
-              background: 'rgba(15, 23, 42, 0.35)',
+              background: 'rgba(11, 37, 34, 0.35)',
               backdropFilter: 'blur(2px)',
               cursor: 'pointer'
             }}
@@ -1230,298 +1237,317 @@ export default function AdminUsers() {
             maxWidth: '520px',
             height: '100vh',
             background: '#FFFFFF',
-            borderLeft: '1px solid #EFEFEF',
-            boxShadow: '-10px 0 30px rgba(0, 0, 0, 0.1)',
+            borderLeft: '1px solid #D9E1DC',
+            boxShadow: '-10px 0 35px rgba(11, 37, 34, 0.08)',
             display: 'flex',
             flexDirection: 'column',
             zIndex: 1001,
             boxSizing: 'border-box'
           }}>
-            {/* Drawer Header */}
+            {/* Drawer Header with Impersonate Action */}
             <div style={{
-              padding: '18px 24px',
-              borderBottom: '1px solid #EFEFEF',
-              background: '#FBFBFB',
+              padding: '14px 20px',
+              borderBottom: '1px solid #D9E1DC',
+              background: '#FBFCFA',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between'
+              justifyContent: 'space-between',
+              gap: '12px'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
                 <div style={{
-                  width: '40px',
-                  height: '40px',
+                  width: '36px',
+                  height: '36px',
                   borderRadius: '50%',
-                  background: isProPlan(selectedTenant.plan) ? '#2563EB' : '#475569',
-                  color: '#FFFFFF',
-                  fontSize: '14px',
+                  background: isProPlan(selectedTenant.plan) ? '#E8F3EC' : '#F1F5F9',
+                  border: isProPlan(selectedTenant.plan) ? '1px solid #CFE2D4' : '1px solid #D9E1DC',
+                  color: isProPlan(selectedTenant.plan) ? '#2A8B68' : '#10201E',
+                  fontSize: '13px',
                   fontWeight: '700',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                  flexShrink: 0
                 }}>
                   {(selectedTenant.name || selectedTenant.email || 'U')[0].toUpperCase()}
                 </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#0F172A' }}>
-                    {selectedTenant.name || 'Tenant Dossier'}
-                  </h3>
-                  <div style={{ fontSize: '12px', color: '#64748B', fontFamily: 'monospace', marginTop: '2px' }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: '#10201E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {selectedTenant.name || 'Tenant Dossier'}
+                    </span>
+                    {selectedTenant.role === 'super_admin' && (
+                      <span style={{ fontSize: '10px', fontWeight: '700', padding: '1px 6px', borderRadius: '4px', background: '#FAFBF9', color: '#0B2522', border: '1px solid #D9E1DC' }}>
+                        Admin
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#60716B', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {selectedTenant.email}
                   </div>
                 </div>
               </div>
 
-              <button
-                onClick={() => setSelectedTenant(null)}
-                style={{
-                  background: '#FFFFFF',
-                  border: '1px solid #EFEFEF',
-                  borderRadius: '7px',
-                  width: '32px',
-                  height: '32px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#64748B',
-                  cursor: 'pointer'
-                }}
-                title="Close Drawer (ESC)"
-              >
-                <X size={16} />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                <button
+                  onClick={() => setSelectedTenant(null)}
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #D9E1DC',
+                    borderRadius: '8px',
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#60716B',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Close Drawer (ESC)"
+                >
+                  <X size={15} />
+                </button>
+              </div>
             </div>
 
-            {/* Drawer Body */}
+            {/* Compact Drawer Body - Fits on screen without scrolling */}
             <div style={{
               flex: 1,
               overflowY: 'auto',
-              padding: '24px',
+              padding: '16px 20px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '22px'
+              gap: '14px'
             }}>
-              {/* 1. Quick Support Impersonation Bar */}
-              <div style={{
-                background: '#EFF6FF',
-                border: '1px solid #BFDBFE',
-                borderRadius: '12px',
-                padding: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '12px'
-              }}>
-                <div>
-                  <div style={{ fontSize: '13px', fontWeight: '700', color: '#1E3A8A' }}>
-                    Support Impersonation Console
-                  </div>
-                  <div style={{ fontSize: '11.5px', color: '#2563EB', marginTop: '2px' }}>
-                    Generate a temporary 30-min admin session to inspect client view.
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleImpersonate(selectedTenant)}
-                  style={{
-                    padding: '8px 14px',
-                    borderRadius: '8px',
-                    background: '#2563EB',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    fontSize: '12px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    flexShrink: 0
-                  }}
-                >
-                  <Zap size={14} />
-                  Impersonate
-                </button>
-              </div>
-
-              {/* 2. Tenant Demographics & Onboarding Intelligence */}
+              {/* 1. Tenant Identity & Subscription Vitals (Compact 2-Column Card) */}
               <div>
-                <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.6px', display: 'block', marginBottom: '8px' }}>
-                  Tenant Persona & Discovery Intelligence
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '6px' }}>
+                  Tenant Vitals & Subscription
                 </span>
                 <div style={{
-                  background: '#FBFBFB',
-                  border: '1px solid #EFEFEF',
-                  borderRadius: '10px',
-                  padding: '14px 16px',
+                  background: '#FBFCFA',
+                  border: '1px solid #D9E1DC',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '10px',
-                  fontSize: '12px'
+                  gap: '8px',
+                  fontSize: '11.5px'
                 }}>
+                  {/* Row 1: Plan, Status, and Slot Quota */}
+                  {(() => {
+                    const drawerIsPro = selectedTenant.is_paid || isProPlan(selectedTenant.plan)
+                    const drawerIsTrial = !drawerIsPro && selectedTenant.is_trial_active
+                    const drawerTrialDays = selectedTenant.trial_days_remaining !== undefined ? selectedTenant.trial_days_remaining : 0
+                    const drawerSlotsAllowed = selectedTenant.slots_allowed || selectedTenant.website_limit || (drawerIsPro ? 10 : 1)
+                    const drawerSlotsUsed = selectedTenant.slots_used !== undefined ? selectedTenant.slots_used : (Array.isArray(selectedTenant.websites) ? selectedTenant.websites.length : 0)
+
+                    return (
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ color: '#60716B' }}>Plan:</span>
+                            {drawerIsPro ? (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                padding: '2px 8px',
+                                borderRadius: '9999px',
+                                fontSize: '10.5px',
+                                fontWeight: '700',
+                                background: '#E8F3EC',
+                                color: '#2A8B68',
+                                border: '1px solid #CFE2D4'
+                              }}>
+                                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981' }} />
+                                PRO ($4/Site)
+                              </span>
+                            ) : drawerIsTrial ? (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                padding: '2px 8px',
+                                borderRadius: '9999px',
+                                fontSize: '10.5px',
+                                fontWeight: '700',
+                                background: '#FFFBEB',
+                                color: '#D97706',
+                                border: '1px solid #FDE68A'
+                              }}>
+                                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#F59E0B' }} />
+                                ⏳ Trial: {drawerTrialDays} {drawerTrialDays === 1 ? 'Day' : 'Days'} Left
+                              </span>
+                            ) : (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                padding: '2px 8px',
+                                borderRadius: '9999px',
+                                fontSize: '10.5px',
+                                fontWeight: '700',
+                                background: '#FEF2F2',
+                                color: '#DC2626',
+                                border: '1px solid #FECACA'
+                              }}>
+                                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#EF4444' }} />
+                                ⚠️ Trial Expired
+                              </span>
+                            )}
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ color: '#60716B' }}>Status:</span>
+                            {selectedTenant.status === 'suspended' || selectedTenant.is_active === false ? (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 7px', borderRadius: '9999px', fontSize: '10.5px', fontWeight: '700', background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
+                                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#EF4444' }} /> Suspended
+                              </span>
+                            ) : selectedTenant.is_locked ? (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 7px', borderRadius: '9999px', fontSize: '10.5px', fontWeight: '700', background: '#FFFBEB', color: '#D97706', border: '1px solid #FDE68A' }}>
+                                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#F59E0B' }} /> Locked Out
+                              </span>
+                            ) : (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 7px', borderRadius: '9999px', fontSize: '10.5px', fontWeight: '700', background: '#E8F3EC', color: '#2A8B68', border: '1px solid #CFE2D4' }}>
+                                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981' }} /> {drawerIsPro ? 'Active Pro' : (drawerIsTrial ? 'Trial Active' : 'Active')}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Dynamic Slot Quota & Lifecycle */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed #D9E1DC', paddingTop: '6px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <span style={{ color: '#60716B' }}>Slot Quota:</span>
+                            <span style={{ fontWeight: '700', color: '#10201E' }}>
+                              {drawerSlotsUsed} / {drawerSlotsAllowed} Sites
+                            </span>
+                            <span style={{ fontSize: '10.5px', color: '#64748B' }}>($4/Site)</span>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <span style={{ color: '#60716B' }}>Billing:</span>
+                            <span style={{
+                              fontWeight: '700',
+                              fontSize: '10.5px',
+                              color: drawerIsPro ? '#2A8B68' : (drawerIsTrial ? '#D97706' : '#DC2626')
+                            }}>
+                              {(selectedTenant.payment_status || (drawerIsPro ? 'Active' : (drawerIsTrial ? 'Trialing' : 'Expired'))).toUpperCase()}
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    )
+                  })()}
+
+                  {/* Row 2: Persona & Onboarding */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#64748B' }}>Organization Persona:</span>
-                    {(() => {
-                      const pb = getPersonaBadge(selectedTenant.organization_type)
-                      const PbIcon = pb.icon
-                      return (
-                        <span style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                          padding: '2px 8px',
-                          borderRadius: '9999px',
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ color: '#60716B' }}>Persona:</span>
+                      {(() => {
+                        const pb = getPersonaBadge(selectedTenant.organization_type)
+                        const PbIcon = pb.icon
+                        return (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '1px 7px',
+                            borderRadius: '9999px',
+                            fontSize: '10.5px',
+                            fontWeight: '600',
+                            background: pb.bg,
+                            color: pb.color,
+                            border: `1px solid ${pb.border}`
+                          }}>
+                            <PbIcon size={10} strokeWidth={2.4} />
+                            {pb.label}
+                          </span>
+                        )
+                      })()}
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ color: '#60716B' }}>Email:</span>
+                      <span style={{
+                        fontWeight: '600',
+                        fontSize: '10.5px',
+                        color: selectedTenant.email_verified ? '#2A8B68' : '#D97706'
+                      }}>
+                        {selectedTenant.email_verified ? 'Verified' : 'Pending'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Row 3: Target Fleet & Acquisition */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed #D9E1DC', paddingTop: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#60716B' }}>
+                      <span>Acquisition:</span>
+                      <span style={{ fontWeight: '600', color: '#10201E' }}>{selectedTenant.referral_source || 'Direct Search'}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ color: '#60716B' }}>API Key:</span>
+                      <button
+                        onClick={() => copyToClipboard(selectedTenant.api_key || 'No Key', 'API Key')}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#2A8B68',
+                          cursor: 'pointer',
                           fontSize: '11px',
                           fontWeight: '700',
-                          background: pb.bg,
-                          color: pb.color,
-                          border: `1px solid ${pb.border}`
-                        }}>
-                          <PbIcon size={12} strokeWidth={2.4} />
-                          {pb.label}
-                        </span>
-                      )
-                    })()}
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: 0
+                        }}
+                      >
+                        {copiedKey === 'API Key' ? <Check size={12} color="#10B981" /> : <Copy size={12} />}
+                        <span>{copiedKey === 'API Key' ? 'Copied' : 'Copy Key'}</span>
+                      </button>
+                    </div>
                   </div>
 
+                  {/* Row 4: Tenant ID */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#64748B' }}>Target Fleet Size:</span>
-                    <span style={{ fontWeight: '600', color: '#0F172A' }}>
-                      {selectedTenant.fleet_size || '1 - 3 Websites'}
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#64748B' }}>Acquisition Source:</span>
-                    <span style={{
-                      fontWeight: '600',
-                      color: '#0F172A',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px'
-                    }}>
-                      <Compass size={13} color="#2563EB" />
-                      {selectedTenant.referral_source || 'Direct Search / Organic'}
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#64748B' }}>Onboarding Status:</span>
-                    <span style={{
-                      fontWeight: '700',
-                      color: selectedTenant.onboarding_completed ? '#059669' : '#D97706',
-                      fontSize: '11px',
-                      padding: '2px 7px',
-                      borderRadius: '4px',
-                      background: selectedTenant.onboarding_completed ? '#ECFDF5' : '#FFFBEB',
-                      border: selectedTenant.onboarding_completed ? '1px solid #A7F3D0' : '1px solid #FDE68A'
-                    }}>
-                      {selectedTenant.onboarding_completed ? 'ONBOARDING COMPLETED' : 'PENDING PROFILE SETUP'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3. Account Vitals & Plan Status */}
-              <div>
-                <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.6px', display: 'block', marginBottom: '8px' }}>
-                  Subscription & Vitals ($4/Site Standard)
-                </span>
-                <div style={{
-                  background: '#FBFBFB',
-                  border: '1px solid #EFEFEF',
-                  borderRadius: '10px',
-                  padding: '14px 16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px',
-                  fontSize: '12px'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#64748B' }}>Active Plan:</span>
-                    {isProPlan(selectedTenant.plan) ? (
-                      <span style={{
-                        padding: '2px 8px',
-                        borderRadius: '9999px',
-                        fontSize: '11px',
-                        fontWeight: '700',
-                        background: '#EFF6FF',
-                        color: '#1D4ED8',
-                        border: '1px solid #BFDBFE'
-                      }}>
-                        PRO ($4.00/SITE / MO)
-                      </span>
-                    ) : (
-                      <span style={{
-                        padding: '2px 8px',
-                        borderRadius: '9999px',
-                        fontSize: '11px',
-                        fontWeight: '600',
-                        background: '#F1F5F9',
-                        color: '#475569',
-                        border: '1px solid #E2E8F0'
-                      }}>
-                        FREE STARTER
-                      </span>
-                    )}
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#64748B' }}>Tenant ID:</span>
-                    <span style={{ fontFamily: 'monospace', color: '#0F172A', fontWeight: '600' }}>
-                      {selectedTenant.id || selectedTenant._id}
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#64748B' }}>Email Verification:</span>
-                    <span style={{
-                      fontWeight: '600',
-                      color: selectedTenant.email_verified ? '#059669' : '#D97706'
-                    }}>
-                      {selectedTenant.email_verified ? 'Verified' : 'Pending Verification'}
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#64748B' }}>Client API Key:</span>
-                    <button
-                      onClick={() => copyToClipboard(selectedTenant.api_key || 'No Key', 'API Key')}
+                    <span style={{ color: '#60716B' }}>Tenant ID:</span>
+                    <span
+                      onClick={() => copyToClipboard(selectedTenant.id || selectedTenant._id, 'Tenant ID')}
                       style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#2563EB',
-                        cursor: 'pointer',
-                        fontSize: '12px',
+                        fontFamily: 'monospace',
+                        color: '#10201E',
                         fontWeight: '600',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
+                        fontSize: '11px',
+                        cursor: 'pointer'
                       }}
+                      title="Click to copy ID"
                     >
-                      {copiedKey === 'API Key' ? <Check size={13} color="#059669" /> : <Copy size={13} />}
-                      <span>Copy Secret Key</span>
-                    </button>
+                      {String(selectedTenant.id || selectedTenant._id).slice(0, 18)}...
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* 4. Connected WordPress Fleets */}
+              {/* 2. Connected WordPress Fleets (Compact View) */}
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-                    Connected WordPress Fleets ({Array.isArray(selectedTenant.websites) ? selectedTenant.websites.length : (selectedTenant.website_count || 0)})
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Connected Fleets ({Array.isArray(selectedTenant.websites) ? selectedTenant.websites.length : (selectedTenant.website_count || 0)})
                   </span>
-                  <a href="/admin/clients" style={{ fontSize: '11.5px', color: '#2563EB', textDecoration: 'none', fontWeight: '600' }}>
-                    Open Fleet Explorer →
+                  <a href="/admin/clients" style={{ fontSize: '11px', color: '#2A8B68', textDecoration: 'none', fontWeight: '600' }}>
+                    Fleet Explorer →
                   </a>
                 </div>
 
                 <div style={{
-                  border: '1px solid #EFEFEF',
+                  border: '1px solid #D9E1DC',
                   borderRadius: '10px',
                   overflow: 'hidden',
                   background: '#FFFFFF',
-                  maxHeight: '200px',
+                  maxHeight: '110px',
                   overflowY: 'auto'
                 }}>
                   {Array.isArray(selectedTenant.websites) && selectedTenant.websites.length > 0 ? (
@@ -1532,59 +1558,56 @@ export default function AdminUsers() {
 
                       return (
                         <div key={idx} style={{
-                          padding: '12px 14px',
+                          padding: '8px 12px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          borderBottom: idx < selectedTenant.websites.length - 1 ? '1px solid #F1F2F4' : 'none',
-                          gap: '10px'
+                          borderBottom: idx < selectedTenant.websites.length - 1 ? '1px solid #F1F5F9' : 'none',
+                          gap: '8px'
                         }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                            <Globe size={15} color="#10B981" style={{ flexShrink: 0 }} />
-                            <div style={{ minWidth: 0 }}>
-                              <div style={{ fontFamily: 'monospace', fontSize: '12.5px', fontWeight: '700', color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {domainName}
-                              </div>
-                              <div style={{ fontSize: '11px', color: '#64748B' }}>
-                                Threats Blocked: <strong style={{ color: '#EF4444' }}>{threats}</strong>
-                              </div>
-                            </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
+                            <Globe size={13} color="#10B981" style={{ flexShrink: 0 }} />
+                            <span style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: '700', color: '#10201E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {domainName}
+                            </span>
+                            <span style={{ fontSize: '11px', color: '#60716B' }}>
+                              ({threats} blocked)
+                            </span>
                           </div>
                           <span style={{
-                            padding: '3px 8px',
+                            padding: '2px 7px',
                             borderRadius: '9999px',
-                            fontSize: '10px',
+                            fontSize: '9.5px',
                             fontWeight: '700',
-                            background: wafMode === 'protect' ? '#ECFDF5' : '#FFFBEB',
-                            color: wafMode === 'protect' ? '#059669' : '#D97706',
-                            border: wafMode === 'protect' ? '1px solid #A7F3D0' : '1px solid #FDE68A',
+                            background: wafMode === 'protect' ? '#E8F3EC' : '#FFFBEB',
+                            color: wafMode === 'protect' ? '#2A8B68' : '#D97706',
+                            border: wafMode === 'protect' ? '1px solid #CFE2D4' : '1px solid #FDE68A',
                             flexShrink: 0,
                             textTransform: 'uppercase'
                           }}>
-                            {wafMode === 'protect' ? 'WAF PROTECT' : wafMode.toUpperCase()}
+                            {wafMode === 'protect' ? 'PROTECT' : wafMode.toUpperCase()}
                           </span>
                         </div>
                       )
                     })
                   ) : (
-                    <div style={{ padding: '24px 16px', textAlign: 'center', color: '#94A3B8', fontSize: '12.5px' }}>
-                      <Globe size={28} color="#CBD5E1" style={{ margin: '0 auto 8px' }} />
-                      <div style={{ fontWeight: '600', color: '#64748B' }}>No WordPress Sites Linked</div>
-                      <div style={{ fontSize: '11px', marginTop: '3px' }}>Tenant has not added their site keys yet.</div>
+                    <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '8px', color: '#60716B', fontSize: '11.5px' }}>
+                      <Globe size={15} color="#94A3B8" />
+                      <span>No WordPress sites linked to this account yet.</span>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* 4. Administrative Interventions */}
+              {/* 3. Account & Security Interventions (2x4 Compact Sleek Grid) */}
               <div>
-                <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.6px', display: 'block', marginBottom: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '6px' }}>
                   Account & Security Interventions
                 </span>
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(2, 1fr)',
-                  gap: '8px'
+                  gap: '7px'
                 }}>
                   <button
                     type="button"
@@ -1600,21 +1623,22 @@ export default function AdminUsers() {
                       setModalType('gift')
                     }}
                     style={{
-                      padding: '10px 12px',
+                      padding: '8px 10px',
                       borderRadius: '8px',
-                      border: '1px solid #EFEFEF',
+                      border: '1px solid #D9E1DC',
                       background: '#FFFFFF',
-                      color: '#0F172A',
-                      fontSize: '12px',
+                      color: '#10201E',
+                      fontSize: '11.5px',
                       fontWeight: '600',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '8px',
-                      textAlign: 'left'
+                      gap: '7px',
+                      boxShadow: '0 1px 2px rgba(11, 37, 34, 0.03)',
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    <Gift size={15} color="#7C3AED" />
+                    <Gift size={14} color="#7C3AED" />
                     <span>Gift Pro Plan</span>
                   </button>
 
@@ -1622,21 +1646,22 @@ export default function AdminUsers() {
                     type="button"
                     onClick={() => setModalType('password')}
                     style={{
-                      padding: '10px 12px',
+                      padding: '8px 10px',
                       borderRadius: '8px',
-                      border: '1px solid #EFEFEF',
+                      border: '1px solid #D9E1DC',
                       background: '#FFFFFF',
-                      color: '#0F172A',
-                      fontSize: '12px',
+                      color: '#10201E',
+                      fontSize: '11.5px',
                       fontWeight: '600',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '8px',
-                      textAlign: 'left'
+                      gap: '7px',
+                      boxShadow: '0 1px 2px rgba(11, 37, 34, 0.03)',
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    <Key size={15} color="#2563EB" />
+                    <Key size={14} color="#2A8B68" />
                     <span>Reset Password</span>
                   </button>
 
@@ -1644,21 +1669,22 @@ export default function AdminUsers() {
                     type="button"
                     onClick={() => handleUnlock(selectedTenant)}
                     style={{
-                      padding: '10px 12px',
+                      padding: '8px 10px',
                       borderRadius: '8px',
-                      border: '1px solid #EFEFEF',
+                      border: '1px solid #D9E1DC',
                       background: '#FFFFFF',
-                      color: '#0F172A',
-                      fontSize: '12px',
+                      color: '#10201E',
+                      fontSize: '11.5px',
                       fontWeight: '600',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '8px',
-                      textAlign: 'left'
+                      gap: '7px',
+                      boxShadow: '0 1px 2px rgba(11, 37, 34, 0.03)',
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    <Unlock size={15} color="#059669" />
+                    <Unlock size={14} color="#059669" />
                     <span>Unlock Account</span>
                   </button>
 
@@ -1666,21 +1692,22 @@ export default function AdminUsers() {
                     type="button"
                     onClick={() => handleVerifyEmail(selectedTenant)}
                     style={{
-                      padding: '10px 12px',
+                      padding: '8px 10px',
                       borderRadius: '8px',
-                      border: '1px solid #EFEFEF',
+                      border: '1px solid #D9E1DC',
                       background: '#FFFFFF',
-                      color: '#0F172A',
-                      fontSize: '12px',
+                      color: '#10201E',
+                      fontSize: '11.5px',
                       fontWeight: '600',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '8px',
-                      textAlign: 'left'
+                      gap: '7px',
+                      boxShadow: '0 1px 2px rgba(11, 37, 34, 0.03)',
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    <Mail size={15} color="#4F46E5" />
+                    <Mail size={14} color="#2563EB" />
                     <span>Verify Email</span>
                   </button>
 
@@ -1688,21 +1715,22 @@ export default function AdminUsers() {
                     type="button"
                     onClick={() => handleResetApiKey(selectedTenant)}
                     style={{
-                      padding: '10px 12px',
+                      padding: '8px 10px',
                       borderRadius: '8px',
-                      border: '1px solid #EFEFEF',
+                      border: '1px solid #D9E1DC',
                       background: '#FFFFFF',
-                      color: '#0F172A',
-                      fontSize: '12px',
+                      color: '#10201E',
+                      fontSize: '11.5px',
                       fontWeight: '600',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '8px',
-                      textAlign: 'left'
+                      gap: '7px',
+                      boxShadow: '0 1px 2px rgba(11, 37, 34, 0.03)',
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    <RefreshCw size={15} color="#64748B" />
+                    <RefreshCw size={14} color="#60716B" />
                     <span>Rotate API Key</span>
                   </button>
 
@@ -1710,21 +1738,22 @@ export default function AdminUsers() {
                     type="button"
                     onClick={() => handleResetMFA(selectedTenant)}
                     style={{
-                      padding: '10px 12px',
+                      padding: '8px 10px',
                       borderRadius: '8px',
-                      border: '1px solid #EFEFEF',
+                      border: '1px solid #D9E1DC',
                       background: '#FFFFFF',
-                      color: '#0F172A',
-                      fontSize: '12px',
+                      color: '#10201E',
+                      fontSize: '11.5px',
                       fontWeight: '600',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '8px',
-                      textAlign: 'left'
+                      gap: '7px',
+                      boxShadow: '0 1px 2px rgba(11, 37, 34, 0.03)',
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    <Shield size={15} color="#D97706" />
+                    <Shield size={14} color="#D97706" />
                     <span>Reset 2FA</span>
                   </button>
 
@@ -1732,21 +1761,22 @@ export default function AdminUsers() {
                     type="button"
                     onClick={() => handleForceLogout(selectedTenant)}
                     style={{
-                      padding: '10px 12px',
+                      padding: '8px 10px',
                       borderRadius: '8px',
-                      border: '1px solid #EFEFEF',
+                      border: '1px solid #D9E1DC',
                       background: '#FFFFFF',
-                      color: '#0F172A',
-                      fontSize: '12px',
+                      color: '#10201E',
+                      fontSize: '11.5px',
                       fontWeight: '600',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '8px',
-                      textAlign: 'left'
+                      gap: '7px',
+                      boxShadow: '0 1px 2px rgba(11, 37, 34, 0.03)',
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    <LogOut size={15} color="#64748B" />
+                    <LogOut size={14} color="#60716B" />
                     <span>Force Logout</span>
                   </button>
 
@@ -1754,49 +1784,51 @@ export default function AdminUsers() {
                     type="button"
                     onClick={() => handleToggleSuspend(selectedTenant)}
                     style={{
-                      padding: '10px 12px',
+                      padding: '8px 10px',
                       borderRadius: '8px',
-                      border: selectedTenant.status === 'suspended' ? '1px solid #A7F3D0' : '1px solid #FECACA',
-                      background: selectedTenant.status === 'suspended' ? '#ECFDF5' : '#FEF2F2',
-                      color: selectedTenant.status === 'suspended' ? '#059669' : '#DC2626',
-                      fontSize: '12px',
+                      border: selectedTenant.status === 'suspended' ? '1px solid #CFE2D4' : '1px solid #FECACA',
+                      background: selectedTenant.status === 'suspended' ? '#E8F3EC' : '#FEF2F2',
+                      color: selectedTenant.status === 'suspended' ? '#2A8B68' : '#DC2626',
+                      fontSize: '11.5px',
                       fontWeight: '600',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '8px',
-                      textAlign: 'left'
+                      gap: '7px',
+                      boxShadow: '0 1px 2px rgba(11, 37, 34, 0.03)',
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    <AlertTriangle size={15} />
+                    <AlertTriangle size={14} />
                     <span>{selectedTenant.status === 'suspended' ? 'Restore Account' : 'Suspend Account'}</span>
                   </button>
                 </div>
               </div>
 
-              {/* 5. Danger Zone */}
-              <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #EFEFEF' }}>
+              {/* 4. Danger Zone (Compact) */}
+              <div style={{ marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid #F1F5F9' }}>
                 <button
                   type="button"
                   onClick={() => handleDeleteUser(selectedTenant)}
                   style={{
                     width: '100%',
-                    padding: '12px',
+                    padding: '8px 12px',
                     borderRadius: '8px',
-                    background: '#DC2626',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    fontSize: '12.5px',
+                    background: '#FEF2F2',
+                    border: '1px solid #FECACA',
+                    color: '#DC2626',
+                    fontSize: '11.5px',
                     fontWeight: '600',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '6px'
+                    gap: '6px',
+                    transition: 'all 0.15s ease'
                   }}
                 >
-                  <Trash2 size={15} />
-                  Delete Tenant Account Permanently
+                  <Trash2 size={13} />
+                  <span>Delete Tenant Account Permanently</span>
                 </button>
               </div>
             </div>

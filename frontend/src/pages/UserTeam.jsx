@@ -34,45 +34,90 @@ import userStore from '../utils/userStore'
 export const TEAM_ROLES = [
   {
     id: 'owner',
-    title: 'Super Admin (Owner)',
+    title: 'Workspace Owner (Full Access)',
     badge: 'FULL ACCESS',
     color: '#10201E',
     bg: '#FAFBF9',
     border: '#D9E1DC',
-    desc: 'Unrestricted control over billing, subscription tiers, domain creation/deletion, and root security credentials.',
-    permissions: ['Billing & Subscriptions', 'Add & Remove Domains', 'WAF & DDoS Rules', 'DNS Zone Records', 'Manage Team & Roles', 'API Master Keys']
+    desc: 'Unrestricted control over billing, subscription plans, adding/removing websites, team members, and all security controls.',
+    permissions: ['Billing & Subscriptions', 'Add & Remove Websites', 'WAF & Malware Scanner', 'WP Updates & Backups', 'Manage Team & Roles', 'API Master Keys']
   },
   {
     id: 'secops',
-    title: 'Security Operations (SecOps)',
+    title: 'Security Manager',
     badge: 'SECURITY LEAD',
     color: '#15803D',
     bg: '#F0FDF4',
     border: '#DCFCE7',
-    desc: 'Manages firewall rules, Layer 7 DDoS mitigation, IP threat blacklists, and real-time security events.',
-    permissions: ['WAF & DDoS Rules', 'IP Blacklists & Country Blocks', 'Bot Challenge Config', 'View Threat & Attack Logs', 'Trigger Malware Scans']
+    desc: 'Manages Edge WAF, IP/Country blocking, Malware Scanner, Security Hardening, Bot Shield, 2FA, and Post-Hack recovery.',
+    permissions: ['WAF & Rate Limits', 'IP & Country Blocking', 'Malware Scanner & Hardening', 'Bot Shield & Login Gateway', 'Post-Hack Recovery']
   },
   {
     id: 'devops',
-    title: 'DevOps & Infrastructure Engineer',
-    badge: 'INFRASTRUCTURE',
+    title: 'WordPress Developer',
+    badge: 'WP MANAGEMENT',
     color: '#0284C7',
-    bg: '#F0FDF4',
+    bg: '#F0F9FF',
     border: '#BAE6FD',
-    desc: 'Controls Anycast DNS zone management, origin server routing, SSL certificates, and edge caching.',
-    permissions: ['DNS Zone Records (A/CNAME/MX)', 'SSL/TLS Mode Settings', 'Edge Routing & Health Checks', 'Origin Server Config', 'View Operational Logs']
+    desc: 'Manages WordPress plugins, themes, core updates, Safe Updates, cloud backups, database optimization, and uptime/performance.',
+    permissions: ['Plugins, Themes & Core', 'Safe Updates & Rollbacks', 'Cloud Backups & Restore', 'Database Optimizer', 'Uptime & Broken Links']
   },
   {
     id: 'auditor',
-    title: 'Security Compliance Auditor',
+    title: 'Read-Only Viewer',
     badge: 'READ-ONLY',
     color: '#475569',
     bg: '#F8FAFC',
     border: '#E2E8F0',
-    desc: 'Read-only visibility into security telemetry, compliance posture, and audit logs. Cannot modify rules.',
-    permissions: ['View Traffic & Attack Logs', 'Export Audit Reports', 'View DNS & SSL Status', 'Review Active WAF Rules']
+    desc: 'Read-only visibility into live traffic, security reports, monitoring, and audit logs. Cannot modify any site or rule.',
+    permissions: ['View Live Traffic & Logs', 'Download Security Reports', 'View Monitoring & Uptime', 'View Activity & Audit Trail']
   }
 ]
+
+function ScopePicker({ websites, value, onChange }) {
+  const isAll = !value || value === 'all' || value.startsWith('Global')
+  const selectedList = isAll ? [] : value.split(',').map(s => s.trim()).filter(Boolean)
+
+  const toggleSite = (domain) => {
+    const next = selectedList.includes(domain)
+      ? selectedList.filter(d => d !== domain)
+      : [...selectedList, domain]
+    onChange(next.length === 0 ? 'all' : next.join(', '))
+  }
+
+  return (
+    <div style={{ border: '1px solid #D9E1DC', borderRadius: '10px', padding: '10px 12px', background: '#FAFBF9' }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12.5px', fontWeight: '700', color: '#10201E' }}>
+        <input
+          type="checkbox"
+          checked={isAll}
+          onChange={() => onChange(isAll && websites[0] ? (websites[0].domain || websites[0].name || 'all') : 'all')}
+          style={{ accentColor: '#10201E', width: '15px', height: '15px' }}
+        />
+        <span>Global Workspace (All Connected Sites)</span>
+      </label>
+      {websites.length > 0 && (
+        <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #E2E8F0', maxHeight: '120px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {websites.map((w, idx) => {
+            const d = w.domain || w.name || `Site #${idx + 1}`
+            const checked = !isAll && selectedList.includes(d)
+            return (
+              <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: '#334155' }}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggleSite(d)}
+                  style={{ accentColor: '#15803D', width: '14px', height: '14px' }}
+                />
+                <span>{d}</span>
+              </label>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function UserTeam() {
   const cachedDashboard = userStore.get('dashboard') || userStore.get('websites')
@@ -98,6 +143,8 @@ export default function UserTeam() {
     scope: 'all',
     require2fa: true
   })
+  const [editingMember, setEditingMember] = useState(null)
+  const [savingEdit, setSavingEdit] = useState(false)
   const [toastMsg, setToastMsg] = useState(null)
 
   const showToast = (text, type = 'success') => {
@@ -154,6 +201,7 @@ export default function UserTeam() {
       })
       await loadTeamData()
       setShowInviteModal(false)
+      setActiveTab('invites')
       setInviteForm({
         name: '',
         email: '',
@@ -161,7 +209,7 @@ export default function UserTeam() {
         scope: 'all',
         require2fa: true
       })
-      showToast(res.message || `Official invitation dispatched to ${inviteForm.email}!`)
+      showToast(res.message || `Invitation created for ${inviteForm.email}!`)
     } catch (err) {
       showToast(err.message || 'Failed to dispatch team member invitation.', 'error')
     } finally {
@@ -180,14 +228,66 @@ export default function UserTeam() {
     }
   }
 
+  const handleUpdateMemberSubmit = async (e) => {
+    e.preventDefault()
+    if (!editingMember) return
+    setSavingEdit(true)
+    try {
+      await api.updateTeamMember(editingMember.id, {
+        role_id: editingMember.roleId,
+        scope: editingMember.scope,
+        require_2fa: editingMember.twoFactor
+      })
+      await loadTeamData()
+      showToast(`Updated role & scope for ${editingMember.name}.`)
+      setEditingMember(null)
+    } catch (err) {
+      showToast(err.message || 'Failed to update member permissions.', 'error')
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  const handleToggleSuspendMember = async (m) => {
+    const isSusp = m.status === 'suspended'
+    const actionLabel = isSusp ? 'reactivate' : 'suspend'
+    if (!confirm(`Are you sure you want to ${actionLabel} ${m.name}?`)) return
+    try {
+      const res = await api.toggleSuspendTeamMember(m.id)
+      await loadTeamData()
+      showToast(res?.message || `${m.name} ${isSusp ? 'reactivated' : 'suspended'}.`)
+    } catch (err) {
+      showToast(err.message || `Failed to ${actionLabel} member.`, 'error')
+    }
+  }
+
   const handleRevokeInvite = async (id, email) => {
     try {
       await api.revokeTeamInvite(id)
-    } catch {
-      // Fallback
+      await loadTeamData()
+      showToast(`Invitation for ${email} cancelled.`)
+    } catch (err) {
+      showToast(err.message || 'Failed to revoke invitation.', 'error')
     }
-    setPendingInvites(prev => prev.filter(i => i.id !== id))
-    showToast(`Invitation for ${email} cancelled.`)
+  }
+
+  const handleResendInvite = async (inv) => {
+    try {
+      const res = await api.resendTeamInvite(inv.id)
+      showToast(res?.message || `Invitation refreshed for ${inv.email}!`)
+    } catch (err) {
+      showToast(err.message || 'Failed to refresh invitation.', 'error')
+    }
+  }
+
+  const handleCopyInviteLink = async (inv) => {
+    if (!inv.inviteUrl) return
+    try {
+      await navigator.clipboard.writeText(inv.inviteUrl)
+      showToast(`Invite link copied for ${inv.email}!`)
+    } catch {
+      showToast(inv.inviteUrl)
+    }
   }
 
   const filteredMembers = useMemo(() => {
@@ -441,6 +541,15 @@ export default function UserTeam() {
                                     ACCOUNT OWNER
                                   </span>
                                 )}
+                                {m.status === 'suspended' && (
+                                  <span style={{
+                                    fontSize: '10px', fontWeight: '800', padding: '1px 6px',
+                                    borderRadius: '4px', background: '#FEF2F2', color: '#DC2626',
+                                    border: '1px solid #FECACA'
+                                  }}>
+                                    SUSPENDED
+                                  </span>
+                                )}
                               </div>
                               <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>{m.email}</div>
                             </div>
@@ -497,20 +606,59 @@ export default function UserTeam() {
                         {/* Actions */}
                         <td style={{ padding: '16px 20px', textAlign: 'right' }}>
                           {!m.isOwner ? (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteMember(m.id, m.name)}
-                              style={{
-                                padding: '6px 12px', borderRadius: '7px',
-                                background: '#FFFFFF', border: '1px solid #D9E1DC',
-                                color: '#DC2626', fontSize: '11px', fontWeight: '700',
-                                cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px',
-                                transition: 'all 0.12s ease'
-                              }}
-                            >
-                              <Trash2 size={12} />
-                              <span>Revoke Access</span>
-                            </button>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                              <button
+                                type="button"
+                                onClick={() => setEditingMember({
+                                  id: m.id,
+                                  name: m.name,
+                                  email: m.email,
+                                  roleId: m.roleId || 'secops',
+                                  scope: m.scope && !m.scope.startsWith('Global') ? m.scope : 'all',
+                                  twoFactor: Boolean(m.twoFactor)
+                                })}
+                                style={{
+                                  padding: '6px 12px', borderRadius: '7px',
+                                  background: '#FFFFFF', border: '1px solid #D9E1DC',
+                                  color: '#10201E', fontSize: '11px', fontWeight: '700',
+                                  cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px',
+                                  transition: 'all 0.12s ease'
+                                }}
+                              >
+                                <Sliders size={12} />
+                                <span>Edit Role</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleSuspendMember(m)}
+                                style={{
+                                  padding: '6px 12px', borderRadius: '7px',
+                                  background: m.status === 'suspended' ? '#F0FDF4' : '#FFFBEB',
+                                  border: m.status === 'suspended' ? '1px solid #BBF7D0' : '1px solid #FDE68A',
+                                  color: m.status === 'suspended' ? '#15803D' : '#B45309',
+                                  fontSize: '11px', fontWeight: '700',
+                                  cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px',
+                                  transition: 'all 0.12s ease'
+                                }}
+                              >
+                                <Lock size={12} />
+                                <span>{m.status === 'suspended' ? 'Reactivate' : 'Suspend'}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteMember(m.id, m.name)}
+                                style={{
+                                  padding: '6px 12px', borderRadius: '7px',
+                                  background: '#FFFFFF', border: '1px solid #D9E1DC',
+                                  color: '#DC2626', fontSize: '11px', fontWeight: '700',
+                                  cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px',
+                                  transition: 'all 0.12s ease'
+                                }}
+                              >
+                                <Trash2 size={12} />
+                                <span>Revoke</span>
+                              </button>
+                            </div>
                           ) : (
                             <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: '600' }}>Master Key</span>
                           )}
@@ -654,14 +802,35 @@ export default function UserTeam() {
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {inv.inviteUrl && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyInviteLink(inv)}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#E0F2FE' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = '#F0F9FF' }}
+                          style={{
+                            padding: '7px 14px', borderRadius: '8px', border: '1px solid #BAE6FD',
+                            background: '#F0F9FF', color: '#0369A1', fontSize: '12px', fontWeight: '700',
+                            cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <Key size={12} />
+                          <span>Copy Invite Link</span>
+                        </button>
+                      )}
+
                       <button
                         type="button"
-                        onClick={() => showToast(`Invitation email re-sent to ${inv.email}!`)}
+                        onClick={() => handleResendInvite(inv)}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#F1F5F9'; e.currentTarget.style.borderColor = '#94A3B8' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.borderColor = '#D9E1DC' }}
                         style={{
                           padding: '7px 14px', borderRadius: '8px', border: '1px solid #D9E1DC',
                           background: '#FFFFFF', color: '#10201E', fontSize: '12px', fontWeight: '700',
-                          cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px'
+                          cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px',
+                          transition: 'all 0.15s ease'
                         }}
                       >
                         <Send size={12} />
@@ -671,10 +840,13 @@ export default function UserTeam() {
                       <button
                         type="button"
                         onClick={() => handleRevokeInvite(inv.id, inv.email)}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.borderColor = '#F87171' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.borderColor = '#FECACA' }}
                         style={{
                           padding: '7px 14px', borderRadius: '8px', border: '1px solid #FECACA',
-                          background: '#FFFFFF', border: '1px solid #D9E1DC', color: '#10201E', fontSize: '12px', fontWeight: '700',
-                          cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px'
+                          background: '#FFFFFF', color: '#DC2626', fontSize: '12px', fontWeight: '700',
+                          cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px',
+                          transition: 'all 0.15s ease'
                         }}
                       >
                         <X size={12} />
@@ -854,31 +1026,21 @@ export default function UserTeam() {
                     fontSize: '13px', fontWeight: '600', boxSizing: 'border-box', outline: 'none'
                   }}
                 >
-                  <option value="secops">Security Operations (SecOps) — Firewall &amp; DDoS Control</option>
-                  <option value="devops">DevOps &amp; Infrastructure — DNS Zone &amp; Origin Proxy</option>
-                  <option value="auditor">Compliance Auditor — Read-Only Logs &amp; Reports</option>
+                  <option value="secops">Security Manager — WAF, Malware Scanner &amp; Hardening</option>
+                  <option value="devops">WordPress Developer — Plugins, Themes, Updates &amp; Backups</option>
+                  <option value="auditor">Read-Only Viewer — Logs, Reports &amp; Monitoring Only</option>
                 </select>
               </div>
 
               <div style={{ marginBottom: '18px' }}>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
-                  Domain Access Boundary Scope
+                  Domain Access Boundary Scope (Select All or Specific Sites)
                 </label>
-                <select
+                <ScopePicker
+                  websites={rawWebsites}
                   value={inviteForm.scope}
-                  onChange={e => setInviteForm({ ...inviteForm, scope: e.target.value })}
-                  style={{
-                    width: '100%', height: '38px', padding: '0 12px', borderRadius: '8px',
-                    border: '1px solid #D9E1DC', background: '#FFFFFF', color: '#10201E',
-                    fontSize: '13px', fontWeight: '600', boxSizing: 'border-box', outline: 'none'
-                  }}
-                >
-                  <option value="all">Global Workspace (All Domains &amp; Sites)</option>
-                  {rawWebsites.map((w, idx) => {
-                    const d = w.domain || w.name || `Domain #${idx+1}`
-                    return <option key={idx} value={d}>Specific: {d}</option>
-                  })}
-                </select>
+                  onChange={val => setInviteForm({ ...inviteForm, scope: val })}
+                />
               </div>
 
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginBottom: '22px' }}>
@@ -916,6 +1078,113 @@ export default function UserTeam() {
                 >
                   {submittingInvite ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
                   <span>{submittingInvite ? 'Dispatching Invitation...' : 'Send Workspace Invitation'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Team Member Modal */}
+      {editingMember && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(16, 32, 30, 0.55)',
+          backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', zIndex: 9999, padding: '20px'
+        }}>
+          <div style={{
+            background: '#FFFFFF', borderRadius: '16px', border: '1px solid #D9E1DC',
+            width: '100%', maxWidth: '480px', boxShadow: '0 20px 40px rgba(16, 32, 30, 0.25)',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              padding: '18px 24px', borderBottom: '1px solid #F1F5F2',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#FAFBF9'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Sliders size={18} style={{ color: '#10201E' }} />
+                <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#10201E', margin: 0 }}>
+                  Edit Member Role &amp; Scope
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingMember(null)}
+                style={{ background: 'none', border: 'none', color: '#60716B', cursor: 'pointer' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateMemberSubmit} style={{ padding: '22px 24px' }}>
+              <div style={{ marginBottom: '16px', padding: '12px', borderRadius: '10px', background: '#FAFBF9', border: '1px solid #D9E1DC' }}>
+                <div style={{ fontSize: '13px', fontWeight: '800', color: '#10201E' }}>{editingMember.name}</div>
+                <div style={{ fontSize: '12px', color: '#60716B' }}>{editingMember.email}</div>
+              </div>
+
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
+                  RBAC Security Role
+                </label>
+                <select
+                  value={editingMember.roleId}
+                  onChange={e => setEditingMember({ ...editingMember, roleId: e.target.value })}
+                  style={{
+                    width: '100%', height: '38px', padding: '0 12px', borderRadius: '8px',
+                    border: '1px solid #D9E1DC', background: '#FFFFFF', color: '#10201E',
+                    fontSize: '13px', fontWeight: '600', boxSizing: 'border-box', outline: 'none'
+                  }}
+                >
+                  <option value="secops">Security Manager — WAF, Malware Scanner &amp; Hardening</option>
+                  <option value="devops">WordPress Developer — Plugins, Themes, Updates &amp; Backups</option>
+                  <option value="auditor">Read-Only Viewer — Logs, Reports &amp; Monitoring Only</option>
+                </select>
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
+                  Domain Access Boundary Scope (Select All or Specific Sites)
+                </label>
+                <ScopePicker
+                  websites={rawWebsites}
+                  value={editingMember.scope}
+                  onChange={val => setEditingMember({ ...editingMember, scope: val })}
+                />
+              </div>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginBottom: '22px' }}>
+                <input
+                  type="checkbox"
+                  checked={editingMember.twoFactor}
+                  onChange={e => setEditingMember({ ...editingMember, twoFactor: e.target.checked })}
+                  style={{ accentColor: '#10201E', width: '15px', height: '15px' }}
+                />
+                <span style={{ fontSize: '12px', fontWeight: '600', color: '#10201E' }}>
+                  Require Two-Factor Authentication (2FA)
+                </span>
+              </label>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingMember(null)}
+                  style={{
+                    padding: '9px 18px', background: '#FFFFFF', border: '1px solid #D9E1DC',
+                    borderRadius: '8px', fontSize: '12px', fontWeight: '700', color: '#475569', cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  style={{
+                    padding: '9px 20px', background: savingEdit ? '#64748B' : '#10201E', border: 'none',
+                    borderRadius: '8px', fontSize: '12px', fontWeight: '700', color: '#FFFFFF',
+                    cursor: savingEdit ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {savingEdit ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>

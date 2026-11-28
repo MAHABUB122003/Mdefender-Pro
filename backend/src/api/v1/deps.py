@@ -14,6 +14,31 @@ def get_db():
     return MongoDB()
 
 
+def filter_sites_by_team_scope(user, sites):
+    """Filter a list of website documents to those allowed by user's team_scope."""
+    if not user or not user.get("team_member_context"):
+        return sites
+    raw_scope = (user.get("team_scope") or "all").strip()
+    if not raw_scope or raw_scope.lower() == "all" or raw_scope.lower().startswith("global"):
+        return sites
+    allowed_tokens = {tok.strip().lower() for tok in raw_scope.split(",") if tok.strip()}
+    if not allowed_tokens:
+        return sites
+    filtered = []
+    for site in sites:
+        identifiers = {
+            str(site.get("_id") or "").lower(),
+            str(site.get("id") or "").lower(),
+            str(site.get("website_id") or "").lower(),
+            str(site.get("domain") or "").lower(),
+            str(site.get("url") or "").lower(),
+            str(site.get("name") or "").lower(),
+        }
+        if identifiers & allowed_tokens:
+            filtered.append(site)
+    return filtered
+
+
 def get_owned_website(user, website_id):
     """Resolve a website that belongs to the given user or is accessed by admin. Raises 404 otherwise."""
     db = get_db()
@@ -100,6 +125,15 @@ def get_owned_website(user, website_id):
     site_user_id = str(website.get("user_id") or "")
     if not is_admin and site_user_id and site_user_id.lower() != user_id_str.lower():
         raise HTTPException(status_code=403, detail="Access denied: You do not own this website")
+
+    # Enforce per-site scope if acting as a scoped team member
+    if user.get("team_member_context"):
+        if not filter_sites_by_team_scope(user, [website]):
+            scope_val = (user.get("team_scope") or "").strip()
+            raise HTTPException(
+                status_code=403,
+                detail=f"Your team role is scoped to '{scope_val}' and cannot access this website.",
+            )
 
     return website
 

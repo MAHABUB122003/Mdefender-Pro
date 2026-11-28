@@ -30,9 +30,6 @@ from main import (
     admin_get_support_tickets,
     admin_reply_support_ticket,
     admin_remote_site_inspector,
-    admin_get_blacklist,
-    admin_add_blacklist,
-    admin_delete_blacklist,
     admin_auto_block_get_settings
 )
 
@@ -137,39 +134,6 @@ class TestStage8AdminControlPlane(unittest.TestCase):
             res_up = asyncio.run(admin_api_v1.update_admin_dynamic_pricing_config(body=req, admin_email=self.admin_email))
             self.assertTrue(res_up["success"])
             self.assertEqual(res_up["data"]["base_monthly_rate"], 5.0)
-
-    def test_5_global_ip_blacklist(self):
-        """Verify global IP blacklist listing, addition, and removal."""
-        with patch("main.admin_api") as mock_admin_api:
-            mock_admin_api.get_blacklist.return_value = {
-                "status": "success",
-                "data": [{"ip": "198.51.100.22", "reason": "Brute Force Attack", "permanent": True}]
-            }
-            mock_admin_api.add_to_blacklist.return_value = {"status": "success", "message": "IP added"}
-            mock_admin_api.remove_from_blacklist.return_value = {"status": "success", "message": "IP removed"}
-
-            # 1. Get blacklist
-            mock_get_req = MagicMock()
-            mock_get_req.query_params = {}
-            res_get = asyncio.run(admin_get_blacklist(mock_get_req, user=self.admin_email))
-            self.assertEqual(res_get["status"], "success")
-            self.assertEqual(len(res_get["data"]), 1)
-
-            # 2. Add to blacklist
-            mock_req = MagicMock()
-            async def get_add_json():
-                return {"ip": "203.0.113.88", "reason": "Command Injection", "permanent": True}
-            mock_req.json = get_add_json
-
-            res_add = asyncio.run(admin_add_blacklist(mock_req, user=self.admin_email))
-            self.assertEqual(res_add["status"], "success")
-
-            # 3. Remove from blacklist
-            mock_del_req = MagicMock()
-            mock_del_req.query_params = {"ip": "203.0.113.88"}
-
-            res_del = asyncio.run(admin_delete_blacklist(mock_del_req, user=self.admin_email))
-            self.assertEqual(res_del["status"], "success")
 
     def test_6_patches_and_rules_evasion_lab(self):
         """Verify Patches & Rules list and Evasion Lab threat simulation."""

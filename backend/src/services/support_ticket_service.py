@@ -311,7 +311,9 @@ class SupportTicketService:
 
                 msg = MIMEMultipart("alternative")
                 msg["Subject"] = f"[MDefender Support] Update on Ticket #{ticket_id}: {subject}"
-                msg["From"] = f"{config.FROM_NAME or 'MDefender Support'} <{config.FROM_EMAIL or smtp_user}>"
+                from_name = getattr(config, 'FROM_NAME', 'MDefender Support') or 'MDefender Support'
+                from_email = getattr(config, 'FROM_EMAIL', smtp_user) or smtp_user
+                msg["From"] = f"{from_name} <{from_email}>"
                 msg["To"] = to_email
 
                 formatted_html_body = reply_body.replace("\n", "<br/>")

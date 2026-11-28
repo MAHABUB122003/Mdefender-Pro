@@ -195,8 +195,14 @@ class LoginService:
             user_id, ip_address, user_agent, session_info
         )
 
+        from src.auth.rbac import is_admin_panel_user, is_owner_user, resolve_user_permissions
+        _is_panel_admin = is_admin_panel_user(user)
+        _is_owner = is_owner_user(user)
+        _permissions = resolve_user_permissions(user)
+
         access_token = self.jwt_service.create_access_token(
             user_id, user['email'], role=user.get('role', 'user'),
+            extra_claims={'is_admin': True} if _is_panel_admin else None,
             remember_me=remember_me
         )
         refresh_token = self.jwt_service.create_refresh_token(
@@ -289,7 +295,9 @@ class LoginService:
                 'name': user_full_name,
                 'username': user_uname,
                 'role': user.get('role', 'user'),
-                'is_admin': user.get('role') == 'super_admin' or user.get('is_admin', False),
+                'is_admin': _is_panel_admin,
+                'is_owner': _is_owner,
+                'permissions': _permissions,
                 'plan': resolved_plan,
                 'effective_plan': resolved_plan,
                 'is_paid': is_paid,
@@ -326,6 +334,66 @@ class LoginService:
                 'error': f'Admin account locked. {"Permanently." if is_permanent else f"Try again in {remaining_minutes} minutes."}',
             }
 
+        # 1. Check Owner / Support Team accounts in db.users (email or username)
+        from src.auth.rbac import is_admin_panel_user, is_owner_user, resolve_user_permissions
+        user_doc = self._find_user(username)
+        if user_doc and is_admin_panel_user(user_doc):
+            if user_doc.get('status') == 'suspended':
+                return {'success': False, 'error': 'This account has been suspended by the Owner.'}
+            pw_hash = user_doc.get('password_hash') or user_doc.get('password') or ''
+            valid_pw = False
+            if pw_hash:
+                try:
+                    import bcrypt
+                    valid_pw = bcrypt.checkpw(password.encode('utf-8'), pw_hash.encode('utf-8'))
+                except Exception:
+                    valid_pw = False
+            if not valid_pw:
+                self.brute_force.record_failed_attempt(identifier, ip_address, user_agent)
+                return {'success': False, 'error': 'Invalid credentials'}
+
+            self.brute_force.record_successful_login(identifier)
+            uid = str(user_doc['_id'])
+            u_role = user_doc.get('role', 'support_agent')
+            u_perms = resolve_user_permissions(user_doc)
+            u_owner = is_owner_user(user_doc)
+            session_info = self.session_service.parse_user_agent(user_agent)
+            session = self.session_service.create_session(uid, ip_address, user_agent, session_info)
+
+            access_token = self.jwt_service.create_access_token(
+                uid, user_doc['email'], role=u_role,
+                extra_claims={'is_admin': True}
+            )
+            refresh_token = self.jwt_service.create_refresh_token(
+                uid, str(session['_id']),
+                token_version=user_doc.get('token_version', 0)
+            )
+            self.db.users.update_one({'_id': user_doc['_id']}, {'$set': {'last_login': datetime.now(timezone.utc)}})
+            self.audit.log(
+                user_id=uid,
+                action='admin_login',
+                ip_address=ip_address,
+                user_agent=user_agent,
+                status='success',
+                details={'role': u_role, 'email': user_doc['email']}
+            )
+            return {
+                'success': True,
+                'access_token': access_token,
+                'refresh_token': refresh_token,
+                'redirect': '/admin/dashboard',
+                'user': {
+                    'id': uid,
+                    'email': user_doc['email'],
+                    'name': user_doc.get('full_name') or user_doc.get('name') or '',
+                    'role': u_role,
+                    'is_admin': True,
+                    'is_owner': u_owner,
+                    'permissions': u_perms,
+                }
+            }
+
+        # 2. Fallback: Legacy 'admin' account verification
         from src.security.auth import Auth
         auth = Auth()
         if not auth.verify_admin(username, password, ip_address):
@@ -359,4 +427,13 @@ class LoginService:
             'access_token': access_token,
             'refresh_token': refresh_token,
             'redirect': '/admin/dashboard',
+            'user': {
+                'id': admin_id,
+                'email': username,
+                'name': 'Administrator',
+                'role': 'super_admin',
+                'is_admin': True,
+                'is_owner': True,
+                'permissions': ['*'],
+            }
         }
