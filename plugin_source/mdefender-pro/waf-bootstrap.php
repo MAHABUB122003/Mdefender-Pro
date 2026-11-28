@@ -430,7 +430,10 @@ $has_attack_marker = (
         }
         return (bool) preg_match('#(?:https?|ftp|gopher|dict)://(?:127\.0\.0\.1|localhost|\[::1\]|10\.\d+|192\.168\.|172\.(?:1[6-9]|2\d|3[01]))#i', $s_eval);
     })() ||
-    (strpos($eval_uri, '/wp-json/wp/v2/users/me') === false && preg_match('#(?:\.env|\.git|\.user\.ini|\.htaccess|wp-config\.php(?:\.(?:bak|old|swp)|~)?\b|(?:shell|c99|r57|wso|alfa|b374k|cmd|webshell)\.php\b|\.(?:phtml|php[3-8]|phar)\b|\.php\.(?:png|jpg|gif)\b|wp-admin/(?:install|setup-config)\.php\b|wp-json/wp/v2/users(?:\?|$|/(?!me\b)))\b#i', $eval_uri)) ||
+    (strpos($eval_uri, '/wp-json/wp/v2/users/me') === false && (
+        preg_match('#(?:/(?:wp-config\.php(?:\.(?:bak|old|swp)|~)?|\.env|\.git|\.user\.ini|\.htaccess)\b|(?:\b(?:file|include|path|template|doc|uri|url)=[^&]*wp-config\.php)|\.\.[\\\\/].*wp-config\.php)#i', $eval_uri_path . ' ' . $raw_combined) ||
+        preg_match('#(?:(?:shell|c99|r57|wso|alfa|b374k|cmd|webshell)\.php\b|\.(?:phtml|php[3-8]|phar)\b|\.php\.(?:png|jpg|gif)\b|wp-admin/(?:install|setup-config)\.php\b|wp-json/wp/v2/users(?:\?|$|/(?!me\b)))\b#i', $eval_uri)
+    )) ||
     !empty($_SERVER['HTTP_X_FORWARDED_TRANSFER_ENCODING']) ||
     !empty($_SERVER['HTTP_X_CUSTOM_SMUGGLE']) ||
     strpos($deobfuscated, 'TE.CL') !== false ||
@@ -446,7 +449,7 @@ $has_attack_marker = (
     preg_match('@["\']total["\']\s*:\s*0(?:\.00)?\s*,\s*["\']discount@i', $raw_combined) ||
     (!empty($_GET['redirect_test']) || (function() use ($deobfuscated, $raw_combined) {
         $stream = $deobfuscated . ' ' . $raw_combined . ' ' . urldecode($raw_combined);
-        if (preg_match('@(?:^|[?&])(?:redirect|redirect_to|url|dest|next|return_to|target|goto)=(?:https?:)?//([^/\s?#&]+)@i', $stream, $m_rd)) {
+        if (preg_match('@(?:^|[?&])(?:redirect|redirect_to|dest|next|return_to|target|goto)=(?:https?:)?//([^/\s?#&]+)@i', $stream, $m_rd)) {
             $curr_host = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
             $target_host = strtolower(preg_replace('/:\d+$/', '', $m_rd[1] ?? ''));
             $is_safe = empty($target_host) || $target_host === $curr_host || $target_host === 'localhost' || $target_host === '127.0.0.1' || ($curr_host && substr($target_host, -strlen('.' . $curr_host)) === ('.' . $curr_host));
@@ -675,7 +678,7 @@ if (!$is_blocked && $has_attack_marker) {
     $eval_payload_no_ua = $raw_no_ua . ' ' . preg_replace('/\/\*.*?\*\//s', ' ', $raw_no_ua);
 
     // Check Module 1: SQL Injection (Classic, Union, Blind, Error, Stacked, DB functions, NoSQL)
-    if (preg_match('@(?:\bunion\b(?:\s+all)?\s+\bselect\b|\bdrop\b\s+\btable\b|\btruncate\b\s+\btable\b|(?:\b(?:or|and)\b\s+[\x27\x22]?\w+[\x27\x22]?\s*=\s*[\x27\x22]?\w+[\x27\x22]?)|(?:\b(?:or|and)\b\s+\d+\s*=\s*\d+\b)|(?:\b(?:or|and)\b\s+\x271\x27\s*=\s*\x271\x27)|(?:\x27|\x22|%27)\s*(?:--|#|\/\*|\bor\b|\band\b|\bunion\b|;)|(?:\b(?:sleep|benchmark|waitfor\s+delay|load_file|into\s+outfile|pg_sleep)\s*\()|\binformation_schema\b|(?:[\x27\x22]?\$(?:gt|ne|gte|nin|regex|where|in)[\x27\x22]?\s*:)|(?:\border\s+by\s+\d+\b|\bgroup\s+by\s+\d+\b|\bhaving\s+\d+=\d+|(?:\|\||&&)\s*(?:\d+=\d+|[\x27\x22]\w+[\x27\x22]=[\x27\x22]\w+[\x27\x22])|(?:\x27|\x22|%27)\s*(?:order\s+by|group\s+by|union|having|limit|\b(?:or|and)\b|--|#|;)))@i', $eval_payload)) {
+    if (preg_match('@(?:\bunion\b(?:\s+all)?\s+\bselect\b|\bdrop\b\s+\btable\b|\btruncate\b\s+\btable\b|(?:\b(?:or|and)\b\s+[\x27\x22]?\w+[\x27\x22]?\s*=\s*[\x27\x22]?\w+[\x27\x22]?)|(?:\b(?:or|and)\b\s+\d+\s*=\s*\d+\b)|(?:\b(?:or|and)\b\s+\x271\x27\s*=\s*\x271\x27)|(?:\x27|\x22|%27)\s*(?:--|#|\/\*|\bor\b|\band\b|\bunion\b|;)|(?:\b(?:sleep|benchmark|waitfor\s+delay|load_file|into\s+outfile|pg_sleep)\s*\()|\binformation_schema\b|(?:[\x27\x22]?\$(?:gt|ne|gte|nin|regex|where|in)[\x27\x22]?\s*:)|(?:\border\s+by\s+\d+\b|\bgroup\s+by\s+\d+\b|\bhaving\s+\d+=\d+|(?:\|\||&&)\s*(?:\d+=\d+|[\x27\x22]\w+[\x27\x22]=[\x27\x22]\w+[\x27\x22])|(?:\x27|\x22|%27)\s*(?:group\s+by|union|having|limit|\b(?:or|and)\b|--|#|;)))@i', $eval_payload)) {
         $is_blocked = true;
         $attack_name = 'SQL Injection';
         $rule_name = 'Pre-Flight WAAP: SQL & NoSQL Injection Guard';
@@ -696,7 +699,7 @@ if (!$is_blocked && $has_attack_marker) {
         $block_reason = 'Remote Command Execution (RCE) / SSTI / WebShell payload intercepted by Pre-Flight WAAP.';
     }
     // Check Module 4: Path Traversal, LFI/RFI & Overlong UTF-8 Evasion
-    elseif (preg_match('@(?:\.\.[;]?[\\\\/]){1,}|\/?etc\/(?:passwd|shadow|hosts|group)|(?:c:)?(?:[\\\\/]|;[\\\\/])*windows[\\\\/](?:system32|win\.ini)|php:\/\/(?:filter|input|memory|data)|(?:\.env|\.git\/|\.git$|\.htaccess|\.user\.ini|\.aws/credentials|wp-config\.php(?:\.(?:bak|old|swp)|~)?\b)|%(?:c0%[a-f0-9]{2}|c1%[a-f0-9]{2}|e0%80%[a-f0-9]{2}|u002[ef]|u005c|u221[56]|uff[0-3][a-f0-9])|\xc0[\x80-\xff]|\xc1[\x80-\xff]|\xe0\x80[\x80-\xff]|(?:\b(?:file|page|include|path|template|doc|uri|url)=(?:https?|ftp):\/\/)|file:\/\/(?:\/[a-zA-Z0-9_\.\-]+)+@i', $eval_payload)) {
+    elseif (preg_match('@(?:\.\.[;]?[\\\\/]){1,}|\/?etc\/(?:passwd|shadow|hosts|group)|(?:c:)?(?:[\\\\/]|;[\\\\/])*windows[\\\\/](?:system32|win\.ini)|php:\/\/(?:filter|input|memory|data)|(?:\.env|\.git\/|\.git$|\.htaccess|\.user\.ini|\.aws/credentials|/(?:wp-config\.php(?:\.(?:bak|old|swp)|~)?|\.env|\.git|\.user\.ini|\.htaccess)\b|(?:\b(?:file|include|path|template|doc|uri|url)=[^&]*wp-config\.php)|\.\.[\\\\/].*wp-config\.php)|%(?:c0%[a-f0-9]{2}|c1%[a-f0-9]{2}|e0%80%[a-f0-9]{2}|u002[ef]|u005c|u221[56]|uff[0-3][a-f0-9])|\xc0[\x80-\xff]|\xc1[\x80-\xff]|\xe0\x80[\x80-\xff]|(?:\b(?:file|include|path|template|doc)=(?:https?|ftp):\/\/)|file:\/\/(?:\/[a-zA-Z0-9_\.\-]+)+@i', $eval_payload)) {
         $is_blocked = true;
         $attack_name = 'Path Traversal';
         $rule_name = 'Pre-Flight WAAP: Directory Traversal & Sensitive File Guard';
@@ -710,7 +713,7 @@ if (!$is_blocked && $has_attack_marker) {
             $s_eval = preg_replace('#https?://(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?\b#i', '', $s_eval);
         }
         return (bool) preg_match('@(?:https?|ftp|gopher|dict|dns|ldap|tftp):\/\/(?:169\.254\.\d+\.\d+|127\.0\.0\.1|0\.0\.0\.0|localhost|\[::1\]|\[::ffff:(?:127\.|10\.|192\.168\.|172\.)\d+.*\]|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+|2130706433|0x7f000001|017700000001|metadata\.google(?:\.internal)?|[^\s&]+burpcollaborator\.net|[^\s&]+oast\.(?:me|fun)|[^\s&]+interact\.sh)@i', $s_eval)
-            || (bool) preg_match('@(?:\b(?:url|uri|target|dest|endpoint|callback|website|redirect|src|file)=(?:https?|ftp|dict|dns|gopher|ldap|tftp):\/\/|(?:burpcollaborator\.net|interact\.sh|oast\.me|oast\.fun|requestbin|pipedream|webhook\.site)|<(?:callback|endpoint|image|url)[^>]*>https?:\/\/|file:\/\/(?:\/[a-zA-Z0-9_\.\-]+)+|(?:dict|dns|gopher|ldap|tftp):\/\/|<\?xml\b|X-aws-ec2-metadata)@i', $s_eval);
+            || (bool) preg_match('@(?:\b(?:url|uri|target|dest|endpoint|callback|website|redirect|src|file)=(?:dict|dns|gopher|ldap|tftp):\/\/|(?:burpcollaborator\.net|interact\.sh|oast\.me|oast\.fun|requestbin|pipedream|webhook\.site)|<(?:callback|endpoint|image|url)[^>]*>https?:\/\/|file:\/\/(?:\/[a-zA-Z0-9_\.\-]+)+|(?:dict|dns|gopher|ldap|tftp):\/\/|(?:\b(?:url|uri|target|dest|endpoint|file)=\s*<\?xml)|X-aws-ec2-metadata)@i', $s_eval);
     })()) {
         $is_blocked = true;
         $attack_name = 'Server-Side Request Forgery (SSRF)';
@@ -768,7 +771,7 @@ if (!$is_blocked && $has_attack_marker) {
         strpos($eval_uri, 'clickjacking') !== false ||
         (!empty($_GET['redirect_test']) || (function() use ($deobfuscated, $raw_combined) {
             $stream = $deobfuscated . ' ' . $raw_combined . ' ' . urldecode($raw_combined);
-            if (preg_match('@(?:^|[?&])(?:redirect|redirect_to|url|dest|next|return_to|target|goto)=(?:https?:)?//([^/\s?#&]+)@i', $stream, $m_rd)) {
+            if (preg_match('@(?:^|[?&])(?:redirect|redirect_to|dest|next|return_to|target|goto)=(?:https?:)?//([^/\s?#&]+)@i', $stream, $m_rd)) {
                 $curr_host = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
                 $target_host = strtolower(preg_replace('/:\d+$/', '', $m_rd[1] ?? ''));
                 $is_safe = empty($target_host) || $target_host === $curr_host || $target_host === 'localhost' || $target_host === '127.0.0.1' || ($curr_host && substr($target_host, -strlen('.' . $curr_host)) === ('.' . $curr_host));
